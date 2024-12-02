@@ -1,0 +1,29 @@
+{
+  "name": "omni-bridge-sdk-js",
+  "version": "0.1.0",
+  "description": "SDK for Omni bridge transfers",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "lint": "biome lint --write ./src",
+    "format": "biome format --write ./src",
+    "prepare": "pnpm run build"
+  },
+  "keywords": ["blockchain", "bridge", "ethereum", "near", "solana"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@solana/web3.js": "^1.95.5",
+    "ethers": "^6.13.4",
+    "near-api-js": "^5.0.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^22.10.1",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
