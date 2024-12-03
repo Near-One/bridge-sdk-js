@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest"
-import { parseOmniAddress, formatOmniAddress } from "../src/utils"
+import { describe, expect, it } from "vitest"
 import { ChainKind } from "../src/types"
+import { formatOmniAddress, parseOmniAddress } from "../src/utils"
 
 describe("Address Utils", () => {
   it("should parse Ethereum address", () => {

@@ -8,9 +8,8 @@
   "scripts": {
     "build": "tsc",
     "test": "vitest",
-    "lint": "biome lint --write ./src",
+    "lint": "biome check --write .",
     "typecheck": "tsc --noEmit",
-    "format": "biome format --write ./src",
     "prepare": "pnpm run build"
   },
   "keywords": ["blockchain", "bridge", "ethereum", "near", "solana"],

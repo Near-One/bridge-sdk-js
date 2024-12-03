@@ -1,4 +1,4 @@
-import { type OmniAddress, ChainKind } from "./types"
+import { ChainKind, type OmniAddress } from "./types"
 
 export function parseOmniAddress(address: string): OmniAddress {
   const [chain, addr] = address.split(":")
