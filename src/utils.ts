@@ -1,17 +1,12 @@
-import { ChainKind, type OmniAddress } from "./types"
+import type { Chain, OmniAddress } from "./types"
 
-export function parseOmniAddress(address: string): OmniAddress {
-  const [chain, addr] = address.split(":")
-  const chainKey = Object.keys(ChainKind).find((k) => k.toLowerCase() === chain.toLowerCase())
-  if (!chainKey) {
-    throw new Error(`Invalid chain: ${chain}`)
-  }
-  return {
-    chain: ChainKind[chainKey as keyof typeof ChainKind],
-    address: addr,
-  }
+// Helper function to construct OmniAddress
+export const omniAddress = (chain: Chain, address: string): OmniAddress => {
+  return `${chain}:${address}`
 }
 
-export function formatOmniAddress(addr: OmniAddress): string {
-  return `${ChainKind[addr.chain].toLowerCase()}:${addr.address}`
+// Get chain from OmniAddress
+export const getChain = (addr: OmniAddress): Chain => {
+  const [chain] = addr.split(":") as [Chain]
+  return chain
 }

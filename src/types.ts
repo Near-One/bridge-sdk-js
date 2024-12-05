@@ -1,12 +1,12 @@
-import type { BigNumberish } from "ethers"
-
-export enum ChainKind {
-  Eth = 0,
-  Near = 1,
-  Sol = 2,
-  Arb = 3,
-  Base = 4,
+export enum Chain {
+  Ethereum = "eth",
+  Near = "near",
+  Solana = "sol",
+  Arbitrum = "arb",
+  Base = "base",
 }
+
+export type OmniAddress = `${Chain}:${string}`
 
 export enum Status {
   Pending = 0,
@@ -14,27 +14,22 @@ export enum Status {
   Failed = 2,
 }
 
-export interface OmniAddress {
-  chain: ChainKind
-  address: string
-}
-
 export interface TransferMessage {
   tokenAddress: OmniAddress
-  amount: BigNumberish
-  fee: BigNumberish
-  nativeFee: BigNumberish
+  amount: bigint
+  fee: bigint
+  nativeFee: bigint
   recipient: OmniAddress
   message: string | null
 }
 
 export interface OmniTransfer {
   txId: string
-  nonce: BigNumberish
+  nonce: bigint
   transferMessage: TransferMessage
 }
 
 export interface Fee {
-  fee: BigNumberish
-  nativeFee: BigNumberish
+  fee: bigint
+  nativeFee: bigint
 }
