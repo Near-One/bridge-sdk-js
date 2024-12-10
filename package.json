@@ -10,7 +10,10 @@
     "test": "vitest",
     "lint": "biome check --write .",
     "typecheck": "tsc --noEmit",
-    "prepare": "pnpm run build"
+    "prepare": "pnpm run build",
+    "prepublishOnly": "pnpm lint && pnpm typecheck",
+    "postpublish": "pnpm build",
+    "lefthook": "lefthook install"
   },
   "keywords": ["blockchain", "bridge", "ethereum", "near", "solana"],
   "author": "",
@@ -23,6 +26,7 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@types/node": "^22.10.1",
+    "lefthook": "^1.9.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }
