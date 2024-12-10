@@ -1,5 +1,5 @@
-import { type Wallet, Contract } from "ethers"
-import { type ChainDeployer, type TokenDeployment, Chain, type OmniAddress } from "../types"
+import { Contract, type Wallet } from "ethers"
+import { Chain, type ChainDeployer, type OmniAddress, type TokenDeployment } from "../types"
 import { getChain } from "../utils"
 
 const FACTORY_ABI = [

@@ -2,12 +2,12 @@
 import {
   Connection,
   PublicKey,
-  TransactionInstruction,
-  Transaction,
-  sendAndConfirmTransaction,
   SystemProgram,
+  Transaction,
+  TransactionInstruction,
+  sendAndConfirmTransaction,
 } from "@solana/web3.js"
-import { type ChainDeployer, type TokenDeployment, Chain, type OmniAddress } from "../types"
+import { Chain, type ChainDeployer, type OmniAddress, type TokenDeployment } from "../types"
 import { getChain } from "../utils"
 
 // Program ID constants
