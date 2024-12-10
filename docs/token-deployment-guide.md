@@ -87,7 +87,7 @@ const signer = provider.getSigner();
 // First deploy to NEAR
 const nearDeployer = getDeployer(Chain.Near, nearWallet, "testnet");
 const toNear = await nearDeployer.initDeployToken(
-  omniAddress(Chain.Eth, "0x123..."),
+  omniAddress(Chain.Ethereum, "0x123..."),
   Chain.Near
 );
 
@@ -138,7 +138,7 @@ const status = await getDeploymentStatus(deployment);
 
 ```typescript
 try {
-  const deployment = await deployer.initDeployToken(addr, Chain.Eth);
+  const deployment = await deployer.initDeployToken(addr, Chain.Ethereum);
 } catch (error) {
   if (error.message.includes("Insufficient balance")) {
     // Handle insufficient funds
