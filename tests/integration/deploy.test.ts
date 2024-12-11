@@ -2,7 +2,7 @@ import { type Account, type KeyPair, connect, keyStores } from "near-api-js"
 import { Gas, NEAR, type NearAccount, Worker } from "near-workspaces"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 import { NearDeployer } from "../../src/chains/near"
-import { Chain, type OmniAddress } from "../../src/types"
+import { Chain, type OmniAddress, ProofKind, type TokenDeployment } from "../../src/types"
 
 describe("NearDeployer Integration Tests", () => {
   let worker: Worker
@@ -80,7 +80,7 @@ describe("NearDeployer Integration Tests", () => {
     await worker.tearDown()
   })
 
-  test.only(
+  test(
     "initDeployToken should successfully log metadata",
     async () => {
       const tokenAddress: OmniAddress = `near:${token.accountId}`
@@ -113,17 +113,16 @@ describe("NearDeployer Integration Tests", () => {
   )
 
   test("finDeployToken should finalize deployment with proof", async () => {
-    const tokenAddress = `near:${token.accountId}`
-    const mockDeployment = {
+    const tokenAddress: OmniAddress = `near:${token.accountId}`
+    const mockDeployment: TokenDeployment = {
       id: "mock-tx-hash",
       tokenAddress,
       sourceChain: Chain.Near,
       destinationChain: Chain.Ethereum,
       status: "ready_for_finalize" as const,
       proof: {
-        header: "mock-header",
-        proof: "mock-proof",
-        height: "123",
+        proof_kind: ProofKind.DeployToken,
+        vaa: "mock-vaa",
       },
     }
 
@@ -136,16 +135,15 @@ describe("NearDeployer Integration Tests", () => {
 
   test("bindToken should complete token binding with proof", async () => {
     const tokenAddress: OmniAddress = `near:${token.accountId}`
-    const mockDeployment = {
+    const mockDeployment: TokenDeployment = {
       id: "mock-tx-hash",
       tokenAddress,
       sourceChain: Chain.Near,
       destinationChain: Chain.Ethereum,
       status: "ready_for_bind" as const,
       proof: {
-        header: "mock-header",
-        proof: "mock-proof",
-        height: "123",
+        proof_kind: ProofKind.DeployToken,
+        vaa: "mock-vaa",
       },
     }
 
@@ -164,8 +162,8 @@ describe("NearDeployer Integration Tests", () => {
   })
 
   test("should throw error when finalizing with invalid status", async () => {
-    const tokenAddress = `near:${token.accountId}`
-    const invalidDeployment = {
+    const tokenAddress: OmniAddress = `near:${token.accountId}`
+    const invalidDeployment: TokenDeployment = {
       id: "mock-tx-hash",
       tokenAddress,
       sourceChain: Chain.Near,
@@ -179,8 +177,8 @@ describe("NearDeployer Integration Tests", () => {
   })
 
   test("should throw error when binding with invalid status", async () => {
-    const tokenAddress = `near:${token.accountId}`
-    const invalidDeployment = {
+    const tokenAddress: OmniAddress = `near:${token.accountId}`
+    const invalidDeployment: TokenDeployment = {
       id: "mock-tx-hash",
       tokenAddress,
       sourceChain: Chain.Near,

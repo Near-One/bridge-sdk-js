@@ -14,7 +14,7 @@ export type TokenDeployment = {
   sourceChain: Chain
   destinationChain: Chain
   status: "pending" | "ready_for_finalize" | "finalized" | "ready_for_bind" | "completed"
-  proof?: string
+  proof?: ProverArgs
   deploymentTx?: string
   bindTx?: string
 }
@@ -49,4 +49,21 @@ export enum Status {
   Pending = 0,
   Completed = 1,
   Failed = 2,
+}
+
+// Deploy tokens types
+export type ProofKind = "InitTransfer" | "FinTransfer" | "DeployToken" | "LogMetadata"
+
+export interface ProverArgs {
+  proof_kind: ProofKind
+  vaa: string
+}
+
+export interface FinDeployTokenArgs {
+  chain_kind: Chain
+  prover_args: ProverArgs
+}
+
+export interface InitDeployTokenArgs {
+  token_id: string
 }

@@ -1,5 +1,11 @@
 import type { Account } from "near-api-js"
-import type { ChainDeployer, OmniAddress, TokenDeployment } from "../types"
+import type {
+  ChainDeployer,
+  FinDeployTokenArgs,
+  InitDeployTokenArgs,
+  OmniAddress,
+  TokenDeployment,
+} from "../types"
 import { Chain } from "../types"
 import { getChain } from "../utils"
 
@@ -43,7 +49,7 @@ export class NearDeployer implements ChainDeployer {
       const tx = await this.wallet.functionCall({
         contractId: this.lockerAddress,
         methodName: "log_metadata",
-        args: { token_id: tokenAccountId },
+        args: { token_id: tokenAccountId } as InitDeployTokenArgs,
         gas: GAS.LOG_METADATA,
         attachedDeposit: DEPOSIT.LOG_METADATA,
       })
@@ -71,7 +77,7 @@ export class NearDeployer implements ChainDeployer {
 
     try {
       // Construct deploy token arguments
-      const args = {
+      const args: FinDeployTokenArgs = {
         chain_kind: deployment.destinationChain,
         prover_args: deployment.proof,
       }
@@ -105,7 +111,7 @@ export class NearDeployer implements ChainDeployer {
 
     try {
       // Construct bind token arguments
-      const args = {
+      const args: FinDeployTokenArgs = {
         chain_kind: deployment.destinationChain,
         prover_args: deployment.proof,
       }
