@@ -1,12 +1,13 @@
-import { type NearAccount, Worker } from "near-workspaces"
+import { type Account, type KeyPair, connect, keyStores } from "near-api-js"
+import { Gas, NEAR, type NearAccount, Worker } from "near-workspaces"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
-import type { NearDeployer } from "../../src/chains/near"
+import { NearDeployer } from "../../src/chains/near"
 import { Chain, type OmniAddress } from "../../src/types"
 
 describe("NearDeployer Integration Tests", () => {
   let worker: Worker
   let root: NearAccount
-  let wallet: NearAccount
+  let wallet: Account
   let locker: NearAccount
   let token: NearAccount
   let deployer: NearDeployer
@@ -16,33 +17,100 @@ describe("NearDeployer Integration Tests", () => {
     worker = await Worker.init()
     root = worker.rootAccount
 
-    // Create test accounts
-    wallet = await root.createSubAccount("wallet")
-    token = await root.createSubAccount("token")
+    // Create our end-user
+    const alice = await root.createSubAccount("alice")
+    const keys = await alice.getKey()
+    const keyStore = new keyStores.InMemoryKeyStore()
+    await keyStore.setKey("local", alice.accountId, keys as KeyPair)
+    const config = {
+      networkId: "local",
+      nodeUrl: worker.provider.connection.url,
+      keyStore: keyStore,
+      headers: {},
+    }
+    const near = await connect(config)
+    wallet = await near.account(alice.accountId)
+
+    // Create a mock MPC signer
+    const signer = await root.devDeploy("tests/mocks/signer.wasm")
+
+    // Create a mock Fungible Token
+    token = await root.devDeploy("tests/mocks/ft.wasm", {
+      initialBalance: NEAR.parse("3 N").toJSON(),
+    })
+    await root.call(token, "new_default_meta", {
+      total_supply: NEAR.parse("1,000,000,000 N").toString(),
+      owner_id: root,
+      metadata: JSON.stringify({
+        spec: "ft-1.0.0",
+        name: "Mock Fungible Token",
+        symbol: "MOCK",
+        decimals: 8,
+      }),
+    })
+
+    // Import the real wNEAR contract from testnet
+    await root.importContract({
+      testnetContract: "wrap.testnet",
+    })
 
     // Import the real omni-locker contract from testnet
     locker = await root.importContract({
       testnetContract: "omni-locker.testnet",
-      withData: true,
     })
+    await root.call(
+      locker,
+      "new",
+      {
+        prover_account: "omni-prover.testnet",
+        mpc_signer: signer.accountId,
+        nonce: 0,
+        wnear_account_id: "wnear.testnet",
+      },
+      {
+        gas: Gas.parse("300 Tgas").toBigInt(),
+      },
+    )
 
-    // Initialize NearDeployer with test accounts
-    //deployer = new NearDeployer(wallet, 'testnet', locker.accountId)
-  })
+    // Initialize NearDeployer with our test wallet
+    deployer = new NearDeployer(wallet, "testnet", locker.accountId)
+  }, 30000)
 
   afterAll(async () => {
     await worker.tearDown()
   })
 
-  test.only("initDeployToken should successfully log metadata", async () => {
-    const result = await wallet.call(
-      locker.accountId,
-      "log_metadata",
-      { token_id: token.accountId },
-      { gas: 300000000000000, attachedDeposit: 1000000000000000000000 },
-    )
-    console.log(result)
-  })
+  test.only(
+    "initDeployToken should successfully log metadata",
+    async () => {
+      const tokenAddress: OmniAddress = `near:${token.accountId}`
+      const deployment = await deployer.initDeployToken(tokenAddress, Chain.Near)
+
+      expect(deployment).toBeDefined()
+      expect(deployment.status).toBe("pending")
+
+      // Check the transaction logs to see if an event was emitted
+      const result = await wallet.connection.provider.txStatusReceipts(
+        deployment.id,
+        wallet.accountId,
+        "FINAL",
+      )
+
+      let foundLogMetadataEvent = false
+      for (const receipt of result.receipts_outcome) {
+        for (const log of receipt.outcome.logs) {
+          if (log.includes("LogMetadataEvent")) {
+            foundLogMetadataEvent = true
+          }
+        }
+      }
+
+      expect(foundLogMetadataEvent).toBe(true)
+    },
+    {
+      timeout: 60000,
+    },
+  )
 
   test("finDeployToken should finalize deployment with proof", async () => {
     const tokenAddress = `near:${token.accountId}`

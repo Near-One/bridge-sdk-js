@@ -6,62 +6,54 @@ async function main() {
   const root = worker.rootAccount
 
   // Create test accounts
-  const wallet = await root.createSubAccount("wallet")
-  //const token = await root.createSubAccount("token")
+  const alice = await root.createSubAccount("alice")
+
+  // Create a mock MPC signer
+  const signer = await root.devDeploy("tests/mocks/signer.wasm")
+
+  // Create a mock Fungible Token
+  const ft = await root.devDeploy("tests/mocks/ft.wasm", {
+    initialBalance: NEAR.parse("3 N").toJSON(),
+  })
+  await root.call(ft, "new_default_meta", {
+    total_supply: NEAR.parse("1,000,000,000 N").toString(),
+    owner_id: root,
+    metadata: JSON.stringify({
+      spec: "ft-1.0.0",
+      name: "Mock Fungible Token",
+      symbol: "MOCK",
+      decimals: 8,
+    }),
+  })
 
   // Import the real omni-locker contract from testnet
   const locker = await root.importContract({
     testnetContract: "omni-locker.testnet",
-    withData: true,
   })
-
-  // Log the existing contract state
-  locker.patchStateRecords
-  const state = await locker.viewState()
-  const data: Buffer = state.getRaw("STATE")
-  const hex = data.toString("hex")
-  console.log("STATE:", hex)
-  return
-
-  // Create a `v1.signer-prod.testnet` account
-  const signer = await root.devDeploy("build/contract.wasm")
+  await root.call(
+    locker,
+    "new",
+    {
+      prover_account: "omni-prover.testnet",
+      mpc_signer: signer.accountId,
+      nonce: 0,
+      wnear_account_id: "wnear.testnet",
+    },
+    {
+      gas: Gas.parse("300 Tgas").toBigInt(),
+    },
+  )
 
   // Setup Fungible Token wNEAR
   console.log("Importing wNEAR")
-  const wNEAR = await root.importContract({
+  const _wNEAR = await root.importContract({
     testnetContract: "wrap.testnet",
   })
 
-  console.log("Creating wNEAR")
-  await root.call(wNEAR, "new", {
-    owner_id: root,
-    total_supply: NEAR.parse("1,000,000,000 N").toString(),
-  })
-
-  console.log("Storage Depositing wNEAR")
-  await root.call(
-    wNEAR,
-    "storage_deposit",
-    {},
-    {
-      attachedDeposit: NEAR.parse("0.008 N"),
-    },
-  )
-
-  console.log("Near Depositing wNEAR")
-  await root.call(
-    wNEAR,
-    "near_deposit",
-    {},
-    {
-      attachedDeposit: NEAR.parse("200 N"),
-    },
-  )
-
   console.log("log_metadata initiated")
-  const keys = await wallet.getKey()
+  const keys = await alice.getKey()
   const keyStore = new keyStores.InMemoryKeyStore()
-  await keyStore.setKey("local", wallet.accountId, keys as KeyPair)
+  await keyStore.setKey("local", alice.accountId, keys as KeyPair)
 
   const config = {
     networkId: "local",
@@ -70,24 +62,35 @@ async function main() {
     headers: {},
   }
   const near = await connect(config)
-  const account = await near.account(wallet.accountId)
-  const result = await account.functionCall({
+  const account = await near.account(alice.accountId)
+  const response = await account.functionCall({
     contractId: locker.accountId,
     methodName: "log_metadata",
-    args: { token_id: "wrap.testnet" },
+    args: { token_id: ft.accountId },
     gas: Gas.parse("300 Tgas").toBigInt(),
     attachedDeposit: NEAR.parse("1 N").toBigInt(),
   })
-  console.log(result)
+  //console.log(response)
+  console.log(response.transaction_outcome.outcome.logs)
+  // Print logs from all receipt outcomes
+  console.log("Receipt logs:")
+  response.receipts_outcome.forEach((receipt, index) => {
+    if (receipt.outcome.logs.length > 0) {
+      console.log(`Receipt ${index} logs:`, receipt.outcome.logs)
+    }
+  })
 
-  //   const result = await wallet.callRaw(
-  //     locker.accountId,
-  //     "log_metadata",
-  //     { token_id: "wrap.testnet" },
-  //     { attachedDeposit: "1 yN", gas: "300 Tgas" },
-  //   )
-  //   console.log("result here...")
-  //   console.log(result.result.receipts_outcome)
+  const result = await near.connection.provider.txStatusReceipts(
+    response.transaction.hash,
+    account.accountId,
+    "FINAL",
+  )
+  result.receipts_outcome.forEach((receipt, index) => {
+    if (receipt.outcome.logs.length > 0) {
+      console.log(`Receipt ${index} logs:`, receipt.outcome.logs)
+    }
+  })
+
   await worker.tearDown()
 }
 
