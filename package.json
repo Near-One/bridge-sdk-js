@@ -26,8 +26,14 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@noble/curves": "^1.7.0",
+    "@noble/hashes": "^1.6.1",
     "@types/node": "^22.10.1",
+    "bun": "^1.1.38",
     "lefthook": "^1.9.0",
+    "near-sdk-js": "^2.0.0",
+    "near-workspaces": "^4.0.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }
