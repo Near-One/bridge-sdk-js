@@ -1,5 +1,7 @@
 import type { Account } from "near-api-js"
+import { serializeDeployTokenArgs } from "../borsh"
 import type {
+  BindTokenArgs,
   ChainDeployer,
   FinDeployTokenArgs,
   InitDeployTokenArgs,
@@ -79,13 +81,20 @@ export class NearDeployer implements ChainDeployer {
       // Construct deploy token arguments
       const args: FinDeployTokenArgs = {
         chain_kind: deployment.destinationChain,
-        prover_args: deployment.proof,
+        prover_args: {
+          token_address: deployment.tokenAddress,
+          name: deployment.logMetadata.name,
+          symbol: deployment.logMetadata.symbol,
+          decimals: deployment.logMetadata.decimals,
+          emitter_address: deployment.tokenAddress,
+        },
       }
+      const serializedArgs = serializeDeployTokenArgs(args)
 
       const tx = await this.wallet.functionCall({
         contractId: this.lockerAddress,
         methodName: "deploy_token",
-        args,
+        args: serializedArgs,
         gas: GAS.DEPLOY_TOKEN,
         attachedDeposit: DEPOSIT.DEPLOY_TOKEN,
       })
@@ -111,7 +120,7 @@ export class NearDeployer implements ChainDeployer {
 
     try {
       // Construct bind token arguments
-      const args: FinDeployTokenArgs = {
+      const args: BindTokenArgs = {
         chain_kind: deployment.destinationChain,
         prover_args: deployment.proof,
       }

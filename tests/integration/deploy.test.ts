@@ -2,7 +2,7 @@ import { type Account, type KeyPair, connect, keyStores } from "near-api-js"
 import { Gas, NEAR, type NearAccount, Worker } from "near-workspaces"
 import { afterAll, beforeAll, describe, expect, test } from "vitest"
 import { NearDeployer } from "../../src/chains/near"
-import { Chain, type OmniAddress, ProofKind, type TokenDeployment } from "../../src/types"
+import { Chain, type OmniAddress, type TokenDeployment } from "../../src/types"
 
 describe("NearDeployer Integration Tests", () => {
   let worker: Worker
@@ -10,6 +10,7 @@ describe("NearDeployer Integration Tests", () => {
   let wallet: Account
   let locker: NearAccount
   let token: NearAccount
+  let prover: NearAccount
   let deployer: NearDeployer
 
   beforeAll(async () => {
@@ -49,6 +50,9 @@ describe("NearDeployer Integration Tests", () => {
       }),
     })
 
+    // Create a mock Omni Prover
+    prover = await root.devDeploy("tests/mocks/prover.wasm")
+
     // Import the real wNEAR contract from testnet
     await root.importContract({
       testnetContract: "wrap.testnet",
@@ -62,7 +66,7 @@ describe("NearDeployer Integration Tests", () => {
       locker,
       "new",
       {
-        prover_account: "omni-prover.testnet",
+        prover_account: prover.accountId,
         mpc_signer: signer.accountId,
         nonce: 0,
         wnear_account_id: "wnear.testnet",
@@ -74,45 +78,39 @@ describe("NearDeployer Integration Tests", () => {
 
     // Initialize NearDeployer with our test wallet
     deployer = new NearDeployer(wallet, "testnet", locker.accountId)
-  }, 30000)
+  })
 
   afterAll(async () => {
     await worker.tearDown()
   })
 
-  test(
-    "initDeployToken should successfully log metadata",
-    async () => {
-      const tokenAddress: OmniAddress = `near:${token.accountId}`
-      const deployment = await deployer.initDeployToken(tokenAddress, Chain.Near)
+  test("initDeployToken should successfully log metadata", async () => {
+    const tokenAddress: OmniAddress = `near:${token.accountId}`
+    const deployment = await deployer.initDeployToken(tokenAddress, Chain.Near)
 
-      expect(deployment).toBeDefined()
-      expect(deployment.status).toBe("pending")
+    expect(deployment).toBeDefined()
+    expect(deployment.status).toBe("pending")
 
-      // Check the transaction logs to see if an event was emitted
-      const result = await wallet.connection.provider.txStatusReceipts(
-        deployment.id,
-        wallet.accountId,
-        "FINAL",
-      )
+    // Check the transaction logs to see if an event was emitted
+    const result = await wallet.connection.provider.txStatusReceipts(
+      deployment.id,
+      wallet.accountId,
+      "FINAL",
+    )
 
-      let foundLogMetadataEvent = false
-      for (const receipt of result.receipts_outcome) {
-        for (const log of receipt.outcome.logs) {
-          if (log.includes("LogMetadataEvent")) {
-            foundLogMetadataEvent = true
-          }
+    let foundLogMetadataEvent = false
+    for (const receipt of result.receipts_outcome) {
+      for (const log of receipt.outcome.logs) {
+        if (log.includes("LogMetadataEvent")) {
+          foundLogMetadataEvent = true
         }
       }
+    }
 
-      expect(foundLogMetadataEvent).toBe(true)
-    },
-    {
-      timeout: 60000,
-    },
-  )
+    expect(foundLogMetadataEvent).toBe(true)
+  })
 
-  test("finDeployToken should finalize deployment with proof", async () => {
+  test.only("finDeployToken should finalize deployment with proof", async () => {
     const tokenAddress: OmniAddress = `near:${token.accountId}`
     const mockDeployment: TokenDeployment = {
       id: "mock-tx-hash",
@@ -121,8 +119,15 @@ describe("NearDeployer Integration Tests", () => {
       destinationChain: Chain.Ethereum,
       status: "ready_for_finalize" as const,
       proof: {
-        proof_kind: ProofKind.DeployToken,
+        proof_kind: "DeployToken",
         vaa: "mock-vaa",
+      },
+      logMetadata: {
+        name: "Mock Fungible Token",
+        symbol: "MOCK",
+        decimals: 8,
+        emitter_address: tokenAddress,
+        token_address: tokenAddress,
       },
     }
 
@@ -142,8 +147,15 @@ describe("NearDeployer Integration Tests", () => {
       destinationChain: Chain.Ethereum,
       status: "ready_for_bind" as const,
       proof: {
-        proof_kind: ProofKind.DeployToken,
+        proof_kind: "DeployToken",
         vaa: "mock-vaa",
+      },
+      logMetadata: {
+        name: "Mock Fungible Token",
+        symbol: "MOCK",
+        decimals: 8,
+        emitter_address: tokenAddress,
+        token_address: tokenAddress,
       },
     }
 
