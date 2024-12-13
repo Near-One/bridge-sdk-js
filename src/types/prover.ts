@@ -1,5 +1,5 @@
 import { BorshSchema } from "borsher"
-import type { AccountId, Nonce, U128, Fee, OmniAddress, TransferId } from "./common"
+import type { AccountId, Fee, Nonce, OmniAddress, TransferId, U128 } from "./common"
 
 export enum ProofKind {
   InitTransfer = 0,

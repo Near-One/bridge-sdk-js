@@ -1,5 +1,5 @@
-import { ChainKind } from "./types/locker"
-import type { OmniAddress } from "./types/prover"
+import { ChainKind } from "./types"
+import type { OmniAddress } from "./types"
 
 // Helper function to construct OmniAddress
 export const omniAddress = (chain: ChainKind, address: string): OmniAddress => {

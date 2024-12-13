@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
+import type { OmniAddress } from "../src/types"
 import { ChainKind } from "../src/types/locker"
-import type { OmniAddress } from "../src/types/prover"
 import { getChain, omniAddress } from "../src/utils"
 describe("Omni Address Utils", () => {
   describe("omniAddress", () => {

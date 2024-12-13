@@ -1,9 +1,7 @@
 import type { Signer as SolWallet } from "@solana/web3.js"
 import { Wallet as EthWallet } from "ethers"
 import { Account as NearAccount } from "near-api-js"
-import type { Fee, OmniTransfer, Status, TransferMessage } from "./types"
-import type { ChainKind } from "./types/locker"
-import type { OmniAddress } from "./types/prover"
+import type { ChainKind, Fee, OmniAddress, OmniTransfer, Status, TransferMessage } from "./types"
 
 export class OmniClient {
   private wallet: EthWallet | NearAccount | SolWallet
