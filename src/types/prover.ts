@@ -135,6 +135,10 @@ export const EvmVerifyProofArgsSchema = BorshSchema.Struct({
   proof: EvmProofSchema, // assuming EvmProofSchema is defined as before
 })
 
+export type WormholeVerifyProofArgs = {
+  proof_kind: ProofKind
+  vaa: string
+}
 export const WormholeVerifyProofArgsSchema = BorshSchema.Struct({
   proof_kind: ProofKindSchema,
   vaa: BorshSchema.String,
