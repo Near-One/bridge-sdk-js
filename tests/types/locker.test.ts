@@ -17,7 +17,7 @@ import {
   serializeDeployTokenArgs,
   serializeFinTransferArgs,
   serializeStorageDepositAction,
-} from "./locker"
+} from "../../src/types"
 
 describe("Chain Kind Types", () => {
   describe("StorageDepositAction", () => {

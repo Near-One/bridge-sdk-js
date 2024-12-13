@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { OmniBridgeAPI } from "../src/api"
-import { Chain, type OmniAddress } from "../src/types"
+import { ChainKind, type OmniAddress } from "../src/types"
 import { omniAddress } from "../src/utils"
 
 describe("OmniBridgeAPI", () => {
@@ -35,8 +35,8 @@ describe("OmniBridgeAPI", () => {
           json: () => Promise.resolve(mockResponse),
         })
 
-        const sender: OmniAddress = omniAddress(Chain.Ethereum, "0x123")
-        const recipient: OmniAddress = omniAddress(Chain.Solana, "sol123")
+        const sender: OmniAddress = omniAddress(ChainKind.Eth, "0x123")
+        const recipient: OmniAddress = omniAddress(ChainKind.Sol, "sol123")
         const tokenAddress = "0xtoken"
 
         const fee = await api.getFee(sender, recipient, tokenAddress)
@@ -74,8 +74,8 @@ describe("OmniBridgeAPI", () => {
           statusText: "Not Found",
         })
 
-        const sender: OmniAddress = omniAddress(Chain.Ethereum, "0x123")
-        const recipient: OmniAddress = omniAddress(Chain.Solana, "sol123")
+        const sender: OmniAddress = omniAddress(ChainKind.Eth, "0x123")
+        const recipient: OmniAddress = omniAddress(ChainKind.Sol, "sol123")
         const tokenAddress = "0xtoken"
 
         await expect(api.getFee(sender, recipient, tokenAddress)).rejects.toThrow(
