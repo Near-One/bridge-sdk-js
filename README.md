@@ -1,6 +1,23 @@
 # Omni Bridge SDK
 
+![Status](https://img.shields.io/badge/Status-Alpha-orange)
+![Stability](https://img.shields.io/badge/Stability-Experimental-red)
+
+> [!WARNING]
+> This SDK is currently under heavy development and should be considered **highly unstable**. The API surface is subject to frequent and breaking changes without notice. While we encourage exploration and feedback, we strongly advise against using this in production environments at this time.
+
 A TypeScript SDK for seamless cross-chain token transfers using the Omni Bridge protocol.
+
+## Development Status
+
+This project is in **alpha stage** and under active development. Here's what you should know:
+
+- 🚧 **API Stability**: All APIs are subject to breaking changes
+- 🧪 **Testing**: Test coverage is still being expanded
+- 📦 **Features**: Core functionality is being implemented
+- 🔄 **Updates**: Frequent updates and breaking changes should be expected
+
+We welcome feedback and contributions, but please be aware of the experimental nature of this project.
 
 ## Installation
 
