@@ -3,37 +3,37 @@
     "final_execution_status": "EXECUTED",
     "receipts_outcome": [
       {
-        "block_hash": "3tU4QwA6FHM2um8mWb3zteKxjvAekJifiv1dhXzXpALw",
-        "id": "GvPhRcJpkjivQm1hrxnSetcB5uyDEpuqYqX46B1Yd5KD",
+        "block_hash": "9LYps8hBaPKUfwtAfFWtvzbLDMHm5mmRCxpSfiETw5kx",
+        "id": "5Mpc7KsDqqbDvLK1EKjskCKqqv4eReSjBFT4YeJ4ccji",
         "outcome": {
-          "executor_id": "v1.signer-prod.testnet",
-          "gas_burnt": 3958059500000,
+          "executor_id": "dev-45345-55808.test.near",
+          "gas_burnt": 42739353006284,
           "logs": [],
           "metadata": { "gas_profile": [], "version": 3 },
           "receipt_ids": [
-            "2mb8ad6kFtuH51MB7uQW3Y3qJEqV5bfpk5Q1nDvfH28D",
-            "E9YFDw7CcYuB1LeTGWudvyGxn5K9Po5qFdsaTd34meSM"
+            "FRTWzLLvcgo155EzfDxPHoBPjdNS1Wux64Up28uTuJ24",
+            "3aLoojm3v1jTVvKc9FQXytsVWRKp1omdMLeZg6RyraA7"
           ],
           "status": {
             "Failure": {
               "ActionError": {
-                "index": 0,
+                "index": null,
                 "kind": {
-                  "CreateAccountNotAllowed": {
-                    "account_id": "v1.signer-prod.testnet",
-                    "predecessor_id": "test.near"
+                  "LackBalanceForState": {
+                    "account_id": "dev-45345-55808.test.near",
+                    "amount": "2945430000000000000000000"
                   }
                 }
               }
             }
           },
-          "tokens_burnt": "395805950000000000000"
+          "tokens_burnt": "4273935300628400000000"
         },
         "proof": []
       },
       {
-        "block_hash": "DJrijfZsgT1JXzHc33bzJvHzwNGZKTcyhAxjG2yoSZY6",
-        "id": "2mb8ad6kFtuH51MB7uQW3Y3qJEqV5bfpk5Q1nDvfH28D",
+        "block_hash": "9xzhbkL9kSDfDDDTiWJdFR9zEf6c5MLE77tViEkPunqi",
+        "id": "FRTWzLLvcgo155EzfDxPHoBPjdNS1Wux64Up28uTuJ24",
         "outcome": {
           "executor_id": "test.near",
           "gas_burnt": 223182562500,
@@ -43,11 +43,11 @@
           "status": { "SuccessValue": "" },
           "tokens_burnt": "0"
         },
-        "proof": [{ "direction": "Right", "hash": "3e2vwpuevm3u9z78B1K5XPy4SBqWxvrjmLXdEZbaDotZ" }]
+        "proof": [{ "direction": "Right", "hash": "F9yfNotQH3SuBNgFQTqX2foXppkmfGVHQ8Bm3PVf7qZt" }]
       },
       {
-        "block_hash": "DJrijfZsgT1JXzHc33bzJvHzwNGZKTcyhAxjG2yoSZY6",
-        "id": "E9YFDw7CcYuB1LeTGWudvyGxn5K9Po5qFdsaTd34meSM",
+        "block_hash": "9xzhbkL9kSDfDDDTiWJdFR9zEf6c5MLE77tViEkPunqi",
+        "id": "3aLoojm3v1jTVvKc9FQXytsVWRKp1omdMLeZg6RyraA7",
         "outcome": {
           "executor_id": "test.near",
           "gas_burnt": 223182562500,
@@ -57,17 +57,17 @@
           "status": { "SuccessValue": "" },
           "tokens_burnt": "0"
         },
-        "proof": [{ "direction": "Left", "hash": "fCiyw4nfS9vk6SAgLg4owU9LzLzyTNnFfn7bjQ2GmrU" }]
+        "proof": [{ "direction": "Left", "hash": "E2gnnqkJreQ1o2Hr2grjas8VYYvi9Ju9ikU1jSj5aUUp" }]
       }
     ],
     "status": {
       "Failure": {
         "ActionError": {
-          "index": 0,
+          "index": null,
           "kind": {
-            "CreateAccountNotAllowed": {
-              "account_id": "v1.signer-prod.testnet",
-              "predecessor_id": "test.near"
+            "LackBalanceForState": {
+              "account_id": "dev-45345-55808.test.near",
+              "amount": "2945430000000000000000000"
             }
           }
         }
@@ -76,46 +76,47 @@
     "transaction": {
       "actions": [
         "CreateAccount",
-        { "Transfer": { "deposit": "100000000000000000000000000" } },
+        { "Transfer": { "deposit": "3000000000000000000000000" } },
         {
           "AddKey": {
             "access_key": { "nonce": 0, "permission": "FullAccess" },
-            "public_key": "ed25519:CYaDMrcdmgBAcZjuE8JzBUKDmY66bvnd46xEBBQB9bGJ"
+            "public_key": "ed25519:B9GmU77qU78uAbYTzVbpMZe4Wjc6puCkwwHX2HbzA11m"
           }
-        }
+        },
+        { "DeployContract": { "code": "UPCW8aPP6TQSiaPMbsBJu/pOUcrVW+5lmV5NnJLgejg=" } }
       ],
-      "hash": "2LPfknEZfogVwR3Ut7aYBDifYjqK6UY4cENu51m8mKNv",
-      "nonce": 2,
+      "hash": "7N7YSKgXhULcJQbbS8tCcwymkQV1dYPAWxzm9nwij1mg",
+      "nonce": 4,
       "priority_fee": 0,
-      "public_key": "ed25519:DAP8ESoNVWDMJbTk3o1BBtxgjiSaW8DVVjNp3cSVJ1os",
-      "receiver_id": "v1.signer-prod.testnet",
-      "signature": "ed25519:55LHnNuuwvH6m41sVgBvyaT8HwdrTD6mHpBxLnr7B3WquAnBUkKnTm9MZBHLJmLNVtv1jaGAAwbhzSyqZYVbFeB8",
+      "public_key": "ed25519:581quYCocCyvEKsaukFUcqPQDH7jBNcyC5prUmERVfUP",
+      "receiver_id": "dev-45345-55808.test.near",
+      "signature": "ed25519:4PW4TPDLChaKhNvu8aAq4WkDLCQSWrJArVitvjXqx5ThLMS8WBSiDrb3tGsWhU6hMMicThTmUgiRDzeX8Y8MZCW5",
       "signer_id": "test.near"
     },
     "transaction_outcome": {
-      "block_hash": "9rnUYx4NvRsEpmKFezgk4ooT1MWAAyh7RDxjYKhQVpA2",
-      "id": "2LPfknEZfogVwR3Ut7aYBDifYjqK6UY4cENu51m8mKNv",
+      "block_hash": "ggCUtbiTNzysHQhw7qDPgXb14aZuMLz216Z8AaFhfuJ",
+      "id": "7N7YSKgXhULcJQbbS8tCcwymkQV1dYPAWxzm9nwij1mg",
       "outcome": {
         "executor_id": "test.near",
-        "gas_burnt": 4174947687500,
+        "gas_burnt": 32701053968615,
         "logs": [],
         "metadata": { "gas_profile": null, "version": 1 },
-        "receipt_ids": ["GvPhRcJpkjivQm1hrxnSetcB5uyDEpuqYqX46B1Yd5KD"],
-        "status": { "SuccessReceiptId": "GvPhRcJpkjivQm1hrxnSetcB5uyDEpuqYqX46B1Yd5KD" },
-        "tokens_burnt": "417494768750000000000"
+        "receipt_ids": ["5Mpc7KsDqqbDvLK1EKjskCKqqv4eReSjBFT4YeJ4ccji"],
+        "status": { "SuccessReceiptId": "5Mpc7KsDqqbDvLK1EKjskCKqqv4eReSjBFT4YeJ4ccji" },
+        "tokens_burnt": "3270105396861500000000"
       },
       "proof": []
     }
   },
-  "startMs": 1733897267016,
-  "endMs": 1733897269043,
+  "startMs": 1734069845349,
+  "endMs": 1734069847963,
   "config": {
     "network": "sandbox",
     "rootAccountId": "test.near",
-    "rpcAddr": "http://127.0.0.1:29326",
+    "rpcAddr": "http://127.0.0.1:59744",
     "initialBalance": "100000000000000000000000000",
-    "homeDir": "/private/var/folders/_4/wv4xjhs90b3fm_qlmj0_j_ch0000gn/T/sandbox/66a77464-76be-4b14-a76e-a118b69f19b9",
-    "port": 29326,
+    "homeDir": "/private/var/folders/_4/wv4xjhs90b3fm_qlmj0_j_ch0000gn/T/sandbox/cf28b8f0-b8c9-437e-b43b-9e831733f7c8",
+    "port": 59744,
     "rm": false,
     "refDir": null
   }

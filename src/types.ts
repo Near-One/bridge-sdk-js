@@ -76,7 +76,6 @@ export type TokenDeployment = {
   }
   deploymentTx?: string
   bindTx?: string
-  logMetadata: LogMetadataMessage
 }
 
 export interface ChainDeployer {

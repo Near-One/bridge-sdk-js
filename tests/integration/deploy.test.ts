@@ -125,7 +125,7 @@ describe("NearDeployer Integration Tests", () => {
     expect(foundLogMetadataEvent).toBe(true)
   })
 
-  test.only("finDeployToken should finalize deployment with proof", async () => {
+  test("finDeployToken should finalize deployment with proof", async () => {
     const tokenAddress: OmniAddress = "near:fungible-token"
     const mockDeployment: TokenDeployment = {
       id: "mock-tx-hash",
@@ -172,7 +172,7 @@ describe("NearDeployer Integration Tests", () => {
     expect(finalizedDeployment.deploymentTx).toBeDefined()
   })
 
-  test("bindToken should complete token binding with proof", async () => {
+  test.only("bindToken should complete token binding with proof", async () => {
     const tokenAddress: OmniAddress = `near:${token.accountId}`
     const mockDeployment: TokenDeployment = {
       id: "mock-tx-hash",
