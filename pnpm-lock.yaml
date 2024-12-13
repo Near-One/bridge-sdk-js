@@ -11,6 +11,9 @@ importers:
       '@solana/web3.js':
         specifier: ^1.95.5
         version: 1.95.5(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+      borsher:
+        specifier: ^3.5.0
+        version: 3.5.0
       ethers:
         specifier: ^6.13.4
         version: 6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10)
@@ -493,6 +496,12 @@ packages:
 
   borsh@1.0.0:
     resolution: {integrity: sha512-fSVWzzemnyfF89EPwlUNsrS5swF5CrtiN4e+h0/lLf4dz2he4L3ndM20PS9wj7ICSkXJe/TQUHdaPTq15b1mNQ==}
+
+  borsh@2.0.0:
+    resolution: {integrity: sha512-kc9+BgR3zz9+cjbwM8ODoUB4fs3X3I5A/HtX7LZKxCLaMrEeDFoBpnhZY//DTS1VZBSs6S5v46RZRbZjRFspEg==}
+
+  borsher@3.5.0:
+    resolution: {integrity: sha512-53UlE2ukArKGrw3u+MKR5CBqYR+Fr47tGAeIRmAy+W5G6FMRnoM7G8mHYFeijGyhKje5aaQTCqZu/hugQ2HiBA==}
 
   brorand@1.1.0:
     resolution: {integrity: sha512-cKV8tMCEpQs4hK/ik71d6LrPOnpkpGBR0wzxqr68g2m/LB2GxVYQroAjMJZRVM1Y4BCjCKc3vAamxSzOY2RP+w==}
@@ -1408,6 +1417,13 @@ snapshots:
       text-encoding-utf-8: 1.0.2
 
   borsh@1.0.0: {}
+
+  borsh@2.0.0: {}
+
+  borsher@3.5.0:
+    dependencies:
+      borsh: 2.0.0
+      buffer: 6.0.3
 
   brorand@1.1.0: {}
 
