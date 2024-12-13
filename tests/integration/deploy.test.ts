@@ -10,34 +10,33 @@ describe("NearDeployer Integration Tests", () => {
   let wallet: Account
   let locker: NearAccount
   let token: NearAccount
-  let prover: NearAccount
   let deployer: NearDeployer
+  let factory: NearAccount
+  let tokenDeployer: NearAccount
 
   beforeAll(async () => {
     // Initialize the sandbox environment
     worker = await Worker.init()
     root = worker.rootAccount
 
-    // Create our end-user
+    // Create test accounts
     const alice = await root.createSubAccount("alice")
-    const keys = await alice.getKey()
-    const keyStore = new keyStores.InMemoryKeyStore()
-    await keyStore.setKey("local", alice.accountId, keys as KeyPair)
-    const config = {
-      networkId: "local",
-      nodeUrl: worker.provider.connection.url,
-      keyStore: keyStore,
-      headers: {},
-    }
-    const near = await connect(config)
-    wallet = await near.account(alice.accountId)
+    factory = await root.createSubAccount("factory")
 
-    // Create a mock MPC signer
+    // Set up existing contracts
+    tokenDeployer = await root.devDeploy("tests/mocks/deployer.wasm", {
+      initialBalance: NEAR.parse("300 N").toJSON(),
+    })
     const signer = await root.devDeploy("tests/mocks/signer.wasm")
+    const prover = await root.devDeploy("tests/mocks/prover.wasm")
+    const wNEAR = await root.importContract({
+      testnetContract: "wrap.testnet",
+    })
 
-    // Create a mock Fungible Token
+    // Create a mock Fungible Token to test log_metadata
+    // We'll deploy something different when testing `deployToken`
     token = await root.devDeploy("tests/mocks/ft.wasm", {
-      initialBalance: NEAR.parse("3 N").toJSON(),
+      initialBalance: NEAR.parse("300 N").toJSON(),
     })
     await root.call(token, "new_default_meta", {
       total_supply: NEAR.parse("1,000,000,000 N").toString(),
@@ -50,17 +49,13 @@ describe("NearDeployer Integration Tests", () => {
       }),
     })
 
-    // Create a mock Omni Prover
-    prover = await root.devDeploy("tests/mocks/prover.wasm")
-
-    // Import the real wNEAR contract from testnet
-    await root.importContract({
-      testnetContract: "wrap.testnet",
-    })
-
-    // Import the real omni-locker contract from testnet
+    // Import and setup the omni-locker contract from testnet
     locker = await root.importContract({
       testnetContract: "omni-locker.testnet",
+    })
+    await root.call(tokenDeployer, "new", {
+      controller: locker.accountId,
+      dao: "dao.near",
     })
     await root.call(
       locker,
@@ -69,12 +64,32 @@ describe("NearDeployer Integration Tests", () => {
         prover_account: prover.accountId,
         mpc_signer: signer.accountId,
         nonce: 0,
-        wnear_account_id: "wnear.testnet",
+        wnear_account_id: wNEAR.accountId,
       },
       {
-        gas: Gas.parse("300 Tgas").toBigInt(),
+        gas: Gas.parse("300 Tgas").toBigInt().toString(),
       },
     )
+    await root.call(locker, "add_factory", {
+      address: `near:${factory.accountId}`,
+    })
+    await root.call(locker, "add_token_deployer", {
+      chain: "Near", //NEAR chain
+      account_id: tokenDeployer.accountId,
+    })
+
+    // Convert the `alice` account to a NEAR wallet
+    const keys = await alice.getKey()
+    const keyStore = new keyStores.InMemoryKeyStore()
+    await keyStore.setKey("local", alice.accountId, keys as KeyPair)
+    const config = {
+      networkId: "local",
+      nodeUrl: worker.provider.connection.url,
+      keyStore: keyStore,
+      headers: {},
+    }
+    const near = await connect(config)
+    wallet = await near.account(alice.accountId)
 
     // Initialize NearDeployer with our test wallet
     deployer = new NearDeployer(wallet, "testnet", locker.accountId)
@@ -111,7 +126,7 @@ describe("NearDeployer Integration Tests", () => {
   })
 
   test.only("finDeployToken should finalize deployment with proof", async () => {
-    const tokenAddress: OmniAddress = `near:${token.accountId}`
+    const tokenAddress: OmniAddress = "near:fungible-token"
     const mockDeployment: TokenDeployment = {
       id: "mock-tx-hash",
       tokenAddress,
@@ -126,12 +141,31 @@ describe("NearDeployer Integration Tests", () => {
         name: "Mock Fungible Token",
         symbol: "MOCK",
         decimals: 8,
-        emitter_address: tokenAddress,
+        emitter_address: `near:${factory.accountId}`,
         token_address: tokenAddress,
       },
     }
 
     const finalizedDeployment = await deployer.finDeployToken(mockDeployment)
+
+    // Wait for the transaction to be finalized
+    if (!finalizedDeployment.deploymentTx) {
+      throw new Error("Deployment transaction not found")
+    }
+    await wallet.connection.provider.txStatus(
+      finalizedDeployment.deploymentTx,
+      wallet.accountId,
+      "FINAL",
+    )
+
+    // Check that the token was deployed
+    expect(async () => {
+      await wallet.connection.provider.query({
+        request_type: "view_account",
+        finality: "final",
+        account_id: `${tokenAddress.replace(":", "-")}.${tokenDeployer.accountId}`,
+      })
+    }).not.toThrow()
 
     expect(finalizedDeployment).toBeDefined()
     expect(finalizedDeployment.status).toBe("finalized")

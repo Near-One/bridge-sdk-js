@@ -12,15 +12,15 @@ import { Chain } from "../types"
 import { getChain } from "../utils"
 
 const GAS = {
-  LOG_METADATA: BigInt(3e14), // 300 * 10^12
-  DEPLOY_TOKEN: BigInt(3e14), // 300 * 10^12
-  BIND_TOKEN: BigInt(3e14), // 300 * 10^12
+  LOG_METADATA: BigInt(3e14), // 3 TGas
+  DEPLOY_TOKEN: BigInt(1.2e14), // 1.2 TGas
+  BIND_TOKEN: BigInt(3e14), // 3 TGas
 } as const
 
 const DEPOSIT = {
-  LOG_METADATA: BigInt(1e24), // 1 NEAR (10^24)
-  DEPLOY_TOKEN: BigInt(1e24), // 1 NEAR (10^24)
-  BIND_TOKEN: BigInt(1e24), // 1 NEAR (10^24)
+  LOG_METADATA: BigInt(2e23), // 0.2 NEAR
+  DEPLOY_TOKEN: BigInt(4e24), // 4 NEAR
+  BIND_TOKEN: BigInt(2e23), // 0.2 NEAR
 } as const
 
 export class NearDeployer implements ChainDeployer {
@@ -86,7 +86,7 @@ export class NearDeployer implements ChainDeployer {
           name: deployment.logMetadata.name,
           symbol: deployment.logMetadata.symbol,
           decimals: deployment.logMetadata.decimals,
-          emitter_address: deployment.tokenAddress,
+          emitter_address: deployment.logMetadata.emitter_address,
         },
       }
       const serializedArgs = serializeDeployTokenArgs(args)

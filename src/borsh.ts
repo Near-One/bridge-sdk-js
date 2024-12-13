@@ -109,8 +109,8 @@ export function serializeDeployTokenArgs(args: FinDeployTokenArgs) {
     chain_kind: serializeChainKind(args.chain_kind),
     prover_args: Array.from(prover_args_vec),
   }
-  const result = borshSerialize(deployTokenArgsSchema, deployTokenArgs)
-  return result
+  const buffer = borshSerialize(deployTokenArgsSchema, deployTokenArgs)
+  return new Uint8Array(buffer)
 }
 
 export function serializeBindTokenArgs(args: BindTokenArgs): SerializedArgs<BindTokenArgs> {
