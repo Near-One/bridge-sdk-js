@@ -1,7 +1,8 @@
 import { type KeyPair, connect, keyStores } from "near-api-js"
 import { Gas, NEAR, type SandboxWorker, Worker } from "near-workspaces"
 import { serializeDeployTokenArgs } from "./src/borsh"
-import { Chain, type FinDeployTokenArgs } from "./src/types"
+import { ChainKind } from "./src/types/locker"
+import type { DeployTokenArgs } from "./src/types/locker"
 
 async function main() {
   const worker = (await Worker.init({ rootAccountId: "test.near" })) as SandboxWorker
@@ -71,8 +72,8 @@ async function main() {
   console.log(response)
 
   console.log("Calling deploy_token")
-  const args: FinDeployTokenArgs = {
-    chain_kind: Chain.Near,
+  const args: DeployTokenArgs = {
+    chain_kind: ChainKind.Near,
     prover_args: {
       token_address: "near:ft",
       name: "Mock Fungible Token",

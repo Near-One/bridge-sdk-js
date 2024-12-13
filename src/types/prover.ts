@@ -1,16 +1,5 @@
 import { BorshSchema } from "borsher"
-
-export type AccountId = string
-export type U128 = bigint
-export type Nonce = bigint
-export type TransferId = string
-export type Fee = bigint
-export type OmniAddress =
-  | `eth:${string}`
-  | `near:${string}`
-  | `sol:${string}`
-  | `arb:${string}`
-  | `base:${string}`
+import type { AccountId, Nonce, U128, Fee, OmniAddress, TransferId } from "./common"
 
 export enum ProofKind {
   InitTransfer = 0,

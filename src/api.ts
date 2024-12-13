@@ -1,5 +1,5 @@
 // api.ts
-import { type Chain, type Fee, type OmniAddress, Status } from "./types"
+import { type ChainKind, type Fee, type OmniAddress, Status } from "./types"
 
 export interface ApiTransferResponse {
   id: {

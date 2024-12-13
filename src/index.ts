@@ -1,16 +1,11 @@
 import { OmniClient } from "./client"
-import {
-  Chain,
-  type Fee,
-  type OmniAddress,
-  type OmniTransfer,
-  Status,
-  type TransferMessage,
-} from "./types"
+import { type Fee, type OmniTransfer, Status, type TransferMessage } from "./types"
+import { ChainKind } from "./types/locker"
+import type { OmniAddress } from "./types/prover"
 
 export {
   OmniClient,
-  Chain,
+  ChainKind,
   Status,
   type OmniAddress,
   type TransferMessage,
