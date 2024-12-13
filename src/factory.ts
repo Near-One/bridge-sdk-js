@@ -1,6 +1,6 @@
 import { NearDeployer } from "./chains/near"
 import type { ChainDeployer } from "./types"
-import { ChainKind } from "./types/locker"
+import { ChainKind } from "./types"
 
 export function getDeployer(
   chain: ChainKind,
