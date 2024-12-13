@@ -2,6 +2,7 @@ import { borshSerialize } from "borsher"
 import type { Account } from "near-api-js"
 import {
   type BindTokenArgs,
+  type ChainDeployer,
   ChainKind,
   type DeployTokenArgs,
   DeployTokenArgsSchema,
@@ -13,19 +14,37 @@ import {
 } from "../types"
 import { getChain } from "../utils"
 
+/**
+ * Configuration for NEAR network gas limits
+ * @internal
+ */
 const GAS = {
   LOG_METADATA: BigInt(3e14), // 3 TGas
   DEPLOY_TOKEN: BigInt(1.2e14), // 1.2 TGas
   BIND_TOKEN: BigInt(3e14), // 3 TGas
 } as const
 
+/**
+ * Configuration for NEAR network deposit amounts
+ * @internal
+ */
 const DEPOSIT = {
   LOG_METADATA: BigInt(2e23), // 0.2 NEAR
   DEPLOY_TOKEN: BigInt(4e24), // 4 NEAR
   BIND_TOKEN: BigInt(2e23), // 0.2 NEAR
 } as const
 
-export class NearDeployer {
+/**
+ * NEAR blockchain implementation of the token deployer
+ * @implements {ChainDeployer<Account>}
+ */
+export class NearDeployer implements ChainDeployer<Account> {
+  /**
+   * Creates a new NEAR token deployer instance
+   * @param wallet - NEAR account instance for transaction signing
+   * @param lockerAddress - Address of the token locker contract
+   * @throws {Error} If locker address is not configured
+   */
   constructor(
     private wallet: Account,
     private lockerAddress: string = process.env.OMNI_LOCKER_NEAR as string,
