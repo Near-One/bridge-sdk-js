@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import { OmniBridgeAPI } from "../../src/api"
-import { Chain, type OmniAddress } from "../../src/types"
+import { ChainKind, type OmniAddress } from "../../src/types"
 import { omniAddress } from "../../src/utils"
 
 describe("OmniBridgeAPI Integration Tests", () => {
@@ -12,9 +12,9 @@ describe("OmniBridgeAPI Integration Tests", () => {
 
   describe("getFee", () => {
     it("should fetch real fee information", async () => {
-      const sender: OmniAddress = omniAddress(Chain.Near, "bridge-sender.testnet")
+      const sender: OmniAddress = omniAddress(ChainKind.Near, "bridge-sender.testnet")
       const recipient: OmniAddress = omniAddress(
-        Chain.Ethereum,
+        ChainKind.Eth,
         "0x000000F8637F1731D906643027c789EFA60BfE11",
       )
       const tokenAddress = "warp.testnet"
@@ -27,8 +27,8 @@ describe("OmniBridgeAPI Integration Tests", () => {
     })
 
     it("should handle real API errors gracefully", async () => {
-      const sender: OmniAddress = omniAddress(Chain.Ethereum, "invalid")
-      const recipient: OmniAddress = omniAddress(Chain.Solana, "invalid")
+      const sender: OmniAddress = omniAddress(ChainKind.Eth, "invalid")
+      const recipient: OmniAddress = omniAddress(ChainKind.Sol, "invalid")
       const tokenAddress = "invalid"
 
       await expect(api.getFee(sender, recipient, tokenAddress)).rejects.toThrow()

@@ -1,17 +1,13 @@
 import type { Signer as SolWallet } from "@solana/web3.js"
 import { Wallet as EthWallet } from "ethers"
 import { Account as NearAccount } from "near-api-js"
-import { TESTNET_CONFIG } from "./config"
-import type { NetworkConfig } from "./config"
-import type { Chain, Fee, OmniAddress, OmniTransfer, Status, TransferMessage } from "./types"
+import type { ChainKind, Fee, OmniAddress, OmniTransfer, Status, TransferMessage } from "./types"
 
 export class OmniClient {
   private wallet: EthWallet | NearAccount | SolWallet
-  private config: NetworkConfig
 
-  constructor(wallet: EthWallet | NearAccount | SolWallet, chain: Chain) {
+  constructor(wallet: EthWallet | NearAccount | SolWallet) {
     this.wallet = wallet
-    this.config = TESTNET_CONFIG[chain]
   }
 
   async omniTransfer(transferMessage: TransferMessage): Promise<OmniTransfer> {
@@ -53,7 +49,7 @@ export class OmniClient {
   }
 
   // biome-ignore lint/correctness/noUnusedVariables: This is a placeholder
-  async getTransferStatus(originChain: Chain, nonce: bigint): Promise<Status> {
+  async getTransferStatus(originChain: ChainKind, nonce: bigint): Promise<Status> {
     // Query transfer status from API
     // This would need to be implemented based on how transfers are stored
     throw new Error("Not implemented")

@@ -1,29 +1,30 @@
 import { describe, expect, it } from "vitest"
-import { Chain, type OmniAddress } from "../src/types"
+import type { OmniAddress } from "../src/types"
+import { ChainKind } from "../src/types"
 import { getChain, omniAddress } from "../src/utils"
 describe("Omni Address Utils", () => {
   describe("omniAddress", () => {
     it("should construct valid omni addresses", () => {
-      expect(omniAddress(Chain.Ethereum, "0x123")).toBe("eth:0x123")
-      expect(omniAddress(Chain.Near, "alice.near")).toBe("near:alice.near")
-      expect(omniAddress(Chain.Solana, "solana123")).toBe("sol:solana123")
-      expect(omniAddress(Chain.Arbitrum, "0xarb456")).toBe("arb:0xarb456")
-      expect(omniAddress(Chain.Base, "0xbase789")).toBe("base:0xbase789")
+      expect(omniAddress(ChainKind.Eth, "0x123")).toBe("eth:0x123")
+      expect(omniAddress(ChainKind.Near, "alice.near")).toBe("near:alice.near")
+      expect(omniAddress(ChainKind.Sol, "solana123")).toBe("sol:solana123")
+      expect(omniAddress(ChainKind.Arb, "0xarb456")).toBe("arb:0xarb456")
+      expect(omniAddress(ChainKind.Base, "0xbase789")).toBe("base:0xbase789")
     })
 
     it("should work with empty addresses", () => {
-      expect(omniAddress(Chain.Ethereum, "")).toBe("eth:")
+      expect(omniAddress(ChainKind.Eth, "")).toBe("eth:")
     })
 
     it("should preserve address case", () => {
-      expect(omniAddress(Chain.Ethereum, "0xAbCdEf")).toBe("eth:0xAbCdEf")
+      expect(omniAddress(ChainKind.Eth, "0xAbCdEf")).toBe("eth:0xAbCdEf")
     })
   })
 
   describe("getChain", () => {
     it("should extract chain from omni address", () => {
       const addr: OmniAddress = "eth:0x123"
-      expect(getChain(addr)).toBe(Chain.Ethereum)
+      expect(getChain(addr)).toBe(ChainKind.Eth)
     })
 
     it("should work with all chain types", () => {
@@ -35,7 +36,7 @@ describe("Omni Address Utils", () => {
         "base:0xbase789",
       ]
 
-      const expected = [Chain.Ethereum, Chain.Near, Chain.Solana, Chain.Arbitrum, Chain.Base]
+      const expected = [ChainKind.Eth, ChainKind.Near, ChainKind.Sol, ChainKind.Arb, ChainKind.Base]
 
       addresses.forEach((addr, i) => {
         expect(getChain(addr)).toBe(expected[i])
@@ -58,8 +59,8 @@ describe("Omni Address Utils", () => {
 
     it("should allow construction via omniAddress helper", () => {
       const addresses: OmniAddress[] = [
-        omniAddress(Chain.Ethereum, "0x123"),
-        omniAddress(Chain.Near, "alice.near"),
+        omniAddress(ChainKind.Eth, "0x123"),
+        omniAddress(ChainKind.Near, "alice.near"),
       ]
 
       expect(addresses.length).toBe(2)

@@ -1,6 +1,6 @@
 import { borshDeserialize, borshSerialize } from "borsher"
 import { describe, expect, it } from "vitest"
-import { type InitTransferResult, type ProverResult, ProverResultSchema } from "./prover"
+import { type InitTransferResult, type ProverResult, ProverResultSchema } from "../../src/types"
 
 describe("Borsh Serialization", () => {
   describe("InitTransfer", () => {

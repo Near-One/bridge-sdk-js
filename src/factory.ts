@@ -1,21 +1,30 @@
+import type { ethers } from "ethers"
+import type { Account } from "near-api-js"
 import { EthereumDeployer } from "./chains/ethereum"
 import { NearDeployer } from "./chains/near"
-import { SolanaDeployer } from "./chains/solana"
-import { Chain, type ChainDeployer } from "./types"
+import type { ChainDeployer } from "./types"
+import { ChainKind } from "./types"
 
-export function getDeployer(
-  chain: Chain,
-  // biome-ignore lint/suspicious/noExplicitAny: Wallet type varies by chain
-  wallet: any,
-  network: "testnet" | "mainnet",
-): ChainDeployer {
+/**
+ * Creates a chain-specific deployer instance
+ * @param chain - The blockchain network to create a deployer for
+ * @param wallet - Chain-specific wallet instance for signing transactions
+ * @returns A deployer instance for the specified chain
+ * @throws {Error} If no deployer implementation exists for the chain
+ *
+ * @example
+ * ```typescript
+ * const nearAccount = await connect(config);
+ * const deployer = getDeployer(ChainKind.Near, nearAccount);
+ * const txHash = await deployer.initDeployToken("near:token.near");
+ * ```
+ */
+export function getDeployer<TWallet>(chain: ChainKind, wallet: TWallet): ChainDeployer<TWallet> {
   switch (chain) {
-    case Chain.Near:
-      return new NearDeployer(wallet, network)
-    case Chain.Ethereum:
-      return new EthereumDeployer(wallet, network)
-    case Chain.Solana:
-      return new SolanaDeployer(wallet, network)
+    case ChainKind.Near:
+      return new NearDeployer(wallet as Account)
+    case ChainKind.Eth:
+      return new EthereumDeployer(wallet as ethers.Signer)
     default:
       throw new Error(`No deployer implementation for chain: ${chain}`)
   }

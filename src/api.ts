@@ -1,9 +1,9 @@
 // api.ts
-import { type Chain, type Fee, type OmniAddress, Status } from "./types"
+import { type ChainKind, type OmniAddress, Status } from "./types"
 
 export interface ApiTransferResponse {
   id: {
-    origin_chain: "Eth" | "Near" | "Sol" | "Arb" | "Base"
+    origin_chain: keyof ChainKind
     origin_nonce: number
   }
   status: "Initialized" | "FinalisedOnNear" | "Finalised"
@@ -24,6 +24,11 @@ export interface ApiFeeResponse {
   usd_fee: number
 }
 
+export type ApiFee = {
+  fee: bigint
+  nativeFee: bigint
+}
+
 export class OmniBridgeAPI {
   private baseUrl: string
 
@@ -38,9 +43,9 @@ export class OmniBridgeAPI {
     return this.baseUrl
   }
 
-  async getTransferStatus(originChain: Chain, nonce: bigint): Promise<Status> {
+  async getTransferStatus(originChain: ChainKind, nonce: bigint): Promise<Status> {
     const params = new URLSearchParams({
-      origin_chain: originChain,
+      origin_chain: Object.keys(originChain)[0].toLowerCase(),
       origin_nonce: nonce.toString(),
     })
 
@@ -62,7 +67,7 @@ export class OmniBridgeAPI {
     }
   }
 
-  async getFee(sender: OmniAddress, recipient: OmniAddress, tokenAddress: string): Promise<Fee> {
+  async getFee(sender: OmniAddress, recipient: OmniAddress, tokenAddress: string): Promise<ApiFee> {
     const params = new URLSearchParams({
       sender: sender,
       recipient: recipient,

@@ -1,24 +1,52 @@
+import { borshSerialize } from "borsher"
 import type { Account } from "near-api-js"
-import type { ChainDeployer, OmniAddress, TokenDeployment } from "../types"
-import { Chain } from "../types"
+import {
+  type BindTokenArgs,
+  type ChainDeployer,
+  ChainKind,
+  type DeployTokenArgs,
+  DeployTokenArgsSchema,
+  type LogMetadataArgs,
+  type OmniAddress,
+  ProofKind,
+  type WormholeVerifyProofArgs,
+  WormholeVerifyProofArgsSchema,
+} from "../types"
 import { getChain } from "../utils"
 
+/**
+ * Configuration for NEAR network gas limits
+ * @internal
+ */
 const GAS = {
-  LOG_METADATA: BigInt(3e14), // 300 * 10^12
-  DEPLOY_TOKEN: BigInt(3e14), // 300 * 10^12
-  BIND_TOKEN: BigInt(3e14), // 300 * 10^12
+  LOG_METADATA: BigInt(3e14), // 3 TGas
+  DEPLOY_TOKEN: BigInt(1.2e14), // 1.2 TGas
+  BIND_TOKEN: BigInt(3e14), // 3 TGas
 } as const
 
+/**
+ * Configuration for NEAR network deposit amounts
+ * @internal
+ */
 const DEPOSIT = {
-  LOG_METADATA: BigInt(1e24), // 1 NEAR (10^24)
-  DEPLOY_TOKEN: BigInt(1e24), // 1 NEAR (10^24)
-  BIND_TOKEN: BigInt(1e24), // 1 NEAR (10^24)
+  LOG_METADATA: BigInt(2e23), // 0.2 NEAR
+  DEPLOY_TOKEN: BigInt(4e24), // 4 NEAR
+  BIND_TOKEN: BigInt(2e23), // 0.2 NEAR
 } as const
 
-export class NearDeployer implements ChainDeployer {
+/**
+ * NEAR blockchain implementation of the token deployer
+ * @implements {ChainDeployer<Account>}
+ */
+export class NearDeployer implements ChainDeployer<Account> {
+  /**
+   * Creates a new NEAR token deployer instance
+   * @param wallet - NEAR account instance for transaction signing
+   * @param lockerAddress - Address of the token locker contract
+   * @throws {Error} If locker address is not configured
+   */
   constructor(
     private wallet: Account,
-    private network: "testnet" | "mainnet",
     private lockerAddress: string = process.env.OMNI_LOCKER_NEAR as string,
   ) {
     if (!this.lockerAddress) {
@@ -26,105 +54,74 @@ export class NearDeployer implements ChainDeployer {
     }
   }
 
-  async initDeployToken(
-    tokenAddress: OmniAddress,
-    destinationChain: Chain,
-  ): Promise<TokenDeployment> {
+  async initDeployToken(tokenAddress: OmniAddress): Promise<string> {
     // Validate source chain is NEAR
-    if (getChain(tokenAddress) !== Chain.Near) {
-      throw new Error("Token address must be on NEAR chain")
+    if (getChain(tokenAddress) !== ChainKind.Near) {
+      throw new Error("Token address must be on NEAR")
     }
 
     // Extract token account ID from OmniAddress
     const [_, tokenAccountId] = tokenAddress.split(":")
 
-    try {
-      // Construct log metadata arguments
-      const tx = await this.wallet.functionCall({
-        contractId: this.lockerAddress,
-        methodName: "log_metadata",
-        args: { token_id: tokenAccountId },
-        gas: GAS.LOG_METADATA,
-        attachedDeposit: DEPOSIT.LOG_METADATA,
-      })
-
-      return {
-        id: tx.transaction.hash,
-        tokenAddress,
-        sourceChain: Chain.Near,
-        destinationChain,
-        status: "pending",
-      }
-    } catch (error) {
-      throw new Error(`Failed to initialize token deployment: ${error}`)
+    const args: LogMetadataArgs = {
+      token_id: tokenAccountId,
     }
+    const tx = await this.wallet.functionCall({
+      contractId: this.lockerAddress,
+      methodName: "log_metadata",
+      args: args,
+      gas: GAS.LOG_METADATA,
+      attachedDeposit: DEPOSIT.LOG_METADATA,
+    })
+
+    return tx.transaction.hash
   }
 
-  async finDeployToken(deployment: TokenDeployment): Promise<TokenDeployment> {
-    if (deployment.status !== "ready_for_finalize") {
-      throw new Error(`Invalid deployment status: ${deployment.status}`)
+  async finDeployToken(destinationChain: ChainKind, vaa: string): Promise<string> {
+    const proverArgs: WormholeVerifyProofArgs = {
+      proof_kind: ProofKind.DeployToken,
+      vaa: vaa,
     }
+    const proverArgsSerialized = borshSerialize(WormholeVerifyProofArgsSchema, proverArgs)
 
-    if (!deployment.proof) {
-      throw new Error("Deployment proof missing")
+    // Construct deploy token arguments
+    const args: DeployTokenArgs = {
+      chain_kind: destinationChain,
+      prover_args: proverArgsSerialized,
     }
+    const serializedArgs = borshSerialize(DeployTokenArgsSchema, args)
 
-    try {
-      // Construct deploy token arguments
-      const args = {
-        chain_kind: deployment.destinationChain,
-        prover_args: deployment.proof,
-      }
+    const tx = await this.wallet.functionCall({
+      contractId: this.lockerAddress,
+      methodName: "deploy_token",
+      args: serializedArgs,
+      gas: GAS.DEPLOY_TOKEN,
+      attachedDeposit: DEPOSIT.DEPLOY_TOKEN,
+    })
 
-      const tx = await this.wallet.functionCall({
-        contractId: this.lockerAddress,
-        methodName: "deploy_token",
-        args,
-        gas: GAS.DEPLOY_TOKEN,
-        attachedDeposit: DEPOSIT.DEPLOY_TOKEN,
-      })
-
-      return {
-        ...deployment,
-        status: "finalized",
-        deploymentTx: tx.transaction.hash,
-      }
-    } catch (error) {
-      throw new Error(`Failed to finalize token deployment: ${error}`)
-    }
+    return tx.transaction.hash
   }
 
-  async bindToken(deployment: TokenDeployment): Promise<TokenDeployment> {
-    if (deployment.status !== "ready_for_bind") {
-      throw new Error(`Invalid deployment status: ${deployment.status}`)
+  async bindToken(destinationChain: ChainKind, vaa: string): Promise<string> {
+    const proverArgs: WormholeVerifyProofArgs = {
+      proof_kind: ProofKind.DeployToken,
+      vaa: vaa,
     }
+    const proverArgsSerialized = borshSerialize(WormholeVerifyProofArgsSchema, proverArgs)
 
-    if (!deployment.proof) {
-      throw new Error("Deployment proof missing")
+    // Construct bind token arguments
+    const args: BindTokenArgs = {
+      chain_kind: destinationChain,
+      prover_args: proverArgsSerialized,
     }
+    const tx = await this.wallet.functionCall({
+      contractId: this.lockerAddress,
+      methodName: "bind_token",
+      args,
+      gas: GAS.BIND_TOKEN,
+      attachedDeposit: DEPOSIT.BIND_TOKEN,
+    })
 
-    try {
-      // Construct bind token arguments
-      const args = {
-        chain_kind: deployment.destinationChain,
-        prover_args: deployment.proof,
-      }
-
-      const tx = await this.wallet.functionCall({
-        contractId: this.lockerAddress,
-        methodName: "bind_token",
-        args,
-        gas: GAS.BIND_TOKEN,
-        attachedDeposit: DEPOSIT.BIND_TOKEN,
-      })
-
-      return {
-        ...deployment,
-        bindTx: tx.transaction.hash,
-        status: "completed",
-      }
-    } catch (error) {
-      throw new Error(`Failed to bind token: ${error}`)
-    }
+    return tx.transaction.hash
   }
 }

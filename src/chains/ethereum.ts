@@ -1,121 +1,128 @@
-import { Contract, type Wallet } from "ethers"
-import { Chain, type ChainDeployer, type OmniAddress, type TokenDeployment } from "../types"
+import { ethers } from "ethers"
+import { type ChainDeployer, ChainKind, type OmniAddress } from "../types"
 import { getChain } from "../utils"
 
-const FACTORY_ABI = [
-  "function logMetadata(address tokenAddress) external",
-  "function deployToken(bytes signatureData, tuple(string token, string name, string symbol, uint8 decimals) metadata) payable external returns (address)",
-  "event LogMetadata(address tokenAddress, string name, string symbol, uint8 decimals)",
-  "event DeployToken(address bridgeTokenProxy, string token, string name, string symbol, uint8 decimals)",
-]
+// Contract ABI for the bridge token factory
+const BRIDGE_TOKEN_FACTORY_ABI = [
+  "function deployToken(bytes signatureData, tuple(string token, string name, string symbol, uint8 decimals) metadata) external returns (address)",
+  "function finTransfer(bytes signature, tuple(uint64 destinationNonce, uint8 originChain, uint64 originNonce, address tokenAddress, uint128 amount, address recipient, string feeRecipient) transferPayload) external",
+  "function initTransfer(address tokenAddress, uint128 amount, uint128 fee, uint128 nativeFee, string recipient, string message) external",
+  "function nearToEthToken(string nearTokenId) external view returns (address)",
+] as const
 
-interface MetadataPayload {
-  token: string
-  name: string
-  symbol: string
-  decimals: number
-}
+const ERC20_ABI = [
+  "function allowance(address owner, address spender) public view returns (uint256)",
+  "function approve(address spender, uint256 amount) external returns (bool)",
+] as const
 
-export class EthereumDeployer implements ChainDeployer {
-  private factory: Contract
+/**
+ * Gas limits for Ethereum transactions
+ * @internal
+ */
+const GAS_LIMIT = {
+  DEPLOY_TOKEN: 500000,
+  APPROVE: 60000,
+  TRANSFER: 200000,
+} as const
 
+/**
+ * Ethereum blockchain implementation of the token deployer
+ * @implements {ChainDeployer<ethers.Signer>}
+ */
+export class EthereumDeployer implements ChainDeployer<ethers.Signer> {
+  private factory: ethers.Contract
+
+  /**
+   * Creates a new Ethereum token deployer instance
+   * @param wallet - Ethereum signer instance for transaction signing
+   * @param factoryAddress - Address of the bridge token factory contract
+   * @throws {Error} If factory address is not configured
+   */
   constructor(
-    private wallet: Wallet,
-    private network: "testnet" | "mainnet",
-    factoryAddress = process.env.OMNI_FACTORY_ETHEREUM,
+    private wallet: ethers.Signer,
+    private factoryAddress: string = process.env.OMNI_FACTORY_ETH as string,
   ) {
-    if (!factoryAddress) {
-      throw new Error("OMNI_FACTORY_ETHEREUM address not configured")
+    if (!this.factoryAddress) {
+      throw new Error("OMNI_FACTORY_ETH address not configured")
     }
-    this.factory = new Contract(factoryAddress, FACTORY_ABI, wallet)
+    this.factory = new ethers.Contract(this.factoryAddress, BRIDGE_TOKEN_FACTORY_ABI, this.wallet)
   }
 
-  async initDeployToken(
-    tokenAddress: OmniAddress,
-    destinationChain: Chain,
-  ): Promise<TokenDeployment> {
+  async initDeployToken(tokenAddress: OmniAddress): Promise<string> {
     // Validate source chain is Ethereum
-    if (getChain(tokenAddress) !== Chain.Ethereum) {
-      throw new Error("Token address must be on Ethereum chain")
+    if (getChain(tokenAddress) !== ChainKind.Eth) {
+      throw new Error("Token address must be on Ethereum")
     }
 
-    // Extract token contract address from OmniAddress
-    const [_, tokenContractAddress] = tokenAddress.split(":")
+    // Extract token address from OmniAddress
+    const [_, tokenAccountId] = tokenAddress.split(":")
 
-    try {
-      // Call logMetadata
-      const tx = await this.factory.logMetadata(tokenContractAddress)
-      const receipt = await tx.wait()
+    // Get token contract to fetch metadata
+    const tokenContract = new ethers.Contract(
+      tokenAccountId,
+      [
+        "function name() view returns (string)",
+        "function symbol() view returns (string)",
+        "function decimals() view returns (uint8)",
+      ],
+      this.wallet,
+    )
 
-      // Find LogMetadata event
-      const event = receipt.events?.find((e: { event: string }) => e.event === "LogMetadata")
-      if (!event) {
-        throw new Error("LogMetadata event not found in transaction receipt")
-      }
+    const [name, symbol, decimals] = await Promise.all([
+      tokenContract.name(),
+      tokenContract.symbol(),
+      tokenContract.decimals(),
+    ])
 
-      return {
-        id: tx.hash,
-        tokenAddress,
-        sourceChain: Chain.Ethereum,
-        destinationChain,
-        status: "pending",
-      }
-    } catch (error) {
-      throw new Error(`Failed to initialize token deployment: ${error}`)
-    }
+    // Call deployToken with metadata
+    const tx = await this.factory.deployToken(
+      "0x", // signatureData - empty for init
+      {
+        token: tokenAccountId,
+        name,
+        symbol,
+        decimals,
+      },
+      { gasLimit: GAS_LIMIT.DEPLOY_TOKEN },
+    )
+
+    return tx.hash
   }
 
-  async finDeployToken(deployment: TokenDeployment): Promise<TokenDeployment> {
-    if (deployment.status !== "ready_for_finalize") {
-      throw new Error(`Invalid deployment status: ${deployment.status}`)
-    }
+  async finDeployToken(_destinationChain: ChainKind, vaa: string): Promise<string> {
+    const tx = await this.factory.deployToken(
+      vaa, // Signed VAA from the source chain
+      {
+        token: "", // These will be extracted from the VAA
+        name: "",
+        symbol: "",
+        decimals: 0,
+      },
+      { gasLimit: GAS_LIMIT.DEPLOY_TOKEN },
+    )
 
-    if (!deployment.proof) {
-      throw new Error("Deployment proof missing")
-    }
-
-    try {
-      // Extract proof components
-      const { signatureData, metadata } = JSON.parse(deployment.proof) as {
-        signatureData: string
-        metadata: MetadataPayload
-      }
-
-      // Call deployToken
-      const tx = await this.factory.deployToken(
-        signatureData,
-        metadata,
-        { gasLimit: 2000000 }, // You might want to estimate this
-      )
-      const receipt = await tx.wait()
-
-      // Find DeployToken event
-      const event = receipt.events?.find((e: { event: string }) => e.event === "DeployToken")
-      if (!event) {
-        throw new Error("DeployToken event not found in transaction receipt")
-      }
-
-      return {
-        ...deployment,
-        status: "finalized",
-        deploymentTx: tx.hash,
-      }
-    } catch (error) {
-      throw new Error(`Failed to finalize token deployment: ${error}`)
-    }
+    return tx.hash
   }
 
-  async bindToken(deployment: TokenDeployment): Promise<TokenDeployment> {
-    // For Ethereum, there's no bind step - token is immediately usable
-    // after deployment. We'll just validate and return.
+  async bindToken(_destinationChain: ChainKind, _vaa: string): Promise<string> {
+    // For Ethereum, binding typically happens in the deployToken call
+    // This is included for interface compatibility
+    throw new Error("Token binding not required for Ethereum")
+  }
 
-    if (deployment.status !== "ready_for_bind") {
-      throw new Error(`Invalid deployment status: ${deployment.status}`)
-    }
+  /**
+   * Helper to check and set token approvals
+   * @internal
+   */
+  private async ensureApproval(tokenAddress: string, amount: bigint): Promise<void> {
+    const token = new ethers.Contract(tokenAddress, ERC20_ABI, this.wallet)
 
-    return {
-      ...deployment,
-      status: "completed",
+    const address = await this.wallet.getAddress()
+    const allowance = await token.allowance(address, this.factoryAddress)
+
+    if (allowance < amount) {
+      const tx = await token.approve(this.factoryAddress, amount, { gasLimit: GAS_LIMIT.APPROVE })
+      await tx.wait()
     }
   }
 }

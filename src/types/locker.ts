@@ -1,23 +1,6 @@
-import { BorshSchema, type Unit, borshSerialize } from "borsher"
-
-// Basic type aliases
-export type AccountId = string
-export type U128 = bigint
-
-export type ChainKind =
-  | { Eth: Unit }
-  | { Near: Unit }
-  | { Sol: Unit }
-  | { Arb: Unit }
-  | { Base: Unit }
-
-export const ChainKind = {
-  Eth: { Eth: {} } as ChainKind,
-  Near: { Near: {} } as ChainKind,
-  Sol: { Sol: {} } as ChainKind,
-  Arb: { Arb: {} } as ChainKind,
-  Base: { Base: {} } as ChainKind,
-} as const
+import { BorshSchema, borshSerialize } from "borsher"
+import type { ChainKind } from "./chain"
+import type { AccountId } from "./common"
 
 export const ChainKindSchema = BorshSchema.Enum({
   Eth: BorshSchema.Unit,
@@ -73,6 +56,13 @@ export type BindTokenArgs = {
 export const BindTokenArgsSchema = BorshSchema.Struct({
   chain_kind: ChainKindSchema,
   prover_args: BorshSchema.Vec(BorshSchema.u8),
+})
+
+export type LogMetadataArgs = {
+  token_id: string
+}
+export const LogMetadataArgsSchema = BorshSchema.Struct({
+  token_id: BorshSchema.String,
 })
 
 // DeployTokenArgs type
