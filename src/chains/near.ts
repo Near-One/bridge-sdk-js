@@ -2,7 +2,6 @@ import { borshSerialize } from "borsher"
 import type { Account } from "near-api-js"
 import {
   type BindTokenArgs,
-  type ChainDeployer,
   ChainKind,
   type DeployTokenArgs,
   DeployTokenArgsSchema,
@@ -38,9 +37,8 @@ const DEPOSIT = {
 
 /**
  * NEAR blockchain implementation of the token deployer
- * @implements {ChainDeployer<Account>}
  */
-export class NearDeployer implements ChainDeployer<Account> {
+export class NearDeployer {
   /**
    * Creates a new NEAR token deployer instance
    * @param wallet - NEAR account instance for transaction signing
@@ -56,7 +54,7 @@ export class NearDeployer implements ChainDeployer<Account> {
     }
   }
 
-  async initDeployToken(tokenAddress: OmniAddress): Promise<string> {
+  async logMetadata(tokenAddress: OmniAddress): Promise<string> {
     // Validate source chain is NEAR
     if (getChain(tokenAddress) !== ChainKind.Near) {
       throw new Error("Token address must be on NEAR")
@@ -79,7 +77,7 @@ export class NearDeployer implements ChainDeployer<Account> {
     return tx.transaction.hash
   }
 
-  async finDeployToken(destinationChain: ChainKind, vaa: string): Promise<string> {
+  async deployToken(destinationChain: ChainKind, vaa: string): Promise<string> {
     const proverArgs: WormholeVerifyProofArgs = {
       proof_kind: ProofKind.DeployToken,
       vaa: vaa,
@@ -106,7 +104,7 @@ export class NearDeployer implements ChainDeployer<Account> {
 
   /**
    * Binds a token on the NEAR chain using either a VAA (Wormhole) or EVM proof
-   * @param sourceChain - Source chain for binding
+   * @param sourceChain - Source chain where the original token comes from
    * @param vaa - Verified Action Approval for Wormhole verification
    * @param evmProof - EVM proof for Ethereum or EVM chain verification
    * @throws {Error} If VAA or EVM proof is not provided
@@ -131,7 +129,7 @@ export class NearDeployer implements ChainDeployer<Account> {
       }
     }
 
-    let proverArgsSerialized: Buffer = Buffer.alloc(0)
+    let proverArgsSerialized: Uint8Array = new Uint8Array(0)
     if (vaa) {
       const proverArgs: WormholeVerifyProofArgs = {
         proof_kind: ProofKind.DeployToken,

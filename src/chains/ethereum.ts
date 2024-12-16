@@ -1,6 +1,13 @@
 import { ethers } from "ethers"
-import { type ChainDeployer, ChainKind, type OmniAddress } from "../types"
+import { ChainKind, type MPCSignature, type OmniAddress } from "../types"
 import { getChain } from "../utils"
+
+interface TokenMetadata {
+  token: string
+  name: string
+  symbol: string
+  decimals: number
+}
 
 // Contract ABI for the bridge token factory
 const BRIDGE_TOKEN_FACTORY_ABI = [
@@ -8,11 +15,7 @@ const BRIDGE_TOKEN_FACTORY_ABI = [
   "function finTransfer(bytes signature, tuple(uint64 destinationNonce, uint8 originChain, uint64 originNonce, address tokenAddress, uint128 amount, address recipient, string feeRecipient) transferPayload) external",
   "function initTransfer(address tokenAddress, uint128 amount, uint128 fee, uint128 nativeFee, string recipient, string message) external",
   "function nearToEthToken(string nearTokenId) external view returns (address)",
-] as const
-
-const ERC20_ABI = [
-  "function allowance(address owner, address spender) public view returns (uint256)",
-  "function approve(address spender, uint256 amount) external returns (bool)",
+  "function logMetadata(address tokenAddress) external returns (string)",
 ] as const
 
 /**
@@ -23,13 +26,13 @@ const GAS_LIMIT = {
   DEPLOY_TOKEN: 500000,
   APPROVE: 60000,
   TRANSFER: 200000,
+  LOG_METADATA: 100000,
 } as const
 
 /**
  * Ethereum blockchain implementation of the token deployer
- * @implements {ChainDeployer<ethers.Signer>}
  */
-export class EthereumDeployer implements ChainDeployer<ethers.Signer> {
+export class EthereumDeployer {
   private factory: ethers.Contract
 
   /**
@@ -48,7 +51,13 @@ export class EthereumDeployer implements ChainDeployer<ethers.Signer> {
     this.factory = new ethers.Contract(this.factoryAddress, BRIDGE_TOKEN_FACTORY_ABI, this.wallet)
   }
 
-  async initDeployToken(tokenAddress: OmniAddress): Promise<string> {
+  /**
+   * Logs metadata for a token
+   * @param tokenAddress - OmniAddress of the token
+   * @returns Promise resolving to the transaction hash
+   * @throws Will throw an error if logging fails or caller doesn't have admin role
+   */
+  async logMetadata(tokenAddress: OmniAddress): Promise<string> {
     // Validate source chain is Ethereum
     if (getChain(tokenAddress) !== ChainKind.Eth) {
       throw new Error("Token address must be on Ethereum")
@@ -57,72 +66,47 @@ export class EthereumDeployer implements ChainDeployer<ethers.Signer> {
     // Extract token address from OmniAddress
     const [_, tokenAccountId] = tokenAddress.split(":")
 
-    // Get token contract to fetch metadata
-    const tokenContract = new ethers.Contract(
-      tokenAccountId,
-      [
-        "function name() view returns (string)",
-        "function symbol() view returns (string)",
-        "function decimals() view returns (uint8)",
-      ],
-      this.wallet,
-    )
-
-    const [name, symbol, decimals] = await Promise.all([
-      tokenContract.name(),
-      tokenContract.symbol(),
-      tokenContract.decimals(),
-    ])
-
-    // Call deployToken with metadata
-    const tx = await this.factory.deployToken(
-      "0x", // signatureData - empty for init
-      {
-        token: tokenAccountId,
-        name,
-        symbol,
-        decimals,
-      },
-      { gasLimit: GAS_LIMIT.DEPLOY_TOKEN },
-    )
-
-    return tx.hash
-  }
-
-  async finDeployToken(_destinationChain: ChainKind, vaa: string): Promise<string> {
-    const tx = await this.factory.deployToken(
-      vaa, // Signed VAA from the source chain
-      {
-        token: "", // These will be extracted from the VAA
-        name: "",
-        symbol: "",
-        decimals: 0,
-      },
-      { gasLimit: GAS_LIMIT.DEPLOY_TOKEN },
-    )
-
-    return tx.hash
-  }
-
-  async bindToken(_destinationChain: ChainKind, _vaa: string): Promise<string> {
-    // For Ethereum, binding typically happens in the deployToken call
-    // This is included for interface compatibility
-    throw new Error("Token binding not required for Ethereum")
+    try {
+      // Call logMetadata function on the contract
+      const tx = await this.factory.logMetadata(tokenAccountId, {
+        gasLimit: GAS_LIMIT.LOG_METADATA,
+      })
+      return tx.hash
+    } catch (error) {
+      // Check if error message contains revert string
+      if (error instanceof Error && error.message.includes("DEFAULT_ADMIN_ROLE")) {
+        throw new Error("Failed to log metadata: Caller does not have admin role")
+      }
+      throw new Error(
+        `Failed to log metadata: ${error instanceof Error ? error.message : "Unknown error"}`,
+      )
+    }
   }
 
   /**
-   * Helper to check and set token approvals
-   * @internal
+   * Deploys an ERC-20 token representing a bridged version of a token from another chain.
+   * @param signature - MPC signature authorizing the token deployment
+   * @param metadata - Object containing token metadata
+   * @returns Promise resolving to object containing transaction hash and deployed token address
+   * @throws Will throw an error if the deployment fails
    */
-  private async ensureApproval(tokenAddress: string, amount: bigint): Promise<void> {
-    const token = new ethers.Contract(tokenAddress, ERC20_ABI, this.wallet)
+  async deployToken(
+    signature: MPCSignature,
+    metadata: TokenMetadata,
+  ): Promise<{
+    txHash: string
+    tokenAddress: string
+  }> {
+    const tx = await this.factory.deployToken(signature.toBytes(), metadata, {
+      gasLimit: GAS_LIMIT.DEPLOY_TOKEN,
+    })
 
-    const address = await this.wallet.getAddress()
-    const allowance = await token.allowance(address, this.factoryAddress)
+    const receipt = await tx.wait()
+    const deployedAddress = receipt.events?.[0]?.args?.token || receipt.contractAddress
 
-    if (allowance < amount) {
-      const tx = await token.approve(this.factoryAddress, amount, { gasLimit: GAS_LIMIT.APPROVE })
-      await tx.wait()
+    return {
+      txHash: tx.hash,
+      tokenAddress: deployedAddress,
     }
   }
 }
