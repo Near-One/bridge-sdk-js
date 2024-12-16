@@ -2,7 +2,6 @@ import type { ethers } from "ethers"
 import type { Account } from "near-api-js"
 import { EthereumDeployer } from "./chains/ethereum"
 import { NearDeployer } from "./chains/near"
-import type { ChainDeployer } from "./types"
 import { ChainKind } from "./types"
 
 /**
@@ -19,7 +18,7 @@ import { ChainKind } from "./types"
  * const txHash = await deployer.initDeployToken("near:token.near");
  * ```
  */
-export function getDeployer<TWallet>(chain: ChainKind, wallet: TWallet): ChainDeployer<TWallet> {
+export function getDeployer<TWallet>(chain: ChainKind, wallet: TWallet) {
   switch (chain) {
     case ChainKind.Near:
       return new NearDeployer(wallet as Account)

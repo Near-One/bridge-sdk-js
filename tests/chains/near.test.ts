@@ -50,16 +50,16 @@ describe("NearDeployer", () => {
     })
   })
 
-  describe("initDeployToken", () => {
+  describe("logMetadata", () => {
     it("should throw error if token address is not on NEAR", async () => {
-      await expect(deployer.initDeployToken("eth:0x123")).rejects.toThrow(
+      await expect(deployer.logMetadata("eth:0x123")).rejects.toThrow(
         "Token address must be on NEAR",
       )
     })
 
     it("should call log_metadata with correct arguments", async () => {
       const tokenAddress = "near:test-token.near"
-      const txHash = await deployer.initDeployToken(tokenAddress)
+      const txHash = await deployer.logMetadata(tokenAddress)
 
       expect(mockWallet.functionCall).toHaveBeenCalledWith({
         contractId: mockLockerAddress,
@@ -74,12 +74,12 @@ describe("NearDeployer", () => {
     })
   })
 
-  describe("finDeployToken", () => {
+  describe("deployToken", () => {
     it("should call deploy_token with correct arguments", async () => {
       const destinationChain = ChainKind.Eth
       const mockVaa = "mock-vaa"
 
-      const txHash = await deployer.finDeployToken(destinationChain, mockVaa)
+      const txHash = await deployer.deployToken(destinationChain, mockVaa)
 
       expect(mockWallet.functionCall).toHaveBeenCalledWith({
         contractId: mockLockerAddress,
@@ -118,7 +118,7 @@ describe("NearDeployer", () => {
       const error = new Error("NEAR error")
       mockWallet.functionCall = vi.fn().mockRejectedValue(error)
 
-      await expect(deployer.initDeployToken("near:test-token.near")).rejects.toThrow("NEAR error")
+      await expect(deployer.logMetadata("near:test-token.near")).rejects.toThrow("NEAR error")
     })
   })
 })
