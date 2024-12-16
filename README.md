@@ -56,6 +56,46 @@ const status = await getTransferStatus(Chain.Ethereum, result.nonce);
 console.log(`Status: ${status}`); // 'pending' | 'completed' | 'failed'
 ```
 
+### Development Roadmap
+
+#### Core Transfer Interface
+
+- [ ] Base OmniTransfer interface
+  - [ ] Ethereum implementation
+  - [ ] NEAR implementation
+  - [ ] Solana implementation
+  - [ ] Arbitrum implementation
+  - [ ] Base implementation
+
+#### Query Functions
+
+- [ ] findOmniTransfers (Transfer History API)
+- [x] getFee (Fee Estimation API)
+- [ ] getTransferStatus (Status Tracking API)
+
+#### Token Deployment
+
+- [ ] Ethereum (EVM)
+  - [ ] initDeployToken
+  - [ ] finDeployToken
+  - [ ] bindToken
+- [x] NEAR
+  - [x] initDeployToken
+  - [x] finDeployToken
+  - [x] bindToken
+- [ ] Solana
+  - [ ] initDeployToken
+  - [ ] finDeployToken
+  - [ ] bindToken
+
+#### Additional Features
+
+- [ ] Transaction receipt validation
+- [ ] Automatic gas estimation
+- [ ] Rate limiting
+- [ ] Retry mechanisms
+- [ ] Error recovery
+
 ## Core API
 
 ### Cross-Chain Transfers
