@@ -45,7 +45,7 @@ export class OmniBridgeAPI {
 
   async getTransferStatus(originChain: ChainKind, nonce: bigint): Promise<Status> {
     const params = new URLSearchParams({
-      origin_chain: Object.keys(originChain)[0].toLowerCase(),
+      origin_chain: Object.keys(originChain)[0],
       origin_nonce: nonce.toString(),
     })
 

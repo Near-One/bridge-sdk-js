@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import { OmniBridgeAPI } from "../../src/api"
-import { ChainKind, type OmniAddress } from "../../src/types"
+import { ChainKind, type OmniAddress, Status } from "../../src/types"
 import { omniAddress } from "../../src/utils"
 
 describe("OmniBridgeAPI Integration Tests", () => {
@@ -32,6 +32,25 @@ describe("OmniBridgeAPI Integration Tests", () => {
       const tokenAddress = "invalid"
 
       await expect(api.getFee(sender, recipient, tokenAddress)).rejects.toThrow()
+    })
+  })
+
+  describe("getTransferStatus", () => {
+    it("should fetch transfer status for Sol chain", async () => {
+      const originChain = ChainKind.Sol
+      const nonce = BigInt(30)
+
+      const status = await api.getTransferStatus(originChain, nonce)
+
+      // Status should be one of the valid enum values
+      expect([Status.Pending, Status.Completed, Status.Failed]).toContain(status)
+    })
+
+    it("should handle invalid transfer lookup gracefully", async () => {
+      const originChain = ChainKind.Sol
+      const invalidNonce = BigInt(999999999) // Using a very large nonce that's unlikely to exist
+
+      await expect(api.getTransferStatus(originChain, invalidNonce)).rejects.toThrow()
     })
   })
 })
