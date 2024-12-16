@@ -1,14 +1,7 @@
 import { BorshSchema, borshSerialize } from "borsher"
 import type { ChainKind } from "./chain"
+import { ChainKindSchema } from "./chain"
 import type { AccountId } from "./common"
-
-export const ChainKindSchema = BorshSchema.Enum({
-  Eth: BorshSchema.Unit,
-  Near: BorshSchema.Unit,
-  Sol: BorshSchema.Unit,
-  Arb: BorshSchema.Unit,
-  Base: BorshSchema.Unit,
-})
 
 // StorageDepositAction type
 export type StorageDepositAction = {

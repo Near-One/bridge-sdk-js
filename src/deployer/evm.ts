@@ -18,37 +18,70 @@ const BRIDGE_TOKEN_FACTORY_ABI = [
   "function logMetadata(address tokenAddress) external returns (string)",
 ] as const
 
+type EVMChainKind = typeof ChainKind.Eth | typeof ChainKind.Base | typeof ChainKind.Arb
+
 /**
- * Gas limits for Ethereum transactions
+ * Gas limits for EVM transactions
  * @internal
  */
 const GAS_LIMIT = {
-  DEPLOY_TOKEN: 500000,
-  APPROVE: 60000,
-  TRANSFER: 200000,
-  LOG_METADATA: 100000,
+  DEPLOY_TOKEN: {
+    [JSON.stringify(ChainKind.Eth)]: 500000,
+    [JSON.stringify(ChainKind.Base)]: 500000,
+    [JSON.stringify(ChainKind.Arb)]: 3000000, // Arbitrum typically needs higher gas limits
+  },
+  LOG_METADATA: {
+    [JSON.stringify(ChainKind.Eth)]: 100000,
+    [JSON.stringify(ChainKind.Base)]: 100000,
+    [JSON.stringify(ChainKind.Arb)]: 600000,
+  },
 } as const
 
 /**
- * Ethereum blockchain implementation of the token deployer
+ * Factory addresses for different chains
  */
-export class EthereumDeployer {
+const FACTORY_ADDRESSES: Record<string, string | undefined> = {
+  [JSON.stringify(ChainKind.Eth)]: process.env.OMNI_FACTORY_ETH,
+  [JSON.stringify(ChainKind.Base)]: process.env.OMNI_FACTORY_BASE,
+  [JSON.stringify(ChainKind.Arb)]: process.env.OMNI_FACTORY_ARBITRUM,
+}
+
+/**
+ * Helper to check if a chain is an EVM chain
+ */
+function isEVMChain(chain: ChainKind): chain is EVMChainKind {
+  return "Eth" in chain || "Base" in chain || "Arb" in chain
+}
+
+/**
+ * EVM blockchain implementation of the token deployer
+ */
+export class EVMDeployer {
   private factory: ethers.Contract
+  private chainKind: EVMChainKind
 
   /**
-   * Creates a new Ethereum token deployer instance
+   * Creates a new EVM token deployer instance
    * @param wallet - Ethereum signer instance for transaction signing
-   * @param factoryAddress - Address of the bridge token factory contract
-   * @throws {Error} If factory address is not configured
+   * @param chain - The EVM chain to deploy to (Ethereum, Base, or Arbitrum)
+   * @throws {Error} If factory address is not configured for the chain or if chain is not EVM
    */
   constructor(
     private wallet: ethers.Signer,
-    private factoryAddress: string = process.env.OMNI_FACTORY_ETH as string,
+    chain: ChainKind,
   ) {
-    if (!this.factoryAddress) {
-      throw new Error("OMNI_FACTORY_ETH address not configured")
+    if (!isEVMChain(chain)) {
+      throw new Error(`Chain ${Object.keys(chain)[0]} is not an EVM chain`)
     }
-    this.factory = new ethers.Contract(this.factoryAddress, BRIDGE_TOKEN_FACTORY_ABI, this.wallet)
+
+    this.chainKind = chain
+    const factoryAddress = FACTORY_ADDRESSES[JSON.stringify(chain)]
+
+    if (!factoryAddress) {
+      throw new Error(`Factory address not configured for chain ${Object.keys(chain)[0]}`)
+    }
+
+    this.factory = new ethers.Contract(factoryAddress, BRIDGE_TOKEN_FACTORY_ABI, this.wallet)
   }
 
   /**
@@ -58,9 +91,11 @@ export class EthereumDeployer {
    * @throws Will throw an error if logging fails or caller doesn't have admin role
    */
   async logMetadata(tokenAddress: OmniAddress): Promise<string> {
-    // Validate source chain is Ethereum
-    if (getChain(tokenAddress) !== ChainKind.Eth) {
-      throw new Error("Token address must be on Ethereum")
+    const sourceChain = getChain(tokenAddress)
+
+    // Validate source chain matches the deployer's chain
+    if (JSON.stringify(sourceChain) !== JSON.stringify(this.chainKind)) {
+      throw new Error(`Token address must be on ${Object.keys(this.chainKind)[0]}`)
     }
 
     // Extract token address from OmniAddress
@@ -69,7 +104,7 @@ export class EthereumDeployer {
     try {
       // Call logMetadata function on the contract
       const tx = await this.factory.logMetadata(tokenAccountId, {
-        gasLimit: GAS_LIMIT.LOG_METADATA,
+        gasLimit: GAS_LIMIT.LOG_METADATA[JSON.stringify(this.chainKind)],
       })
       return tx.hash
     } catch (error) {
@@ -98,7 +133,7 @@ export class EthereumDeployer {
     tokenAddress: string
   }> {
     const tx = await this.factory.deployToken(signature.toBytes(), metadata, {
-      gasLimit: GAS_LIMIT.DEPLOY_TOKEN,
+      gasLimit: GAS_LIMIT.DEPLOY_TOKEN[JSON.stringify(this.chainKind)],
     })
 
     const receipt = await tx.wait()

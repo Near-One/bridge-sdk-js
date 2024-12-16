@@ -1,4 +1,5 @@
 import type { Unit } from "borsher"
+import { BorshSchema } from "borsher"
 
 export type ChainKind =
   | { Eth: Unit }
@@ -14,3 +15,11 @@ export const ChainKind = {
   Arb: { Arb: {} } as ChainKind,
   Base: { Base: {} } as ChainKind,
 } as const
+
+export const ChainKindSchema = BorshSchema.Enum({
+  Eth: BorshSchema.Unit,
+  Near: BorshSchema.Unit,
+  Sol: BorshSchema.Unit,
+  Arb: BorshSchema.Unit,
+  Base: BorshSchema.Unit,
+})

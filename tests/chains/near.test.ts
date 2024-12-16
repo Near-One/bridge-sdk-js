@@ -1,6 +1,6 @@
 import type { Account } from "near-api-js"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { NearDeployer } from "../../src/chains/near"
+import { NearDeployer } from "../../src/deployer/near"
 import { ChainKind } from "../../src/types"
 
 // Mock the entire borsher module
