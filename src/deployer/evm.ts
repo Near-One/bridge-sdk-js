@@ -1,6 +1,10 @@
 import { ethers } from "ethers"
-import { ChainKind, type MPCSignature, type OmniAddress } from "../types"
+import type { ChainKind, MPCSignature, OmniAddress } from "../types"
 import { getChain } from "../utils"
+
+// Type helpers for EVM chains
+type EVMChainKind = typeof ChainKind.Eth | typeof ChainKind.Base | typeof ChainKind.Arb
+type ChainTag<T extends ChainKind> = keyof T
 
 interface TokenMetadata {
   token: string
@@ -18,39 +22,48 @@ const BRIDGE_TOKEN_FACTORY_ABI = [
   "function logMetadata(address tokenAddress) external returns (string)",
 ] as const
 
-type EVMChainKind = typeof ChainKind.Eth | typeof ChainKind.Base | typeof ChainKind.Arb
-
 /**
- * Gas limits for EVM transactions
- * @internal
+ * Helper functions for chain operations
  */
-const GAS_LIMIT = {
-  DEPLOY_TOKEN: {
-    [JSON.stringify(ChainKind.Eth)]: 500000,
-    [JSON.stringify(ChainKind.Base)]: 500000,
-    [JSON.stringify(ChainKind.Arb)]: 3000000, // Arbitrum typically needs higher gas limits
+const ChainUtils = {
+  getTag: <T extends ChainKind>(chain: T): ChainTag<T> => {
+    return Object.keys(chain)[0] as ChainTag<T>
   },
-  LOG_METADATA: {
-    [JSON.stringify(ChainKind.Eth)]: 100000,
-    [JSON.stringify(ChainKind.Base)]: 100000,
-    [JSON.stringify(ChainKind.Arb)]: 600000,
+
+  isEVMChain: (chain: ChainKind): chain is EVMChainKind => {
+    const tag = ChainUtils.getTag(chain)
+    return tag === "Eth" || tag === "Base" || tag === "Arb"
+  },
+
+  areEqual: (a: ChainKind, b: ChainKind): boolean => {
+    return ChainUtils.getTag(a) === ChainUtils.getTag(b)
   },
 } as const
 
 /**
- * Factory addresses for different chains
+ * Gas limits for EVM transactions mapped by chain tag
+ * @internal
  */
-const FACTORY_ADDRESSES: Record<string, string | undefined> = {
-  [JSON.stringify(ChainKind.Eth)]: process.env.OMNI_FACTORY_ETH,
-  [JSON.stringify(ChainKind.Base)]: process.env.OMNI_FACTORY_BASE,
-  [JSON.stringify(ChainKind.Arb)]: process.env.OMNI_FACTORY_ARBITRUM,
-}
+const GAS_LIMIT = {
+  DEPLOY_TOKEN: {
+    Eth: 500000,
+    Base: 500000,
+    Arb: 3000000, // Arbitrum typically needs higher gas limits
+  },
+  LOG_METADATA: {
+    Eth: 100000,
+    Base: 100000,
+    Arb: 600000,
+  },
+} as const
 
 /**
- * Helper to check if a chain is an EVM chain
+ * Factory addresses for different chains mapped by chain tag
  */
-function isEVMChain(chain: ChainKind): chain is EVMChainKind {
-  return "Eth" in chain || "Base" in chain || "Arb" in chain
+const FACTORY_ADDRESSES: Record<ChainTag<EVMChainKind>, string | undefined> = {
+  Eth: process.env.OMNI_FACTORY_ETH,
+  Base: process.env.OMNI_FACTORY_BASE,
+  Arb: process.env.OMNI_FACTORY_ARBITRUM,
 }
 
 /**
@@ -59,6 +72,7 @@ function isEVMChain(chain: ChainKind): chain is EVMChainKind {
 export class EVMDeployer {
   private factory: ethers.Contract
   private chainKind: EVMChainKind
+  private chainTag: ChainTag<EVMChainKind>
 
   /**
    * Creates a new EVM token deployer instance
@@ -70,15 +84,16 @@ export class EVMDeployer {
     private wallet: ethers.Signer,
     chain: ChainKind,
   ) {
-    if (!isEVMChain(chain)) {
-      throw new Error(`Chain ${Object.keys(chain)[0]} is not an EVM chain`)
+    if (!ChainUtils.isEVMChain(chain)) {
+      throw new Error(`Chain ${String(ChainUtils.getTag(chain))} is not an EVM chain`)
     }
 
     this.chainKind = chain
-    const factoryAddress = FACTORY_ADDRESSES[JSON.stringify(chain)]
+    this.chainTag = ChainUtils.getTag(chain)
+    const factoryAddress = FACTORY_ADDRESSES[this.chainTag]
 
     if (!factoryAddress) {
-      throw new Error(`Factory address not configured for chain ${Object.keys(chain)[0]}`)
+      throw new Error(`Factory address not configured for chain ${this.chainTag}`)
     }
 
     this.factory = new ethers.Contract(factoryAddress, BRIDGE_TOKEN_FACTORY_ABI, this.wallet)
@@ -94,8 +109,8 @@ export class EVMDeployer {
     const sourceChain = getChain(tokenAddress)
 
     // Validate source chain matches the deployer's chain
-    if (JSON.stringify(sourceChain) !== JSON.stringify(this.chainKind)) {
-      throw new Error(`Token address must be on ${Object.keys(this.chainKind)[0]}`)
+    if (!ChainUtils.areEqual(sourceChain, this.chainKind)) {
+      throw new Error(`Token address must be on ${this.chainTag}`)
     }
 
     // Extract token address from OmniAddress
@@ -104,7 +119,7 @@ export class EVMDeployer {
     try {
       // Call logMetadata function on the contract
       const tx = await this.factory.logMetadata(tokenAccountId, {
-        gasLimit: GAS_LIMIT.LOG_METADATA[JSON.stringify(this.chainKind)],
+        gasLimit: GAS_LIMIT.LOG_METADATA[this.chainTag],
       })
       return tx.hash
     } catch (error) {
@@ -133,7 +148,7 @@ export class EVMDeployer {
     tokenAddress: string
   }> {
     const tx = await this.factory.deployToken(signature.toBytes(), metadata, {
-      gasLimit: GAS_LIMIT.DEPLOY_TOKEN[JSON.stringify(this.chainKind)],
+      gasLimit: GAS_LIMIT.DEPLOY_TOKEN[this.chainTag],
     })
 
     const receipt = await tx.wait()
