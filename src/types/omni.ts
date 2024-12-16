@@ -1,6 +1,6 @@
 import type { ChainKind } from "./chain"
 import type { OmniAddress } from "./common"
-import type { ProofKind } from "./prover"
+import type { EvmVerifyProofArgs, ProofKind } from "./prover"
 
 export type TokenDeployment = {
   id: string
@@ -42,12 +42,13 @@ export interface ChainDeployer<_TWallet> {
   finDeployToken(destinationChain: ChainKind, vaa: string): Promise<string>
 
   /**
-   * Binds a token using a VAA
-   * @param destinationChain - Target chain for binding
+   * Binds a token using either a VAA (Wormhole) or EVM proof
+   * @param sourceChain - Source chain for binding
    * @param vaa - The Verified Action Approval
+   * @param evmProof - The EVM proof
    * @returns Transaction hash of the binding
    */
-  bindToken(destinationChain: ChainKind, vaa: string): Promise<string>
+  bindToken(sourceChain: ChainKind, vaa?: string, evmProof?: EvmVerifyProofArgs): Promise<string>
 }
 
 export interface TransferMessage {
