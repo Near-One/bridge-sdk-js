@@ -75,18 +75,16 @@ console.log(`Status: ${status}`); // 'pending' | 'completed' | 'failed'
 
 #### Token Deployment
 
-- [ ] Ethereum (EVM)
-  - [ ] initDeployToken
-  - [ ] finDeployToken
-  - [ ] bindToken
+- [x] Ethereum (EVM)
+  - [x] logMetadata
+  - [x] deployToken
 - [x] NEAR
-  - [x] initDeployToken
-  - [x] finDeployToken
+  - [x] logMetadata
+  - [x] deployToken
   - [x] bindToken
 - [ ] Solana
-  - [ ] initDeployToken
-  - [ ] finDeployToken
-  - [ ] bindToken
+  - [ ] logMetadata
+  - [ ] deployToken
 
 #### Additional Features
 
