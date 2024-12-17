@@ -1,17 +1,10 @@
 import { ethers } from "ethers"
-import type { ChainKind, MPCSignature, OmniAddress } from "../types"
+import type { ChainKind, MPCSignature, OmniAddress, TokenMetadata } from "../types"
 import { getChain } from "../utils"
 
 // Type helpers for EVM chains
 type EVMChainKind = typeof ChainKind.Eth | typeof ChainKind.Base | typeof ChainKind.Arb
 type ChainTag<T extends ChainKind> = keyof T
-
-interface TokenMetadata {
-  token: string
-  name: string
-  symbol: string
-  decimals: number
-}
 
 // Contract ABI for the bridge token factory
 const BRIDGE_TOKEN_FACTORY_ABI = [
