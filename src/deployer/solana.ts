@@ -88,10 +88,10 @@ export class SolanaDeployer {
   /**
    * Logs metadata for a token
    * @param token - The token's public key
-   * @param payer - Optional payer public key
+   * @param payer - Optional payer keypair
    * @returns Promise resolving to transaction signature
    */
-  async logMetadata(token: PublicKey, payer?: PublicKey): Promise<string> {
+  async logMetadata(token: PublicKey, payer?: Keypair): Promise<string> {
     const wormholeMessage = Keypair.generate()
     const [metadata] = PublicKey.findProgramAddressSync(
       [Buffer.from("metadata", "utf-8"), MPL_PROGRAM_ID.toBuffer(), token.toBuffer()],
@@ -108,7 +108,7 @@ export class SolanaDeployer {
           metadata,
           vault,
           wormhole: {
-            payer: payer || this.program.provider.publicKey,
+            payer: payer?.publicKey || this.program.provider.publicKey,
             config: this.config()[0],
             bridge: this.wormholeBridgeId()[0],
             feeCollector: this.wormholeFeeCollectorId()[0],
@@ -142,7 +142,7 @@ export class SolanaDeployer {
   async deployToken(
     signature: MPCSignature,
     payload: TokenMetadata,
-    payer?: PublicKey,
+    payer?: Keypair,
   ): Promise<{ txHash: string; tokenAddress: string }> {
     const wormholeMessage = Keypair.generate()
     const [mint] = this.wrappedMintId(payload.token)
@@ -160,7 +160,7 @@ export class SolanaDeployer {
         .accountsStrict({
           authority: this.authority()[0],
           wormhole: {
-            payer: payer || this.program.provider.publicKey,
+            payer: payer?.publicKey || this.program.provider.publicKey,
             config: this.config()[0],
             bridge: this.wormholeBridgeId()[0],
             feeCollector: this.wormholeFeeCollectorId()[0],
