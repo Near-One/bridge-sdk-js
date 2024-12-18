@@ -9,7 +9,7 @@ import {
 } from "@solana/web3.js"
 import type { MPCSignature, TokenMetadata } from "../types"
 import type { BridgeTokenFactory } from "../types/solana/bridge_token_factory"
-import * as BridgeTokenFactoryIdl from "../types/solana/bridge_token_factory.json"
+import BRIDGE_TOKEN_FACTORY_IDL from "../types/solana/bridge_token_factory.json"
 
 const MPL_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
 
@@ -17,16 +17,26 @@ export class SolanaDeployer {
   private readonly wormholeProgramId: PublicKey
   private readonly program: Program<BridgeTokenFactory>
 
+  private static getConstant(name: string) {
+    const value = (BRIDGE_TOKEN_FACTORY_IDL as BridgeTokenFactory).constants.find(
+      (c) => c.name === name,
+    )?.value
+    if (!value) throw new Error(`Missing constant: ${name}`)
+    // Parse the string array format "[x, y, z]" into actual numbers
+    const numbers = JSON.parse(value as string)
+    return new Uint8Array(numbers)
+  }
+
   private static readonly SEEDS = {
-    CONFIG: new Uint8Array([99, 111, 110, 102, 105, 103]),
-    AUTHORITY: new Uint8Array([97, 117, 116, 104, 111, 114, 105, 116, 121]),
-    WRAPPED_MINT: new Uint8Array([119, 114, 97, 112, 112, 101, 100, 95, 109, 105, 110, 116]),
-    VAULT: new Uint8Array([118, 97, 117, 108, 116]),
+    CONFIG: this.getConstant("CONFIG_SEED"),
+    AUTHORITY: this.getConstant("AUTHORITY_SEED"),
+    WRAPPED_MINT: this.getConstant("WRAPPED_MINT_SEED"),
+    VAULT: this.getConstant("VAULT_SEED"),
   }
 
   constructor(provider: Provider, wormholeProgramId: PublicKey) {
     this.wormholeProgramId = wormholeProgramId
-    this.program = new Program(BridgeTokenFactoryIdl as BridgeTokenFactory, provider)
+    this.program = new Program(BRIDGE_TOKEN_FACTORY_IDL as BridgeTokenFactory, provider)
   }
 
   private configId(): [PublicKey, number] {
