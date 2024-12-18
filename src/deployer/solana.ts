@@ -1,5 +1,5 @@
 import { Program, type Provider } from "@coral-xyz/anchor"
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token"
+import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token"
 import {
   Keypair,
   PublicKey,
@@ -121,9 +121,9 @@ export class SolanaDeployer {
           },
           systemProgram: SystemProgram.programId,
           tokenProgram: TOKEN_PROGRAM_ID,
-          associatedTokenProgram: new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         })
-        .signers([wormholeMessage])
+        .signers(payer instanceof Keypair ? [wormholeMessage, payer] : [wormholeMessage])
         .rpc()
 
       return tx
@@ -177,7 +177,7 @@ export class SolanaDeployer {
           tokenProgram: TOKEN_PROGRAM_ID,
           tokenMetadataProgram: MPL_PROGRAM_ID,
         })
-        .signers([wormholeMessage])
+        .signers(payer instanceof Keypair ? [wormholeMessage, payer] : [wormholeMessage])
         .rpc()
 
       return {
