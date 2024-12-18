@@ -39,7 +39,7 @@ export class SolanaDeployer {
     this.program = new Program(BRIDGE_TOKEN_FACTORY_IDL as BridgeTokenFactory, provider)
   }
 
-  private configId(): [PublicKey, number] {
+  private config(): [PublicKey, number] {
     return PublicKey.findProgramAddressSync([SolanaDeployer.SEEDS.CONFIG], this.program.programId)
   }
 
@@ -66,7 +66,7 @@ export class SolanaDeployer {
 
   private wormholeSequenceId(): [PublicKey, number] {
     return PublicKey.findProgramAddressSync(
-      [Buffer.from("Sequence", "utf-8"), this.configId()[0].toBuffer()],
+      [Buffer.from("Sequence", "utf-8"), this.config()[0].toBuffer()],
       this.wormholeProgramId,
     )
   }
@@ -109,7 +109,7 @@ export class SolanaDeployer {
           vault,
           wormhole: {
             payer: payer || this.program.provider.publicKey,
-            config: this.configId()[0],
+            config: this.config()[0],
             bridge: this.wormholeBridgeId()[0],
             feeCollector: this.wormholeFeeCollectorId()[0],
             sequence: this.wormholeSequenceId()[0],
@@ -161,7 +161,7 @@ export class SolanaDeployer {
           authority: this.authority()[0],
           wormhole: {
             payer: payer || this.program.provider.publicKey,
-            config: this.configId()[0],
+            config: this.config()[0],
             bridge: this.wormholeBridgeId()[0],
             feeCollector: this.wormholeFeeCollectorId()[0],
             sequence: this.wormholeSequenceId()[0],
