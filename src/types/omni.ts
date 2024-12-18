@@ -41,3 +41,10 @@ export enum Status {
   Completed = 1,
   Failed = 2,
 }
+
+export interface TokenMetadata {
+  token: string
+  name: string
+  symbol: string
+  decimals: number
+}
