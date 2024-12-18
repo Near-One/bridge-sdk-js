@@ -1,7 +1,7 @@
 import type { ethers } from "ethers"
 import type { Account } from "near-api-js"
-import { EthereumDeployer } from "./chains/ethereum"
-import { NearDeployer } from "./chains/near"
+import { EVMDeployer } from "./deployer/evm"
+import { NearDeployer } from "./deployer/near"
 import { ChainKind } from "./types"
 
 /**
@@ -23,7 +23,9 @@ export function getDeployer<TWallet>(chain: ChainKind, wallet: TWallet) {
     case ChainKind.Near:
       return new NearDeployer(wallet as Account)
     case ChainKind.Eth:
-      return new EthereumDeployer(wallet as ethers.Signer)
+    case ChainKind.Base:
+    case ChainKind.Arb:
+      return new EVMDeployer(wallet as ethers.Signer, chain)
     default:
       throw new Error(`No deployer implementation for chain: ${chain}`)
   }
