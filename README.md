@@ -82,9 +82,9 @@ console.log(`Status: ${status}`); // 'pending' | 'completed' | 'failed'
   - [x] logMetadata
   - [x] deployToken
   - [x] bindToken
-- [ ] Solana
-  - [ ] logMetadata
-  - [ ] deployToken
+- [x] Solana
+  - [x] logMetadata
+  - [x] deployToken
 
 #### Additional Features
 
