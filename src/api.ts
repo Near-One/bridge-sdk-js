@@ -1,5 +1,5 @@
 // api.ts
-import { type ChainKind, type OmniAddress, Status } from "./types"
+import type { ChainKind, OmniAddress } from "./types"
 
 export interface ApiTransferResponse {
   id: {
@@ -27,6 +27,12 @@ export interface ApiFeeResponse {
 export type ApiFee = {
   fee: bigint
   nativeFee: bigint
+}
+
+export enum Status {
+  Pending = 0,
+  Completed = 1,
+  Failed = 2,
 }
 
 export class OmniBridgeAPI {

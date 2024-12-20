@@ -1,6 +1,7 @@
 import { borshSerialize } from "borsher"
 import type { Account } from "near-api-js"
 import {
+  type AccountId,
   type BindTokenArgs,
   ChainKind,
   type DeployTokenArgs,
@@ -10,33 +11,73 @@ import {
   type LogMetadataArgs,
   type OmniAddress,
   ProofKind,
+  type U128,
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
 } from "../types"
 import { getChain } from "../utils"
 
 /**
- * Configuration for NEAR network gas limits
+ * Configuration for NEAR network gas limits.
+ * All values are specified in TGas (Terra Gas) units.
  * @internal
  */
 const GAS = {
   LOG_METADATA: BigInt(3e14), // 3 TGas
   DEPLOY_TOKEN: BigInt(1.2e14), // 1.2 TGas
   BIND_TOKEN: BigInt(3e14), // 3 TGas
+  INIT_TRANSFER: BigInt(3e14), // 3 TGas
+  STORAGE_DEPOSIT: BigInt(1e14), // 1 TGas
 } as const
 
 /**
- * Configuration for NEAR network deposit amounts
+ * Configuration for NEAR network deposit amounts.
+ * Values represent the amount of NEAR tokens required for each operation.
  * @internal
  */
 const DEPOSIT = {
   LOG_METADATA: BigInt(2e23), // 0.2 NEAR
   DEPLOY_TOKEN: BigInt(4e24), // 4 NEAR
   BIND_TOKEN: BigInt(2e23), // 0.2 NEAR
+  INIT_TRANSFER: BigInt(1), // 1 yoctoNEAR
 } as const
 
 /**
- * NEAR blockchain implementation of the token deployer
+ * Represents the storage deposit balance for a NEAR account
+ */
+type StorageDeposit = {
+  total: bigint
+  available: bigint
+} | null
+
+interface TransferMessage {
+  receiver_id: AccountId
+  memo: string | null
+  amount: U128
+  msg: string | null
+}
+
+interface InitTransferMessage {
+  recipient: OmniAddress
+  fee: U128
+  native_token_fee: U128
+}
+
+/**
+ * Interface representing the results of various balance queries
+ * @property regBalance - Required balance for account registration
+ * @property initBalance - Required balance for initializing transfers
+ * @property storage - Current storage deposit balance information
+ */
+interface BalanceResults {
+  regBalance: bigint
+  initBalance: bigint
+  storage: StorageDeposit
+}
+
+/**
+ * NEAR blockchain implementation of the token deployer.
+ * Handles token deployment, binding, and transfer operations on the NEAR blockchain.
  */
 export class NearDeployer {
   /**
@@ -54,6 +95,12 @@ export class NearDeployer {
     }
   }
 
+  /**
+   * Logs metadata for a token on the NEAR blockchain
+   * @param tokenAddress - Omni address of the token
+   * @throws {Error} If token address is not on NEAR chain
+   * @returns Promise resolving to the transaction hash
+   */
   async logMetadata(tokenAddress: OmniAddress): Promise<string> {
     // Validate source chain is NEAR
     if (getChain(tokenAddress) !== ChainKind.Near) {
@@ -77,6 +124,12 @@ export class NearDeployer {
     return tx.transaction.hash
   }
 
+  /**
+   * Deploys a token to the specified destination chain
+   * @param destinationChain - Target chain where the token will be deployed
+   * @param vaa - Verified Action Approval containing deployment information
+   * @returns Promise resolving to the transaction hash
+   */
   async deployToken(destinationChain: ChainKind, vaa: string): Promise<string> {
     const proverArgs: WormholeVerifyProofArgs = {
       proof_kind: ProofKind.DeployToken,
@@ -108,7 +161,8 @@ export class NearDeployer {
    * @param vaa - Verified Action Approval for Wormhole verification
    * @param evmProof - EVM proof for Ethereum or EVM chain verification
    * @throws {Error} If VAA or EVM proof is not provided
-   * @returns Transaction hash of the bind token transaction
+   * @throws {Error} If EVM proof is provided for non-EVM chain
+   * @returns Promise resolving to the transaction hash
    */
   async bindToken(
     sourceChain: ChainKind,
@@ -158,5 +212,104 @@ export class NearDeployer {
     })
 
     return tx.transaction.hash
+  }
+
+  /**
+   * Transfers NEP-141 tokens to the token locker contract on NEAR.
+   * This transaction generates a proof that is subsequently used to mint
+   * corresponding tokens on the destination chain.
+   *
+   * @param token - Omni address of the NEP-141 token to transfer
+   * @param recipient - Recipient's Omni address on the destination chain where tokens will be minted
+   * @param amount - Amount of NEP-141 tokens to transfer
+   * @throws {Error} If token address is not on NEAR chain
+   * @returns Promise resolving to object containing transaction hash and nonce
+   */
+
+  async initTransfer(
+    token: OmniAddress,
+    recipient: OmniAddress,
+    amount: bigint,
+  ): Promise<{ hash: string; nonce: number }> {
+    if (getChain(token) !== ChainKind.Near) {
+      throw new Error("Token address must be on NEAR")
+    }
+    const tokenAddress = token.split(":")[1]
+
+    const { regBalance, initBalance, storage } = await this.getBalances()
+    const requiredBalance = regBalance + initBalance
+    const existingBalance = storage?.available ?? BigInt(0)
+
+    if (requiredBalance > existingBalance) {
+      const neededAmount = requiredBalance - existingBalance
+      await this.wallet.functionCall({
+        contractId: this.lockerAddress,
+        methodName: "storage_deposit",
+        args: {},
+        gas: GAS.STORAGE_DEPOSIT,
+        attachedDeposit: neededAmount,
+      })
+    }
+
+    const initTransferMessage: InitTransferMessage = {
+      recipient: recipient,
+      fee: BigInt(0),
+      native_token_fee: BigInt(0),
+    }
+    const args: TransferMessage = {
+      receiver_id: this.lockerAddress,
+      amount: amount,
+      memo: null,
+      msg: JSON.stringify(initTransferMessage),
+    }
+    const tx = await this.wallet.functionCall({
+      contractId: tokenAddress,
+      methodName: "ft_transfer_call",
+      args,
+      gas: GAS.INIT_TRANSFER,
+      attachedDeposit: DEPOSIT.INIT_TRANSFER,
+    })
+
+    return {
+      hash: tx.transaction.hash,
+      nonce: tx.transaction.nonce,
+    }
+  }
+
+  /**
+   * Retrieves various balance information for the current account
+   * @private
+   * @returns Promise resolving to object containing required balances and storage information
+   * @throws {Error} If balance fetching fails
+   */
+  private async getBalances(): Promise<BalanceResults> {
+    try {
+      const [regBalanceStr, initBalanceStr, storage] = await Promise.all([
+        this.wallet.viewFunction({
+          contractId: this.lockerAddress,
+          methodName: "required_balance_for_account",
+        }),
+        this.wallet.viewFunction({
+          contractId: this.lockerAddress,
+          methodName: "required_balance_for_init_transfer",
+        }),
+        this.wallet.viewFunction({
+          contractId: this.lockerAddress,
+          methodName: "storage_balance_of",
+          args: {
+            account_id: this.wallet.accountId,
+          },
+        }),
+      ])
+
+      return {
+        regBalance: BigInt(regBalanceStr),
+        initBalance: BigInt(initBalanceStr),
+        storage,
+      }
+    } catch (error) {
+      console.error("Error fetching balances:", error)
+      throw error
+    }
   }
 }

@@ -21,25 +21,16 @@ export type TokenDeployment = {
   bindTx?: string
 }
 
-export interface TransferMessage {
+export interface OmniTransferResult {
+  nonce: bigint
+  txId: string
+}
+export interface OmniTransferMessage {
   tokenAddress: OmniAddress
   amount: bigint
   fee: bigint
   nativeFee: bigint
   recipient: OmniAddress
-  message: string | null
-}
-
-export interface OmniTransfer {
-  txId: string
-  nonce: bigint
-  transferMessage: TransferMessage
-}
-
-export enum Status {
-  Pending = 0,
-  Completed = 1,
-  Failed = 2,
 }
 
 export interface TokenMetadata {
