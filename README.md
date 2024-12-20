@@ -61,11 +61,15 @@ console.log(`Status: ${status}`); // 'pending' | 'completed' | 'failed'
 #### Core Transfer Interface
 
 - [ ] Base OmniTransfer interface
-  - [ ] Ethereum implementation
-  - [ ] NEAR implementation
-  - [ ] Solana implementation
-  - [ ] Arbitrum implementation
-  - [ ] Base implementation
+  - [ ] EVM
+    - [ ] initTransfer
+    - [ ] finalizeTransfer
+  - [ ] NEAR
+    - [x] initTransfer
+    - [ ] finalizeTransfer
+  - [ ] Solana
+    - [ ] initTransfer
+    - [ ] finalizeTransfer
 
 #### Query Functions
 

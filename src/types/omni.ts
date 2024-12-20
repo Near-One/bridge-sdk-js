@@ -1,5 +1,5 @@
 import type { ChainKind } from "./chain"
-import type { OmniAddress } from "./common"
+import type { AccountId, OmniAddress, U128 } from "./common"
 import type { ProofKind } from "./prover"
 
 export type TokenDeployment = {
@@ -22,14 +22,29 @@ export type TokenDeployment = {
 }
 
 export interface TransferMessage {
+  receiver_id: AccountId
+  memo: string | null
+  amount: U128
+  msg: string | null
+}
+
+export interface InitTransferMessage {
+  recipient: OmniAddress
+  fee: U128
+  native_token_fee: U128
+}
+
+export interface OmniTransferResult {
+  nonce: bigint
+  txId: string
+}
+export interface OmniTransferMessage {
   tokenAddress: OmniAddress
   amount: bigint
   fee: bigint
   nativeFee: bigint
   recipient: OmniAddress
-  message: string | null
 }
-
 export interface OmniTransfer {
   txId: string
   nonce: bigint
