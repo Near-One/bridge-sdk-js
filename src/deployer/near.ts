@@ -1,6 +1,7 @@
 import { borshSerialize } from "borsher"
 import type { Account } from "near-api-js"
 import {
+  type AccountId,
   type BindTokenArgs,
   ChainKind,
   type DeployTokenArgs,
@@ -10,11 +11,10 @@ import {
   type LogMetadataArgs,
   type OmniAddress,
   ProofKind,
-  type TransferMessage,
+  type U128,
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
 } from "../types"
-import type { InitTransferMessage } from "../types/omni"
 import { getChain } from "../utils"
 
 /**
@@ -49,6 +49,19 @@ type StorageDeposit = {
   total: bigint
   available: bigint
 } | null
+
+interface TransferMessage {
+  receiver_id: AccountId
+  memo: string | null
+  amount: U128
+  msg: string | null
+}
+
+interface InitTransferMessage {
+  recipient: OmniAddress
+  fee: U128
+  native_token_fee: U128
+}
 
 /**
  * Interface representing the results of various balance queries
