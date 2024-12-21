@@ -302,10 +302,19 @@ export class NearDeployer {
         }),
       ])
 
+      // Convert storage balance to bigint
+      let convertedStorage = null
+      if (storage) {
+        convertedStorage = {
+          total: BigInt(storage.total),
+          available: BigInt(storage.available),
+        }
+      }
+
       return {
         regBalance: BigInt(regBalanceStr),
         initBalance: BigInt(initBalanceStr),
-        storage,
+        storage: convertedStorage,
       }
     } catch (error) {
       console.error("Error fetching balances:", error)
