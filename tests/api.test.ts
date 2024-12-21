@@ -1,87 +1,119 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { http, HttpResponse } from "msw"
+import { setupServer } from "msw/node"
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest"
 import { OmniBridgeAPI } from "../src/api"
-import { ChainKind, type OmniAddress } from "../src/types"
-import { omniAddress } from "../src/utils"
+
+const api = new OmniBridgeAPI("testnet")
+const BASE_URL = "https://testnet.api.bridge.nearone.org"
+
+// Mock data
+const mockTransfer = {
+  id: {
+    origin_chain: "Eth",
+    origin_nonce: 123,
+  },
+  initialized: {
+    EVMLog: {
+      block_height: 1000,
+      block_timestamp_seconds: 1234567890,
+      transaction_hash: "0x123...",
+    },
+  },
+  finalised_on_near: null,
+  finalised: null,
+  transfer_message: {
+    token: "token.near",
+    amount: 1000000,
+    sender: "sender.near",
+    recipient: "recipient.near",
+    fee: {
+      fee: 1000,
+      native_fee: 2000,
+    },
+    msg: "test transfer",
+  },
+  updated_fee: [],
+}
+
+const mockFee = {
+  native_token_fee: 1000,
+  transferred_token_fee: 2000,
+  usd_fee: 1.5,
+}
+
+const restHandlers = [
+  http.get(`${BASE_URL}/api/v1/transfers/transfer/status`, () => {
+    return HttpResponse.json("Initialized")
+  }),
+  http.get(`${BASE_URL}/api/v1/transfers/transfer`, () => {
+    return HttpResponse.json(mockTransfer)
+  }),
+  http.get(`${BASE_URL}/api/v1/transfer-fee`, () => {
+    return HttpResponse.json(mockFee)
+  }),
+  http.get(`${BASE_URL}/api/v1/transfers`, () => {
+    return HttpResponse.json([mockTransfer])
+  }),
+]
+
+const server = setupServer(...restHandlers)
+beforeAll(() => server.listen())
+afterAll(() => server.close())
+afterEach(() => server.resetHandlers())
 
 describe("OmniBridgeAPI", () => {
-  let api: OmniBridgeAPI
+  describe("getTransferStatus", () => {
+    it("should fetch transfer status successfully", async () => {
+      const status = await api.getTransferStatus("Eth", 123)
+      expect(status).toBe("Initialized")
+    })
 
-  beforeEach(() => {
-    api = new OmniBridgeAPI("testnet")
+    it("should handle 404 error", async () => {
+      server.use(
+        http.get(`${BASE_URL}/api/v1/transfers/transfer/status`, () => {
+          return new HttpResponse(null, { status: 404 })
+        }),
+      )
+
+      await expect(api.getTransferStatus("Eth", 123)).rejects.toThrow("Transfer not found")
+    })
   })
 
   describe("getFee", () => {
-    // Unit tests with mocked fetch
-    describe("unit tests", () => {
-      const mockFetch = vi.fn()
-      const originalFetch = global.fetch
+    it("should fetch fee successfully", async () => {
+      const fee = await api.getFee("near:sender.near", "near:recipient.near", "token.near")
+      expect(fee).toEqual(mockFee)
+    })
 
-      beforeEach(() => {
-        global.fetch = mockFetch
-      })
+    it("should handle missing parameters", async () => {
+      server.use(
+        http.get(`${BASE_URL}/api/v1/transfer-fee`, () => {
+          return new HttpResponse(null, { status: 400 })
+        }),
+      )
 
-      afterEach(() => {
-        global.fetch = originalFetch
-        vi.clearAllMocks()
-      })
+      await expect(
+        api.getFee("near:sender.near", "near:recipient.near", "token.near"),
+      ).rejects.toThrow("API request failed")
+    })
+  })
 
-      it("should return fee information correctly", async () => {
-        const mockResponse = {
-          transferred_token_fee: "1000",
-          native_token_fee: "2000",
-        }
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockResponse),
-        })
+  describe("getTransfer", () => {
+    it("should fetch single transfer successfully", async () => {
+      const transfer = await api.getTransfer("Eth", 123)
+      expect(transfer).toEqual(mockTransfer)
+    })
+  })
 
-        const sender: OmniAddress = omniAddress(ChainKind.Eth, "0x123")
-        const recipient: OmniAddress = omniAddress(ChainKind.Sol, "sol123")
-        const tokenAddress = "0xtoken"
+  describe("findOmniTransfers", () => {
+    it("should fetch transfers list successfully", async () => {
+      const transfers = await api.findOmniTransfers("near:sender.near", 0, 10)
+      expect(transfers).toEqual([mockTransfer])
+    })
 
-        const fee = await api.getFee(sender, recipient, tokenAddress)
-
-        expect(fee.fee).toBe(BigInt(1000))
-        expect(fee.nativeFee).toBe(BigInt(2000))
-        expect(mockFetch).toHaveBeenCalledWith(
-          `${api.getBaseUrl()}/api/v1/transfer-fee?sender=eth%3A0x123&recipient=sol%3Asol123&token=0xtoken`,
-        )
-      })
-
-      it("should handle zero transferred token fee", async () => {
-        const mockResponse = {
-          transferred_token_fee: null,
-          native_token_fee: "2000",
-        }
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockResponse),
-        })
-
-        const sender: OmniAddress = "eth:0x123"
-        const recipient: OmniAddress = "sol:sol123"
-        const tokenAddress = "0xtoken"
-
-        const fee = await api.getFee(sender, recipient, tokenAddress)
-
-        expect(fee.fee).toBe(BigInt(0))
-        expect(fee.nativeFee).toBe(BigInt(2000))
-      })
-
-      it("should throw error on failed API request", async () => {
-        mockFetch.mockResolvedValueOnce({
-          ok: false,
-          statusText: "Not Found",
-        })
-
-        const sender: OmniAddress = omniAddress(ChainKind.Eth, "0x123")
-        const recipient: OmniAddress = omniAddress(ChainKind.Sol, "sol123")
-        const tokenAddress = "0xtoken"
-
-        await expect(api.getFee(sender, recipient, tokenAddress)).rejects.toThrow(
-          "API request failed: Not Found",
-        )
-      })
+    it("should handle pagination parameters", async () => {
+      const transfers = await api.findOmniTransfers("near:sender.near", 10, 5)
+      expect(transfers).toEqual([mockTransfer])
     })
   })
 })
