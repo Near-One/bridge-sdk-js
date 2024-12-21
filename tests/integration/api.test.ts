@@ -21,9 +21,12 @@ describe("OmniBridgeAPI Integration Tests", () => {
 
       const fee = await api.getFee(sender, recipient, tokenAddress)
 
-      expect(typeof fee.fee).toBe("bigint")
-      expect(typeof fee.nativeFee).toBe("bigint")
-      expect(fee.nativeFee > BigInt(0)).toBe(true)
+      expect(typeof fee.native_token_fee).toBe("number")
+      expect(
+        fee.transferred_token_fee === null || typeof fee.transferred_token_fee === "number",
+      ).toBe(true)
+      expect(typeof fee.usd_fee).toBe("number")
+      expect(fee.native_token_fee > 0).toBe(true)
     })
 
     it("should handle real API errors gracefully", async () => {

@@ -73,9 +73,9 @@ console.log(`Status: ${status}`); // 'pending' | 'completed' | 'failed'
 
 #### Query Functions
 
-- [ ] findOmniTransfers (Transfer History API)
+- [x] findOmniTransfers (Transfer History API)
 - [x] getFee (Fee Estimation API)
-- [ ] getTransferStatus (Status Tracking API)
+- [x] getTransferStatus (Status Tracking API)
 
 #### Token Deployment
 

@@ -1,21 +1,41 @@
-// api.ts
-import type { ChainKind, OmniAddress } from "./types"
+import type { OmniAddress } from "./types"
 
-export interface ApiTransferResponse {
-  id: {
-    origin_chain: keyof ChainKind
-    origin_nonce: number
-  }
-  status: "Initialized" | "FinalisedOnNear" | "Finalised"
+// Types from OpenAPI spec
+export type Chain = "Eth" | "Near" | "Sol" | "Arb" | "Base"
+
+export interface Transaction {
+  block_height: number
+  block_timestamp_seconds: number
+  transaction_hash: string
+}
+
+export interface TransactionWrapper {
+  NearReceipt?: Transaction
+  EVMLog?: Transaction
+}
+
+export interface TransferMessage {
   token: string
   amount: number
-  recipient: string
   sender: string
+  recipient: string
   fee: {
     fee: number
     native_fee: number
   }
   msg: string
+}
+
+export interface Transfer {
+  id: {
+    origin_chain: Chain
+    origin_nonce: number
+  }
+  initialized: TransactionWrapper | null
+  finalised_on_near: TransactionWrapper | null
+  finalised: TransactionWrapper | null
+  transfer_message: TransferMessage
+  updated_fee: TransactionWrapper[]
 }
 
 export interface ApiFeeResponse {
@@ -24,16 +44,7 @@ export interface ApiFeeResponse {
   usd_fee: number
 }
 
-export type ApiFee = {
-  fee: bigint
-  nativeFee: bigint
-}
-
-export enum Status {
-  Pending = 0,
-  Completed = 1,
-  Failed = 2,
-}
+export type TransferStatus = "Initialized" | "FinalisedOnNear" | "Finalised"
 
 export class OmniBridgeAPI {
   private baseUrl: string
@@ -49,47 +60,69 @@ export class OmniBridgeAPI {
     return this.baseUrl
   }
 
-  async getTransferStatus(originChain: ChainKind, nonce: bigint): Promise<Status> {
-    const params = new URLSearchParams({
-      origin_chain: Object.keys(originChain)[0].toLowerCase(),
-      origin_nonce: nonce.toString(),
-    })
+  async getTransferStatus(originChain: Chain, originNonce: number): Promise<TransferStatus> {
+    const url = new URL(`${this.baseUrl}/api/v1/transfers/transfer/status`)
+    url.searchParams.set("origin_chain", originChain)
+    url.searchParams.set("origin_nonce", originNonce.toString())
 
-    const response = await fetch(`${this.baseUrl}/api/v1/transfer?${params}`)
+    const response = await fetch(url)
+
+    if (response.status === 404) {
+      throw new Error("Transfer not found")
+    }
+
     if (!response.ok) {
       throw new Error(`API request failed: ${response.statusText}`)
     }
 
-    const data: ApiTransferResponse = await response.json()
-
-    switch (data.status) {
-      case "Initialized":
-        return Status.Pending
-      case "FinalisedOnNear":
-      case "Finalised":
-        return Status.Completed
-      default:
-        return Status.Failed
-    }
+    const status: TransferStatus = await response.json()
+    return status
   }
 
-  async getFee(sender: OmniAddress, recipient: OmniAddress, tokenAddress: string): Promise<ApiFee> {
-    const params = new URLSearchParams({
-      sender: sender,
-      recipient: recipient,
-      token: tokenAddress,
-    })
+  async getFee(
+    sender: OmniAddress,
+    recipient: OmniAddress,
+    tokenAddress: string,
+  ): Promise<ApiFeeResponse> {
+    const url = new URL(`${this.baseUrl}/api/v1/transfer-fee`)
+    url.searchParams.set("sender", sender)
+    url.searchParams.set("recipient", recipient)
+    url.searchParams.set("token", tokenAddress)
 
-    const response = await fetch(`${this.baseUrl}/api/v1/transfer-fee?${params}`)
+    console.log(url.toString())
+
+    const response = await fetch(url)
     if (!response.ok) {
       throw new Error(`API request failed: ${response.statusText}`)
     }
 
-    const data: ApiFeeResponse = await response.json()
+    return await response.json()
+  }
 
-    return {
-      fee: data.transferred_token_fee ? BigInt(data.transferred_token_fee) : BigInt(0),
-      nativeFee: BigInt(data.native_token_fee),
+  async getTransfer(originChain: Chain, originNonce: number): Promise<Transfer> {
+    const url = new URL(`${this.baseUrl}/api/v1/transfers/transfer`)
+    url.searchParams.set("origin_chain", originChain)
+    url.searchParams.set("origin_nonce", originNonce.toString())
+
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`)
     }
+
+    return await response.json()
+  }
+
+  async findOmniTransfers(sender: OmniAddress, offset: number, limit: number): Promise<Transfer[]> {
+    const url = new URL(`${this.baseUrl}/api/v1/transfers`)
+    url.searchParams.set("sender", sender)
+    url.searchParams.set("offset", offset.toString())
+    url.searchParams.set("limit", limit.toString())
+
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.statusText}`)
+    }
+
+    return await response.json()
   }
 }
