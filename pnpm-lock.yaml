@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  secp256k1@=5.0.0: '>=5.0.1'
+
 importers:
 
   .:
@@ -1086,9 +1089,9 @@ packages:
   safe-buffer@5.2.1:
     resolution: {integrity: sha512-rp3So07KcdmmKbGvgaNxQSJr7bGVSVk5S9Eq1F+ppbRo70+YeaDxkw5Dd8NPN+GD6bjnYm2VuPuCXmpuYvmCXQ==}
 
-  secp256k1@5.0.0:
-    resolution: {integrity: sha512-TKWX8xvoGHrxVdqbYeZM9w+izTF4b9z3NhSaDkdn81btvuh+ivbIMGT/zQvDtTFWhRlThpoz6LEYTr7n8A5GcA==}
-    engines: {node: '>=14.0.0'}
+  secp256k1@5.0.1:
+    resolution: {integrity: sha512-lDFs9AAIaWP9UCdtWrotXWWF9t8PWgQDcxqgAnpM9rMqxb3Oaq2J0thzPVSxBwdJgyQtkU/sYtFtbM1RSt/iYA==}
+    engines: {node: '>=18.0.0'}
 
   setprototypeof@1.1.1:
     resolution: {integrity: sha512-JvdAWfbXeIGaZ9cILp38HntZSFSo3mWg6xGcJJsd+d4aRMOqauag1C63dJfDw7OaMYwEbHMOxEZ1lqVRYP2OAw==}
@@ -1561,7 +1564,7 @@ snapshots:
       '@noble/curves': 1.2.0
       borsh: 1.0.0
       randombytes: 2.1.0
-      secp256k1: 5.0.0
+      secp256k1: 5.0.1
 
   '@near-js/keystores-browser@0.2.1':
     dependencies:
@@ -2442,7 +2445,7 @@ snapshots:
 
   safe-buffer@5.2.1: {}
 
-  secp256k1@5.0.0:
+  secp256k1@5.0.1:
     dependencies:
       elliptic: 6.6.1
       node-addon-api: 5.1.0
