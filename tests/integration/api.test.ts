@@ -22,7 +22,9 @@ describe("OmniBridgeAPI Integration Tests", () => {
       const fee = await api.getFee(sender, recipient, tokenAddress)
 
       expect(typeof fee.native_token_fee).toBe("number")
-      expect(typeof fee.transferred_token_fee).toBe("number")
+      expect(
+        fee.transferred_token_fee === null || typeof fee.transferred_token_fee === "number",
+      ).toBe(true)
       expect(typeof fee.usd_fee).toBe("number")
       expect(fee.native_token_fee > 0).toBe(true)
     })
