@@ -1,5 +1,5 @@
 import { ethers } from "ethers"
-import type { ChainKind, MPCSignature, OmniAddress, TokenMetadata } from "../types"
+import type { ChainKind, MPCSignature, OmniAddress, TokenMetadata, U128 } from "../types"
 import { getChain } from "../utils"
 
 // Type helpers for EVM chains
@@ -116,10 +116,6 @@ export class EVMDeployer {
       })
       return tx.hash
     } catch (error) {
-      // Check if error message contains revert string
-      if (error instanceof Error && error.message.includes("DEFAULT_ADMIN_ROLE")) {
-        throw new Error("Failed to log metadata: Caller does not have admin role")
-      }
       throw new Error(
         `Failed to log metadata: ${error instanceof Error ? error.message : "Unknown error"}`,
       )
@@ -140,7 +136,7 @@ export class EVMDeployer {
     txHash: string
     tokenAddress: string
   }> {
-    const tx = await this.factory.deployToken(signature.toBytes(), metadata, {
+    const tx = await this.factory.deployToken(signature.toBytes(true), metadata, {
       gasLimit: GAS_LIMIT.DEPLOY_TOKEN[this.chainTag],
     })
 
@@ -150,6 +146,51 @@ export class EVMDeployer {
     return {
       txHash: tx.hash,
       tokenAddress: deployedAddress,
+    }
+  }
+
+  /**
+   * Transfers ERC-20 tokens to the bridge contract on the EVM chain.
+   * This transaction generates a proof that is subsequently used to mint/unlock
+   * corresponding tokens on the destination chain.
+   *
+   * @param token - Omni address of the ERC20 token to transfer
+   * @param recipient - Recipient's Omni address on the destination chain where tokens will be minted
+   * @param amount - Amount of the tokens to transfer
+   * @throws {Error} If token address is not on the correct EVM chain
+   * @returns Promise resolving to object containing transaction hash and nonce
+   */
+  async initTransfer(
+    token: OmniAddress,
+    recipient: OmniAddress,
+    amount: U128,
+  ): Promise<{ hash: string; nonce: number }> {
+    const sourceChain = getChain(token)
+
+    // Validate source chain matches the deployer's chain
+    if (!ChainUtils.areEqual(sourceChain, this.chainKind)) {
+      throw new Error(`Token address must be on ${this.chainTag}`)
+    }
+
+    const [_, tokenAccountId] = token.split(":")
+
+    try {
+      const tx = await this.factory.initTransfer(
+        tokenAccountId,
+        amount.valueOf(),
+        0,
+        0,
+        recipient,
+        "",
+      )
+      return {
+        hash: tx.hash,
+        nonce: 0,
+      }
+    } catch (error) {
+      throw new Error(
+        `Failed to init transfer: ${error instanceof Error ? error.message : "Unknown error"}`,
+      )
     }
   }
 }
