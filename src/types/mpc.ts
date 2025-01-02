@@ -24,10 +24,10 @@ export class MPCSignature implements SignatureResponse {
     public recovery_id: number,
   ) {}
 
-  toBytes(): Uint8Array {
+  toBytes(forEvm = false): Uint8Array {
     const bigRBytes = fromHex(this.big_r.affine_point)
     const sBytes = fromHex(this.s.scalar)
-    const result = [...bigRBytes.slice(1), ...sBytes, this.recovery_id + 27]
+    const result = [...bigRBytes.slice(1), ...sBytes, this.recovery_id + (forEvm ? 27 : 0)]
     return new Uint8Array(result)
   }
 }

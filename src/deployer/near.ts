@@ -53,14 +53,14 @@ type StorageDeposit = {
 interface TransferMessage {
   receiver_id: AccountId
   memo: string | null
-  amount: U128
+  amount: string
   msg: string | null
 }
 
 interface InitTransferMessage {
   recipient: OmniAddress
-  fee: U128
-  native_token_fee: U128
+  fee: string
+  native_token_fee: string
 }
 
 /**
@@ -229,7 +229,7 @@ export class NearDeployer {
   async initTransfer(
     token: OmniAddress,
     recipient: OmniAddress,
-    amount: bigint,
+    amount: U128,
   ): Promise<{ hash: string; nonce: number }> {
     if (getChain(token) !== ChainKind.Near) {
       throw new Error("Token address must be on NEAR")
@@ -253,12 +253,12 @@ export class NearDeployer {
 
     const initTransferMessage: InitTransferMessage = {
       recipient: recipient,
-      fee: BigInt(0),
-      native_token_fee: BigInt(0),
+      fee: "0",
+      native_token_fee: "0",
     }
     const args: TransferMessage = {
       receiver_id: this.lockerAddress,
-      amount: amount,
+      amount: amount.toString(),
       memo: null,
       msg: JSON.stringify(initTransferMessage),
     }
