@@ -19,6 +19,14 @@ This project is in **alpha stage** and under active development. Here's what you
 
 We welcome feedback and contributions, but please be aware of the experimental nature of this project.
 
+## Features
+
+- 🔄 Cross-chain token transfers between Ethereum, NEAR, Solana, Base, and Arbitrum
+- 🪙 Token deployment and management across chains
+- 📖 Comprehensive TypeScript type definitions
+- ⚡ Support for native chain-specific features
+- 🔍 Transfer status tracking and history
+
 ## Installation
 
 ```bash
@@ -29,34 +37,251 @@ yarn add omni-bridge-sdk
 
 ## Quick Start
 
-```typescript
-import { Chain, omniAddress } from "omni-bridge-sdk";
-import { ethers } from "ethers";
+Here's a basic example of transferring tokens between chains:
 
-// Setup wallet (example with Ethereum)
-const provider = ethers.getDefaultProvider("goerli");
-const wallet = new ethers.Wallet(privateKey, provider);
+```typescript
+import {
+  omniTransfer,
+  ChainKind,
+  omniAddress,
+  OmniBridgeAPI,
+} from "omni-bridge-sdk";
+import { connect } from "near-api-js";
+
+// Setup NEAR account
+const near = await connect({
+  networkId: "testnet",
+  nodeUrl: "https://rpc.testnet.near.org",
+});
+const account = await near.account("sender.near");
+
+// Get fee estimate
+const api = new OmniBridgeAPI("testnet");
+const fee = await api.getFee(
+  omniAddress(ChainKind.Near, account.accountId),
+  omniAddress(ChainKind.Eth, "0x123..."),
+  "usdc.near"
+);
 
 // Create transfer message
 const transfer = {
-  tokenAddress: omniAddress(Chain.Ethereum, "0x123..."), // USDC on Ethereum
+  tokenAddress: omniAddress(ChainKind.Near, "usdc.near"),
   amount: BigInt("1000000"), // 1 USDC (6 decimals)
+  fee: BigInt(fee.transferred_token_fee || 0),
+  nativeFee: BigInt(fee.native_token_fee),
+  recipient: omniAddress(ChainKind.Eth, "0x123..."),
+};
+
+// Execute transfer
+const result = await omniTransfer(account, transfer);
+console.log(`Transfer initiated with txId: ${result.txId}`);
+
+// Monitor status
+let status;
+do {
+  status = await api.getTransferStatus(ChainKind.Near, result.nonce);
+  console.log(`Status: ${status}`);
+  await new Promise((r) => setTimeout(r, 2000));
+} while (status === "pending");
+```
+
+## Core Concepts
+
+### Addresses
+
+All addresses in the SDK use the `OmniAddress` format, which includes the chain prefix:
+
+```typescript
+type OmniAddress =
+  | `eth:${string}` // Ethereum addresses
+  | `near:${string}` // NEAR accounts
+  | `sol:${string}` // Solana public keys
+  | `arb:${string}` // Arbitrum addresses
+  | `base:${string}`; // Base addresses
+
+// Helper function to create addresses
+const addr = omniAddress(ChainKind.Near, "account.near");
+```
+
+### Transfer Messages
+
+Transfer messages represent cross-chain token transfers:
+
+```typescript
+interface OmniTransferMessage {
+  tokenAddress: OmniAddress; // Source token address
+  amount: bigint; // Amount to transfer
+  fee: bigint; // Token fee
+  nativeFee: bigint; // Gas fee in native token
+  recipient: OmniAddress; // Destination address
+}
+```
+
+## Chain-Specific Examples
+
+### Ethereum to Solana Transfer
+
+```typescript
+import { ethers } from "ethers";
+
+// Setup Ethereum wallet
+const provider = new ethers.providers.Web3Provider(window.ethereum);
+const wallet = provider.getSigner();
+
+// Create transfer message
+const transfer = {
+  tokenAddress: omniAddress(ChainKind.Eth, "0x123..."), // USDC on Ethereum
+  amount: BigInt("1000000"),
   fee: BigInt("0"),
-  nativeFee: BigInt("10000"), // 0.00001 ETH
-  recipient: omniAddress(Chain.Base, "0x456..."), // Recipient on Base
-  message: null,
+  nativeFee: BigInt("10000"), // ETH gas fee
+  recipient: omniAddress(
+    ChainKind.Sol,
+    "GsbwXfJraMomCYJpbtoH4DfzjdzXdYjkqU5YvF3j4YZ"
+  ),
 };
 
 // Execute transfer
 const result = await omniTransfer(wallet, transfer);
-console.log(`Transfer initiated with nonce: ${result.nonce}`);
-
-// Check transfer status
-const status = await getTransferStatus(Chain.Ethereum, result.nonce);
-console.log(`Status: ${status}`); // 'pending' | 'completed' | 'failed'
+console.log(`Transfer initiated: ${result.txId}`);
 ```
 
-### Development Roadmap
+### Solana to Base Transfer
+
+```typescript
+import { Connection, Keypair } from "@solana/web3.js";
+import { AnchorProvider } from "@coral-xyz/anchor";
+
+// Setup Solana provider
+const connection = new Connection("https://api.mainnet-beta.solana.com");
+const wallet = new Keypair();
+const provider = new AnchorProvider(
+  connection,
+  wallet,
+  AnchorProvider.defaultOptions()
+);
+
+// Create transfer message
+const transfer = {
+  tokenAddress: omniAddress(ChainKind.Sol, "EPjFWdd..."), // USDC on Solana
+  amount: BigInt("1000000"),
+  fee: BigInt("0"),
+  nativeFee: BigInt("5000"), // SOL fee in lamports
+  recipient: omniAddress(ChainKind.Base, "0x456..."),
+};
+
+// Execute transfer
+const result = await omniTransfer(provider, transfer);
+```
+
+## Token Operations
+
+### Deploying Tokens
+
+Token deployment uses chain-specific deployers through a unified interface:
+
+```typescript
+import { getDeployer } from "omni-bridge-sdk";
+
+// Initialize deployer for source chain
+const deployer = getDeployer(ChainKind.Near, wallet);
+
+// Example: Deploy NEAR token to Ethereum
+const txHash = await deployer.logMetadata("near:token.near");
+console.log(`Metadata logged with tx: ${txHash}`);
+
+// Deploy token with signed MPC payload
+const result = await deployer.deployToken(signature, {
+  token: "token.near",
+  name: "Token Name",
+  symbol: "TKN",
+  decimals: 18,
+});
+```
+
+### Tracking Transfers
+
+Monitor transfer status and history:
+
+```typescript
+const api = new OmniBridgeAPI("testnet");
+
+// Check transfer status
+const status = await api.getTransferStatus("Eth", originNonce);
+
+// Get transfer history
+const transfers = await api.findOmniTransfers(
+  "near:sender.near",
+  0, // offset
+  10 // limit
+);
+```
+
+### Fee Estimation
+
+```typescript
+// Get fee estimate for transfer
+const fee = await api.getFee(
+  sender, // OmniAddress
+  recipient, // OmniAddress
+  tokenAddr // Token address
+);
+
+console.log(`Native fee: ${fee.native_token_fee}`);
+console.log(`Token fee: ${fee.transferred_token_fee}`);
+console.log(`USD fee: ${fee.usd_fee}`);
+```
+
+## Error Handling
+
+```typescript
+try {
+  await omniTransfer(wallet, transfer);
+} catch (error) {
+  if (error.message.includes("Insufficient balance")) {
+    // Handle insufficient funds
+  } else if (error.message.includes("Invalid token")) {
+    // Handle invalid token
+  } else if (error.message.includes("Transfer failed")) {
+    // Handle failed transfer
+  } else if (error.message.includes("Signature verification failed")) {
+    // Handle signature issues
+  }
+}
+```
+
+## Chain Support
+
+Currently supported chains:
+
+- Ethereum (ETH)
+- NEAR
+- Solana (SOL)
+- Arbitrum (ARB)
+- Base
+
+Each chain has specific requirements:
+
+### NEAR
+
+- Account must exist and be initialized
+- Sufficient NEAR for storage and gas
+- Token must be registered with account
+
+### Ethereum/EVM
+
+- Sufficient ETH/native token for gas
+- Token must be approved for bridge
+- Valid ERC20 token contract
+
+### Solana
+
+- Sufficient SOL for rent and fees
+- Associated token accounts must exist
+- SPL token program requirements
+
+## Development
+
+### Roadmap
 
 #### Core Transfer Interface
 
@@ -98,138 +323,21 @@ console.log(`Status: ${status}`); // 'pending' | 'completed' | 'failed'
 - [ ] Retry mechanisms
 - [ ] Error recovery
 
-## Core API
-
-### Cross-Chain Transfers
-
-```typescript
-// Main transfer function
-function omniTransfer(
-  wallet: ethers.Wallet | NearWalletConnection | SolanaWallet,
-  transferMessage: TransferMessage
-): Promise<OmniTransfer>;
-
-// Types
-interface TransferMessage {
-  tokenAddress: OmniAddress; // Source token
-  amount: bigint; // Amount to transfer
-  fee: bigint; // Fee in token amount
-  nativeFee: bigint; // Fee in chain's native token
-  recipient: OmniAddress; // Destination address
-  message: string | null; // Optional message data
-}
-
-interface OmniTransfer {
-  txId: string; // Source chain transaction ID
-  nonce: bigint; // Unique transfer identifier
-  transferMessage: TransferMessage;
-}
-
-// Status checking
-function getTransferStatus(
-  originChain: Chain,
-  nonce: bigint
-): Promise<"pending" | "completed" | "failed">;
-
-// Fee estimation
-function getFee(
-  sender: OmniAddress,
-  recipient: OmniAddress
-): Promise<{
-  fee: bigint; // Fee in token amount
-  nativeFee: bigint; // Fee in native token
-}>;
-
-// Transfer history
-function findOmniTransfers(sender: OmniAddress): Promise<OmniTransfer[]>;
-```
-
-## Chain Support
-
-Currently supported chains:
-
-- Ethereum (ETH)
-- NEAR
-- Solana (SOL)
-- Arbitrum (ARB)
-- Base
-
-### Address Format
-
-Addresses follow the format `chain:address` where chain is one of: `eth`, `near`, `sol`, `arb`, `base`
-
-```typescript
-// Using string literal (type-checked)
-const addr: OmniAddress = "eth:0x123...";
-
-// Using constructor helper
-const addr = omniAddress(Chain.Ethereum, "0x123...");
-```
-
-## Examples
-
-### NEAR to Ethereum Transfer
-
-```typescript
-import { connect } from "near-api-js";
-
-const near = await connect(config);
-const account = await near.account("sender.near");
-
-const transfer = {
-  tokenAddress: omniAddress(Chain.Near, "usdc.near"),
-  amount: BigInt("1000000"),
-  fee: BigInt("0"),
-  nativeFee: BigInt("1000000000000000000000"), // 0.001 NEAR
-  recipient: omniAddress(Chain.Ethereum, "0x123..."),
-  message: null,
-};
-
-const result = await omniTransfer(account, transfer);
-```
-
-### Solana to Base Transfer
-
-```typescript
-import { Connection, Keypair } from '@solana/web3.js'
-
-const connection = new Connection("https://api.mainnet-beta.solana.com")
-const wallet = new Keypair(...)
-
-const transfer = {
-  tokenAddress: omniAddress(Chain.Solana, "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"), // USDC
-  amount: BigInt("1000000"),
-  fee: BigInt("0"),
-  nativeFee: BigInt("5000"), // 0.000005 SOL
-  recipient: omniAddress(Chain.Base, "0x456..."),
-  message: null
-}
-
-const result = await omniTransfer(wallet, transfer)
-```
-
-## Advanced Features
-
-### Token Deployment
-
-For deploying tokens across chains (see [Token Deployment Guide](./docs/token-deployment.md))
-
-```typescript
-const deployer = getDeployer(Chain.Near, wallet, "testnet");
-const deployment = await deployer.initDeployToken(tokenAddr, Chain.Ethereum);
-```
-
-## Development
-
 ```bash
 # Install dependencies
-yarn install
-
-# Run tests
-yarn test
+pnpm install
 
 # Build
-yarn build
+pnpm build
+
+# Run tests
+pnpm test
+
+# Type checking
+pnpm typecheck
+
+# Linting
+pnpm lint
 ```
 
 ## License

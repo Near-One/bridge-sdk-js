@@ -12,44 +12,12 @@ Token deployment in Omni Bridge follows a three-phase process:
 
 Important: To deploy a token on any chain, it must first exist on NEAR. You cannot directly deploy from Ethereum to Solana - the token must first be deployed on NEAR.
 
-## Quick Start
+## Chain-Specific Deployments
+
+### NEAR Chain Deployment
 
 ```typescript
-import { Chain, omniAddress, getDeployer } from "omni-bridge-sdk";
-
-// Initialize deployer for source chain
-const deployer = getDeployer(Chain.Near, wallet, "testnet");
-
-// Start deployment process
-const deployment = await deployer.initDeployToken(
-  omniAddress(Chain.Near, "token.near"),
-  Chain.Eth
-);
-
-// Wait for metadata proof
-while (
-  (await getDeploymentStatus(deployment)).status !== "ready_for_finalize"
-) {
-  await new Promise((r) => setTimeout(r, 1000));
-}
-
-// Finalize deployment
-const finalized = await deployer.finDeployToken(deployment);
-
-// For NEAR as destination, bind token
-if (deployment.destinationChain === Chain.Near) {
-  while ((await getDeploymentStatus(finalized)).status !== "ready_for_bind") {
-    await new Promise((r) => setTimeout(r, 1000));
-  }
-  await deployer.bindToken(finalized);
-}
-```
-
-## Chain-Specific Examples
-
-### Deploy NEAR Token to Ethereum
-
-```typescript
+import { NearDeployer, ChainKind } from "omni-bridge-sdk";
 import { connect } from "near-api-js";
 
 // Setup NEAR connection
@@ -57,116 +25,152 @@ const near = await connect({
   networkId: "testnet",
   nodeUrl: "https://rpc.testnet.near.org",
 });
-const account = await near.account("example.near");
+const account = await near.account("deployer.near");
 
-// Get deployer for NEAR
-const deployer = getDeployer(Chain.Near, account, "testnet");
+// Initialize deployer
+const deployer = new NearDeployer(account);
 
-// Initialize deployment
-const deployment = await deployer.initDeployToken(
-  omniAddress(Chain.Near, "token.near"),
-  Chain.Eth
+// 1. Log metadata for existing NEAR token
+const logTxHash = await deployer.logMetadata("near:token.near");
+
+// 2. Deploy to destination chain (e.g., Ethereum)
+const deployTxHash = await deployer.deployToken(
+  ChainKind.Eth,
+  vaa // Wormhole VAA containing deployment approval
 );
 
-// Monitor status and finalize when ready
-const status = await getDeploymentStatus(deployment);
-if (status.status === "ready_for_finalize") {
-  await deployer.finDeployToken(deployment);
-}
+// 3. For tokens being deployed TO NEAR, bind them after deployment
+await deployer.bindToken(
+  ChainKind.Eth, // Source chain
+  vaa, // Optional: Wormhole VAA
+  evmProof // Optional: EVM proof (for EVM chains)
+);
 ```
 
-### Deploy Ethereum Token to NEAR
+### EVM Chain Deployment (Ethereum/Base/Arbitrum)
 
 ```typescript
+import { EVMDeployer, ChainKind } from "omni-bridge-sdk";
 import { ethers } from "ethers";
 
-// Setup Ethereum wallet
+// Setup EVM wallet
 const provider = new ethers.providers.Web3Provider(window.ethereum);
-const signer = provider.getSigner();
+const wallet = provider.getSigner();
 
-// First deploy to NEAR
-const nearDeployer = getDeployer(Chain.Near, nearWallet, "testnet");
-const toNear = await nearDeployer.initDeployToken(
-  omniAddress(Chain.Ethereum, "0x123..."),
-  Chain.Near
+// Initialize deployer for specific chain
+const deployer = new EVMDeployer(wallet, ChainKind.Eth);
+
+// 1. Log metadata for existing token
+const logTxHash = await deployer.logMetadata("eth:0x123...");
+
+// 2. Deploy token using MPC signature
+const { txHash, tokenAddress } = await deployer.deployToken(
+  signature, // MPC signature authorizing deployment
+  {
+    token: "token_id",
+    name: "Token Name",
+    symbol: "TKN",
+    decimals: 18,
+  }
+);
+```
+
+### Solana Deployment
+
+```typescript
+import { SolanaDeployer } from "omni-bridge-sdk";
+import { Connection, PublicKey, Keypair } from "@solana/web3.js";
+
+// Setup Solana connection
+const connection = new Connection("https://api.testnet.solana.com");
+const payer = Keypair.generate();
+
+// Initialize deployer
+const deployer = new SolanaDeployer(
+  provider,
+  new PublicKey("wormhole_program_id")
 );
 
-// Wait for ready_for_finalize, then finalize
-await nearDeployer.finDeployToken(toNear);
+// 1. Log metadata for existing SPL token
+const logTxHash = await deployer.logMetadata(
+  tokenPubkey,
+  payer // Optional payer for transaction
+);
 
-// Wait for ready_for_bind, then bind
-await nearDeployer.bindToken(toNear);
+// 2. Deploy token using MPC signature
+const { txHash, tokenAddress } = await deployer.deployToken(
+  signature,
+  {
+    token: "token_id",
+    name: "Token Name",
+    symbol: "TKN",
+    decimals: 9,
+  },
+  payer // Optional payer
+);
 ```
-
-## Deployment Status
-
-A deployment goes through several states:
-
-```typescript
-type DeploymentStatus =
-  | "pending" // Initial state after initDeployToken
-  | "ready_for_finalize" // Proof is ready, can call finDeployToken
-  | "finalized" // Token deployed on destination
-  | "ready_for_bind" // (NEAR only) Ready for binding
-  | "completed"; // Deployment complete
-```
-
-Monitor status using:
-
-```typescript
-const status = await getDeploymentStatus(deployment);
-```
-
-## Chain Requirements
-
-### NEAR
-
-- Account must exist and have sufficient balance for storage
-- Token must be a valid NEP-141 token
-
-### Ethereum
-
-- Wallet must have admin role on factory contract
-- Token must be a valid ERC20 token
-
-### Solana
-
-- Wallet must have sufficient SOL for rent
-- Token must be an SPL token
 
 ## Error Handling
 
+Each deployment step can encounter different types of errors that need handling:
+
 ```typescript
 try {
-  const deployment = await deployer.initDeployToken(addr, Chain.Ethereum);
+  await deployer.logMetadata("near:token.near");
 } catch (error) {
-  if (error.message.includes("Insufficient balance")) {
-    // Handle insufficient funds
-  } else if (error.message.includes("Invalid token")) {
+  if (error.message.includes("Token metadata not provided")) {
+    // Handle missing metadata
+  } else if (error.message.includes("Invalid token address")) {
     // Handle invalid token
+  } else if (error.message.includes("Signature verification failed")) {
+    // Handle invalid signature
   }
 }
 ```
 
-## Gas and Storage Costs
+## Storage and Gas Requirements
 
 ### NEAR
 
-- `initDeployToken`: ~5 TGas + storage deposit
-- `finDeployToken`: ~10 TGas
-- `bindToken`: ~5 TGas
+- `logMetadata`: ~3 TGas + 0.2 NEAR storage deposit
+- `deployToken`: ~1.2 TGas + 4 NEAR storage deposit
+- `bindToken`: ~3 TGas + 0.2 NEAR storage deposit
 
-### Ethereum
+### Ethereum/EVM
 
-- `initDeployToken`: ~100k gas
-- `finDeployToken`: ~500k gas
-- No bind step required
+- `logMetadata`: ~100k gas
+- `deployToken`: ~500k gas (Arbitrum: ~3M gas)
 
 ### Solana
 
-- `initDeployToken`: ~10k lamports
-- `finDeployToken`: ~50k lamports
-- No bind step required
+- `logMetadata`: Variable based on token metadata size
+- `deployToken`: Variable based on token configuration
+
+## Advanced Features
+
+### Checking Deployment Status
+
+```typescript
+import { OmniBridgeAPI } from "omni-bridge-sdk";
+
+const api = new OmniBridgeAPI("testnet");
+
+// Get deployment status by txHash
+const status = await api.getDeploymentStatus(deploymentTxHash);
+console.log(status); // "pending" | "ready_for_finalize" | "finalized" | "ready_for_bind" | "completed"
+```
+
+### Retrieving Token Information
+
+```typescript
+// For EVM chains
+const evmDeployer = new EVMDeployer(wallet, ChainKind.Eth);
+const nearTokenAddress = await evmDeployer.factory.nearToEthToken("token.near");
+
+// For Solana
+const solDeployer = new SolanaDeployer(provider, wormholeProgramId);
+const isBridgedToken = await solDeployer.isBridgedToken(tokenPubkey);
+```
 
 ## Security Considerations
 
@@ -183,25 +187,101 @@ try {
 4. Keep deployment IDs for future reference
 5. Test on testnet first
 
-## Troubleshooting
+## Common Issues and Solutions
 
-Common issues and solutions:
+### 1. Insufficient Funds
 
-1. **Proof not ready**
+```typescript
+// Check required balances on NEAR
+const { regBalance, initBalance, storage } = await deployer.getBalances();
+const requiredBalance = regBalance + initBalance;
+```
 
-   - Wait longer between initialization and finalization
-   - Check bridge indexer status
+### 2. Invalid Token Metadata
 
-2. **Invalid token**
+```typescript
+// Verify metadata before deployment
+if (!tokenMetadata.name || !tokenMetadata.symbol || !tokenMetadata.decimals) {
+  throw new Error("Invalid token metadata");
+}
+```
 
-   - Verify token implements correct interface
-   - Check token is active and not paused
+### 3. Failed Signature Verification
 
-3. **Transaction failures**
+```typescript
+// Ensure signature is valid for specific chain
+if (!signature.isValidFor(ChainKind.Eth)) {
+  throw new Error("Invalid signature for chain");
+}
+```
 
-   - Check gas/storage estimates
-   - Verify account permissions
+### 4. Binding Failures
 
-4. **Binding failures**
-   - Ensure proof is ready
-   - Check NEAR account has sufficient balance
+```typescript
+// For NEAR tokens, ensure proof is ready before binding
+while ((await api.getDeploymentStatus(txHash)).status !== "ready_for_bind") {
+  await new Promise((r) => setTimeout(r, 1000));
+}
+await deployer.bindToken(sourceChain, vaa);
+```
+
+## Chain Support Matrix
+
+| Source Chain | Destination Chains  | Required Steps                        |
+| ------------ | ------------------- | ------------------------------------- |
+| NEAR         | ETH, BASE, ARB, SOL | logMetadata → deployToken             |
+| ETH/BASE/ARB | NEAR                | logMetadata → deployToken → bindToken |
+| SOL          | NEAR                | logMetadata → deployToken → bindToken |
+| SOL          | ETH, BASE, ARB      | logMetadata → deployToken             |
+
+## Appendix
+
+### MPC Signature Format
+
+```typescript
+interface MPCSignature {
+  big_r: {
+    affine_point: string;
+  };
+  s: {
+    scalar: string;
+  };
+  recovery_id: number;
+  toBytes(forEvm?: boolean): Uint8Array;
+}
+```
+
+### Deployment Payloads
+
+```typescript
+interface TokenMetadata {
+  token: string;
+  name: string;
+  symbol: string;
+  decimals: number;
+}
+
+interface TokenDeployment {
+  id: string;
+  tokenAddress: OmniAddress;
+  sourceChain: ChainKind;
+  destinationChain: ChainKind;
+  status:
+    | "pending"
+    | "ready_for_finalize"
+    | "finalized"
+    | "ready_for_bind"
+    | "completed";
+  proof?: {
+    proof_kind: ProofKind;
+    vaa: string;
+  };
+  metadata?: {
+    nearAddress: string;
+    tokenAddress: OmniAddress;
+    emitterAddress: OmniAddress;
+  };
+  deploymentTx?: string;
+  bindTx?: string;
+}
+```
