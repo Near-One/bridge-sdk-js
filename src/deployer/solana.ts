@@ -10,9 +10,11 @@ import {
 } from "@solana/web3.js"
 import {
   ChainKind,
+  type DepositPayload,
   type MPCSignature,
   type OmniAddress,
   type TokenMetadata,
+  type TransferMessagePayload,
   type U128,
 } from "../types"
 import type { BridgeTokenFactory } from "../types/solana/bridge_token_factory"
@@ -279,6 +281,120 @@ export class SolanaDeployer {
     } catch (e) {
       throw new Error(`Failed to init transfer: ${e}`)
     }
+  }
+
+  /**
+   * Finalizes a token transfer on Solana by processing the transfer message and signature.
+   * This function handles both bridged tokens (tokens that originate from another chain) and
+   * native Solana tokens.
+   *
+   * @param transferMessage - The payload containing transfer details including:
+   *   - destination_nonce: Unique identifier for the transfer on the destination chain
+   *   - transfer_id: Object containing origin chain ID and nonce
+   *   - token_address: The token's Omni address
+   *   - amount: Amount of tokens to transfer
+   *   - recipient: Recipient's Solana address in Omni format
+   *   - fee_recipient: Optional fee recipient address
+   * @param signature - MPC signature authorizing the transfer
+   *
+   * @returns Promise resolving to the transaction signature
+   * @throws Error if token address is invalid, signature verification fails, or transaction fails
+   */
+  async finalizeTransfer(
+    transferMessage: TransferMessagePayload,
+    signature: MPCSignature,
+  ): Promise<string> {
+    // Convert the payload into the expected format
+    const payload: DepositPayload = {
+      destination_nonce: transferMessage.destination_nonce,
+      transfer_id: {
+        origin_chain: transferMessage.transfer_id.origin_chain,
+        origin_nonce: transferMessage.transfer_id.origin_nonce,
+      },
+      token: this.extractSolanaAddress(transferMessage.token_address),
+      amount: transferMessage.amount,
+      recipient: this.extractSolanaAddress(transferMessage.recipient),
+      fee_recipient: transferMessage.fee_recipient ?? "",
+    }
+
+    const wormholeMessage = Keypair.generate()
+    const recipientPubkey = new PublicKey(payload.recipient)
+    const tokenPubkey = new PublicKey(payload.token)
+
+    // Calculate all the required PDAs
+    const [config] = this.config()
+    const [authority] = this.authority()
+    // Removed unused solVault declaration
+
+    // Calculate nonce account
+    const USED_NONCES_PER_ACCOUNT = 1024
+    const nonceGroup = payload.destination_nonce / BigInt(USED_NONCES_PER_ACCOUNT)
+    const [usedNonces] = PublicKey.findProgramAddressSync(
+      [Buffer.from("used_nonces", "utf-8"), Buffer.from(new BN(nonceGroup).toArray("le", 8))],
+      this.program.programId,
+    )
+
+    // Calculate recipient's associated token account
+    const [recipientATA] = PublicKey.findProgramAddressSync(
+      [recipientPubkey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), tokenPubkey.toBuffer()],
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+    )
+
+    // Calculate vault if needed
+    const vault = (await this.isBridgedToken(tokenPubkey)) ? null : this.vaultId(tokenPubkey)[0]
+
+    try {
+      const tx = await this.program.methods
+        .finalizeTransfer({
+          payload: {
+            destinationNonce: new BN(payload.destination_nonce),
+            transferId: {
+              originChain: payload.transfer_id.origin_chain,
+              originNonce: new BN(payload.transfer_id.origin_nonce),
+            },
+            amount: new BN(payload.amount.toString()),
+            feeRecipient: payload.fee_recipient,
+          },
+          signature: signature.toBytes(),
+        })
+        .accountsStrict({
+          config,
+          usedNonces,
+          authority,
+          recipient: recipientPubkey,
+          mint: tokenPubkey,
+          vault,
+          tokenAccount: recipientATA,
+          wormhole: {
+            payer: this.program.provider.publicKey,
+            config,
+            bridge: this.wormholeBridgeId()[0],
+            feeCollector: this.wormholeFeeCollectorId()[0],
+            sequence: this.wormholeSequenceId()[0],
+            clock: SYSVAR_CLOCK_PUBKEY,
+            rent: SYSVAR_RENT_PUBKEY,
+            systemProgram: SystemProgram.programId,
+            wormholeProgram: this.wormholeProgramId,
+            message: wormholeMessage.publicKey,
+          },
+          systemProgram: SystemProgram.programId,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .signers([wormholeMessage])
+        .rpc()
+
+      return tx
+    } catch (e) {
+      throw new Error(`Failed to finalize transfer: ${e}`)
+    }
+  }
+
+  private extractSolanaAddress(address: OmniAddress): string {
+    if (getChain(address) !== ChainKind.Sol) {
+      throw new Error("Token address must be on Solana")
+    }
+    return address.split(":")[1]
   }
 
   private async isBridgedToken(token: PublicKey): Promise<boolean> {
