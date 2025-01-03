@@ -102,10 +102,7 @@ describe("NearDeployer", () => {
       expect(mockWallet.functionCall).toHaveBeenCalledWith({
         contractId: mockLockerAddress,
         methodName: "bind_token",
-        args: {
-          chain_kind: destinationChain,
-          prover_args: expect.any(Uint8Array),
-        },
+        args: Uint8Array.from([1, 2, 3]),
         gas: BigInt(3e14),
         attachedDeposit: BigInt(2e23),
       })
