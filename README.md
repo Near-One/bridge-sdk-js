@@ -37,7 +37,15 @@ yarn add omni-bridge-sdk
 
 ## Quick Start
 
-Here's a basic example of transferring tokens between chains:
+The SDK currently provides a split interface for cross-chain transfers:
+
+- `omniTransfer`: A unified interface for initiating transfers from any supported chain
+- Chain-specific deployers: Required for finalizing transfers on destination chains
+
+> [!NOTE]  
+> We're working on unifying this into a single interface that will handle the complete transfer lifecycle. For now, you'll need to use both `omniTransfer` and chain-specific deployers as shown below.
+
+Here's a complete example:
 
 ```typescript
 import {
@@ -45,44 +53,104 @@ import {
   ChainKind,
   omniAddress,
   OmniBridgeAPI,
+  getDeployer,
 } from "omni-bridge-sdk";
 import { connect } from "near-api-js";
 
-// Setup NEAR account
+// Setup NEAR account (source)
 const near = await connect({
   networkId: "testnet",
   nodeUrl: "https://rpc.testnet.near.org",
 });
 const account = await near.account("sender.near");
 
-// Get fee estimate
+// Setup Ethereum wallet (destination)
+const provider = new ethers.providers.Web3Provider(window.ethereum);
+const ethWallet = provider.getSigner();
+
+// 1. Get fee estimate
 const api = new OmniBridgeAPI("testnet");
 const fee = await api.getFee(
   omniAddress(ChainKind.Near, account.accountId),
-  omniAddress(ChainKind.Eth, "0x123..."),
+  omniAddress(ChainKind.Eth, await ethWallet.getAddress()),
   "usdc.near"
 );
 
-// Create transfer message
+// 2. Create and initiate transfer
 const transfer = {
   tokenAddress: omniAddress(ChainKind.Near, "usdc.near"),
   amount: BigInt("1000000"), // 1 USDC (6 decimals)
   fee: BigInt(fee.transferred_token_fee || 0),
   nativeFee: BigInt(fee.native_token_fee),
-  recipient: omniAddress(ChainKind.Eth, "0x123..."),
+  recipient: omniAddress(ChainKind.Eth, await ethWallet.getAddress()),
 };
 
-// Execute transfer
+// Initiate transfer on source chain
 const result = await omniTransfer(account, transfer);
 console.log(`Transfer initiated with txId: ${result.txId}`);
 
-// Monitor status
+// 3. Monitor status
 let status;
 do {
   status = await api.getTransferStatus(ChainKind.Near, result.nonce);
   console.log(`Status: ${status}`);
+
+  if (status === "ready_for_finalize") {
+    // 4. Finalize transfer on destination chain
+    const ethDeployer = getDeployer(ChainKind.Eth, ethWallet);
+    await ethDeployer.finalizeTransfer(transferMessage, signature);
+    break;
+  }
+
   await new Promise((r) => setTimeout(r, 2000));
 } while (status === "pending");
+```
+
+## Transfer Lifecycle
+
+A cross-chain transfer involves multiple steps across different chains:
+
+### 1. Transfer Initiation
+
+Use `omniTransfer` to start the transfer on the source chain:
+
+```typescript
+const result = await omniTransfer(wallet, transfer);
+// Returns: { txId: string, nonce: bigint }
+```
+
+### 2. Status Monitoring
+
+Track the transfer status using `OmniBridgeAPI`:
+
+```typescript
+const api = new OmniBridgeAPI("testnet");
+const status = await api.getTransferStatus(chain, nonce);
+// Status can be: "pending" | "ready_for_finalize" | "completed" | "failed"
+```
+
+### 3. Transfer Finalization
+
+When status is "ready_for_finalize", use chain-specific deployers to complete the transfer:
+
+```typescript
+// Finalize on Ethereum/EVM chains
+const evmDeployer = getDeployer(ChainKind.Eth, ethWallet);
+await evmDeployer.finalizeTransfer(transferMessage, signature);
+
+// Finalize on NEAR
+const nearDeployer = getDeployer(ChainKind.Near, nearAccount);
+await nearDeployer.finalizeTransfer(
+  token,
+  recipientAccount,
+  storageDeposit,
+  sourceChain,
+  vaa // Optional Wormhole VAA
+);
+
+// Finalize on Solana
+const solDeployer = getDeployer(ChainKind.Sol, provider);
+await solDeployer.finalizeTransfer(transferMessage, signature);
 ```
 
 ## Core Concepts
