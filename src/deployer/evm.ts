@@ -1,5 +1,13 @@
 import { ethers } from "ethers"
-import type { ChainKind, MPCSignature, OmniAddress, TokenMetadata, U128 } from "../types"
+import type {
+  BridgeDeposit,
+  ChainKind,
+  MPCSignature,
+  OmniAddress,
+  TokenMetadata,
+  TransferMessagePayload,
+  U128,
+} from "../types"
 import { getChain } from "../utils"
 
 // Type helpers for EVM chains
@@ -192,5 +200,51 @@ export class EVMDeployer {
         `Failed to init transfer: ${error instanceof Error ? error.message : "Unknown error"}`,
       )
     }
+  }
+
+  /**
+   * Finalizes a transfer on the EVM chain by minting/unlocking tokens.
+   * @param transferMessage - The transfer message payload from NEAR
+   * @param signature - MPC signature authorizing the transfer
+   * @returns Promise resolving to the transaction hash
+   */
+  async finalizeTransfer(
+    transferMessage: TransferMessagePayload,
+    signature: MPCSignature,
+  ): Promise<string> {
+    // Convert the transfer message to EVM-compatible format
+    const bridgeDeposit: BridgeDeposit = {
+      destination_nonce: transferMessage.destination_nonce,
+      origin_chain: Number(transferMessage.transfer_id.origin_chain),
+      origin_nonce: transferMessage.transfer_id.origin_nonce,
+      token_address: this.extractEvmAddress(transferMessage.token_address),
+      amount: BigInt(transferMessage.amount),
+      recipient: this.extractEvmAddress(transferMessage.recipient),
+      fee_recipient: transferMessage.fee_recipient ?? "",
+    }
+
+    try {
+      const tx = await this.factory.finTransfer(signature.toBytes(true), bridgeDeposit)
+      const receipt = await tx.wait()
+      return receipt.hash
+    } catch (error) {
+      throw new Error(
+        `Failed to finalize transfer: ${error instanceof Error ? error.message : "Unknown error"}`,
+      )
+    }
+  }
+
+  /**
+   * Helper method to extract EVM address from OmniAddress
+   * @param omniAddress - The OmniAddress to extract from
+   * @returns The EVM address
+   */
+  private extractEvmAddress(omniAddress: OmniAddress): string {
+    const chain = getChain(omniAddress)
+    const [_, address] = omniAddress.split(":")
+    if (!ChainUtils.isEVMChain(chain)) {
+      throw new Error(`Invalid EVM address: ${omniAddress}`)
+    }
+    return address
   }
 }

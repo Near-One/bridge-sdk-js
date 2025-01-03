@@ -3,11 +3,14 @@ import type { Account } from "near-api-js"
 import {
   type AccountId,
   type BindTokenArgs,
+  BindTokenArgsSchema,
   ChainKind,
   type DeployTokenArgs,
   DeployTokenArgsSchema,
   type EvmVerifyProofArgs,
   EvmVerifyProofArgsSchema,
+  type FinTransferArgs,
+  FinTransferArgsSchema,
   type LogMetadataArgs,
   type OmniAddress,
   ProofKind,
@@ -27,6 +30,7 @@ const GAS = {
   DEPLOY_TOKEN: BigInt(1.2e14), // 1.2 TGas
   BIND_TOKEN: BigInt(3e14), // 3 TGas
   INIT_TRANSFER: BigInt(3e14), // 3 TGas
+  FIN_TRANSFER: BigInt(3e14), // 3 TGas
   STORAGE_DEPOSIT: BigInt(1e14), // 1 TGas
 } as const
 
@@ -40,6 +44,7 @@ const DEPOSIT = {
   DEPLOY_TOKEN: BigInt(4e24), // 4 NEAR
   BIND_TOKEN: BigInt(2e23), // 0.2 NEAR
   INIT_TRANSFER: BigInt(1), // 1 yoctoNEAR
+  FIN_TRANSFER: BigInt(1), // 1 yoctoNEAR
 } as const
 
 /**
@@ -67,11 +72,15 @@ interface InitTransferMessage {
  * Interface representing the results of various balance queries
  * @property regBalance - Required balance for account registration
  * @property initBalance - Required balance for initializing transfers
+ * @property finBalance - Required balance for finalizing transfers
+ * @property bindBalance - Required balance for binding tokens
  * @property storage - Current storage deposit balance information
  */
 interface BalanceResults {
   regBalance: bigint
   initBalance: bigint
+  finBalance: bigint
+  bindBalance: bigint
   storage: StorageDeposit
 }
 
@@ -203,10 +212,11 @@ export class NearDeployer {
       chain_kind: sourceChain,
       prover_args: proverArgsSerialized,
     }
+    const serializedArgs = borshSerialize(BindTokenArgsSchema, args)
     const tx = await this.wallet.functionCall({
       contractId: this.lockerAddress,
       methodName: "bind_token",
-      args,
+      args: serializedArgs,
       gas: GAS.BIND_TOKEN,
       attachedDeposit: DEPOSIT.BIND_TOKEN,
     })
@@ -277,6 +287,81 @@ export class NearDeployer {
   }
 
   /**
+   * Finalizes a cross-chain token transfer on NEAR by processing the transfer proof and managing storage deposits.
+   * Supports both Wormhole VAA and EVM proof verification for transfers from supported chains.
+   *
+   * @param token - The token identifier on NEAR where transferred tokens will be minted
+   * @param account - The recipient account ID on NEAR
+   * @param storageDepositAmount - Amount of NEAR tokens for storage deposit (in yoctoNEAR)
+   * @param sourceChain - The originating chain of the transfer
+   * @param vaa - Optional Wormhole Verified Action Approval containing transfer information
+   * @param evmProof - Optional proof data for transfers from EVM-compatible chains
+   *
+   * @throws {Error} When neither VAA nor EVM proof is provided
+   * @throws {Error} When EVM proof is provided for non-EVM chains (only valid for Ethereum, Arbitrum, or Base)
+   *
+   * @returns Promise resolving to the finalization transaction hash
+   *
+   */
+  async finalizeTransfer(
+    token: string,
+    account: string,
+    storageDepositAmount: U128,
+    sourceChain: ChainKind,
+    vaa?: string,
+    evmProof?: EvmVerifyProofArgs,
+  ): Promise<string> {
+    if (!vaa && !evmProof) {
+      throw new Error("Must provide either VAA or EVM proof")
+    }
+    if (evmProof) {
+      if (
+        sourceChain !== ChainKind.Eth &&
+        sourceChain !== ChainKind.Arb &&
+        sourceChain !== ChainKind.Base
+      ) {
+        throw new Error("EVM proof is only valid for Ethereum, Arbitrum, or Base")
+      }
+    }
+    let proverArgsSerialized: Uint8Array = new Uint8Array(0)
+    if (vaa) {
+      const proverArgs: WormholeVerifyProofArgs = {
+        proof_kind: ProofKind.DeployToken,
+        vaa: vaa,
+      }
+      proverArgsSerialized = borshSerialize(WormholeVerifyProofArgsSchema, proverArgs)
+    } else if (evmProof) {
+      const proverArgs: EvmVerifyProofArgs = {
+        proof_kind: ProofKind.DeployToken,
+        proof: evmProof.proof,
+      }
+      proverArgsSerialized = borshSerialize(EvmVerifyProofArgsSchema, proverArgs)
+    }
+
+    const args: FinTransferArgs = {
+      chain_kind: sourceChain,
+      storage_deposit_actions: [
+        {
+          token_id: token,
+          account_id: account,
+          storage_deposit_amount: storageDepositAmount,
+        },
+      ],
+      prover_args: proverArgsSerialized,
+    }
+    const serializedArgs = borshSerialize(FinTransferArgsSchema, args)
+
+    const tx = await this.wallet.functionCall({
+      contractId: this.lockerAddress,
+      methodName: "finalize_transfer",
+      args: serializedArgs,
+      gas: GAS.FIN_TRANSFER,
+      attachedDeposit: DEPOSIT.FIN_TRANSFER,
+    })
+    return tx.transaction.hash
+  }
+
+  /**
    * Retrieves various balance information for the current account
    * @private
    * @returns Promise resolving to object containing required balances and storage information
@@ -284,23 +369,38 @@ export class NearDeployer {
    */
   private async getBalances(): Promise<BalanceResults> {
     try {
-      const [regBalanceStr, initBalanceStr, storage] = await Promise.all([
-        this.wallet.viewFunction({
-          contractId: this.lockerAddress,
-          methodName: "required_balance_for_account",
-        }),
-        this.wallet.viewFunction({
-          contractId: this.lockerAddress,
-          methodName: "required_balance_for_init_transfer",
-        }),
-        this.wallet.viewFunction({
-          contractId: this.lockerAddress,
-          methodName: "storage_balance_of",
-          args: {
-            account_id: this.wallet.accountId,
-          },
-        }),
-      ])
+      const [regBalanceStr, initBalanceStr, finBalanceStr, bindBalanceStr, storage] =
+        await Promise.all([
+          this.wallet.viewFunction({
+            contractId: this.lockerAddress,
+            methodName: "required_balance_for_account",
+          }),
+          this.wallet.viewFunction({
+            contractId: this.lockerAddress,
+            methodName: "required_balance_for_init_transfer",
+          }),
+          this.wallet.viewFunction({
+            contractId: this.lockerAddress,
+            methodName: "required_balance_for_fin_transfer",
+            args: {
+              account_id: this.wallet.accountId,
+            },
+          }),
+          this.wallet.viewFunction({
+            contractId: this.lockerAddress,
+            methodName: "required_balance_for_bind_token",
+            args: {
+              account_id: this.wallet.accountId,
+            },
+          }),
+          this.wallet.viewFunction({
+            contractId: this.lockerAddress,
+            methodName: "storage_balance_of",
+            args: {
+              account_id: this.wallet.accountId,
+            },
+          }),
+        ])
 
       // Convert storage balance to bigint
       let convertedStorage = null
@@ -314,6 +414,8 @@ export class NearDeployer {
       return {
         regBalance: BigInt(regBalanceStr),
         initBalance: BigInt(initBalanceStr),
+        finBalance: BigInt(finBalanceStr),
+        bindBalance: BigInt(bindBalanceStr),
         storage: convertedStorage,
       }
     } catch (error) {

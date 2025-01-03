@@ -61,14 +61,14 @@ console.log(`Status: ${status}`); // 'pending' | 'completed' | 'failed'
 #### Core Transfer Interface
 
 - [ ] Base OmniTransfer interface
-  - [ ] EVM
-    - [ ] initTransfer
-    - [ ] finalizeTransfer
-  - [ ] NEAR
+  - [x] EVM
     - [x] initTransfer
-    - [ ] finalizeTransfer
+    - [x] finalizeTransfer
+  - [x] NEAR
+    - [x] initTransfer
+    - [x] finalizeTransfer
   - [ ] Solana
-    - [ ] initTransfer
+    - [x] initTransfer
     - [ ] finalizeTransfer
 
 #### Query Functions

@@ -1,5 +1,5 @@
 import { BorshSchema } from "borsher"
-import type { AccountId, Fee, Nonce, OmniAddress, TransferId, U128 } from "./common"
+import type { AccountId, Fee, Nonce, OmniAddress, U128 } from "./common"
 
 export enum ProofKind {
   InitTransfer = 0,
@@ -38,7 +38,7 @@ export const InitTransferMessageSchema = BorshSchema.Struct({
 })
 
 export type FinTransferMessage = {
-  transfer_id: TransferId
+  transfer_id: string
   fee_recipient: AccountId
   amount: U128
   emitter_address: OmniAddress
