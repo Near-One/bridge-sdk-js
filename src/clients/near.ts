@@ -13,6 +13,7 @@ import {
   FinTransferArgsSchema,
   type LogMetadataArgs,
   type OmniAddress,
+  type OmniTransferMessage,
   ProofKind,
   type U128,
   type WormholeVerifyProofArgs,
@@ -85,22 +86,22 @@ interface BalanceResults {
 }
 
 /**
- * NEAR blockchain implementation of the token deployer.
+ * NEAR blockchain implementation of the bridge client.
  * Handles token deployment, binding, and transfer operations on the NEAR blockchain.
  */
-export class NearDeployer {
+export class NearBridgeClient {
   /**
-   * Creates a new NEAR token deployer instance
+   * Creates a new NEAR bridge client instance
    * @param wallet - NEAR account instance for transaction signing
    * @param lockerAddress - Address of the token locker contract
    * @throws {Error} If locker address is not configured
    */
   constructor(
     private wallet: Account,
-    private lockerAddress: string = process.env.OMNI_LOCKER_NEAR as string,
+    private lockerAddress: string = process.env.OMNI_BRIDGE_NEAR as string,
   ) {
     if (!this.lockerAddress) {
-      throw new Error("OMNI_LOCKER_NEAR address not configured")
+      throw new Error("OMNI_BRIDGE_NEAR address not configured")
     }
   }
 
@@ -236,15 +237,11 @@ export class NearDeployer {
    * @returns Promise resolving to object containing transaction hash and nonce
    */
 
-  async initTransfer(
-    token: OmniAddress,
-    recipient: OmniAddress,
-    amount: U128,
-  ): Promise<{ hash: string; nonce: number }> {
-    if (getChain(token) !== ChainKind.Near) {
+  async initTransfer(transfer: OmniTransferMessage): Promise<{ hash: string; nonce: number }> {
+    if (getChain(transfer.tokenAddress) !== ChainKind.Near) {
       throw new Error("Token address must be on NEAR")
     }
-    const tokenAddress = token.split(":")[1]
+    const tokenAddress = transfer.tokenAddress.split(":")[1]
 
     const { regBalance, initBalance, storage } = await this.getBalances()
     const requiredBalance = regBalance + initBalance
@@ -262,13 +259,13 @@ export class NearDeployer {
     }
 
     const initTransferMessage: InitTransferMessage = {
-      recipient: recipient,
-      fee: "0",
-      native_token_fee: "0",
+      recipient: transfer.recipient,
+      fee: transfer.fee.toString(),
+      native_token_fee: transfer.nativeFee.toString(),
     }
     const args: TransferMessage = {
       receiver_id: this.lockerAddress,
-      amount: amount.toString(),
+      amount: transfer.amount.toString(),
       memo: null,
       msg: JSON.stringify(initTransferMessage),
     }

@@ -1,6 +1,6 @@
 import type { Account } from "near-api-js"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { NearDeployer } from "../../src/deployer/near"
+import { NearBridgeClient } from "../../src/clients/near"
 import { ChainKind, ProofKind } from "../../src/types"
 
 // Mock the entire borsher module
@@ -16,9 +16,9 @@ vi.mock("borsher", () => ({
   },
 }))
 
-describe("NearDeployer", () => {
+describe("NearBridgeClient", () => {
   let mockWallet: Account
-  let deployer: NearDeployer
+  let client: NearBridgeClient
   const mockLockerAddress = "test.near"
   const mockTxHash = "mock-tx-hash"
 
@@ -32,33 +32,31 @@ describe("NearDeployer", () => {
       }),
     } as unknown as Account
 
-    // Create deployer instance
-    deployer = new NearDeployer(mockWallet, mockLockerAddress)
+    // Create client instance
+    client = new NearBridgeClient(mockWallet, mockLockerAddress)
   })
 
   describe("constructor", () => {
     it("should throw error if locker address is not provided", () => {
-      expect(() => new NearDeployer(mockWallet, "")).toThrow(
-        "OMNI_LOCKER_NEAR address not configured",
+      expect(() => new NearBridgeClient(mockWallet, "")).toThrow(
+        "OMNI_BRIDGE_NEAR address not configured",
       )
     })
 
     it("should create instance with provided wallet and locker address", () => {
-      const deployer = new NearDeployer(mockWallet, mockLockerAddress)
-      expect(deployer).toBeInstanceOf(NearDeployer)
+      const client = new NearBridgeClient(mockWallet, mockLockerAddress)
+      expect(client).toBeInstanceOf(NearBridgeClient)
     })
   })
 
   describe("logMetadata", () => {
     it("should throw error if token address is not on NEAR", async () => {
-      await expect(deployer.logMetadata("eth:0x123")).rejects.toThrow(
-        "Token address must be on NEAR",
-      )
+      await expect(client.logMetadata("eth:0x123")).rejects.toThrow("Token address must be on NEAR")
     })
 
     it("should call log_metadata with correct arguments", async () => {
       const tokenAddress = "near:test-token.near"
-      const txHash = await deployer.logMetadata(tokenAddress)
+      const txHash = await client.logMetadata(tokenAddress)
 
       expect(mockWallet.functionCall).toHaveBeenCalledWith({
         contractId: mockLockerAddress,
@@ -78,7 +76,7 @@ describe("NearDeployer", () => {
       const destinationChain = ChainKind.Eth
       const mockVaa = "mock-vaa"
 
-      const txHash = await deployer.deployToken(destinationChain, mockVaa)
+      const txHash = await client.deployToken(destinationChain, mockVaa)
 
       expect(mockWallet.functionCall).toHaveBeenCalledWith({
         contractId: mockLockerAddress,
@@ -96,7 +94,7 @@ describe("NearDeployer", () => {
       const destinationChain = ChainKind.Eth
       const mockVaa = "mock-vaa"
 
-      const txHash = await deployer.bindToken(destinationChain, mockVaa)
+      const txHash = await client.bindToken(destinationChain, mockVaa)
 
       expect(mockWallet.functionCall).toHaveBeenCalledWith({
         contractId: mockLockerAddress,
@@ -127,13 +125,13 @@ describe("NearDeployer", () => {
 
     it("should throw error if neither VAA nor EVM proof is provided", async () => {
       await expect(
-        deployer.finalizeTransfer(mockToken, mockAccount, mockStorageDeposit, ChainKind.Near),
+        client.finalizeTransfer(mockToken, mockAccount, mockStorageDeposit, ChainKind.Near),
       ).rejects.toThrow("Must provide either VAA or EVM proof")
     })
 
     it("should throw error if EVM proof is provided for non-EVM chain", async () => {
       await expect(
-        deployer.finalizeTransfer(
+        client.finalizeTransfer(
           mockToken,
           mockAccount,
           mockStorageDeposit,
@@ -145,7 +143,7 @@ describe("NearDeployer", () => {
     })
 
     it("should call finalize_transfer with VAA correctly", async () => {
-      const txHash = await deployer.finalizeTransfer(
+      const txHash = await client.finalizeTransfer(
         mockToken,
         mockAccount,
         mockStorageDeposit,
@@ -164,7 +162,7 @@ describe("NearDeployer", () => {
     })
 
     it("should call finalize_transfer with EVM proof correctly", async () => {
-      const txHash = await deployer.finalizeTransfer(
+      const txHash = await client.finalizeTransfer(
         mockToken,
         mockAccount,
         mockStorageDeposit,
@@ -188,13 +186,7 @@ describe("NearDeployer", () => {
       mockWallet.functionCall = vi.fn().mockRejectedValue(error)
 
       await expect(
-        deployer.finalizeTransfer(
-          mockToken,
-          mockAccount,
-          mockStorageDeposit,
-          ChainKind.Sol,
-          mockVaa,
-        ),
+        client.finalizeTransfer(mockToken, mockAccount, mockStorageDeposit, ChainKind.Sol, mockVaa),
       ).rejects.toThrow("NEAR finalize transfer error")
     })
   })
@@ -204,7 +196,7 @@ describe("NearDeployer", () => {
       const error = new Error("NEAR error")
       mockWallet.functionCall = vi.fn().mockRejectedValue(error)
 
-      await expect(deployer.logMetadata("near:test-token.near")).rejects.toThrow("NEAR error")
+      await expect(client.logMetadata("near:test-token.near")).rejects.toThrow("NEAR error")
     })
   })
 })

@@ -17,7 +17,7 @@ Important: To deploy a token on any chain, it must first exist on NEAR. You cann
 ### NEAR Chain Deployment
 
 ```typescript
-import { NearDeployer, ChainKind } from "omni-bridge-sdk";
+import { NearBridgeClient, ChainKind } from "omni-bridge-sdk";
 import { connect } from "near-api-js";
 
 // Setup NEAR connection
@@ -25,22 +25,22 @@ const near = await connect({
   networkId: "testnet",
   nodeUrl: "https://rpc.testnet.near.org",
 });
-const account = await near.account("deployer.near");
+const account = await near.account("client.near");
 
-// Initialize deployer
-const deployer = new NearDeployer(account);
+// Initialize client
+const client = new NearBridgeClient(account);
 
 // 1. Log metadata for existing NEAR token
-const logTxHash = await deployer.logMetadata("near:token.near");
+const logTxHash = await client.logMetadata("near:token.near");
 
 // 2. Deploy to destination chain (e.g., Ethereum)
-const deployTxHash = await deployer.deployToken(
+const deployTxHash = await client.deployToken(
   ChainKind.Eth,
   vaa // Wormhole VAA containing deployment approval
 );
 
 // 3. For tokens being deployed TO NEAR, bind them after deployment
-await deployer.bindToken(
+await client.bindToken(
   ChainKind.Eth, // Source chain
   vaa, // Optional: Wormhole VAA
   evmProof // Optional: EVM proof (for EVM chains)
@@ -50,21 +50,21 @@ await deployer.bindToken(
 ### EVM Chain Deployment (Ethereum/Base/Arbitrum)
 
 ```typescript
-import { EVMDeployer, ChainKind } from "omni-bridge-sdk";
+import { EvmBridgeClient, ChainKind } from "omni-bridge-sdk";
 import { ethers } from "ethers";
 
 // Setup EVM wallet
 const provider = new ethers.providers.Web3Provider(window.ethereum);
 const wallet = provider.getSigner();
 
-// Initialize deployer for specific chain
-const deployer = new EVMDeployer(wallet, ChainKind.Eth);
+// Initialize client for specific chain
+const client = new EvmBridgeClient(wallet, ChainKind.Eth);
 
 // 1. Log metadata for existing token
-const logTxHash = await deployer.logMetadata("eth:0x123...");
+const logTxHash = await client.logMetadata("eth:0x123...");
 
 // 2. Deploy token using MPC signature
-const { txHash, tokenAddress } = await deployer.deployToken(
+const { txHash, tokenAddress } = await client.deployToken(
   signature, // MPC signature authorizing deployment
   {
     token: "token_id",
@@ -78,27 +78,27 @@ const { txHash, tokenAddress } = await deployer.deployToken(
 ### Solana Deployment
 
 ```typescript
-import { SolanaDeployer } from "omni-bridge-sdk";
+import { SolanaBridgeClient } from "omni-bridge-sdk";
 import { Connection, PublicKey, Keypair } from "@solana/web3.js";
 
 // Setup Solana connection
 const connection = new Connection("https://api.testnet.solana.com");
 const payer = Keypair.generate();
 
-// Initialize deployer
-const deployer = new SolanaDeployer(
+// Initialize client
+const client = new SolanaBridgeClient(
   provider,
   new PublicKey("wormhole_program_id")
 );
 
 // 1. Log metadata for existing SPL token
-const logTxHash = await deployer.logMetadata(
+const logTxHash = await client.logMetadata(
   tokenPubkey,
   payer // Optional payer for transaction
 );
 
 // 2. Deploy token using MPC signature
-const { txHash, tokenAddress } = await deployer.deployToken(
+const { txHash, tokenAddress } = await client.deployToken(
   signature,
   {
     token: "token_id",
@@ -116,7 +116,7 @@ Each deployment step can encounter different types of errors that need handling:
 
 ```typescript
 try {
-  await deployer.logMetadata("near:token.near");
+  await client.logMetadata("near:token.near");
 } catch (error) {
   if (error.message.includes("Token metadata not provided")) {
     // Handle missing metadata
@@ -164,12 +164,12 @@ console.log(status); // "pending" | "ready_for_finalize" | "finalized" | "ready_
 
 ```typescript
 // For EVM chains
-const evmDeployer = new EVMDeployer(wallet, ChainKind.Eth);
-const nearTokenAddress = await evmDeployer.factory.nearToEthToken("token.near");
+const evmClient = new EvmClient(wallet, ChainKind.Eth);
+const nearTokenAddress = await evmClient.factory.nearToEthToken("token.near");
 
 // For Solana
-const solDeployer = new SolanaDeployer(provider, wormholeProgramId);
-const isBridgedToken = await solDeployer.isBridgedToken(tokenPubkey);
+const solClient = new SolanaClient(provider, wormholeProgramId);
+const isBridgedToken = await solClient.isBridgedToken(tokenPubkey);
 ```
 
 ## Security Considerations
@@ -193,7 +193,7 @@ const isBridgedToken = await solDeployer.isBridgedToken(tokenPubkey);
 
 ```typescript
 // Check required balances on NEAR
-const { regBalance, initBalance, storage } = await deployer.getBalances();
+const { regBalance, initBalance, storage } = await client.getBalances();
 const requiredBalance = regBalance + initBalance;
 ```
 
@@ -222,7 +222,7 @@ if (!signature.isValidFor(ChainKind.Eth)) {
 while ((await api.getDeploymentStatus(txHash)).status !== "ready_for_bind") {
   await new Promise((r) => setTimeout(r, 1000));
 }
-await deployer.bindToken(sourceChain, vaa);
+await client.bindToken(sourceChain, vaa);
 ```
 
 ## Chain Support Matrix

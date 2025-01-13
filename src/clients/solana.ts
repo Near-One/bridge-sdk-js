@@ -13,9 +13,9 @@ import {
   type DepositPayload,
   type MPCSignature,
   type OmniAddress,
+  type OmniTransferMessage,
   type TokenMetadata,
   type TransferMessagePayload,
-  type U128,
 } from "../types"
 import type { BridgeTokenFactory } from "../types/solana/bridge_token_factory"
 import BRIDGE_TOKEN_FACTORY_IDL from "../types/solana/bridge_token_factory.json"
@@ -23,7 +23,7 @@ import { getChain } from "../utils"
 
 const MPL_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
 
-export class SolanaDeployer {
+export class SolanaBridgeClient {
   private readonly wormholeProgramId: PublicKey
   private readonly program: Program<BridgeTokenFactory>
 
@@ -45,18 +45,24 @@ export class SolanaDeployer {
     SOL_VAULT: this.getConstant("SOL_VAULT_SEED"),
   }
 
-  constructor(provider: Provider, wormholeProgramId: PublicKey) {
+  constructor(
+    provider: Provider,
+    wormholeProgramId: PublicKey = new PublicKey(process.env.WORMHOLE_SOL as string),
+  ) {
     this.wormholeProgramId = wormholeProgramId
     this.program = new Program(BRIDGE_TOKEN_FACTORY_IDL as BridgeTokenFactory, provider)
   }
 
   private config(): [PublicKey, number] {
-    return PublicKey.findProgramAddressSync([SolanaDeployer.SEEDS.CONFIG], this.program.programId)
+    return PublicKey.findProgramAddressSync(
+      [SolanaBridgeClient.SEEDS.CONFIG],
+      this.program.programId,
+    )
   }
 
   private authority(): [PublicKey, number] {
     return PublicKey.findProgramAddressSync(
-      [SolanaDeployer.SEEDS.AUTHORITY],
+      [SolanaBridgeClient.SEEDS.AUTHORITY],
       this.program.programId,
     )
   }
@@ -84,21 +90,21 @@ export class SolanaDeployer {
 
   private wrappedMintId(token: string): [PublicKey, number] {
     return PublicKey.findProgramAddressSync(
-      [SolanaDeployer.SEEDS.WRAPPED_MINT, Buffer.from(token, "utf-8")],
+      [SolanaBridgeClient.SEEDS.WRAPPED_MINT, Buffer.from(token, "utf-8")],
       this.program.programId,
     )
   }
 
   private vaultId(mint: PublicKey): [PublicKey, number] {
     return PublicKey.findProgramAddressSync(
-      [SolanaDeployer.SEEDS.VAULT, mint.toBuffer()],
+      [SolanaBridgeClient.SEEDS.VAULT, mint.toBuffer()],
       this.program.programId,
     )
   }
 
   private solVaultId(): [PublicKey, number] {
     return PublicKey.findProgramAddressSync(
-      [SolanaDeployer.SEEDS.SOL_VAULT],
+      [SolanaBridgeClient.SEEDS.SOL_VAULT],
       this.program.programId,
     )
   }
@@ -219,12 +225,10 @@ export class SolanaDeployer {
    * @returns Promise resolving to object containing transaction hash and nonce
    */
   async initTransfer(
-    token: OmniAddress,
-    recipient: OmniAddress,
-    amount: U128,
+    transfer: OmniTransferMessage,
     payer?: Keypair,
   ): Promise<{ hash: string; nonce: number }> {
-    if (getChain(token) !== ChainKind.Sol) {
+    if (getChain(transfer.tokenAddress) !== ChainKind.Sol) {
       throw new Error("Token address must be on Solana")
     }
     const wormholeMessage = Keypair.generate()
@@ -234,7 +238,7 @@ export class SolanaDeployer {
       throw new Error("Payer is not configured")
     }
 
-    const mint = new PublicKey(token.split(":")[1])
+    const mint = new PublicKey(transfer.tokenAddress.split(":")[1])
     const [from] = PublicKey.findProgramAddressSync(
       [payerPubKey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
       ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -245,10 +249,10 @@ export class SolanaDeployer {
     try {
       const tx = await this.program.methods
         .initTransfer({
-          amount: new BN(amount.valueOf()),
-          recipient,
-          fee: new BN(0),
-          nativeFee: new BN(0),
+          amount: new BN(transfer.amount.valueOf()),
+          recipient: transfer.recipient,
+          fee: new BN(transfer.fee.valueOf()),
+          nativeFee: new BN(transfer.nativeFee.valueOf()),
         })
         .accountsStrict({
           authority: this.authority()[0],

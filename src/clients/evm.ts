@@ -4,9 +4,9 @@ import type {
   ChainKind,
   MPCSignature,
   OmniAddress,
+  OmniTransferMessage,
   TokenMetadata,
   TransferMessagePayload,
-  U128,
 } from "../types"
 import { getChain } from "../utils"
 
@@ -68,15 +68,15 @@ const FACTORY_ADDRESSES: Record<ChainTag<EVMChainKind>, string | undefined> = {
 }
 
 /**
- * EVM blockchain implementation of the token deployer
+ * EVM blockchain implementation of the bridge client
  */
-export class EVMDeployer {
+export class EvmBridgeClient {
   private factory: ethers.Contract
   private chainKind: EVMChainKind
   private chainTag: ChainTag<EVMChainKind>
 
   /**
-   * Creates a new EVM token deployer instance
+   * Creates a new EVM bridge client instance
    * @param wallet - Ethereum signer instance for transaction signing
    * @param chain - The EVM chain to deploy to (Ethereum, Base, or Arbitrum)
    * @throws {Error} If factory address is not configured for the chain or if chain is not EVM
@@ -109,7 +109,7 @@ export class EVMDeployer {
   async logMetadata(tokenAddress: OmniAddress): Promise<string> {
     const sourceChain = getChain(tokenAddress)
 
-    // Validate source chain matches the deployer's chain
+    // Validate source chain matches the client's chain
     if (!ChainUtils.areEqual(sourceChain, this.chainKind)) {
       throw new Error(`Token address must be on ${this.chainTag}`)
     }
@@ -168,27 +168,23 @@ export class EVMDeployer {
    * @throws {Error} If token address is not on the correct EVM chain
    * @returns Promise resolving to object containing transaction hash and nonce
    */
-  async initTransfer(
-    token: OmniAddress,
-    recipient: OmniAddress,
-    amount: U128,
-  ): Promise<{ hash: string; nonce: number }> {
-    const sourceChain = getChain(token)
+  async initTransfer(transfer: OmniTransferMessage): Promise<{ hash: string; nonce: number }> {
+    const sourceChain = getChain(transfer.tokenAddress)
 
-    // Validate source chain matches the deployer's chain
+    // Validate source chain matches the client's chain
     if (!ChainUtils.areEqual(sourceChain, this.chainKind)) {
       throw new Error(`Token address must be on ${this.chainTag}`)
     }
 
-    const [_, tokenAccountId] = token.split(":")
+    const [_, tokenAccountId] = transfer.tokenAddress.split(":")
 
     try {
       const tx = await this.factory.initTransfer(
         tokenAccountId,
-        amount.valueOf(),
-        0,
-        0,
-        recipient,
+        transfer.amount,
+        transfer.fee,
+        transfer.nativeFee,
+        transfer.recipient,
         "",
       )
       return {
