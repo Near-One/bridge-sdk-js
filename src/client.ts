@@ -13,11 +13,7 @@ export async function omniTransfer(
 ): Promise<OmniTransferResult> {
   if (wallet instanceof NearAccount) {
     const client = new NearBridgeClient(wallet)
-    const { nonce, hash } = await client.initTransfer(
-      transfer.tokenAddress,
-      transfer.recipient,
-      transfer.amount,
-    )
+    const { nonce, hash } = await client.initTransfer(transfer)
     return {
       txId: hash,
       nonce: BigInt(nonce),
@@ -26,11 +22,7 @@ export async function omniTransfer(
 
   if (wallet instanceof EthWallet) {
     const client = new EvmBridgeClient(wallet, ChainKind.Eth)
-    const { hash, nonce } = await client.initTransfer(
-      transfer.tokenAddress,
-      transfer.recipient,
-      transfer.amount,
-    )
+    const { hash, nonce } = await client.initTransfer(transfer)
     return {
       txId: hash,
       nonce: BigInt(nonce),
@@ -42,11 +34,7 @@ export async function omniTransfer(
       wallet,
       new PublicKey("3u8hJUVTA4jH1wYAyUur7FFZVQ8H635K3tSHHF4ssjQ5"),
     ) // TODO: Get from config
-    const { nonce, hash } = await client.initTransfer(
-      transfer.tokenAddress,
-      transfer.recipient,
-      transfer.amount,
-    )
+    const { nonce, hash } = await client.initTransfer(transfer)
     return {
       txId: hash,
       nonce: BigInt(nonce),

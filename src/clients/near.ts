@@ -13,6 +13,7 @@ import {
   FinTransferArgsSchema,
   type LogMetadataArgs,
   type OmniAddress,
+  type OmniTransferMessage,
   ProofKind,
   type U128,
   type WormholeVerifyProofArgs,
@@ -236,15 +237,11 @@ export class NearBridgeClient {
    * @returns Promise resolving to object containing transaction hash and nonce
    */
 
-  async initTransfer(
-    token: OmniAddress,
-    recipient: OmniAddress,
-    amount: U128,
-  ): Promise<{ hash: string; nonce: number }> {
-    if (getChain(token) !== ChainKind.Near) {
+  async initTransfer(transfer: OmniTransferMessage): Promise<{ hash: string; nonce: number }> {
+    if (getChain(transfer.tokenAddress) !== ChainKind.Near) {
       throw new Error("Token address must be on NEAR")
     }
-    const tokenAddress = token.split(":")[1]
+    const tokenAddress = transfer.tokenAddress.split(":")[1]
 
     const { regBalance, initBalance, storage } = await this.getBalances()
     const requiredBalance = regBalance + initBalance
@@ -262,13 +259,13 @@ export class NearBridgeClient {
     }
 
     const initTransferMessage: InitTransferMessage = {
-      recipient: recipient,
-      fee: "0",
-      native_token_fee: "0",
+      recipient: transfer.recipient,
+      fee: transfer.fee.toString(),
+      native_token_fee: transfer.nativeFee.toString(),
     }
     const args: TransferMessage = {
       receiver_id: this.lockerAddress,
-      amount: amount.toString(),
+      amount: transfer.amount.toString(),
       memo: null,
       msg: JSON.stringify(initTransferMessage),
     }

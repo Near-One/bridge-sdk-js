@@ -13,9 +13,9 @@ import {
   type DepositPayload,
   type MPCSignature,
   type OmniAddress,
+  type OmniTransferMessage,
   type TokenMetadata,
   type TransferMessagePayload,
-  type U128,
 } from "../types"
 import type { BridgeTokenFactory } from "../types/solana/bridge_token_factory"
 import BRIDGE_TOKEN_FACTORY_IDL from "../types/solana/bridge_token_factory.json"
@@ -225,12 +225,10 @@ export class SolanaBridgeClient {
    * @returns Promise resolving to object containing transaction hash and nonce
    */
   async initTransfer(
-    token: OmniAddress,
-    recipient: OmniAddress,
-    amount: U128,
+    transfer: OmniTransferMessage,
     payer?: Keypair,
   ): Promise<{ hash: string; nonce: number }> {
-    if (getChain(token) !== ChainKind.Sol) {
+    if (getChain(transfer.tokenAddress) !== ChainKind.Sol) {
       throw new Error("Token address must be on Solana")
     }
     const wormholeMessage = Keypair.generate()
@@ -240,7 +238,7 @@ export class SolanaBridgeClient {
       throw new Error("Payer is not configured")
     }
 
-    const mint = new PublicKey(token.split(":")[1])
+    const mint = new PublicKey(transfer.tokenAddress.split(":")[1])
     const [from] = PublicKey.findProgramAddressSync(
       [payerPubKey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
       ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -251,10 +249,10 @@ export class SolanaBridgeClient {
     try {
       const tx = await this.program.methods
         .initTransfer({
-          amount: new BN(amount.valueOf()),
-          recipient,
-          fee: new BN(0),
-          nativeFee: new BN(0),
+          amount: new BN(transfer.amount.valueOf()),
+          recipient: transfer.recipient,
+          fee: new BN(transfer.fee.valueOf()),
+          nativeFee: new BN(transfer.nativeFee.valueOf()),
         })
         .accountsStrict({
           authority: this.authority()[0],
