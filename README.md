@@ -40,10 +40,10 @@ yarn add omni-bridge-sdk
 The SDK currently provides a split interface for cross-chain transfers:
 
 - `omniTransfer`: A unified interface for initiating transfers from any supported chain
-- Chain-specific deployers: Required for finalizing transfers on destination chains
+- Chain-specific clients: Required for finalizing transfers on destination chains
 
 > [!NOTE]  
-> We're working on unifying this into a single interface that will handle the complete transfer lifecycle. For now, you'll need to use both `omniTransfer` and chain-specific deployers as shown below.
+> We're working on unifying this into a single interface that will handle the complete transfer lifecycle. For now, you'll need to use both `omniTransfer` and chain-specific clients as shown below.
 
 Here's a complete example:
 
@@ -53,7 +53,7 @@ import {
   ChainKind,
   omniAddress,
   OmniBridgeAPI,
-  getDeployer,
+  getClient,
 } from "omni-bridge-sdk";
 import { connect } from "near-api-js";
 
@@ -97,8 +97,8 @@ do {
 
   if (status === "ready_for_finalize") {
     // 4. Finalize transfer on destination chain
-    const ethDeployer = getDeployer(ChainKind.Eth, ethWallet);
-    await ethDeployer.finalizeTransfer(transferMessage, signature);
+    const ethClient = getClient(ChainKind.Eth, ethWallet);
+    await ethClient.finalizeTransfer(transferMessage, signature);
     break;
   }
 
@@ -131,16 +131,16 @@ const status = await api.getTransferStatus(chain, nonce);
 
 ### 3. Transfer Finalization
 
-When status is "ready_for_finalize", use chain-specific deployers to complete the transfer:
+When status is "ready_for_finalize", use chain-specific clients to complete the transfer:
 
 ```typescript
 // Finalize on Ethereum/EVM chains
-const evmDeployer = getDeployer(ChainKind.Eth, ethWallet);
-await evmDeployer.finalizeTransfer(transferMessage, signature);
+const evmClient = getClient(ChainKind.Eth, ethWallet);
+await evmClient.finalizeTransfer(transferMessage, signature);
 
 // Finalize on NEAR
-const nearDeployer = getDeployer(ChainKind.Near, nearAccount);
-await nearDeployer.finalizeTransfer(
+const nearClient = getClient(ChainKind.Near, nearAccount);
+await nearClient.finalizeTransfer(
   token,
   recipientAccount,
   storageDeposit,
@@ -149,8 +149,8 @@ await nearDeployer.finalizeTransfer(
 );
 
 // Finalize on Solana
-const solDeployer = getDeployer(ChainKind.Sol, provider);
-await solDeployer.finalizeTransfer(transferMessage, signature);
+const solClient = getClient(ChainKind.Sol, provider);
+await solClient.finalizeTransfer(transferMessage, signature);
 ```
 
 ## Core Concepts
@@ -245,20 +245,20 @@ const result = await omniTransfer(provider, transfer);
 
 ### Deploying Tokens
 
-Token deployment uses chain-specific deployers through a unified interface:
+Token deployment uses chain-specific clients through a unified interface:
 
 ```typescript
-import { getDeployer } from "omni-bridge-sdk";
+import { getClient } from "omni-bridge-sdk";
 
-// Initialize deployer for source chain
-const deployer = getDeployer(ChainKind.Near, wallet);
+// Initialize client for source chain
+const client = getClient(ChainKind.Near, wallet);
 
 // Example: Deploy NEAR token to Ethereum
-const txHash = await deployer.logMetadata("near:token.near");
+const txHash = await client.logMetadata("near:token.near");
 console.log(`Metadata logged with tx: ${txHash}`);
 
 // Deploy token with signed MPC payload
-const result = await deployer.deployToken(signature, {
+const result = await client.deployToken(signature, {
   token: "token.near",
   name: "Token Name",
   symbol: "TKN",

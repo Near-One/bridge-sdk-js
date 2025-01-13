@@ -23,7 +23,7 @@ import { getChain } from "../utils"
 
 const MPL_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
 
-export class SolanaDeployer {
+export class SolanaBridgeClient {
   private readonly wormholeProgramId: PublicKey
   private readonly program: Program<BridgeTokenFactory>
 
@@ -45,18 +45,24 @@ export class SolanaDeployer {
     SOL_VAULT: this.getConstant("SOL_VAULT_SEED"),
   }
 
-  constructor(provider: Provider, wormholeProgramId: PublicKey) {
+  constructor(
+    provider: Provider,
+    wormholeProgramId: PublicKey = new PublicKey(process.env.WORMHOLE_SOL as string),
+  ) {
     this.wormholeProgramId = wormholeProgramId
     this.program = new Program(BRIDGE_TOKEN_FACTORY_IDL as BridgeTokenFactory, provider)
   }
 
   private config(): [PublicKey, number] {
-    return PublicKey.findProgramAddressSync([SolanaDeployer.SEEDS.CONFIG], this.program.programId)
+    return PublicKey.findProgramAddressSync(
+      [SolanaBridgeClient.SEEDS.CONFIG],
+      this.program.programId,
+    )
   }
 
   private authority(): [PublicKey, number] {
     return PublicKey.findProgramAddressSync(
-      [SolanaDeployer.SEEDS.AUTHORITY],
+      [SolanaBridgeClient.SEEDS.AUTHORITY],
       this.program.programId,
     )
   }
@@ -84,21 +90,21 @@ export class SolanaDeployer {
 
   private wrappedMintId(token: string): [PublicKey, number] {
     return PublicKey.findProgramAddressSync(
-      [SolanaDeployer.SEEDS.WRAPPED_MINT, Buffer.from(token, "utf-8")],
+      [SolanaBridgeClient.SEEDS.WRAPPED_MINT, Buffer.from(token, "utf-8")],
       this.program.programId,
     )
   }
 
   private vaultId(mint: PublicKey): [PublicKey, number] {
     return PublicKey.findProgramAddressSync(
-      [SolanaDeployer.SEEDS.VAULT, mint.toBuffer()],
+      [SolanaBridgeClient.SEEDS.VAULT, mint.toBuffer()],
       this.program.programId,
     )
   }
 
   private solVaultId(): [PublicKey, number] {
     return PublicKey.findProgramAddressSync(
-      [SolanaDeployer.SEEDS.SOL_VAULT],
+      [SolanaBridgeClient.SEEDS.SOL_VAULT],
       this.program.programId,
     )
   }

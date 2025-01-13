@@ -85,22 +85,22 @@ interface BalanceResults {
 }
 
 /**
- * NEAR blockchain implementation of the token deployer.
+ * NEAR blockchain implementation of the bridge client.
  * Handles token deployment, binding, and transfer operations on the NEAR blockchain.
  */
-export class NearDeployer {
+export class NearBridgeClient {
   /**
-   * Creates a new NEAR token deployer instance
+   * Creates a new NEAR bridge client instance
    * @param wallet - NEAR account instance for transaction signing
    * @param lockerAddress - Address of the token locker contract
    * @throws {Error} If locker address is not configured
    */
   constructor(
     private wallet: Account,
-    private lockerAddress: string = process.env.OMNI_LOCKER_NEAR as string,
+    private lockerAddress: string = process.env.OMNI_BRIDGE_NEAR as string,
   ) {
     if (!this.lockerAddress) {
-      throw new Error("OMNI_LOCKER_NEAR address not configured")
+      throw new Error("OMNI_BRIDGE_NEAR address not configured")
     }
   }
 

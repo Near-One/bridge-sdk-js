@@ -68,15 +68,15 @@ const FACTORY_ADDRESSES: Record<ChainTag<EVMChainKind>, string | undefined> = {
 }
 
 /**
- * EVM blockchain implementation of the token deployer
+ * EVM blockchain implementation of the bridge client
  */
-export class EVMDeployer {
+export class EvmBridgeClient {
   private factory: ethers.Contract
   private chainKind: EVMChainKind
   private chainTag: ChainTag<EVMChainKind>
 
   /**
-   * Creates a new EVM token deployer instance
+   * Creates a new EVM bridge client instance
    * @param wallet - Ethereum signer instance for transaction signing
    * @param chain - The EVM chain to deploy to (Ethereum, Base, or Arbitrum)
    * @throws {Error} If factory address is not configured for the chain or if chain is not EVM
@@ -109,7 +109,7 @@ export class EVMDeployer {
   async logMetadata(tokenAddress: OmniAddress): Promise<string> {
     const sourceChain = getChain(tokenAddress)
 
-    // Validate source chain matches the deployer's chain
+    // Validate source chain matches the client's chain
     if (!ChainUtils.areEqual(sourceChain, this.chainKind)) {
       throw new Error(`Token address must be on ${this.chainTag}`)
     }
@@ -175,7 +175,7 @@ export class EVMDeployer {
   ): Promise<{ hash: string; nonce: number }> {
     const sourceChain = getChain(token)
 
-    // Validate source chain matches the deployer's chain
+    // Validate source chain matches the client's chain
     if (!ChainUtils.areEqual(sourceChain, this.chainKind)) {
       throw new Error(`Token address must be on ${this.chainTag}`)
     }
