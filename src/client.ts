@@ -1,45 +1,29 @@
 import { AnchorProvider as SolWallet } from "@coral-xyz/anchor"
-import { PublicKey } from "@solana/web3.js"
 import { Wallet as EthWallet } from "ethers"
 import { Account as NearAccount } from "near-api-js"
 import { EvmBridgeClient } from "./clients/evm"
 import { NearBridgeClient } from "./clients/near"
 import { SolanaBridgeClient } from "./clients/solana"
-import { ChainKind, type OmniTransferMessage, type OmniTransferResult } from "./types"
+import { ChainKind, type OmniTransferMessage } from "./types"
+
+type Client = EvmBridgeClient | NearBridgeClient | SolanaBridgeClient
 
 export async function omniTransfer(
   wallet: EthWallet | NearAccount | SolWallet,
   transfer: OmniTransferMessage,
-): Promise<OmniTransferResult> {
+): Promise<string> {
+  let client: Client | null = null
   if (wallet instanceof NearAccount) {
-    const client = new NearBridgeClient(wallet)
-    const { nonce, hash } = await client.initTransfer(transfer)
-    return {
-      txId: hash,
-      nonce: BigInt(nonce),
-    }
+    client = new NearBridgeClient(wallet)
+  } else if (wallet instanceof EthWallet) {
+    client = new EvmBridgeClient(wallet, ChainKind.Eth)
+  } else if (wallet instanceof SolWallet) {
+    client = new SolanaBridgeClient(wallet)
   }
 
-  if (wallet instanceof EthWallet) {
-    const client = new EvmBridgeClient(wallet, ChainKind.Eth)
-    const { hash, nonce } = await client.initTransfer(transfer)
-    return {
-      txId: hash,
-      nonce: BigInt(nonce),
-    }
+  if (!client) {
+    throw new Error("Unsupported wallet type")
   }
 
-  if (wallet instanceof SolWallet) {
-    const client = new SolanaBridgeClient(
-      wallet,
-      new PublicKey("3u8hJUVTA4jH1wYAyUur7FFZVQ8H635K3tSHHF4ssjQ5"),
-    ) // TODO: Get from config
-    const { nonce, hash } = await client.initTransfer(transfer)
-    return {
-      txId: hash,
-      nonce: BigInt(nonce),
-    }
-  }
-
-  throw new Error("Unsupported wallet type")
+  return await client.initTransfer(transfer)
 }

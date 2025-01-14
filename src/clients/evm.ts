@@ -166,9 +166,9 @@ export class EvmBridgeClient {
    * @param recipient - Recipient's Omni address on the destination chain where tokens will be minted
    * @param amount - Amount of the tokens to transfer
    * @throws {Error} If token address is not on the correct EVM chain
-   * @returns Promise resolving to object containing transaction hash and nonce
+   * @returns Promise resolving to transaction hash
    */
-  async initTransfer(transfer: OmniTransferMessage): Promise<{ hash: string; nonce: number }> {
+  async initTransfer(transfer: OmniTransferMessage): Promise<string> {
     const sourceChain = getChain(transfer.tokenAddress)
 
     // Validate source chain matches the client's chain
@@ -187,10 +187,7 @@ export class EvmBridgeClient {
         transfer.recipient,
         "",
       )
-      return {
-        hash: tx.hash,
-        nonce: 0,
-      }
+      return tx.hash
     } catch (error) {
       throw new Error(
         `Failed to init transfer: ${error instanceof Error ? error.message : "Unknown error"}`,

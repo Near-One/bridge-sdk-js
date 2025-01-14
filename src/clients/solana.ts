@@ -222,12 +222,9 @@ export class SolanaBridgeClient {
    * @param recipient - Recipient's Omni address on the destination chain where tokens will be minted
    * @param amount - Amount of the tokens to transfer
    * @throws {Error} If token address is not on Solana
-   * @returns Promise resolving to object containing transaction hash and nonce
+   * @returns Promise resolving to transaction hash
    */
-  async initTransfer(
-    transfer: OmniTransferMessage,
-    payer?: Keypair,
-  ): Promise<{ hash: string; nonce: number }> {
+  async initTransfer(transfer: OmniTransferMessage, payer?: Keypair): Promise<string> {
     if (getChain(transfer.tokenAddress) !== ChainKind.Sol) {
       throw new Error("Token address must be on Solana")
     }
@@ -278,10 +275,7 @@ export class SolanaBridgeClient {
         .signers(payer instanceof Keypair ? [wormholeMessage, payer] : [wormholeMessage])
         .rpc()
 
-      return {
-        hash: tx,
-        nonce: 0,
-      }
+      return tx
     } catch (e) {
       throw new Error(`Failed to init transfer: ${e}`)
     }
