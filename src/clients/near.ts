@@ -234,10 +234,10 @@ export class NearBridgeClient {
    * @param recipient - Recipient's Omni address on the destination chain where tokens will be minted
    * @param amount - Amount of NEP-141 tokens to transfer
    * @throws {Error} If token address is not on NEAR chain
-   * @returns Promise resolving to object containing transaction hash and nonce
+   * @returns Promise resolving to transaction hash
    */
 
-  async initTransfer(transfer: OmniTransferMessage): Promise<{ hash: string; nonce: number }> {
+  async initTransfer(transfer: OmniTransferMessage): Promise<string> {
     if (getChain(transfer.tokenAddress) !== ChainKind.Near) {
       throw new Error("Token address must be on NEAR")
     }
@@ -277,10 +277,7 @@ export class NearBridgeClient {
       attachedDeposit: DEPOSIT.INIT_TRANSFER,
     })
 
-    return {
-      hash: tx.transaction.hash,
-      nonce: tx.transaction.nonce,
-    }
+    return tx.transaction.hash
   }
 
   /**
