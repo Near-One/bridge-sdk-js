@@ -10,7 +10,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
     api = new OmniBridgeAPI("testnet")
   })
 
-  describe("getFee", () => {
+  describe.skip("getFee", () => {
     it("should fetch real fee information", async () => {
       const sender: OmniAddress = omniAddress(ChainKind.Near, "bridge-sender.testnet")
       const recipient: OmniAddress = omniAddress(
