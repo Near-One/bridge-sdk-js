@@ -1,4 +1,5 @@
 import { BN, Program, type Provider } from "@coral-xyz/anchor"
+import type { MethodsBuilder } from "@coral-xyz/anchor/dist/cjs/program/namespace/methods"
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token"
 import {
   Keypair,
@@ -234,17 +235,44 @@ export class SolanaBridgeClient {
     if (!payerPubKey) {
       throw new Error("Payer is not configured")
     }
-
-    const mint = new PublicKey(transfer.tokenAddress.split(":")[1])
-    const [from] = PublicKey.findProgramAddressSync(
-      [payerPubKey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-    )
-    const vault = (await this.isBridgedToken(mint)) ? null : this.vaultId(mint)[0]
     const [solVault] = this.solVaultId()
 
-    try {
-      const tx = await this.program.methods
+    // biome-ignore lint/suspicious/noExplicitAny: initTransfer or initTransferSol
+    let method: MethodsBuilder<BridgeTokenFactory, any, any>
+    if (transfer.tokenAddress === `sol:${PublicKey.default.toBase58()}`) {
+      method = this.program.methods
+        .initTransferSol({
+          amount: new BN(transfer.amount.valueOf()),
+          recipient: transfer.recipient,
+          fee: new BN(transfer.fee.valueOf()),
+          nativeFee: new BN(transfer.nativeFee.valueOf()),
+        })
+        .accountsStrict({
+          authority: this.authority()[0],
+          solVault,
+          user: payerPubKey,
+          wormhole: {
+            payer: payerPubKey,
+            config: this.config()[0],
+            bridge: this.wormholeBridgeId()[0],
+            feeCollector: this.wormholeFeeCollectorId()[0],
+            sequence: this.wormholeSequenceId()[0],
+            clock: SYSVAR_CLOCK_PUBKEY,
+            rent: SYSVAR_RENT_PUBKEY,
+            systemProgram: SystemProgram.programId,
+            wormholeProgram: this.wormholeProgramId,
+            message: wormholeMessage.publicKey,
+          },
+        })
+    } else {
+      const mint = new PublicKey(transfer.tokenAddress.split(":")[1])
+      const [from] = PublicKey.findProgramAddressSync(
+        [payerPubKey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+        ASSOCIATED_TOKEN_PROGRAM_ID,
+      )
+      const vault = (await this.isBridgedToken(mint)) ? null : this.vaultId(mint)[0]
+
+      method = this.program.methods
         .initTransfer({
           amount: new BN(transfer.amount.valueOf()),
           recipient: transfer.recipient,
@@ -272,6 +300,10 @@ export class SolanaBridgeClient {
           },
           tokenProgram: TOKEN_PROGRAM_ID,
         })
+    }
+
+    try {
+      const tx = await method
         .signers(payer instanceof Keypair ? [wormholeMessage, payer] : [wormholeMessage])
         .rpc()
 
