@@ -116,23 +116,24 @@ export class SolanaBridgeClient {
    * @param payer - Optional payer keypair
    * @returns Promise resolving to transaction signature
    */
-  async logMetadata(token: PublicKey, payer?: Keypair): Promise<string> {
+  async logMetadata(token: OmniAddress, payer?: Keypair): Promise<string> {
+    const tokenPublicKey = new PublicKey(token.split(":")[1])
     const wormholeMessage = Keypair.generate()
     const [metadata] = PublicKey.findProgramAddressSync(
-      [Buffer.from("metadata", "utf-8"), MPL_PROGRAM_ID.toBuffer(), token.toBuffer()],
+      [Buffer.from("metadata", "utf-8"), MPL_PROGRAM_ID.toBuffer(), tokenPublicKey.toBuffer()],
       MPL_PROGRAM_ID,
     )
-    const [vault] = this.vaultId(token)
+    const [vault] = this.vaultId(tokenPublicKey)
 
     try {
       const tx = await this.program.methods
         .logMetadata()
         .accountsStrict({
           authority: this.authority()[0],
-          mint: token,
+          mint: tokenPublicKey,
           metadata,
           vault,
-          wormhole: {
+          common: {
             payer: payer?.publicKey || this.program.provider.publicKey,
             config: this.config()[0],
             bridge: this.wormholeBridgeId()[0],
@@ -184,7 +185,7 @@ export class SolanaBridgeClient {
         })
         .accountsStrict({
           authority: this.authority()[0],
-          wormhole: {
+          common: {
             payer: payer?.publicKey || this.program.provider.publicKey,
             config: this.config()[0],
             bridge: this.wormholeBridgeId()[0],
@@ -248,10 +249,9 @@ export class SolanaBridgeClient {
           nativeFee: new BN(transfer.nativeFee.valueOf()),
         })
         .accountsStrict({
-          authority: this.authority()[0],
           solVault,
           user: payerPubKey,
-          wormhole: {
+          common: {
             payer: payerPubKey,
             config: this.config()[0],
             bridge: this.wormholeBridgeId()[0],
@@ -286,7 +286,7 @@ export class SolanaBridgeClient {
           vault,
           solVault,
           user: payerPubKey,
-          wormhole: {
+          common: {
             payer: payerPubKey,
             config: this.config()[0],
             bridge: this.wormholeBridgeId()[0],
@@ -388,14 +388,13 @@ export class SolanaBridgeClient {
           signature: signature.toBytes(),
         })
         .accountsStrict({
-          config,
           usedNonces,
           authority,
           recipient: recipientPubkey,
           mint: tokenPubkey,
           vault,
           tokenAccount: recipientATA,
-          wormhole: {
+          common: {
             payer: this.program.provider.publicKey,
             config,
             bridge: this.wormholeBridgeId()[0],
@@ -439,6 +438,9 @@ export class SolanaBridgeClient {
       throw new Error("Not a valid SPL token mint")
     }
 
-    return data.parsed.info.mintAuthority.toString() === this.authority()[0].toString()
+    return (
+      data.parsed.info.mintAuthority &&
+      data.parsed.info.mintAuthority.toString() === this.authority()[0].toString()
+    )
   }
 }

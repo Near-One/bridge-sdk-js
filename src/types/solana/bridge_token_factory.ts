@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/bridge_token_factory.json`.
  */
 export type BridgeTokenFactory = {
-  address: "3ZtEZ8xABFbUr4c1FVpXbQiVdqv4vwhvfCc8HMmhEeua"
+  address: "Gy1XPwYZURfBzHiGAxnw3SYC33SfqsEpGSS5zeBge28p"
   metadata: {
     name: "bridgeTokenFactory"
     version: "0.1.0"
@@ -135,7 +135,7 @@ export type BridgeTokenFactory = {
           }
         },
         {
-          name: "wormhole"
+          name: "common"
           accounts: [
             {
               name: "config"
@@ -272,18 +272,6 @@ export type BridgeTokenFactory = {
       discriminator: [124, 126, 103, 188, 144, 65, 135, 51]
       accounts: [
         {
-          name: "config"
-          writable: true
-          pda: {
-            seeds: [
-              {
-                kind: "const"
-                value: [99, 111, 110, 102, 105, 103]
-              },
-            ]
-          }
-        },
-        {
           name: "usedNonces"
           writable: true
         },
@@ -413,7 +401,7 @@ export type BridgeTokenFactory = {
           }
         },
         {
-          name: "wormhole"
+          name: "common"
           accounts: [
             {
               name: "config"
@@ -593,7 +581,7 @@ export type BridgeTokenFactory = {
           }
         },
         {
-          name: "wormhole"
+          name: "common"
           accounts: [
             {
               name: "config"
@@ -775,7 +763,7 @@ export type BridgeTokenFactory = {
           signer: true
         },
         {
-          name: "wormhole"
+          name: "common"
           accounts: [
             {
               name: "config"
@@ -893,17 +881,6 @@ export type BridgeTokenFactory = {
       discriminator: [124, 167, 164, 191, 81, 140, 108, 30]
       accounts: [
         {
-          name: "authority"
-          pda: {
-            seeds: [
-              {
-                kind: "const"
-                value: [97, 117, 116, 104, 111, 114, 105, 116, 121]
-              },
-            ]
-          }
-        },
-        {
           name: "solVault"
           writable: true
           pda: {
@@ -921,7 +898,7 @@ export type BridgeTokenFactory = {
           signer: true
         },
         {
-          name: "wormhole"
+          name: "common"
           accounts: [
             {
               name: "config"
@@ -1155,7 +1132,7 @@ export type BridgeTokenFactory = {
         {
           name: "program"
           signer: true
-          address: "3ZtEZ8xABFbUr4c1FVpXbQiVdqv4vwhvfCc8HMmhEeua"
+          address: "Gy1XPwYZURfBzHiGAxnw3SYC33SfqsEpGSS5zeBge28p"
         },
       ]
       args: [
@@ -1210,7 +1187,7 @@ export type BridgeTokenFactory = {
           }
         },
         {
-          name: "wormhole"
+          name: "common"
           accounts: [
             {
               name: "config"
@@ -1346,26 +1323,31 @@ export type BridgeTokenFactory = {
     },
     {
       code: 6002
+      name: "malleableSignature"
+      msg: "Malleable signature"
+    },
+    {
+      code: 6003
       name: "nonceAlreadyUsed"
       msg: "Nonce already used"
     },
     {
-      code: 6003
+      code: 6004
       name: "tokenMetadataNotProvided"
       msg: "Token metadata not provided"
     },
     {
-      code: 6004
+      code: 6005
       name: "invalidTokenMetadataAddress"
       msg: "Invalid token metadata address"
     },
     {
-      code: 6005
+      code: 6006
       name: "invalidBridgedToken"
       msg: "Invalid bridged token"
     },
     {
-      code: 6006
+      code: 6007
       name: "invalidFee"
       msg: "Invalid fee"
     },
@@ -1396,6 +1378,12 @@ export type BridgeTokenFactory = {
               defined: {
                 name: "configBumps"
               }
+            }
+          },
+          {
+            name: "padding"
+            type: {
+              array: ["u8", 100]
             }
           },
         ]
@@ -1591,6 +1579,16 @@ export type BridgeTokenFactory = {
       name: "configSeed"
       type: "bytes"
       value: "[99, 111, 110, 102, 105, 103]"
+    },
+    {
+      name: "maxAllowedDecimals"
+      type: "u8"
+      value: "9"
+    },
+    {
+      name: "metadataSeed"
+      type: "bytes"
+      value: "[109, 101, 116, 97, 100, 97, 116, 97]"
     },
     {
       name: "solanaOmniBridgeChainId"
