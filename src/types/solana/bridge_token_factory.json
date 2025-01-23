@@ -1,5 +1,5 @@
 {
-  "address": "3ZtEZ8xABFbUr4c1FVpXbQiVdqv4vwhvfCc8HMmhEeua",
+  "address": "Gy1XPwYZURfBzHiGAxnw3SYC33SfqsEpGSS5zeBge28p",
   "metadata": {
     "name": "bridge_token_factory",
     "version": "0.1.0",
@@ -69,7 +69,7 @@
           }
         },
         {
-          "name": "wormhole",
+          "name": "common",
           "accounts": [
             {
               "name": "config",
@@ -206,18 +206,6 @@
       "discriminator": [124, 126, 103, 188, 144, 65, 135, 51],
       "accounts": [
         {
-          "name": "config",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [99, 111, 110, 102, 105, 103]
-              }
-            ]
-          }
-        },
-        {
           "name": "used_nonces",
           "writable": true
         },
@@ -287,7 +275,7 @@
           }
         },
         {
-          "name": "wormhole",
+          "name": "common",
           "accounts": [
             {
               "name": "config",
@@ -467,7 +455,7 @@
           }
         },
         {
-          "name": "wormhole",
+          "name": "common",
           "accounts": [
             {
               "name": "config",
@@ -649,7 +637,7 @@
           "signer": true
         },
         {
-          "name": "wormhole",
+          "name": "common",
           "accounts": [
             {
               "name": "config",
@@ -767,17 +755,6 @@
       "discriminator": [124, 167, 164, 191, 81, 140, 108, 30],
       "accounts": [
         {
-          "name": "authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [97, 117, 116, 104, 111, 114, 105, 116, 121]
-              }
-            ]
-          }
-        },
-        {
           "name": "sol_vault",
           "writable": true,
           "pda": {
@@ -795,7 +772,7 @@
           "signer": true
         },
         {
-          "name": "wormhole",
+          "name": "common",
           "accounts": [
             {
               "name": "config",
@@ -1029,7 +1006,7 @@
         {
           "name": "program",
           "signer": true,
-          "address": "3ZtEZ8xABFbUr4c1FVpXbQiVdqv4vwhvfCc8HMmhEeua"
+          "address": "Gy1XPwYZURfBzHiGAxnw3SYC33SfqsEpGSS5zeBge28p"
         }
       ],
       "args": [
@@ -1084,7 +1061,7 @@
           }
         },
         {
-          "name": "wormhole",
+          "name": "common",
           "accounts": [
             {
               "name": "config",
@@ -1220,26 +1197,31 @@
     },
     {
       "code": 6002,
+      "name": "MalleableSignature",
+      "msg": "Malleable signature"
+    },
+    {
+      "code": 6003,
       "name": "NonceAlreadyUsed",
       "msg": "Nonce already used"
     },
     {
-      "code": 6003,
+      "code": 6004,
       "name": "TokenMetadataNotProvided",
       "msg": "Token metadata not provided"
     },
     {
-      "code": 6004,
+      "code": 6005,
       "name": "InvalidTokenMetadataAddress",
       "msg": "Invalid token metadata address"
     },
     {
-      "code": 6005,
+      "code": 6006,
       "name": "InvalidBridgedToken",
       "msg": "Invalid bridged token"
     },
     {
-      "code": 6006,
+      "code": 6007,
       "name": "InvalidFee",
       "msg": "Invalid fee"
     }
@@ -1270,6 +1252,12 @@
               "defined": {
                 "name": "ConfigBumps"
               }
+            }
+          },
+          {
+            "name": "padding",
+            "type": {
+              "array": ["u8", 100]
             }
           }
         ]
@@ -1465,6 +1453,16 @@
       "name": "CONFIG_SEED",
       "type": "bytes",
       "value": "[99, 111, 110, 102, 105, 103]"
+    },
+    {
+      "name": "MAX_ALLOWED_DECIMALS",
+      "type": "u8",
+      "value": "9"
+    },
+    {
+      "name": "METADATA_SEED",
+      "type": "bytes",
+      "value": "[109, 101, 116, 97, 100, 97, 116, 97]"
     },
     {
       "name": "SOLANA_OMNI_BRIDGE_CHAIN_ID",

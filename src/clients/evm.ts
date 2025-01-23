@@ -186,6 +186,11 @@ export class EvmBridgeClient {
         transfer.nativeFee,
         transfer.recipient,
         "",
+        {
+          value: this.isNativeToken(transfer.tokenAddress)
+            ? transfer.amount + transfer.nativeFee
+            : transfer.nativeFee,
+        },
       )
       return tx.hash
     } catch (error) {
@@ -239,5 +244,9 @@ export class EvmBridgeClient {
       throw new Error(`Invalid EVM address: ${omniAddress}`)
     }
     return address
+  }
+
+  private isNativeToken(omniAddress: OmniAddress): boolean {
+    return this.extractEvmAddress(omniAddress) === "0x0000000000000000000000000000000000000000"
   }
 }
