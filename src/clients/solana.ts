@@ -181,7 +181,7 @@ export class SolanaBridgeClient {
       const tx = await this.program.methods
         .deployToken({
           payload,
-          signature: signature.toBytes(),
+          signature: [...signature.toBytes()],
         })
         .accountsStrict({
           authority: this.authority()[0],
@@ -243,10 +243,10 @@ export class SolanaBridgeClient {
     if (transfer.tokenAddress === `sol:${PublicKey.default.toBase58()}`) {
       method = this.program.methods
         .initTransferSol({
-          amount: new BN(transfer.amount.valueOf()),
+          amount: new BN(transfer.amount.valueOf().toString()),
           recipient: transfer.recipient,
-          fee: new BN(transfer.fee.valueOf()),
-          nativeFee: new BN(transfer.nativeFee.valueOf()),
+          fee: new BN(transfer.fee.valueOf().toString()),
+          nativeFee: new BN(transfer.nativeFee.valueOf().toString()),
         })
         .accountsStrict({
           solVault,
@@ -274,10 +274,10 @@ export class SolanaBridgeClient {
 
       method = this.program.methods
         .initTransfer({
-          amount: new BN(transfer.amount.valueOf()),
+          amount: new BN(transfer.amount.valueOf().toString()),
           recipient: transfer.recipient,
-          fee: new BN(transfer.fee.valueOf()),
-          nativeFee: new BN(transfer.nativeFee.valueOf()),
+          fee: new BN(transfer.fee.valueOf().toString()),
+          nativeFee: new BN(transfer.nativeFee.valueOf().toString()),
         })
         .accountsStrict({
           authority: this.authority()[0],
@@ -360,7 +360,10 @@ export class SolanaBridgeClient {
     const USED_NONCES_PER_ACCOUNT = 1024
     const nonceGroup = payload.destination_nonce / BigInt(USED_NONCES_PER_ACCOUNT)
     const [usedNonces] = PublicKey.findProgramAddressSync(
-      [Buffer.from("used_nonces", "utf-8"), Buffer.from(new BN(nonceGroup).toArray("le", 8))],
+      [
+        Buffer.from("used_nonces", "utf-8"),
+        Buffer.from(new BN(nonceGroup.toString()).toArray("le", 8)),
+      ],
       this.program.programId,
     )
 
@@ -377,15 +380,15 @@ export class SolanaBridgeClient {
       const tx = await this.program.methods
         .finalizeTransfer({
           payload: {
-            destinationNonce: new BN(payload.destination_nonce),
+            destinationNonce: new BN(payload.destination_nonce.toString()),
             transferId: {
               originChain: payload.transfer_id.origin_chain,
-              originNonce: new BN(payload.transfer_id.origin_nonce),
+              originNonce: new BN(payload.transfer_id.origin_nonce.toString()),
             },
             amount: new BN(payload.amount.toString()),
             feeRecipient: payload.fee_recipient,
           },
-          signature: signature.toBytes(),
+          signature: [...signature.toBytes()],
         })
         .accountsStrict({
           usedNonces,
