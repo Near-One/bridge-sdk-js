@@ -23,21 +23,21 @@
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",
     "@solana/spl-token": "^0.4.9",
-    "@solana/web3.js": "^1.95.5",
+    "@solana/web3.js": "^1.98.0",
     "borsh": "^2.0.0",
-    "borsher": "^3.5.0",
-    "ethers": "^6.13.4",
+    "borsher": "^3.6.0",
+    "ethers": "^6.13.5",
     "near-api-js": "^5.0.1"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.17.3",
     "@biomejs/biome": "^1.9.4",
     "@changesets/cli": "^2.27.12",
-    "@types/node": "^22.10.1",
-    "lefthook": "^1.9.0",
+    "@types/node": "^22.12.0",
+    "lefthook": "^1.10.10",
     "msw": "^2.7.0",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.4"
   },
   "pnpm": {
     "overrides": {
