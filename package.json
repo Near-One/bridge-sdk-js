@@ -12,8 +12,7 @@
     "lint": "biome check --write .",
     "typecheck": "tsc --noEmit",
     "prepare": "pnpm run build",
-    "prepublishOnly": "pnpm lint && pnpm typecheck",
-    "postpublish": "pnpm build",
+    "prepublishOnly": "pnpm build",
     "lefthook": "lefthook install",
     "check-exports": "attw --pack .",
     "release": "changeset version && changeset publish"
