@@ -16,7 +16,7 @@
     "postpublish": "pnpm build",
     "lefthook": "lefthook install",
     "check-exports": "attw --pack .",
-    "local-release": "changeset version && changeset publish"
+    "release": "changeset version && changeset publish"
   },
   "keywords": ["blockchain", "bridge", "ethereum", "near", "solana"],
   "author": "NEAR One",
