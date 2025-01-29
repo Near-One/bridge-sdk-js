@@ -251,14 +251,14 @@ Token deployment uses chain-specific clients through a unified interface:
 import { getClient } from "omni-bridge-sdk";
 
 // Initialize client for source chain
-const client = getClient(ChainKind.Near, wallet);
+const nearClient = getClient(ChainKind.Near, wallet);
+const ethClient = getClient(ChainKind.Eth, wallet);
 
 // Example: Deploy NEAR token to Ethereum
-const txHash = await client.logMetadata("near:token.near");
-console.log(`Metadata logged with tx: ${txHash}`);
+const { signature } = await nearClient.logMetadata("near:token.near");
 
 // Deploy token with signed MPC payload
-const result = await client.deployToken(signature, {
+const result = await ethClient.deployToken(signature, {
   token: "token.near",
   name: "Token Name",
   symbol: "TKN",
