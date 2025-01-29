@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.2.1
+
+### Patch Changes
+
+- ae4fd88: Support automatic deployments
+
 ## 0.2.0
 
 ### Minor Changes
