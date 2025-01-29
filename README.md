@@ -43,117 +43,140 @@ The SDK currently provides a split interface for cross-chain transfers:
 - Chain-specific clients: Required for finalizing transfers on destination chains
 
 > [!NOTE]  
-> We're working on unifying this into a single interface that will handle the complete transfer lifecycle. For now, you'll need to use both `omniTransfer` and chain-specific clients as shown below.
+> We're working on unifying this into a single interface that will handle the complete transfer lifecycle. For now, you'll need to use both `omniTransfer` and chain-specific clients as shown in the Transfer Flows section below.
 
-Here's a complete example:
+## Transfer Flows
+
+Cross-chain transfers have different flows depending on the source and destination chains. Here's a detailed breakdown:
+
+### NEAR to Foreign Chain Transfers
+
+When transferring from NEAR to another chain (e.g., Ethereum, Solana), you need to:
+
+1. Initiate the transfer on NEAR
+2. Sign the transfer message
+3. Use the signature for finalization on the destination chain
 
 ```typescript
-import {
-  omniTransfer,
-  ChainKind,
-  omniAddress,
-  OmniBridgeAPI,
-  getClient,
-} from "omni-bridge-sdk";
-import { connect } from "near-api-js";
-
-// Setup NEAR account (source)
+// Setup NEAR account and destination wallet
 const near = await connect({
   networkId: "testnet",
   nodeUrl: "https://rpc.testnet.near.org",
 });
 const account = await near.account("sender.near");
+const ethWallet = new ethers.providers.Web3Provider(
+  window.ethereum
+).getSigner();
 
-// Setup Ethereum wallet (destination)
-const provider = new ethers.providers.Web3Provider(window.ethereum);
-const ethWallet = provider.getSigner();
-
-// 1. Get fee estimate
-const api = new OmniBridgeAPI("testnet");
-const fee = await api.getFee(
-  omniAddress(ChainKind.Near, account.accountId),
-  omniAddress(ChainKind.Eth, await ethWallet.getAddress()),
-  "usdc.near"
-);
-
-// 2. Create and initiate transfer
+// Create and initiate transfer
 const transfer = {
   tokenAddress: omniAddress(ChainKind.Near, "usdc.near"),
-  amount: BigInt("1000000"), // 1 USDC (6 decimals)
-  fee: BigInt(fee.transferred_token_fee || 0),
-  nativeFee: BigInt(fee.native_token_fee),
+  amount: BigInt("1000000"),
+  fee: BigInt(feeEstimate.transferred_token_fee),
+  nativeFee: BigInt(feeEstimate.native_token_fee),
   recipient: omniAddress(ChainKind.Eth, await ethWallet.getAddress()),
 };
 
-// Initiate transfer on source chain
+// Initiate on NEAR
 const result = await omniTransfer(account, transfer);
 
 // Sign transfer on NEAR
 const nearClient = getClient(ChainKind.Near, account);
 const { signature } = await nearClient.signTransfer(result, "sender.near");
 
-// 3. Monitor status
-let status;
-do {
-  status = await api.getTransferStatus(ChainKind.Near, result.nonce);
-  console.log(`Status: ${status}`);
-
-  if (status === "ready_for_finalize") {
-    // 4. Finalize transfer on destination chain
-    const ethClient = getClient(ChainKind.Eth, ethWallet);
-    await ethClient.finalizeTransfer(transferMessage, signature);
-    break;
-  }
-
-  await new Promise((r) => setTimeout(r, 2000));
-} while (status === "pending");
+// Finalize on destination (e.g., Ethereum)
+const ethClient = getClient(ChainKind.Eth, ethWallet);
+await ethClient.finalizeTransfer(transferMessage, signature);
 ```
 
-## Transfer Lifecycle
+### Solana to NEAR Transfers
 
-A cross-chain transfer involves multiple steps across different chains:
-
-### 1. Transfer Initiation
-
-Use `omniTransfer` to start the transfer on the source chain:
+Solana to NEAR transfers use Wormhole VAAs (Verified Action Approvals) for verification:
 
 ```typescript
-const result = await omniTransfer(wallet, transfer);
-// Returns: { txId: string, nonce: bigint } or InitTransferEvent for NEAR
-```
+// Setup Solana provider
+const connection = new Connection("https://api.testnet.solana.com");
+const wallet = new Keypair();
+const provider = new AnchorProvider(
+  connection,
+  wallet,
+  AnchorProvider.defaultOptions()
+);
 
-### 2. Status Monitoring
+// Create transfer
+const transfer = {
+  tokenAddress: omniAddress(ChainKind.Sol, "EPjFWdd..."), // Solana USDC
+  amount: BigInt("1000000"),
+  fee: BigInt(feeEstimate.transferred_token_fee),
+  nativeFee: BigInt(feeEstimate.native_token_fee),
+  recipient: omniAddress(ChainKind.Near, "recipient.near"),
+};
 
-Track the transfer status using `OmniBridgeAPI`:
+// Initiate on Solana
+const result = await omniTransfer(provider, transfer);
 
-```typescript
-const api = new OmniBridgeAPI("testnet");
-const status = await api.getTransferStatus(chain, nonce);
-// Status can be: "pending" | "ready_for_finalize" | "completed" | "failed"
-```
-
-### 3. Transfer Finalization
-
-When status is "ready_for_finalize", use chain-specific clients to complete the transfer:
-
-```typescript
-// Finalize on Ethereum/EVM chains
-const evmClient = getClient(ChainKind.Eth, ethWallet);
-await evmClient.finalizeTransfer(transferMessage, signature);
+// Get Wormhole VAA
+const vaa = await getVaa(result.txHash, "Testnet");
 
 // Finalize on NEAR
 const nearClient = getClient(ChainKind.Near, nearAccount);
 await nearClient.finalizeTransfer(
   token,
-  recipientAccount,
+  "recipient.near",
   storageDeposit,
-  sourceChain,
-  vaa // Optional Wormhole VAA
+  ChainKind.Sol,
+  vaa // Wormhole VAA required for Solana->NEAR
+);
+```
+
+### EVM to NEAR Transfers
+
+EVM chain transfers to NEAR require proof verification:
+
+```typescript
+// Setup EVM wallet
+const provider = new ethers.providers.Web3Provider(window.ethereum);
+const wallet = provider.getSigner();
+
+// Create transfer
+const transfer = {
+  tokenAddress: omniAddress(ChainKind.Eth, "0x123..."), // Ethereum USDC
+  amount: BigInt("1000000"),
+  fee: BigInt(feeEstimate.transferred_token_fee),
+  nativeFee: BigInt(feeEstimate.native_token_fee),
+  recipient: omniAddress(ChainKind.Near, "recipient.near"),
+};
+
+// Initiate on EVM
+const result = await omniTransfer(wallet, transfer);
+
+// Get EVM proof
+const proof = await getEvmProof(
+  result.txHash,
+  ERC20_TRANSFER_TOPIC,
+  ChainKind.Eth
 );
 
-// Finalize on Solana
-const solClient = getClient(ChainKind.Sol, provider);
-await solClient.finalizeTransfer(transferMessage, signature);
+// Finalize on NEAR
+const nearClient = getClient(ChainKind.Near, nearAccount);
+await nearClient.finalizeTransfer(
+  token,
+  "recipient.near",
+  storageDeposit,
+  ChainKind.Eth,
+  undefined, // No VAA needed
+  proof // EVM proof required
+);
+```
+
+### Status Monitoring
+
+For all transfer types, you can monitor status using the API:
+
+```typescript
+const api = new OmniBridgeAPI("testnet");
+const status = await api.getTransferStatus(sourceChain, nonce);
+// Status: "pending" | "ready_for_finalize" | "completed" | "failed"
 ```
 
 ## Core Concepts
@@ -186,62 +209,6 @@ interface OmniTransferMessage {
   nativeFee: bigint; // Gas fee in native token
   recipient: OmniAddress; // Destination address
 }
-```
-
-## Chain-Specific Examples
-
-### Ethereum to Solana Transfer
-
-```typescript
-import { ethers } from "ethers";
-
-// Setup Ethereum wallet
-const provider = new ethers.providers.Web3Provider(window.ethereum);
-const wallet = provider.getSigner();
-
-// Create transfer message
-const transfer = {
-  tokenAddress: omniAddress(ChainKind.Eth, "0x123..."), // USDC on Ethereum
-  amount: BigInt("1000000"),
-  fee: BigInt("0"),
-  nativeFee: BigInt("10000"), // ETH gas fee
-  recipient: omniAddress(
-    ChainKind.Sol,
-    "GsbwXfJraMomCYJpbtoH4DfzjdzXdYjkqU5YvF3j4YZ"
-  ),
-};
-
-// Execute transfer
-const result = await omniTransfer(wallet, transfer);
-console.log(`Transfer initiated: ${result.txId}`);
-```
-
-### Solana to Base Transfer
-
-```typescript
-import { Connection, Keypair } from "@solana/web3.js";
-import { AnchorProvider } from "@coral-xyz/anchor";
-
-// Setup Solana provider
-const connection = new Connection("https://api.mainnet-beta.solana.com");
-const wallet = new Keypair();
-const provider = new AnchorProvider(
-  connection,
-  wallet,
-  AnchorProvider.defaultOptions()
-);
-
-// Create transfer message
-const transfer = {
-  tokenAddress: omniAddress(ChainKind.Sol, "EPjFWdd..."), // USDC on Solana
-  amount: BigInt("1000000"),
-  fee: BigInt("0"),
-  nativeFee: BigInt("5000"), // SOL fee in lamports
-  recipient: omniAddress(ChainKind.Base, "0x456..."),
-};
-
-// Execute transfer
-const result = await omniTransfer(provider, transfer);
 ```
 
 ## Token Operations
