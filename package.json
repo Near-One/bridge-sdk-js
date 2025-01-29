@@ -1,10 +1,12 @@
 {
   "name": "omni-bridge-sdk",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "SDK for Omni bridge transfers",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "packageManager": "pnpm@9.15.4",
   "scripts": {
     "build": "tsc",
@@ -17,7 +19,13 @@
     "check-exports": "attw --pack .",
     "release": "changeset version && changeset publish"
   },
-  "keywords": ["blockchain", "bridge", "ethereum", "near", "solana"],
+  "keywords": [
+    "blockchain",
+    "bridge",
+    "ethereum",
+    "near",
+    "solana"
+  ],
   "author": "NEAR One",
   "license": "MIT",
   "dependencies": {
