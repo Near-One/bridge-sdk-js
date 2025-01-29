@@ -2,6 +2,7 @@ import { BorshSchema, borshSerialize } from "borsher"
 import type { ChainKind } from "./chain"
 import { ChainKindSchema } from "./chain"
 import type { AccountId } from "./common"
+import type { TransferId } from "./evm"
 
 // StorageDepositAction type
 export type StorageDepositAction = {
@@ -28,6 +29,15 @@ export const FinTransferArgsSchema = BorshSchema.Struct({
   storage_deposit_actions: BorshSchema.Vec(StorageDepositActionSchema),
   prover_args: BorshSchema.Vec(BorshSchema.u8),
 })
+
+export type SignTransferArgs = {
+  transfer_id: TransferId
+  fee_recipient: AccountId
+  fee: {
+    fee: string
+    native_fee: string
+  }
+}
 
 // ClaimFeeArgs type
 export type ClaimFeeArgs = {

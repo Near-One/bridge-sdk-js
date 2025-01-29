@@ -12,11 +12,14 @@ import {
   EvmVerifyProofArgsSchema,
   type FinTransferArgs,
   FinTransferArgsSchema,
+  type InitTransferEvent,
   type LogMetadataArgs,
   type LogMetadataEvent,
   type OmniAddress,
   type OmniTransferMessage,
   ProofKind,
+  type SignTransferArgs,
+  type SignTransferEvent,
   type U128,
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
@@ -34,6 +37,7 @@ const GAS = {
   BIND_TOKEN: BigInt(3e14), // 3 TGas
   INIT_TRANSFER: BigInt(3e14), // 3 TGas
   FIN_TRANSFER: BigInt(3e14), // 3 TGas
+  SIGN_TRANSFER: BigInt(3e14), // 3 TGas
   STORAGE_DEPOSIT: BigInt(1e14), // 1 TGas
 } as const
 
@@ -46,6 +50,7 @@ const DEPOSIT = {
   LOG_METADATA: BigInt(2e23), // 0.2 NEAR
   DEPLOY_TOKEN: BigInt(4e24), // 4 NEAR
   BIND_TOKEN: BigInt(2e23), // 0.2 NEAR
+  SIGN_TRANSFER: BigInt(5e23), // 0.5 NEAR
   INIT_TRANSFER: BigInt(1), // 1 yoctoNEAR
   FIN_TRANSFER: BigInt(1), // 1 yoctoNEAR
 } as const
@@ -58,7 +63,7 @@ type StorageDeposit = {
   available: bigint
 } | null
 
-interface TransferMessage {
+interface InitTransferMessageArgs {
   receiver_id: AccountId
   memo: string | null
   amount: string
@@ -266,15 +271,19 @@ export class NearBridgeClient {
    * @param recipient - Recipient's Omni address on the destination chain where tokens will be minted
    * @param amount - Amount of NEP-141 tokens to transfer
    * @throws {Error} If token address is not on NEAR chain
-   * @returns Promise resolving to transaction hash
+   * @returns Promise resolving to InitTransferEvent
    */
 
-  async initTransfer(transfer: OmniTransferMessage): Promise<string> {
+  async initTransfer(transfer: OmniTransferMessage): Promise<InitTransferEvent> {
     if (getChain(transfer.tokenAddress) !== ChainKind.Near) {
       throw new Error("Token address must be on NEAR")
     }
     const tokenAddress = transfer.tokenAddress.split(":")[1]
 
+    // First, check if the FT has the token locker contract registered for storage
+    await this.storageDepositForToken(tokenAddress)
+
+    // Now do the storage deposit dance for the locker itself
     const { regBalance, initBalance, storage } = await this.getBalances()
     const requiredBalance = regBalance + initBalance
     const existingBalance = storage?.available ?? BigInt(0)
@@ -295,7 +304,7 @@ export class NearBridgeClient {
       fee: transfer.fee.toString(),
       native_token_fee: transfer.nativeFee.toString(),
     }
-    const args: TransferMessage = {
+    const args: InitTransferMessageArgs = {
       receiver_id: this.lockerAddress,
       amount: transfer.amount.toString(),
       memo: null,
@@ -309,7 +318,73 @@ export class NearBridgeClient {
       attachedDeposit: DEPOSIT.INIT_TRANSFER,
     })
 
-    return tx.transaction.hash
+    // Parse event from transaction logs
+    const event = tx.receipts_outcome
+      .flatMap((receipt) => receipt.outcome.logs)
+      .find((log) => log.includes("InitTransferEvent"))
+
+    if (!event) {
+      throw new Error("InitTransferEvent not found in transaction logs")
+    }
+    return JSON.parse(event).InitTransferEvent
+  }
+
+  /**
+   * Signs transfer using the token locker
+   * @param initTransferEvent - Transfer event of the previously-initiated transfer
+   * @param feeRecipient - Address of the fee recipient, can be the original sender or a relayer
+   * @returns Promise resolving to the transaction hash
+   */
+  async signTransfer(
+    initTransferEvent: InitTransferEvent,
+    feeRecipient: AccountId,
+  ): Promise<SignTransferEvent> {
+    const MAX_POLLING_ATTEMPTS = 60 // 60 seconds timeout
+    const POLLING_INTERVAL = 1000 // 1 second between attempts
+
+    const args: SignTransferArgs = {
+      transfer_id: {
+        origin_chain: "Near",
+        origin_nonce: initTransferEvent.transfer_message.origin_nonce,
+      },
+      fee_recipient: feeRecipient,
+      fee: {
+        fee: initTransferEvent.transfer_message.fee.fee,
+        native_fee: initTransferEvent.transfer_message.fee.native_fee,
+      },
+    }
+
+    // Need to use signTransaction due to NEAR API limitations around timeouts
+    // @ts-expect-error: Account.signTransaction is protected but necessary here
+    const [txHash, signedTx] = await this.wallet.signTransaction(this.lockerAddress, [
+      functionCall("sign_transfer", args, GAS.SIGN_TRANSFER, DEPOSIT.SIGN_TRANSFER),
+    ])
+
+    const provider = this.wallet.connection.provider
+    let outcome = await provider.sendTransactionAsync(signedTx)
+
+    // Poll for transaction execution
+    let attempts = 0
+    while (outcome.final_execution_status !== "EXECUTED" && attempts < MAX_POLLING_ATTEMPTS) {
+      await new Promise((resolve) => setTimeout(resolve, POLLING_INTERVAL))
+      outcome = await provider.txStatus(txHash, this.wallet.accountId, "INCLUDED")
+      attempts++
+    }
+
+    if (attempts >= MAX_POLLING_ATTEMPTS) {
+      throw new Error(`Transaction polling timed out after ${MAX_POLLING_ATTEMPTS} seconds`)
+    }
+
+    // Parse event from transaction logs
+    const event = outcome.receipts_outcome
+      .flatMap((receipt) => receipt.outcome.logs)
+      .find((log) => log.includes("SignTransferEvent"))
+
+    if (!event) {
+      throw new Error("SignTransferEvent not found in transaction logs")
+    }
+
+    return JSON.parse(event).SignTransferEvent
   }
 
   /**
@@ -448,5 +523,39 @@ export class NearBridgeClient {
       console.error("Error fetching balances:", error)
       throw error
     }
+  }
+
+  /// Performs a storage deposit on behalf of the token_locker so that the tokens can be transferred to the locker. To be called once for each NEP-141
+  private async storageDepositForToken(tokenAddress: string): Promise<string> {
+    const storage = await this.wallet.viewFunction({
+      contractId: tokenAddress,
+      methodName: "storage_balance_of",
+      args: {
+        account_id: this.lockerAddress,
+      },
+    })
+    if (storage === null) {
+      // Check how much is required
+      const bounds = await this.wallet.viewFunction({
+        contractId: tokenAddress,
+        methodName: "storage_balance_bounds",
+        args: {
+          account_id: this.lockerAddress,
+        },
+      })
+      const requiredAmount = BigInt(bounds.min)
+
+      const tx = await this.wallet.functionCall({
+        contractId: tokenAddress,
+        methodName: "storage_deposit",
+        args: {
+          account_id: this.lockerAddress,
+        },
+        gas: GAS.STORAGE_DEPOSIT,
+        attachedDeposit: requiredAmount,
+      })
+      return tx.transaction.hash
+    }
+    return storage
   }
 }

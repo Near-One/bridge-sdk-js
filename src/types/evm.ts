@@ -1,5 +1,4 @@
-import type { ChainKind } from "./chain"
-import type { Nonce, OmniAddress, U128 } from "./common"
+import type { Nonce, OmniAddress } from "./common"
 
 export enum PayloadType {
   TransferMessage = "TransferMessage",
@@ -8,8 +7,8 @@ export enum PayloadType {
 }
 
 export interface TransferId {
-  origin_chain: ChainKind
-  origin_nonce: Nonce
+  origin_chain: string
+  origin_nonce: number
 }
 
 // bridge deposit structure for evm chains
@@ -25,10 +24,10 @@ export type BridgeDeposit = {
 
 export type TransferMessagePayload = {
   prefix: PayloadType
-  destination_nonce: Nonce
+  destination_nonce: string
   transfer_id: TransferId
   token_address: OmniAddress
-  amount: U128
+  amount: string
   recipient: OmniAddress
   fee_recipient: string | null // NEAR AccountId or null
 }

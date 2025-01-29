@@ -212,9 +212,9 @@ export class EvmBridgeClient {
   ): Promise<string> {
     // Convert the transfer message to EVM-compatible format
     const bridgeDeposit: BridgeDeposit = {
-      destination_nonce: transferMessage.destination_nonce,
+      destination_nonce: BigInt(transferMessage.destination_nonce),
       origin_chain: Number(transferMessage.transfer_id.origin_chain),
-      origin_nonce: transferMessage.transfer_id.origin_nonce,
+      origin_nonce: BigInt(transferMessage.transfer_id.origin_nonce),
       token_address: this.extractEvmAddress(transferMessage.token_address),
       amount: BigInt(transferMessage.amount),
       recipient: this.extractEvmAddress(transferMessage.recipient),
