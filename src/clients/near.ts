@@ -268,14 +268,6 @@ export class NearBridgeClient {
       })
     }
 
-    this.wallet.viewFunction({
-      contractId: tokenAddress,
-      methodName: "storage_balance_of",
-      args: {
-        account_id: this.lockerAddress,
-      },
-    })
-
     const initTransferMessage: InitTransferMessage = {
       recipient: transfer.recipient,
       fee: transfer.fee.toString(),
