@@ -10,6 +10,7 @@ export interface MetadataPayload {
   token: string
 }
 
+
 interface Fee {
   fee: string
   native_fee: string
@@ -26,10 +27,12 @@ interface TransferMessage {
   destination_nonce: number
 }
 
+
 export interface LogMetadataEvent {
   metadata_payload: MetadataPayload
   signature: MPCSignature
 }
+
 export interface InitTransferEvent {
   transfer_message: TransferMessage
 }
