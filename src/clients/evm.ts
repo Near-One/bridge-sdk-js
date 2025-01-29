@@ -11,8 +11,8 @@ import type {
 import { getChain } from "../utils"
 
 // Type helpers for EVM chains
-export type EVMChainKind = typeof ChainKind.Eth | typeof ChainKind.Base | typeof ChainKind.Arb
-export type ChainTag<T extends ChainKind> = keyof T
+type EVMChainKind = typeof ChainKind.Eth | typeof ChainKind.Base | typeof ChainKind.Arb
+type ChainTag<T extends ChainKind> = keyof T
 
 // Contract ABI for the bridge token factory
 const BRIDGE_TOKEN_FACTORY_ABI = [
@@ -26,7 +26,7 @@ const BRIDGE_TOKEN_FACTORY_ABI = [
 /**
  * Helper functions for chain operations
  */
-export const ChainUtils = {
+const ChainUtils = {
   getTag: <T extends ChainKind>(chain: T): ChainTag<T> => {
     return Object.keys(chain)[0] as ChainTag<T>
   },
