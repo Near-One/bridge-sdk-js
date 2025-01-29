@@ -2,15 +2,17 @@ import { createMPT, createMerkleProof } from "@ethereumjs/mpt"
 import { RLP } from "@ethereumjs/rlp"
 import { MapDB, bigIntToHex } from "@ethereumjs/util"
 import { ethers } from "ethers"
-import type { EvmProof } from "../types"
+import type { BlockTag, Log, TransactionReceipt, TransactionReceiptParams } from "ethers"
+import { type ChainTag, ChainUtils, type EVMChainKind } from "../clients/evm"
+import { ChainKind } from "../types"
 
-type Network = "ethereum" | "base" | "arbitrum" | "optimism"
-
-const NETWORK_RPC_URLS: Record<Network, string> = {
-  ethereum: "https://eth.llamarpc.com",
-  base: "https://mainnet.base.org",
-  arbitrum: "https://arb1.arbitrum.io/rpc",
-  optimism: "https://mainnet.optimism.io",
+export interface EvmProof {
+  log_index: bigint
+  log_entry_data: Uint8Array
+  receipt_index: bigint
+  receipt_data: Uint8Array
+  header_data: Uint8Array
+  proof: Uint8Array[]
 }
 
 interface BlockHeader {
@@ -36,137 +38,143 @@ interface BlockHeader {
   parentBeaconBlockRoot?: string
 }
 
-class EthereumProvider extends ethers.JsonRpcProvider {
-  async getBlockReceipts(blockTag: ethers.BlockTag) {
+const RPC_URLS: Record<ChainTag<EVMChainKind>, string> = {
+  Eth: "https://eth.llamarpc.com",
+  Base: "https://mainnet.base.org",
+  Arb: "https://arb1.arbitrum.io/rpc",
+}
+
+function getChainRpcUrl(chain: ChainKind): string {
+  const chainTag = ChainUtils.getTag(chain)
+  const url = RPC_URLS[chainTag]
+  if (!url) {
+    throw new Error(`No RPC URL configured for chain: ${chain}`)
+  }
+  return url
+}
+
+class ExtendedProvider extends ethers.JsonRpcProvider {
+  async getBlockReceipts(blockTag: BlockTag) {
     const receipts = await this.send("eth_getBlockReceipts", [this._getBlockTag(blockTag)])
     const network = await this.getNetwork()
-    return receipts.map((receipt: ethers.TransactionReceiptParams) =>
+    return receipts.map((receipt: TransactionReceiptParams) =>
       this._wrapTransactionReceipt(receipt, network),
     )
   }
 
-  async getBlockHeader(blockTag: ethers.BlockTag): Promise<BlockHeader> {
+  async getBlockHeader(blockTag: BlockTag): Promise<BlockHeader> {
     return this.send("eth_getBlockByNumber", [this._getBlockTag(blockTag), false])
   }
 }
 
-export class ProofGenerator {
-  private provider: EthereumProvider
-  private network: Network
+export async function getEvmProof(
+  txHash: string,
+  topic: string,
+  chain: ChainKind = ChainKind.Eth,
+): Promise<EvmProof> {
+  console.log()
+  const rpcUrl = getChainRpcUrl(chain)
 
-  constructor(network: Network = "ethereum") {
-    this.network = network
-    const rpcUrl = NETWORK_RPC_URLS[network]
-    if (!rpcUrl) {
-      throw new Error(`Unsupported network: ${network}`)
-    }
-    this.provider = new EthereumProvider(rpcUrl)
+  const provider = new ExtendedProvider(rpcUrl)
+  const receipt = await provider.getTransactionReceipt(txHash)
+  if (!receipt) {
+    throw new Error(`Transaction receipt not found on ${ChainUtils.getTag(chain)}`)
   }
 
-  async generateProof(txHash: string, topic: string): Promise<EvmProof> {
-    const receipt = await this.provider.getTransactionReceipt(txHash)
-    if (!receipt) {
-      throw new Error(`Transaction receipt not found on ${this.network}`)
-    }
+  const blockNumber = bigIntToHex(BigInt(receipt.blockNumber))
+  const [blockHeader, blockReceipts] = await Promise.all([
+    provider.getBlockHeader(blockNumber),
+    provider.getBlockReceipts(blockNumber),
+  ])
 
-    const blockNumber = bigIntToHex(BigInt(receipt.blockNumber))
-    const [blockHeader, blockReceipts] = await Promise.all([
-      this.provider.getBlockHeader(blockNumber),
-      this.provider.getBlockReceipts(blockNumber),
-    ])
+  const { merkleProof, receiptData } = await buildReceiptProof(receipt, blockReceipts)
+  const logData = findAndEncodeLog(receipt, topic)
 
-    const { merkleProof, receiptData } = await this.buildReceiptProof(receipt, blockReceipts)
-    const logData = this.findAndEncodeLog(receipt, topic)
+  return {
+    log_index: BigInt(logData.index),
+    log_entry_data: logData.encoded,
+    receipt_index: BigInt(receipt.index),
+    receipt_data: receiptData,
+    header_data: encodeBlockHeader(blockHeader),
+    proof: merkleProof,
+  }
+}
 
-    return {
-      log_index: BigInt(logData.index),
-      log_entry_data: logData.encoded,
-      receipt_index: BigInt(receipt.index),
-      receipt_data: receiptData,
-      header_data: this.encodeBlockHeader(blockHeader),
-      proof: merkleProof,
-    }
+async function buildReceiptProof(receipt: TransactionReceipt, blockReceipts: TransactionReceipt[]) {
+  const trie = await createMPT({ db: new MapDB() })
+
+  await Promise.all(
+    blockReceipts.map(async (r) => {
+      if (!r) throw new Error("Invalid receipt in block")
+      const receiptRlp = encodeReceipt(r)
+      const key = RLP.encode(r.index)
+      await trie.put(key, receiptRlp)
+    }),
+  )
+
+  const receiptKey = RLP.encode(receipt.index)
+  const merkleProof = await createMerkleProof(trie, receiptKey)
+  const receiptData = encodeReceipt(receipt)
+
+  return { merkleProof, receiptData }
+}
+
+function findAndEncodeLog(receipt: TransactionReceipt, topic: string) {
+  const logEntry = receipt.logs.find((log) => log.topics[0] === topic)
+  if (!logEntry) {
+    throw new Error("Log entry not found for the given topic")
   }
 
-  private async buildReceiptProof(
-    receipt: ethers.TransactionReceipt,
-    blockReceipts: ethers.TransactionReceipt[],
-  ) {
-    const trie = await createMPT({ db: new MapDB() })
-
-    await Promise.all(
-      blockReceipts.map(async (r) => {
-        if (!r) throw new Error("Invalid receipt in block")
-        const receiptRlp = this.encodeReceipt(r)
-        const key = RLP.encode(r.index)
-        await trie.put(key, receiptRlp)
-      }),
-    )
-
-    const receiptKey = RLP.encode(receipt.index)
-    const merkleProof = await createMerkleProof(trie, receiptKey)
-    const receiptData = this.encodeReceipt(receipt)
-
-    return { merkleProof, receiptData }
+  return {
+    index: receipt.logs.indexOf(logEntry),
+    encoded: encodeLog(logEntry),
   }
+}
 
-  private findAndEncodeLog(receipt: ethers.TransactionReceipt, topic: string) {
-    const logEntry = receipt.logs.find((log) => log.topics[0] === topic)
-    if (!logEntry) {
-      throw new Error("Log entry not found for the given topic")
-    }
+function encodeReceipt(receipt: TransactionReceipt): Uint8Array {
+  const items = [
+    receipt.status ? "0x1" : "0x",
+    receipt.cumulativeGasUsed,
+    receipt.logsBloom,
+    receipt.logs.map((log) => [log.address, Array.from(log.topics), log.data]),
+  ]
 
-    return {
-      index: receipt.logs.indexOf(logEntry),
-      encoded: this.encodeLog(logEntry),
-    }
-  }
-
-  private encodeReceipt(receipt: ethers.TransactionReceipt): Uint8Array {
-    const items = [
-      receipt.status ? "0x1" : "0x",
-      receipt.cumulativeGasUsed,
-      receipt.logsBloom,
-      receipt.logs.map((log) => [log.address, Array.from(log.topics), log.data]),
-    ]
-
-    if (receipt.type === 0) {
-      return RLP.encode(items)
-    }
-
-    return new Uint8Array([receipt.type, ...RLP.encode(items)])
-  }
-
-  private encodeLog(log: ethers.Log): Uint8Array {
-    return RLP.encode([log.address, Array.from(log.topics), log.data])
-  }
-
-  private encodeBlockHeader(header: BlockHeader): Uint8Array {
-    const items = [
-      header.parentHash,
-      header.sha3Uncles,
-      header.miner,
-      header.stateRoot,
-      header.transactionsRoot,
-      header.receiptsRoot,
-      header.logsBloom,
-      header.difficulty,
-      header.number,
-      header.gasLimit,
-      header.gasUsed,
-      header.timestamp,
-      header.extraData,
-      header.mixHash,
-      header.nonce,
-      header.baseFeePerGas,
-      header.withdrawalsRoot,
-      header.blobGasUsed,
-      header.excessBlobGas,
-      header.parentBeaconBlockRoot,
-    ]
-      .filter((item) => item !== undefined)
-      .map((item) => (item === "0x0" ? "0x" : item))
-
+  if (receipt.type === 0) {
     return RLP.encode(items)
   }
+
+  return new Uint8Array([receipt.type, ...RLP.encode(items)])
+}
+
+function encodeLog(log: Log): Uint8Array {
+  return RLP.encode([log.address, Array.from(log.topics), log.data])
+}
+
+function encodeBlockHeader(header: BlockHeader): Uint8Array {
+  const items = [
+    header.parentHash,
+    header.sha3Uncles,
+    header.miner,
+    header.stateRoot,
+    header.transactionsRoot,
+    header.receiptsRoot,
+    header.logsBloom,
+    header.difficulty,
+    header.number,
+    header.gasLimit,
+    header.gasUsed,
+    header.timestamp,
+    header.extraData,
+    header.mixHash,
+    header.nonce,
+    header.baseFeePerGas,
+    header.withdrawalsRoot,
+    header.blobGasUsed,
+    header.excessBlobGas,
+    header.parentBeaconBlockRoot,
+  ]
+    .filter((item) => item !== undefined)
+    .map((item) => (item === "0x0" ? "0x" : item))
+
+  return RLP.encode(items)
 }
