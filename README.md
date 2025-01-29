@@ -87,7 +87,10 @@ const transfer = {
 
 // Initiate transfer on source chain
 const result = await omniTransfer(account, transfer);
-console.log(`Transfer initiated with txId: ${result.txId}`);
+
+// Sign transfer on NEAR
+const nearClient = getClient(ChainKind.Near, account);
+const { signature } = await nearClient.signTransfer(result, "sender.near");
 
 // 3. Monitor status
 let status;
