@@ -1,5 +1,6 @@
 import { borshSerialize } from "borsher"
 import type { Account } from "near-api-js"
+import { functionCall } from "near-api-js/lib/transaction"
 import {
   type AccountId,
   type BindTokenArgs,
@@ -15,6 +16,9 @@ import {
   type OmniAddress,
   type OmniTransferMessage,
   ProofKind,
+  type SignTransferArgs,
+  type SignTransferEvent,
+  type TransferId,
   type U128,
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
@@ -32,6 +36,7 @@ const GAS = {
   BIND_TOKEN: BigInt(3e14), // 3 TGas
   INIT_TRANSFER: BigInt(3e14), // 3 TGas
   FIN_TRANSFER: BigInt(3e14), // 3 TGas
+  SIGN_TRANSFER: BigInt(3e14), // 3 TGas
   STORAGE_DEPOSIT: BigInt(1e14), // 1 TGas
 } as const
 
@@ -44,6 +49,7 @@ const DEPOSIT = {
   LOG_METADATA: BigInt(2e23), // 0.2 NEAR
   DEPLOY_TOKEN: BigInt(4e24), // 4 NEAR
   BIND_TOKEN: BigInt(2e23), // 0.2 NEAR
+  SIGN_TRANSFER: BigInt(5e23), // 0.5 NEAR
   INIT_TRANSFER: BigInt(1), // 1 yoctoNEAR
   FIN_TRANSFER: BigInt(1), // 1 yoctoNEAR
 } as const
@@ -67,6 +73,11 @@ interface InitTransferMessage {
   recipient: OmniAddress
   fee: string
   native_token_fee: string
+}
+
+interface Fee {
+  fee: bigint
+  native_fee: bigint
 }
 
 /**
@@ -163,6 +174,64 @@ export class NearBridgeClient {
     })
 
     return tx.transaction.hash
+  }
+
+  /**
+   * Signs transfer using the token locker
+   * @param transferId - Omni address of the token
+   * @param feeRecipient - Address of the fee recipient
+   * @param fee - Fee amount - this must match the fee in the stored transfer message
+   * @throws {Error} If token address is not on NEAR chain
+   * @returns Promise resolving to the transaction hash
+   */
+  async signTransfer(
+    transferId: TransferId,
+    feeRecipient: AccountId,
+    fee: Fee,
+  ): Promise<SignTransferEvent> {
+    const MAX_POLLING_ATTEMPTS = 60 // 60 seconds timeout
+    const POLLING_INTERVAL = 1000 // 1 second between attempts
+
+    const args: SignTransferArgs = {
+      transfer_id: transferId,
+      fee_recipient: feeRecipient,
+      fee: {
+        fee: fee.fee,
+        native_fee: fee.native_fee,
+      },
+    }
+
+    // Need to use signTransaction due to NEAR API limitations around timeouts
+    // @ts-expect-error: Account.signTransaction is protected but necessary here
+    const [txHash, signedTx] = await this.wallet.signTransaction(this.lockerAddress, [
+      functionCall("sign_transfer", args, GAS.SIGN_TRANSFER, DEPOSIT.SIGN_TRANSFER),
+    ])
+
+    const provider = this.wallet.connection.provider
+    let outcome = await provider.sendTransactionAsync(signedTx)
+
+    // Poll for transaction execution
+    let attempts = 0
+    while (outcome.final_execution_status !== "EXECUTED" && attempts < MAX_POLLING_ATTEMPTS) {
+      await new Promise((resolve) => setTimeout(resolve, POLLING_INTERVAL))
+      outcome = await provider.txStatus(txHash, this.wallet.accountId, "INCLUDED")
+      attempts++
+    }
+
+    if (attempts >= MAX_POLLING_ATTEMPTS) {
+      throw new Error(`Transaction polling timed out after ${MAX_POLLING_ATTEMPTS} seconds`)
+    }
+
+    // Parse event from transaction logs
+    const event = outcome.receipts_outcome
+      .flatMap((receipt) => receipt.outcome.logs)
+      .find((log) => log.includes("SignTransferEvent"))
+
+    if (!event) {
+      throw new Error("SignTransferEvent not found in transaction logs")
+    }
+
+    return JSON.parse(event).SignTransferEvent
   }
 
   /**
