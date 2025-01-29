@@ -11,3 +11,6 @@ export * from "./types"
 
 // Export specific clients
 export * from "./clients"
+
+// Export proofs
+export * from "./proofs"

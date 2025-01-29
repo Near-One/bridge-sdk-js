@@ -1,5 +1,6 @@
 import { borshSerialize } from "borsher"
 import type { Account } from "near-api-js"
+import { functionCall } from "near-api-js/lib/transaction"
 import {
   type AccountId,
   type BindTokenArgs,
@@ -12,6 +13,7 @@ import {
   type FinTransferArgs,
   FinTransferArgsSchema,
   type LogMetadataArgs,
+  type LogMetadataEvent,
   type OmniAddress,
   type OmniTransferMessage,
   ProofKind,
@@ -100,6 +102,15 @@ export class NearBridgeClient {
     private wallet: Account,
     private lockerAddress: string = process.env.OMNI_BRIDGE_NEAR as string,
   ) {
+    if (lockerAddress) {
+      this.lockerAddress = lockerAddress
+      return
+    }
+    if (wallet.connection.networkId === "testnet") {
+      this.lockerAddress = "omni-locker.testnet"
+    } else if (wallet.connection.networkId === "mainnet") {
+      this.lockerAddress = "omni.bridge.near"
+    }
     if (!this.lockerAddress) {
       throw new Error("OMNI_BRIDGE_NEAR address not configured")
     }
@@ -111,27 +122,48 @@ export class NearBridgeClient {
    * @throws {Error} If token address is not on NEAR chain
    * @returns Promise resolving to the transaction hash
    */
-  async logMetadata(tokenAddress: OmniAddress): Promise<string> {
-    // Validate source chain is NEAR
+  async logMetadata(tokenAddress: OmniAddress): Promise<LogMetadataEvent> {
+    const MAX_POLLING_ATTEMPTS = 60 // 60 seconds timeout
+    const POLLING_INTERVAL = 1000 // 1 second between attempts
+
     if (getChain(tokenAddress) !== ChainKind.Near) {
       throw new Error("Token address must be on NEAR")
     }
 
-    // Extract token account ID from OmniAddress
     const [_, tokenAccountId] = tokenAddress.split(":")
+    const args: LogMetadataArgs = { token_id: tokenAccountId }
 
-    const args: LogMetadataArgs = {
-      token_id: tokenAccountId,
+    // Need to use signTransaction due to NEAR API limitations around timeouts
+    // @ts-expect-error: Account.signTransaction is protected but necessary here
+    const [txHash, signedTx] = await this.wallet.signTransaction(this.lockerAddress, [
+      functionCall("log_metadata", args, GAS.LOG_METADATA, DEPOSIT.LOG_METADATA),
+    ])
+
+    const provider = this.wallet.connection.provider
+    let outcome = await provider.sendTransactionAsync(signedTx)
+
+    // Poll for transaction execution
+    let attempts = 0
+    while (outcome.final_execution_status !== "EXECUTED" && attempts < MAX_POLLING_ATTEMPTS) {
+      await new Promise((resolve) => setTimeout(resolve, POLLING_INTERVAL))
+      outcome = await provider.txStatus(txHash, this.wallet.accountId, "INCLUDED")
+      attempts++
     }
-    const tx = await this.wallet.functionCall({
-      contractId: this.lockerAddress,
-      methodName: "log_metadata",
-      args: args,
-      gas: GAS.LOG_METADATA,
-      attachedDeposit: DEPOSIT.LOG_METADATA,
-    })
 
-    return tx.transaction.hash
+    if (attempts >= MAX_POLLING_ATTEMPTS) {
+      throw new Error(`Transaction polling timed out after ${MAX_POLLING_ATTEMPTS} seconds`)
+    }
+
+    // Parse event from transaction logs
+    const event = outcome.receipts_outcome
+      .flatMap((receipt) => receipt.outcome.logs)
+      .find((log) => log.includes("LogMetadataEvent"))
+
+    if (!event) {
+      throw new Error("LogMetadataEvent not found in transaction logs")
+    }
+
+    return JSON.parse(event).LogMetadataEvent
   }
 
   /**
