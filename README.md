@@ -119,7 +119,7 @@ Use `omniTransfer` to start the transfer on the source chain:
 
 ```typescript
 const result = await omniTransfer(wallet, transfer);
-// Returns: { txId: string, nonce: bigint }
+// Returns: { txId: string, nonce: bigint } or InitTransferEvent for NEAR
 ```
 
 ### 2. Status Monitoring
@@ -257,7 +257,7 @@ import { getClient } from "omni-bridge-sdk";
 const client = getClient(ChainKind.Near, wallet);
 
 // Example: Deploy NEAR token to Ethereum
-const txHash = await client.logMetadata("near:token.near");
+const { txHash } = await client.logMetadata("near:token.near");
 console.log(`Metadata logged with tx: ${txHash}`);
 
 // Deploy token with signed MPC payload
