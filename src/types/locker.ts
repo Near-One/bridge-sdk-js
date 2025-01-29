@@ -34,8 +34,8 @@ export type SignTransferArgs = {
   transfer_id: TransferId
   fee_recipient: AccountId
   fee: {
-    fee: bigint
-    native_fee: bigint
+    fee: string
+    native_fee: string
   }
 }
 

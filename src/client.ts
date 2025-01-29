@@ -4,14 +4,14 @@ import { Account as NearAccount } from "near-api-js"
 import { EvmBridgeClient } from "./clients/evm"
 import { NearBridgeClient } from "./clients/near"
 import { SolanaBridgeClient } from "./clients/solana"
-import { ChainKind, type OmniTransferMessage } from "./types"
+import { ChainKind, type InitTransferEvent, type OmniTransferMessage } from "./types"
 
 type Client = EvmBridgeClient | NearBridgeClient | SolanaBridgeClient
 
 export async function omniTransfer(
   wallet: EthWallet | NearAccount | SolWallet,
   transfer: OmniTransferMessage,
-): Promise<string> {
+): Promise<string | InitTransferEvent> {
   let client: Client | null = null
   if (wallet instanceof NearAccount) {
     client = new NearBridgeClient(wallet)

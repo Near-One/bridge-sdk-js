@@ -336,13 +336,13 @@ export class SolanaBridgeClient {
   ): Promise<string> {
     // Convert the payload into the expected format
     const payload: DepositPayload = {
-      destination_nonce: transferMessage.destination_nonce,
+      destination_nonce: BigInt(transferMessage.destination_nonce),
       transfer_id: {
         origin_chain: transferMessage.transfer_id.origin_chain,
         origin_nonce: transferMessage.transfer_id.origin_nonce,
       },
       token: this.extractSolanaAddress(transferMessage.token_address),
-      amount: transferMessage.amount,
+      amount: BigInt(transferMessage.amount),
       recipient: this.extractSolanaAddress(transferMessage.recipient),
       fee_recipient: transferMessage.fee_recipient ?? "",
     }

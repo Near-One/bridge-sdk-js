@@ -11,8 +11,8 @@ import type {
 import { getChain } from "../utils"
 
 // Type helpers for EVM chains
-type EVMChainKind = typeof ChainKind.Eth | typeof ChainKind.Base | typeof ChainKind.Arb
-type ChainTag<T extends ChainKind> = keyof T
+export type EVMChainKind = typeof ChainKind.Eth | typeof ChainKind.Base | typeof ChainKind.Arb
+export type ChainTag<T extends ChainKind> = keyof T
 
 // Contract ABI for the bridge token factory
 const BRIDGE_TOKEN_FACTORY_ABI = [
@@ -26,7 +26,7 @@ const BRIDGE_TOKEN_FACTORY_ABI = [
 /**
  * Helper functions for chain operations
  */
-const ChainUtils = {
+export const ChainUtils = {
   getTag: <T extends ChainKind>(chain: T): ChainTag<T> => {
     return Object.keys(chain)[0] as ChainTag<T>
   },
@@ -212,9 +212,9 @@ export class EvmBridgeClient {
   ): Promise<string> {
     // Convert the transfer message to EVM-compatible format
     const bridgeDeposit: BridgeDeposit = {
-      destination_nonce: transferMessage.destination_nonce,
+      destination_nonce: BigInt(transferMessage.destination_nonce),
       origin_chain: Number(transferMessage.transfer_id.origin_chain),
-      origin_nonce: transferMessage.transfer_id.origin_nonce,
+      origin_nonce: BigInt(transferMessage.transfer_id.origin_nonce),
       token_address: this.extractEvmAddress(transferMessage.token_address),
       amount: BigInt(transferMessage.amount),
       recipient: this.extractEvmAddress(transferMessage.recipient),
