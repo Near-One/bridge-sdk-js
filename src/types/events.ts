@@ -10,7 +10,6 @@ export interface MetadataPayload {
   token: string
 }
 
-
 interface Fee {
   fee: string
   native_fee: string
@@ -26,7 +25,6 @@ interface TransferMessage {
   msg: string
   destination_nonce: number
 }
-
 
 export interface LogMetadataEvent {
   metadata_payload: MetadataPayload
