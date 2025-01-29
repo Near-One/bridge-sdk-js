@@ -4,16 +4,7 @@ import { MapDB, bigIntToHex } from "@ethereumjs/util"
 import { ethers } from "ethers"
 import type { BlockTag, Log, TransactionReceipt, TransactionReceiptParams } from "ethers"
 import { type ChainTag, ChainUtils, type EVMChainKind } from "../clients/evm"
-import { ChainKind } from "../types"
-
-export interface EvmProof {
-  log_index: bigint
-  log_entry_data: Uint8Array
-  receipt_index: bigint
-  receipt_data: Uint8Array
-  header_data: Uint8Array
-  proof: Uint8Array[]
-}
+import { ChainKind, type EvmProof } from "../types"
 
 interface BlockHeader {
   parentHash: string
