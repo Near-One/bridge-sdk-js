@@ -1,6 +1,6 @@
 import { createMPT, createMerkleProof } from "@ethereumjs/mpt"
 import { RLP } from "@ethereumjs/rlp"
-import { MapDB, bigIntToHex, bytesToHex } from "@ethereumjs/util"
+import { MapDB, bigIntToHex } from "@ethereumjs/util"
 import { ethers } from "ethers"
 import type { EvmProof } from "../types"
 
@@ -170,15 +170,3 @@ export class ProofGenerator {
     return RLP.encode(items)
   }
 }
-
-async function main() {
-  // Usage example
-  const txHash = "0xc4a6c5cde1d243b26b013f805f71f6de91536f66c993abfee746f373203b68cc"
-  const topic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
-
-  const proofGenerator = new ProofGenerator("ethereum")
-  const proof = await proofGenerator.generateProof(txHash, topic)
-  console.log(bytesToHex(proof.proof[0]))
-}
-
-main()
