@@ -102,6 +102,10 @@ export class NearBridgeClient {
     private wallet: Account,
     private lockerAddress: string = process.env.OMNI_BRIDGE_NEAR as string,
   ) {
+    if (lockerAddress) {
+      this.lockerAddress = lockerAddress
+      return
+    }
     if (wallet.connection.networkId === "testnet") {
       this.lockerAddress = "omni-locker.testnet"
     } else if (wallet.connection.networkId === "mainnet") {

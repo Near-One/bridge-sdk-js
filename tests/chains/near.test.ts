@@ -30,6 +30,10 @@ describe("NearBridgeClient", () => {
           hash: mockTxHash,
         },
       }),
+      connection: {
+        networkId: "testnet",
+      },
+      signTransaction: vi.fn().mockResolvedValue({ signature: mockTxHash }),
     } as unknown as Account
 
     // Create client instance
@@ -37,12 +41,6 @@ describe("NearBridgeClient", () => {
   })
 
   describe("constructor", () => {
-    it("should throw error if locker address is not provided", () => {
-      expect(() => new NearBridgeClient(mockWallet, "")).toThrow(
-        "OMNI_BRIDGE_NEAR address not configured",
-      )
-    })
-
     it("should create instance with provided wallet and locker address", () => {
       const client = new NearBridgeClient(mockWallet, mockLockerAddress)
       expect(client).toBeInstanceOf(NearBridgeClient)
@@ -50,24 +48,128 @@ describe("NearBridgeClient", () => {
   })
 
   describe("logMetadata", () => {
+    // Mock setTimeout to execute immediately
+    const originalSetTimeout = global.setTimeout
+
+    const mockProvider = {
+      sendTransactionAsync: vi.fn(),
+      txStatus: vi.fn(),
+    }
+
+    const mockLogMetadataEvent = {
+      name: "Test Token",
+      symbol: "TEST",
+      decimals: 18,
+    }
+
+    beforeEach(() => {
+      // Mock setTimeout to run immediately
+      vi.spyOn(global, "setTimeout").mockImplementation((fn) => {
+        fn()
+        // biome-ignore lint/suspicious/noExplicitAny: Test mock
+        return {} as any
+      })
+
+      // Reset mocks
+      // @ts-expect-error: Account.signTransaction is protected but necessary here
+      mockWallet.signTransaction = vi
+        .fn()
+        .mockResolvedValue(["mock-tx-hash", { transaction: "mock-signed-tx" }])
+
+      // Default successful response
+      const successResponse = {
+        final_execution_status: "EXECUTED",
+        receipts_outcome: [
+          {
+            outcome: {
+              logs: [`{"LogMetadataEvent": ${JSON.stringify(mockLogMetadataEvent)}}`],
+            },
+          },
+        ],
+      }
+
+      mockProvider.sendTransactionAsync = vi.fn().mockResolvedValue(successResponse)
+      mockProvider.txStatus = vi.fn().mockResolvedValue(successResponse)
+
+      // Update wallet with mock provider
+      // @ts-expect-error: Just override it anyway
+      mockWallet.connection.provider = mockProvider
+    })
+
     it("should throw error if token address is not on NEAR", async () => {
       await expect(client.logMetadata("eth:0x123")).rejects.toThrow("Token address must be on NEAR")
     })
 
-    it("should call log_metadata with correct arguments", async () => {
+    it("should call signTransaction with correct arguments", async () => {
       const tokenAddress = "near:test-token.near"
-      const txHash = await client.logMetadata(tokenAddress)
+      await client.logMetadata(tokenAddress)
 
-      expect(mockWallet.functionCall).toHaveBeenCalledWith({
-        contractId: mockLockerAddress,
-        methodName: "log_metadata",
-        args: {
-          token_id: "test-token.near",
-        },
-        gas: BigInt(3e14),
-        attachedDeposit: BigInt(2e23),
+      // Testing the first argument is the correct contract
+      // @ts-expect-error: Account.signTransaction is protected but necessary here
+      expect(mockWallet.signTransaction).toHaveBeenCalledWith(
+        mockLockerAddress,
+        expect.arrayContaining([
+          expect.objectContaining({
+            functionCall: expect.objectContaining({
+              methodName: "log_metadata",
+              gas: BigInt(3e14),
+              deposit: BigInt(2e23),
+            }),
+          }),
+        ]),
+      )
+    })
+
+    it("should poll for transaction status and return event data", async () => {
+      const tokenAddress = "near:test-token.near"
+      const result = await client.logMetadata(tokenAddress)
+
+      expect(mockProvider.sendTransactionAsync).toHaveBeenCalledWith({
+        transaction: "mock-signed-tx",
       })
-      expect(txHash).toBe(mockTxHash)
+      expect(result).toEqual(mockLogMetadataEvent)
+    })
+
+    it("should throw error if transaction times out", async () => {
+      // Override the mock to simulate a pending transaction
+      const pendingResponse = {
+        final_execution_status: "PENDING",
+        receipts_outcome: [],
+      }
+
+      mockProvider.sendTransactionAsync = vi.fn().mockResolvedValue(pendingResponse)
+      // Make txStatus always return pending
+      mockProvider.txStatus = vi.fn().mockResolvedValue(pendingResponse)
+
+      // Let setTimeout actually wait a tiny bit to allow for status check
+      vi.spyOn(global, "setTimeout").mockImplementation((fn) => {
+        // biome-ignore lint/suspicious/noExplicitAny: Test mock
+        return originalSetTimeout(fn, 1) as any
+      })
+
+      const tokenAddress = "near:test-token.near"
+      await expect(client.logMetadata(tokenAddress)).rejects.toThrow(
+        "Transaction polling timed out after 60 seconds",
+      )
+    })
+
+    it("should throw error if LogMetadataEvent not found in logs", async () => {
+      // Override the sendTransactionAsync mock for this test
+      mockProvider.sendTransactionAsync = vi.fn().mockResolvedValue({
+        final_execution_status: "EXECUTED",
+        receipts_outcome: [
+          {
+            outcome: {
+              logs: ["Some other event"],
+            },
+          },
+        ],
+      })
+
+      const tokenAddress = "near:test-token.near"
+      await expect(client.logMetadata(tokenAddress)).rejects.toThrow(
+        "LogMetadataEvent not found in transaction logs",
+      )
     })
   })
 
@@ -188,15 +290,6 @@ describe("NearBridgeClient", () => {
       await expect(
         client.finalizeTransfer(mockToken, mockAccount, mockStorageDeposit, ChainKind.Sol, mockVaa),
       ).rejects.toThrow("NEAR finalize transfer error")
-    })
-  })
-
-  describe("error handling", () => {
-    it("should propagate errors from functionCall", async () => {
-      const error = new Error("NEAR error")
-      mockWallet.functionCall = vi.fn().mockRejectedValue(error)
-
-      await expect(client.logMetadata("near:test-token.near")).rejects.toThrow("NEAR error")
     })
   })
 })
