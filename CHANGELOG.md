@@ -1,5 +1,13 @@
 # omni-bridge-sdk
 
+## 0.2.2
+
+### Patch Changes
+
+- 9c4a4f0: Bump @wormhole-foundation/sdk from 1.5.1 to 1.5.2
+- d296686: Bump @wormhole-foundation/sdk from 1.5.0 to 1.5.1
+- d3279df: Bump @solana/spl-token from 0.4.11 to 0.4.12
+
 ## 0.2.1
 
 ### Patch Changes
