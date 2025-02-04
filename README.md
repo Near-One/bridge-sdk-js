@@ -51,6 +51,9 @@ Cross-chain transfers have different flows depending on the source and destinati
 
 ### NEAR to Foreign Chain Transfers
 
+> [!WARNING]
+> When using browser-based NEAR wallets through Wallet Selector, transactions involve page redirects. The current SDK doesn't fully support this flow - applications need to handle redirect returns and transaction hash parsing separately. This is a known limitation that will be addressed in a future update.
+
 When transferring from NEAR to another chain (e.g., Ethereum, Solana), you need to:
 
 1. Initiate the transfer on NEAR
