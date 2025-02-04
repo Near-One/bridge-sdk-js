@@ -51,22 +51,34 @@ Cross-chain transfers have different flows depending on the source and destinati
 
 ### NEAR to Foreign Chain Transfers
 
+> [!WARNING]
+> When using browser-based NEAR wallets through Wallet Selector, transactions involve page redirects. The current SDK doesn't fully support this flow - applications need to handle redirect returns and transaction hash parsing separately. This is a known limitation that will be addressed in a future update.
+
 When transferring from NEAR to another chain (e.g., Ethereum, Solana), you need to:
 
 1. Initiate the transfer on NEAR
 2. Sign the transfer message
 3. Use the signature for finalization on the destination chain
 
+You can use either [near-api-js](https://github.com/near/near-api-js) or [NEAR Wallet Selector](https://github.com/near/wallet-selector) for NEAR interactions:
+
 ```typescript
-// Setup NEAR account and destination wallet
+// Using near-api-js
 const near = await connect({
   networkId: "testnet",
   nodeUrl: "https://rpc.testnet.near.org",
 });
 const account = await near.account("sender.near");
-const ethWallet = new ethers.providers.Web3Provider(
-  window.ethereum
-).getSigner();
+const nearClient = getClient(ChainKind.Near, account);
+
+// OR using NEAR Wallet Selector
+const selector = await setupWalletSelector({
+  network: "testnet",
+  modules: [
+    /* your wallet modules */
+  ],
+});
+const nearClient = getClient(ChainKind.Near, selector);
 
 // Create and initiate transfer
 const transfer = {
@@ -81,7 +93,6 @@ const transfer = {
 const result = await omniTransfer(account, transfer);
 
 // Sign transfer on NEAR
-const nearClient = getClient(ChainKind.Near, account);
 const { signature } = await nearClient.signTransfer(result, "sender.near");
 
 // Finalize on destination (e.g., Ethereum)
@@ -292,7 +303,7 @@ try {
 Currently supported chains:
 
 - Ethereum (ETH)
-- NEAR
+- NEAR (with support for both near-api-js and Wallet Selector)
 - Solana (SOL)
 - Arbitrum (ARB)
 - Base
@@ -304,6 +315,7 @@ Each chain has specific requirements:
 - Account must exist and be initialized
 - Sufficient NEAR for storage and gas
 - Token must be registered with account
+- Can use either near-api-js or Wallet Selector for interactions
 
 ### Ethereum/EVM
 
