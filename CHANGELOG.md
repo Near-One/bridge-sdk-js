@@ -1,5 +1,15 @@
 # omni-bridge-sdk
 
+## 0.3.0
+
+### Minor Changes
+
+- fb50236: Add support for NEAR Wallet Selector as an alternative to near-api-js for NEAR chain interactions.
+
+### Patch Changes
+
+- 1b8aace: Bump @types/node from 22.12.0 to 22.13.0
+
 ## 0.2.2
 
 ### Patch Changes
