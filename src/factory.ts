@@ -22,11 +22,14 @@ import { ChainKind } from "./types"
  * const txHash = await client.initDeployToken("near:token.near");
  * ```
  */
-export function getClient<TWallet>(chain: ChainKind, wallet: TWallet) {
+export function getClient(
+  chain: ChainKind,
+  wallet: Account | WalletSelector | ethers.Signer | AnchorProvider,
+) {
   switch (chain) {
     case ChainKind.Near:
       if (wallet instanceof Account) {
-        return new NearBridgeClient(wallet as Account)
+        return new NearBridgeClient(wallet)
       }
       return new NearWalletSelectorBridgeClient(wallet as WalletSelector)
     case ChainKind.Eth:
