@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.3.1
+
+### Patch Changes
+
+- 9fbdcb0: Add type definitions for NEAR Wallet Selector
+
 ## 0.3.0
 
 ### Minor Changes
