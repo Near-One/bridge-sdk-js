@@ -1,5 +1,5 @@
 import { callViewMethod, createRpcClientWrapper } from "@near-js/client"
-import type { WalletSelector } from "@near-wallet-selector/core"
+import type { Optional, Transaction, WalletSelector } from "@near-wallet-selector/core"
 import { borshSerialize } from "borsher"
 import { JsonRpcProvider } from "near-api-js/lib/providers"
 import {
@@ -280,6 +280,81 @@ export class NearWalletSelectorBridgeClient {
     return outcome.transaction.hash
   }
 
+  async storageDeposit(
+    transfer: OmniTransferMessage,
+  ): Promise<Array<Optional<Transaction, "signerId">>> {
+    // Performs a storage deposit on behalf of the token_locker so that the tokens can be transferred to the locker.
+    // To be called once for each NEP-141
+
+    if (getChain(transfer.tokenAddress) !== ChainKind.Near) {
+      throw new Error("Token address must be on NEAR")
+    }
+    const transactions: Array<Optional<Transaction, "signerId">> = []
+    const tokenAddress = transfer.tokenAddress.split(":")[1]
+
+    // First, check if the FT has the token locker contract registered for storage
+    const lockerStorage = await this.viewFunction({
+      contractId: tokenAddress,
+      methodName: "storage_balance_of",
+      args: {
+        account_id: this.lockerAddress,
+      },
+    })
+    if (lockerStorage === null) {
+      // Check how much is required
+      const bounds = await this.viewFunction({
+        contractId: tokenAddress,
+        methodName: "storage_balance_bounds",
+        args: {
+          account_id: this.lockerAddress,
+        },
+      })
+      const requiredAmount = BigInt(bounds.min)
+
+      transactions.push({
+        receiverId: tokenAddress,
+        actions: [
+          {
+            type: "FunctionCall",
+            params: {
+              methodName: "storage_deposit",
+              args: {
+                account_id: this.lockerAddress,
+              },
+              gas: GAS.STORAGE_DEPOSIT.toString(),
+              deposit: requiredAmount.toString(),
+            },
+          },
+        ],
+      })
+    }
+
+    // Now do the storage deposit dance for the locker itself
+    const { regBalance, initBalance, storage } = await this.getBalances()
+    const requiredBalance = regBalance + initBalance
+    const existingBalance = storage?.available ?? BigInt(0)
+
+    if (requiredBalance > existingBalance) {
+      const neededAmount = requiredBalance - existingBalance
+      transactions.push({
+        receiverId: this.lockerAddress,
+        actions: [
+          {
+            type: "FunctionCall",
+            params: {
+              methodName: "storage_deposit",
+              args: {},
+              gas: GAS.STORAGE_DEPOSIT.toString(),
+              deposit: neededAmount.toString(),
+            },
+          },
+        ],
+      })
+    }
+
+    return transactions
+  }
+
   /**
    * Transfers NEP-141 tokens to the token locker contract on NEAR.
    * This transaction generates a proof that is subsequently used to mint
@@ -297,36 +372,7 @@ export class NearWalletSelectorBridgeClient {
       throw new Error("Token address must be on NEAR")
     }
     const tokenAddress = transfer.tokenAddress.split(":")[1]
-
-    // First, check if the FT has the token locker contract registered for storage
-    await this.storageDepositForToken(tokenAddress)
-
-    // Now do the storage deposit dance for the locker itself
-    const { regBalance, initBalance, storage } = await this.getBalances()
-    const requiredBalance = regBalance + initBalance
-    const existingBalance = storage?.available ?? BigInt(0)
-
-    if (requiredBalance > existingBalance) {
-      const neededAmount = requiredBalance - existingBalance
-      const wallet = await this.selector.wallet()
-      const outcome = await wallet.signAndSendTransaction({
-        receiverId: this.lockerAddress,
-        actions: [
-          {
-            type: "FunctionCall",
-            params: {
-              methodName: "storage_deposit",
-              args: {},
-              gas: GAS.STORAGE_DEPOSIT.toString(),
-              deposit: neededAmount.toString(),
-            },
-          },
-        ],
-      })
-      if (!outcome) {
-        throw new Error("Failed to storage deposit")
-      }
-    }
+    const transactions = await this.storageDeposit(transfer)
 
     const initTransferMessage: InitTransferMessage = {
       recipient: transfer.recipient,
@@ -340,8 +386,7 @@ export class NearWalletSelectorBridgeClient {
       msg: JSON.stringify(initTransferMessage),
     }
 
-    const wallet = await this.selector.wallet()
-    const tx = await wallet.signAndSendTransaction({
+    transactions.push({
       receiverId: tokenAddress,
       actions: [
         {
@@ -355,14 +400,20 @@ export class NearWalletSelectorBridgeClient {
         },
       ],
     })
+    const wallet = await this.selector.wallet()
+    const tx = await wallet.signAndSendTransactions({ transactions })
     if (!tx) {
       throw new Error("Transaction failed")
     }
 
     // Parse event from transaction logs
-    const event = tx.receipts_outcome
-      .flatMap((receipt) => receipt.outcome.logs)
-      .find((log) => log.includes("InitTransferEvent"))
+    let event: string | undefined
+    for (const receipt of tx) {
+      event = receipt.receipts_outcome
+        .flatMap((r) => r.outcome.logs)
+        .find((log) => log.includes("InitTransferEvent"))
+      if (event) break
+    }
 
     if (!event) {
       throw new Error("InitTransferEvent not found in transaction logs")
@@ -603,50 +654,5 @@ export class NearWalletSelectorBridgeClient {
       deps: { rpcProvider },
     })
     return JSON.parse(Buffer.from(res.result).toString())
-  }
-
-  /// Performs a storage deposit on behalf of the token_locker so that the tokens can be transferred to the locker. To be called once for each NEP-141
-  private async storageDepositForToken(tokenAddress: string): Promise<string> {
-    const storage = await this.viewFunction({
-      contractId: tokenAddress,
-      methodName: "storage_balance_of",
-      args: {
-        account_id: this.lockerAddress,
-      },
-    })
-    if (storage === null) {
-      // Check how much is required
-      const bounds = await this.viewFunction({
-        contractId: tokenAddress,
-        methodName: "storage_balance_bounds",
-        args: {
-          account_id: this.lockerAddress,
-        },
-      })
-      const requiredAmount = BigInt(bounds.min)
-
-      const wallet = await this.selector.wallet()
-      const outcome = await wallet.signAndSendTransaction({
-        receiverId: tokenAddress,
-        actions: [
-          {
-            type: "FunctionCall",
-            params: {
-              methodName: "storage_deposit",
-              args: {
-                account_id: this.lockerAddress,
-              },
-              gas: GAS.STORAGE_DEPOSIT.toString(),
-              deposit: requiredAmount.toString(),
-            },
-          },
-        ],
-      })
-      if (!outcome) {
-        throw new Error("Failed to storage deposit")
-      }
-      return outcome.transaction.hash
-    }
-    return storage
   }
 }
