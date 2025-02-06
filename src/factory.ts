@@ -1,4 +1,4 @@
-import type { AnchorProvider } from "@coral-xyz/anchor"
+import type { Provider } from "@coral-xyz/anchor"
 import type { WalletSelector } from "@near-wallet-selector/core"
 import type { ethers } from "ethers"
 import { Account } from "near-api-js"
@@ -24,7 +24,7 @@ import { ChainKind } from "./types"
  */
 export function getClient(
   chain: ChainKind,
-  wallet: Account | WalletSelector | ethers.Signer | AnchorProvider,
+  wallet: Account | WalletSelector | ethers.Signer | Provider,
 ) {
   switch (chain) {
     case ChainKind.Near:
@@ -37,7 +37,7 @@ export function getClient(
     case ChainKind.Arb:
       return new EvmBridgeClient(wallet as ethers.Signer, chain)
     case ChainKind.Sol:
-      return new SolanaBridgeClient(wallet as AnchorProvider)
+      return new SolanaBridgeClient(wallet as Provider)
     default:
       throw new Error(`No client implementation for chain: ${chain}`)
   }
