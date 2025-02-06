@@ -22,12 +22,15 @@ We welcome feedback and contributions, but please be aware of the experimental n
 ## Features
 
 - 🔄 Cross-chain token transfers between Ethereum, NEAR, Solana, Base, and Arbitrum
+- 🤖 Automated transfer finalization through our relayer network
 - 🪙 Token deployment and management across chains
 - 📖 Comprehensive TypeScript type definitions
 - ⚡ Support for native chain-specific features
 - 🔍 Transfer status tracking and history
 
-## Installation
+## Getting Started
+
+### Installation
 
 ```bash
 npm install omni-bridge-sdk
@@ -35,32 +38,128 @@ npm install omni-bridge-sdk
 yarn add omni-bridge-sdk
 ```
 
-## Quick Start
+### Quick Start with Relayers
 
-The SDK currently provides a split interface for cross-chain transfers:
+The fastest way to get started is using our relayer service for automated transfer finalization:
 
-- `omniTransfer`: A unified interface for initiating transfers from any supported chain
-- Chain-specific clients: Required for finalizing transfers on destination chains
+```typescript
+// 1. Setup your wallet/provider
+const wallet = provider.getSigner(); // for EVM
+// or
+const account = await near.account("sender.near"); // for NEAR
+// or
+const provider = new AnchorProvider(connection, wallet); // for Solana
 
-> [!NOTE]  
-> We're working on unifying this into a single interface that will handle the complete transfer lifecycle. For now, you'll need to use both `omniTransfer` and chain-specific clients as shown in the Transfer Flows section below.
+// 2. Create the transfer with relayer fee
+const transfer = {
+  tokenAddress: omniAddress(ChainKind.Eth, "0x123..."),
+  amount: BigInt("1000000"),
+  fee: BigInt(feeEstimate.transferred_token_fee), // Includes relayer fee
+  nativeFee: BigInt(feeEstimate.native_token_fee),
+  recipient: omniAddress(ChainKind.Near, "recipient.near"),
+};
 
-## Transfer Flows
+// 3. Single transaction - relayers handle the rest
+const result = await omniTransfer(wallet, transfer);
 
-Cross-chain transfers have different flows depending on the source and destination chains. Here's a detailed breakdown:
+// 4. Optional: Monitor status
+const status = await api.getTransferStatus(sourceChain, result.nonce);
+```
 
-### NEAR to Foreign Chain Transfers
+### Core Concepts
 
-> [!WARNING]
-> When using browser-based NEAR wallets through Wallet Selector, transactions involve page redirects. The current SDK doesn't fully support this flow - applications need to handle redirect returns and transaction hash parsing separately. This is a known limitation that will be addressed in a future update.
+#### Addresses
 
-When transferring from NEAR to another chain (e.g., Ethereum, Solana), you need to:
+All addresses in the SDK use the `OmniAddress` format, which includes the chain prefix:
 
-1. Initiate the transfer on NEAR
-2. Sign the transfer message
-3. Use the signature for finalization on the destination chain
+```typescript
+type OmniAddress =
+  | `eth:${string}` // Ethereum addresses
+  | `near:${string}` // NEAR accounts
+  | `sol:${string}` // Solana public keys
+  | `arb:${string}` // Arbitrum addresses
+  | `base:${string}`; // Base addresses
 
-You can use either [near-api-js](https://github.com/near/near-api-js) or [NEAR Wallet Selector](https://github.com/near/wallet-selector) for NEAR interactions:
+// Helper function
+const addr = omniAddress(ChainKind.Near, "account.near");
+```
+
+#### Transfer Messages
+
+Transfer messages represent cross-chain token transfers:
+
+```typescript
+interface OmniTransferMessage {
+  tokenAddress: OmniAddress; // Source token address
+  amount: bigint; // Amount to transfer
+  fee: bigint; // Token fee
+  nativeFee: bigint; // Gas fee in native token
+  recipient: OmniAddress; // Destination address
+}
+```
+
+## Transfer Guide
+
+### Using Relayers (Recommended)
+
+While the SDK provides methods to manually handle the complete transfer lifecycle, we recommend using our relayer service for the best user experience. Benefits include:
+
+- Single transaction for end users
+- Automated message signing and finalization
+- No need to handle cross-chain message passing
+- Optimized gas fees
+- Simplified error handling
+
+To use relayers, simply include the relayer fee when initiating the transfer:
+
+```typescript
+const transfer = {
+  tokenAddress: omniAddress(ChainKind.Near, "usdc.near"),
+  amount: BigInt("1000000"),
+  fee: BigInt(feeEstimate.transferred_token_fee), // Relayer fee included
+  nativeFee: BigInt(feeEstimate.native_token_fee),
+  recipient: omniAddress(ChainKind.Eth, recipientAddress),
+};
+
+// One transaction - relayers handle the rest
+const result = await omniTransfer(account, transfer);
+```
+
+### Status Monitoring
+
+Track transfer progress using the API:
+
+```typescript
+const api = new OmniBridgeAPI("testnet");
+const status = await api.getTransferStatus(sourceChain, nonce);
+// Status: "pending" | "ready_for_finalize" | "completed" | "failed"
+
+// Get transfer history
+const transfers = await api.findOmniTransfers(
+  "near:sender.near",
+  0, // offset
+  10 // limit
+);
+```
+
+### Fee Estimation
+
+```typescript
+const api = new OmniBridgeAPI("testnet");
+const fee = await api.getFee(sender, recipient, tokenAddr);
+
+console.log(`Native fee: ${fee.native_token_fee}`); // Includes relayer fee
+console.log(`Token fee: ${fee.transferred_token_fee}`);
+console.log(`USD fee: ${fee.usd_fee}`);
+```
+
+## Advanced Usage
+
+### Manual Transfer Flows
+
+For cases where manual control over the transfer process is needed, the SDK provides complete access to the underlying bridge functions. Here are the flows for different chains:
+
+#### NEAR to Foreign Chain
 
 ```typescript
 // Using near-api-js
@@ -80,7 +179,7 @@ const selector = await setupWalletSelector({
 });
 const nearClient = getClient(ChainKind.Near, selector);
 
-// Create and initiate transfer
+// Create transfer
 const transfer = {
   tokenAddress: omniAddress(ChainKind.Near, "usdc.near"),
   amount: BigInt("1000000"),
@@ -100,12 +199,15 @@ const ethClient = getClient(ChainKind.Eth, ethWallet);
 await ethClient.finalizeTransfer(transferMessage, signature);
 ```
 
-### Solana to NEAR Transfers
+> [!WARNING]
+> When using browser-based NEAR wallets through Wallet Selector, transactions involve page redirects. The current SDK doesn't fully support this flow - applications need to handle redirect returns and transaction hash parsing separately.
 
-Solana to NEAR transfers use Wormhole VAAs (Verified Action Approvals) for verification:
+#### Solana to NEAR
+
+Solana transfers use Wormhole VAAs (Verified Action Approvals):
 
 ```typescript
-// Setup Solana provider
+// Setup Solana
 const connection = new Connection("https://api.testnet.solana.com");
 const wallet = new Keypair();
 const provider = new AnchorProvider(
@@ -116,7 +218,7 @@ const provider = new AnchorProvider(
 
 // Create transfer
 const transfer = {
-  tokenAddress: omniAddress(ChainKind.Sol, "EPjFWdd..."), // Solana USDC
+  tokenAddress: omniAddress(ChainKind.Sol, "EPjFWdd..."),
   amount: BigInt("1000000"),
   fee: BigInt(feeEstimate.transferred_token_fee),
   nativeFee: BigInt(feeEstimate.native_token_fee),
@@ -140,7 +242,7 @@ await nearClient.finalizeTransfer(
 );
 ```
 
-### EVM to NEAR Transfers
+#### EVM to NEAR
 
 EVM chain transfers to NEAR require proof verification:
 
@@ -180,58 +282,14 @@ await nearClient.finalizeTransfer(
 );
 ```
 
-### Status Monitoring
+### Token Operations
 
-For all transfer types, you can monitor status using the API:
-
-```typescript
-const api = new OmniBridgeAPI("testnet");
-const status = await api.getTransferStatus(sourceChain, nonce);
-// Status: "pending" | "ready_for_finalize" | "completed" | "failed"
-```
-
-## Core Concepts
-
-### Addresses
-
-All addresses in the SDK use the `OmniAddress` format, which includes the chain prefix:
-
-```typescript
-type OmniAddress =
-  | `eth:${string}` // Ethereum addresses
-  | `near:${string}` // NEAR accounts
-  | `sol:${string}` // Solana public keys
-  | `arb:${string}` // Arbitrum addresses
-  | `base:${string}`; // Base addresses
-
-// Helper function to create addresses
-const addr = omniAddress(ChainKind.Near, "account.near");
-```
-
-### Transfer Messages
-
-Transfer messages represent cross-chain token transfers:
-
-```typescript
-interface OmniTransferMessage {
-  tokenAddress: OmniAddress; // Source token address
-  amount: bigint; // Amount to transfer
-  fee: bigint; // Token fee
-  nativeFee: bigint; // Gas fee in native token
-  recipient: OmniAddress; // Destination address
-}
-```
-
-## Token Operations
-
-### Deploying Tokens
-
-Token deployment uses chain-specific clients through a unified interface:
+#### Deploying Tokens
 
 ```typescript
 import { getClient } from "omni-bridge-sdk";
 
-// Initialize client for source chain
+// Initialize clients
 const nearClient = getClient(ChainKind.Near, wallet);
 const ethClient = getClient(ChainKind.Eth, wallet);
 
@@ -247,40 +305,7 @@ const result = await ethClient.deployToken(signature, {
 });
 ```
 
-### Tracking Transfers
-
-Monitor transfer status and history:
-
-```typescript
-const api = new OmniBridgeAPI("testnet");
-
-// Check transfer status
-const status = await api.getTransferStatus("Eth", originNonce);
-
-// Get transfer history
-const transfers = await api.findOmniTransfers(
-  "near:sender.near",
-  0, // offset
-  10 // limit
-);
-```
-
-### Fee Estimation
-
-```typescript
-// Get fee estimate for transfer
-const fee = await api.getFee(
-  sender, // OmniAddress
-  recipient, // OmniAddress
-  tokenAddr // Token address
-);
-
-console.log(`Native fee: ${fee.native_token_fee}`);
-console.log(`Token fee: ${fee.transferred_token_fee}`);
-console.log(`USD fee: ${fee.usd_fee}`);
-```
-
-## Error Handling
+### Error Handling
 
 ```typescript
 try {
@@ -300,22 +325,14 @@ try {
 
 ## Chain Support
 
-Currently supported chains:
-
-- Ethereum (ETH)
-- NEAR (with support for both near-api-js and Wallet Selector)
-- Solana (SOL)
-- Arbitrum (ARB)
-- Base
-
-Each chain has specific requirements:
+Each supported chain has specific requirements:
 
 ### NEAR
 
 - Account must exist and be initialized
 - Sufficient NEAR for storage and gas
 - Token must be registered with account
-- Can use either near-api-js or Wallet Selector for interactions
+- Supports both [near-api-js](https://github.com/near/near-api-js) and [Wallet Selector](https://github.com/near/wallet-selector)
 
 ### Ethereum/EVM
 
@@ -329,49 +346,15 @@ Each chain has specific requirements:
 - Associated token accounts must exist
 - SPL token program requirements
 
-## Development
+Currently supported chains:
 
-### Roadmap
+- Ethereum (ETH)
+- NEAR
+- Solana (SOL)
+- Arbitrum (ARB)
+- Base
 
-#### Core Transfer Interface
-
-- [x] Base OmniTransfer interface
-  - [x] EVM
-    - [x] initTransfer
-    - [x] finalizeTransfer
-  - [x] NEAR
-    - [x] initTransfer
-    - [x] finalizeTransfer
-  - [x] Solana
-    - [x] initTransfer
-    - [x] finalizeTransfer
-
-#### Query Functions
-
-- [x] findOmniTransfers (Transfer History API)
-- [x] getFee (Fee Estimation API)
-- [x] getTransferStatus (Status Tracking API)
-
-#### Token Deployment
-
-- [x] Ethereum (EVM)
-  - [x] logMetadata
-  - [x] deployToken
-- [x] NEAR
-  - [x] logMetadata
-  - [x] deployToken
-  - [x] bindToken
-- [x] Solana
-  - [x] logMetadata
-  - [x] deployToken
-
-#### Additional Features
-
-- [ ] Transaction receipt validation
-- [ ] Automatic gas estimation
-- [ ] Rate limiting
-- [ ] Retry mechanisms
-- [ ] Error recovery
+### Build and Test
 
 ```bash
 # Install dependencies
