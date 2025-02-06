@@ -1,5 +1,15 @@
 # omni-bridge-sdk
 
+## 0.4.0
+
+### Minor Changes
+
+- 1279166: feat: batch storage deposit with transfer for NEAR transactions
+
+### Patch Changes
+
+- 1279166: fix: update Solana Provider type and add type guards
+
 ## 0.3.1
 
 ### Patch Changes
