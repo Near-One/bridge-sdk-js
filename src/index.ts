@@ -14,3 +14,5 @@ export * from "./clients"
 
 // Export proofs
 export * from "./proofs"
+
+export * from "./config"

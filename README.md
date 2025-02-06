@@ -64,6 +64,11 @@ await omniTransfer(wallet, {
 Here's a more detailed example showing wallet setup, error handling, and status monitoring:
 
 ```typescript
+import { setNetwork } from "omni-bridge-sdk";
+
+// Set network type
+setNetwork("testnet");
+
 // 1. Setup wallet/provider
 const wallet = provider.getSigner(); // for EVM
 // or

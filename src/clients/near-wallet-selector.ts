@@ -2,6 +2,7 @@ import { callViewMethod, createRpcClientWrapper } from "@near-js/client"
 import type { Optional, Transaction, WalletSelector } from "@near-wallet-selector/core"
 import { borshSerialize } from "borsher"
 import { JsonRpcProvider } from "near-api-js/lib/providers"
+import { addresses } from "../config"
 import {
   type AccountId,
   type BindTokenArgs,
@@ -106,7 +107,7 @@ export class NearWalletSelectorBridgeClient {
    */
   constructor(
     private selector: WalletSelector,
-    private lockerAddress: string = process.env.OMNI_BRIDGE_NEAR as string,
+    private lockerAddress: string = addresses.near,
   ) {
     if (lockerAddress) {
       this.lockerAddress = lockerAddress

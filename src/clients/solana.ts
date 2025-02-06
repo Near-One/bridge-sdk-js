@@ -9,6 +9,7 @@ import {
   SYSVAR_RENT_PUBKEY,
   SystemProgram,
 } from "@solana/web3.js"
+import { addresses } from "../config"
 import {
   ChainKind,
   type DepositPayload,
@@ -46,10 +47,7 @@ export class SolanaBridgeClient {
     SOL_VAULT: this.getConstant("SOL_VAULT_SEED"),
   }
 
-  constructor(
-    provider: Provider,
-    wormholeProgramId: PublicKey = new PublicKey(process.env.WORMHOLE_SOL as string),
-  ) {
+  constructor(provider: Provider, wormholeProgramId: PublicKey = new PublicKey(addresses.sol)) {
     this.wormholeProgramId = wormholeProgramId
     this.program = new Program(BRIDGE_TOKEN_FACTORY_IDL as BridgeTokenFactory, provider)
   }

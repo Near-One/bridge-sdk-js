@@ -1,6 +1,7 @@
 import { borshSerialize } from "borsher"
 import type { Account } from "near-api-js"
 import { functionCall } from "near-api-js/lib/transaction"
+import { addresses } from "../config"
 import {
   type AccountId,
   type BindTokenArgs,
@@ -105,7 +106,7 @@ export class NearBridgeClient {
    */
   constructor(
     private wallet: Account,
-    private lockerAddress: string = process.env.OMNI_BRIDGE_NEAR as string,
+    private lockerAddress: string = addresses.near,
   ) {
     if (lockerAddress) {
       this.lockerAddress = lockerAddress
