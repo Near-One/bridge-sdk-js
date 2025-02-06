@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import { addresses, setNetwork } from "../src/config"
+import { OmniBridgeAPI } from "./api"
 
 describe("Config", () => {
   beforeEach(() => {
@@ -32,5 +33,12 @@ describe("Config", () => {
     expect(addresses.eth).toBe("0x3701B9859Dbb9a4333A3dd933ab18e9011ddf2C8")
     expect(addresses.near).toBe("omni-locker.testnet")
     expect(addresses.sol).toBe("Gy1XPwYZURfBzHiGAxnw3SYC33SfqsEpGSS5zeBge28p")
+  })
+
+  it("should set the base URL for OmniBridgeAPI", () => {
+    const api = new OmniBridgeAPI()
+    expect(api.getBaseUrl()).toBe("https://api.bridge.nearone.org")
+    setNetwork("testnet")
+    expect(api.getBaseUrl()).toBe("https://testnet.api.bridge.nearone.org")
   })
 })

@@ -23,6 +23,10 @@ export function setNetwork(network: NetworkType) {
   selectedNetwork = network
 }
 
+export function getNetwork(): NetworkType {
+  return selectedNetwork
+}
+
 export const addresses = {
   get arb() {
     return ADDRESSES[selectedNetwork].arb

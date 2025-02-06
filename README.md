@@ -46,7 +46,7 @@ The fastest way to get started is using our relayer service for automated transf
 import { omniTransfer, OmniBridgeAPI } from "omni-bridge-sdk";
 
 // Get fees (includes relayer service fee)
-const api = new OmniBridgeAPI("testnet");
+const api = new OmniBridgeAPI();
 const fees = await api.getFee("eth:0x123...", "near:bob.near", "eth:0x789...");
 
 // Send tokens
@@ -77,7 +77,7 @@ const account = await near.account("sender.near"); // for NEAR
 const provider = new AnchorProvider(connection, wallet); // for Solana
 
 // 2. Get fees (includes relayer service fee)
-const api = new OmniBridgeAPI("testnet");
+const api = new OmniBridgeAPI();
 const sender = "eth:0x123...";
 const recipient = "near:bob.near";
 const token = "eth:0x789...";
@@ -166,7 +166,7 @@ const result = await omniTransfer(account, transfer);
 Track transfer progress using the API:
 
 ```typescript
-const api = new OmniBridgeAPI("testnet");
+const api = new OmniBridgeAPI();
 const status = await api.getTransferStatus(sourceChain, nonce);
 // Status: "pending" | "ready_for_finalize" | "completed" | "failed"
 
@@ -181,7 +181,7 @@ const transfers = await api.findOmniTransfers(
 ### Fee Estimation
 
 ```typescript
-const api = new OmniBridgeAPI("testnet");
+const api = new OmniBridgeAPI();
 const fee = await api.getFee(sender, recipient, tokenAddr);
 
 console.log(`Native fee: ${fee.native_token_fee}`); // Includes relayer fee

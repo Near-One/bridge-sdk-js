@@ -1,3 +1,4 @@
+import { getNetwork } from "./config"
 import type { OmniAddress } from "./types"
 
 // Types from OpenAPI spec
@@ -47,21 +48,23 @@ export interface ApiFeeResponse {
 export type TransferStatus = "Initialized" | "FinalisedOnNear" | "Finalised"
 
 export class OmniBridgeAPI {
-  private baseUrl: string
+  private baseUrl?: string
 
-  constructor(network: "testnet" | "mainnet") {
-    this.baseUrl =
-      network === "testnet"
-        ? "https://testnet.api.bridge.nearone.org"
-        : "https://api.bridge.nearone.org"
+  constructor(baseUrl?: string) {
+    this.baseUrl = baseUrl
   }
 
   public getBaseUrl(): string {
-    return this.baseUrl
+    if (this.baseUrl) {
+      return this.baseUrl
+    }
+    return getNetwork() === "testnet"
+      ? "https://testnet.api.bridge.nearone.org"
+      : "https://api.bridge.nearone.org"
   }
 
   async getTransferStatus(originChain: Chain, originNonce: number): Promise<TransferStatus> {
-    const url = new URL(`${this.baseUrl}/api/v1/transfers/transfer/status`)
+    const url = new URL(`${this.getBaseUrl()}/api/v1/transfers/transfer/status`)
     url.searchParams.set("origin_chain", originChain)
     url.searchParams.set("origin_nonce", originNonce.toString())
 
@@ -84,7 +87,7 @@ export class OmniBridgeAPI {
     recipient: OmniAddress,
     tokenAddress: string,
   ): Promise<ApiFeeResponse> {
-    const url = new URL(`${this.baseUrl}/api/v1/transfer-fee`)
+    const url = new URL(`${this.getBaseUrl()}/api/v1/transfer-fee`)
     url.searchParams.set("sender", sender)
     url.searchParams.set("recipient", recipient)
     url.searchParams.set("token", tokenAddress)
@@ -100,7 +103,7 @@ export class OmniBridgeAPI {
   }
 
   async getTransfer(originChain: Chain, originNonce: number): Promise<Transfer> {
-    const url = new URL(`${this.baseUrl}/api/v1/transfers/transfer`)
+    const url = new URL(`${this.getBaseUrl()}/api/v1/transfers/transfer`)
     url.searchParams.set("origin_chain", originChain)
     url.searchParams.set("origin_nonce", originNonce.toString())
 
@@ -113,7 +116,7 @@ export class OmniBridgeAPI {
   }
 
   async findOmniTransfers(sender: OmniAddress, offset: number, limit: number): Promise<Transfer[]> {
-    const url = new URL(`${this.baseUrl}/api/v1/transfers`)
+    const url = new URL(`${this.getBaseUrl()}/api/v1/transfers`)
     url.searchParams.set("sender", sender)
     url.searchParams.set("offset", offset.toString())
     url.searchParams.set("limit", limit.toString())
