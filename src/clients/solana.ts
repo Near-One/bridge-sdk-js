@@ -47,9 +47,15 @@ export class SolanaBridgeClient {
     SOL_VAULT: this.getConstant("SOL_VAULT_SEED"),
   }
 
-  constructor(provider: Provider, wormholeProgramId: PublicKey = new PublicKey(addresses.sol)) {
+  constructor(
+    provider: Provider,
+    wormholeProgramId: PublicKey = new PublicKey(addresses.sol.wormhole),
+  ) {
     this.wormholeProgramId = wormholeProgramId
-    this.program = new Program(BRIDGE_TOKEN_FACTORY_IDL as BridgeTokenFactory, provider)
+    const bridgeTokenFactory = BRIDGE_TOKEN_FACTORY_IDL as BridgeTokenFactory
+    // @ts-ignore We have to override the address for Mainnet/Testnet
+    bridgeTokenFactory.address = addresses.sol.locker
+    this.program = new Program(bridgeTokenFactory, provider)
   }
 
   private config(): [PublicKey, number] {

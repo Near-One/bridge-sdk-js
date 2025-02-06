@@ -23,7 +23,7 @@ describe("Config", () => {
     expect(addresses.base).toBe("0xd025b38762B4A4E36F0Cde483b86CB13ea00D989")
     expect(addresses.eth).toBe("0x3701B9859Dbb9a4333A3dd933ab18e9011ddf2C8")
     expect(addresses.near).toBe("omni.bridge.near")
-    expect(addresses.sol).toBe("dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe")
+    expect(addresses.sol.locker).toBe("dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe")
   })
 
   it("should return the correct addresses for testnet", () => {
@@ -32,7 +32,7 @@ describe("Config", () => {
     expect(addresses.base).toBe("0x0C981337fFe39a555d3A40dbb32f21aD0eF33FFA")
     expect(addresses.eth).toBe("0x3701B9859Dbb9a4333A3dd933ab18e9011ddf2C8")
     expect(addresses.near).toBe("omni-locker.testnet")
-    expect(addresses.sol).toBe("Gy1XPwYZURfBzHiGAxnw3SYC33SfqsEpGSS5zeBge28p")
+    expect(addresses.sol.locker).toBe("Gy1XPwYZURfBzHiGAxnw3SYC33SfqsEpGSS5zeBge28p")
   })
 
   it("should set the base URL for OmniBridgeAPI", () => {
