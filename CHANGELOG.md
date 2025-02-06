@@ -1,5 +1,16 @@
 # omni-bridge-sdk
 
+## 0.5.0
+
+### Minor Changes
+
+- 2f51e11: Add centralized network address configuration:
+
+  - Add new `config.ts` module with mainnet/testnet addresses
+  - Add `setNetwork()` function for network selection
+  - Remove environment variable dependencies for addresses
+  - Update all clients to use centralized config
+
 ## 0.4.0
 
 ### Minor Changes
