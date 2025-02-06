@@ -2,8 +2,10 @@ import { http, HttpResponse } from "msw"
 import { setupServer } from "msw/node"
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest"
 import { OmniBridgeAPI } from "../src/api"
+import { setNetwork } from "../src/config"
 
-const api = new OmniBridgeAPI("testnet")
+setNetwork("testnet")
+const api = new OmniBridgeAPI()
 const BASE_URL = "https://testnet.api.bridge.nearone.org"
 
 // Mock data

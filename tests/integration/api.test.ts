@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import { OmniBridgeAPI } from "../../src/api"
+import { setNetwork } from "../../src/config"
 import { ChainKind, type OmniAddress } from "../../src/types"
 import { omniAddress } from "../../src/utils"
 
@@ -7,7 +8,8 @@ describe("OmniBridgeAPI Integration Tests", () => {
   let api: OmniBridgeAPI
 
   beforeEach(() => {
-    api = new OmniBridgeAPI("testnet")
+    setNetwork("testnet")
+    api = new OmniBridgeAPI()
   })
 
   describe.skip("getFee", () => {

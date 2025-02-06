@@ -1,4 +1,5 @@
 import { ethers } from "ethers"
+import { addresses } from "../config"
 import type {
   BridgeDeposit,
   ChainKind,
@@ -59,15 +60,6 @@ const GAS_LIMIT = {
 } as const
 
 /**
- * Factory addresses for different chains mapped by chain tag
- */
-const FACTORY_ADDRESSES: Record<ChainTag<EVMChainKind>, string | undefined> = {
-  Eth: process.env.OMNI_FACTORY_ETH,
-  Base: process.env.OMNI_FACTORY_BASE,
-  Arb: process.env.OMNI_FACTORY_ARBITRUM,
-}
-
-/**
  * EVM blockchain implementation of the bridge client
  */
 export class EvmBridgeClient {
@@ -91,13 +83,24 @@ export class EvmBridgeClient {
 
     this.chainKind = chain
     this.chainTag = ChainUtils.getTag(chain)
-    const factoryAddress = FACTORY_ADDRESSES[this.chainTag]
 
-    if (!factoryAddress) {
-      throw new Error(`Factory address not configured for chain ${this.chainTag}`)
+    // Get Omni Bridge address from global config based on chain
+    let bridgeAddress: string
+    switch (this.chainTag) {
+      case "Eth":
+        bridgeAddress = addresses.eth
+        break
+      case "Base":
+        bridgeAddress = addresses.base
+        break
+      case "Arb":
+        bridgeAddress = addresses.arb
+        break
+      default:
+        throw new Error(`Factory address not configured for chain ${this.chainTag}`)
     }
 
-    this.factory = new ethers.Contract(factoryAddress, BRIDGE_TOKEN_FACTORY_ABI, this.wallet)
+    this.factory = new ethers.Contract(bridgeAddress, BRIDGE_TOKEN_FACTORY_ABI, this.wallet)
   }
 
   /**

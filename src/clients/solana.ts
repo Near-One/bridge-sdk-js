@@ -9,6 +9,7 @@ import {
   SYSVAR_RENT_PUBKEY,
   SystemProgram,
 } from "@solana/web3.js"
+import { addresses } from "../config"
 import {
   ChainKind,
   type DepositPayload,
@@ -48,10 +49,13 @@ export class SolanaBridgeClient {
 
   constructor(
     provider: Provider,
-    wormholeProgramId: PublicKey = new PublicKey(process.env.WORMHOLE_SOL as string),
+    wormholeProgramId: PublicKey = new PublicKey(addresses.sol.wormhole),
   ) {
     this.wormholeProgramId = wormholeProgramId
-    this.program = new Program(BRIDGE_TOKEN_FACTORY_IDL as BridgeTokenFactory, provider)
+    const bridgeTokenFactory = BRIDGE_TOKEN_FACTORY_IDL as BridgeTokenFactory
+    // @ts-ignore We have to override the address for Mainnet/Testnet
+    bridgeTokenFactory.address = addresses.sol.locker
+    this.program = new Program(bridgeTokenFactory, provider)
   }
 
   private config(): [PublicKey, number] {
