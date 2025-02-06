@@ -43,27 +43,58 @@ yarn add omni-bridge-sdk
 The fastest way to get started is using our relayer service for automated transfer finalization:
 
 ```typescript
-// 1. Setup your wallet/provider
+import { omniTransfer, OmniBridgeAPI } from "omni-bridge-sdk";
+
+// Get fees (includes relayer service fee)
+const api = new OmniBridgeAPI("testnet");
+const fees = await api.getFee("eth:0x123...", "near:bob.near", "eth:0x789...");
+
+// Send tokens
+await omniTransfer(wallet, {
+  tokenAddress: "eth:0x789...", // Token contract
+  recipient: "near:bob.near", // Destination address
+  amount: BigInt("1000000"), // Amount to send
+  fee: BigInt(fees.transferred_token_fee), // Includes relayer fee
+  nativeFee: BigInt(fees.native_token_fee),
+});
+```
+
+### Complete Example
+
+Here's a more detailed example showing wallet setup, error handling, and status monitoring:
+
+```typescript
+// 1. Setup wallet/provider
 const wallet = provider.getSigner(); // for EVM
 // or
 const account = await near.account("sender.near"); // for NEAR
 // or
 const provider = new AnchorProvider(connection, wallet); // for Solana
 
-// 2. Create the transfer with relayer fee
-const transfer = {
-  tokenAddress: omniAddress(ChainKind.Eth, "0x123..."),
-  amount: BigInt("1000000"),
-  fee: BigInt(feeEstimate.transferred_token_fee), // Includes relayer fee
-  nativeFee: BigInt(feeEstimate.native_token_fee),
-  recipient: omniAddress(ChainKind.Near, "recipient.near"),
-};
+// 2. Get fees (includes relayer service fee)
+const api = new OmniBridgeAPI("testnet");
+const sender = "eth:0x123...";
+const recipient = "near:bob.near";
+const token = "eth:0x789...";
 
-// 3. Single transaction - relayers handle the rest
-const result = await omniTransfer(wallet, transfer);
+const fees = await api.getFee(sender, recipient, token);
 
-// 4. Optional: Monitor status
-const status = await api.getTransferStatus(sourceChain, result.nonce);
+// 3. Send tokens
+try {
+  const result = await omniTransfer(wallet, {
+    tokenAddress: token,
+    recipient,
+    amount: BigInt("1000000"),
+    fee: BigInt(fees.transferred_token_fee),
+    nativeFee: BigInt(fees.native_token_fee),
+  });
+
+  // 4. Monitor status
+  const status = await api.getTransferStatus(sourceChain, result.nonce);
+  console.log(`Transfer status: ${status}`);
+} catch (error) {
+  console.error("Transfer failed:", error);
+}
 ```
 
 ### Core Concepts
