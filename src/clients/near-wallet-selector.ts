@@ -334,9 +334,9 @@ export class NearWalletSelectorBridgeClient {
     const { regBalance, initBalance, storage } = await this.getBalances()
     const requiredBalance = regBalance + initBalance
     const existingBalance = storage?.available ?? BigInt(0)
+    const neededAmount = requiredBalance - existingBalance + transfer.nativeFee
 
-    if (requiredBalance > existingBalance) {
-      const neededAmount = requiredBalance - existingBalance
+    if (neededAmount > 0) {
       transactions.push({
         receiverId: this.lockerAddress,
         actions: [

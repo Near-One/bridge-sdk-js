@@ -288,9 +288,9 @@ export class NearBridgeClient {
     const { regBalance, initBalance, storage } = await this.getBalances()
     const requiredBalance = regBalance + initBalance
     const existingBalance = storage?.available ?? BigInt(0)
+    const neededAmount = requiredBalance - existingBalance + transfer.nativeFee
 
-    if (requiredBalance > existingBalance) {
-      const neededAmount = requiredBalance - existingBalance
+    if (neededAmount > 0) {
       await this.wallet.functionCall({
         contractId: this.lockerAddress,
         methodName: "storage_deposit",
