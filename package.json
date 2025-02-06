@@ -13,7 +13,6 @@
     "test": "vitest",
     "lint": "biome check --write .",
     "typecheck": "tsc --noEmit",
-    "prepare": "pnpm run build",
     "prepublishOnly": "pnpm build",
     "lefthook": "lefthook install",
     "check-exports": "attw --pack .",
