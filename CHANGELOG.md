@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.6.1
+
+### Patch Changes
+
+- 83f1e31: refactor(near): update VAA encoding and ProofKind types for transfer finalization
+
 ## 0.6.0
 
 ### Minor Changes
