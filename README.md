@@ -264,7 +264,7 @@ const transfer = {
 // Initiate on Solana
 const result = await omniTransfer(provider, transfer);
 
-// Get Wormhole VAA
+// Get Wormhole VAA (returns hex-encoded string)
 const vaa = await getVaa(result.txHash, "Testnet");
 
 // Finalize on NEAR
@@ -274,7 +274,9 @@ await nearClient.finalizeTransfer(
   "recipient.near",
   storageDeposit,
   ChainKind.Sol,
-  vaa // Wormhole VAA required for Solana->NEAR
+  vaa, // Wormhole VAA required for Solana->NEAR
+  undefined, // No EVM proof needed
+  ProofKind.InitTransfer
 );
 ```
 
@@ -314,7 +316,8 @@ await nearClient.finalizeTransfer(
   storageDeposit,
   ChainKind.Eth,
   undefined, // No VAA needed
-  proof // EVM proof required
+  proof, // EVM proof required
+  ProofKind.InitTransfer
 );
 ```
 

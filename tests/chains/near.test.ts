@@ -255,7 +255,7 @@ describe("NearBridgeClient", () => {
 
       expect(mockWallet.functionCall).toHaveBeenCalledWith({
         contractId: mockLockerAddress,
-        methodName: "finalize_transfer",
+        methodName: "fin_transfer",
         args: expect.any(Uint8Array),
         gas: BigInt(3e14),
         attachedDeposit: BigInt(1),
@@ -275,7 +275,7 @@ describe("NearBridgeClient", () => {
 
       expect(mockWallet.functionCall).toHaveBeenCalledWith({
         contractId: mockLockerAddress,
-        methodName: "finalize_transfer",
+        methodName: "fin_transfer",
         args: expect.any(Uint8Array),
         gas: BigInt(3e14),
         attachedDeposit: BigInt(1),

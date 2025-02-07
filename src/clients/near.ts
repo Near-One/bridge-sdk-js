@@ -396,7 +396,7 @@ export class NearBridgeClient {
    * @param account - The recipient account ID on NEAR
    * @param storageDepositAmount - Amount of NEAR tokens for storage deposit (in yoctoNEAR)
    * @param sourceChain - The originating chain of the transfer
-   * @param vaa - Optional Wormhole Verified Action Approval containing transfer information
+   * @param vaa - Optional Wormhole Verified Action Approval containing transfer information, encoded as a hex string
    * @param evmProof - Optional proof data for transfers from EVM-compatible chains
    *
    * @throws {Error} When neither VAA nor EVM proof is provided
@@ -406,12 +406,13 @@ export class NearBridgeClient {
    *
    */
   async finalizeTransfer(
-    token: string,
-    account: string,
+    token: AccountId,
+    account: AccountId,
     storageDepositAmount: U128,
     sourceChain: ChainKind,
     vaa?: string,
     evmProof?: EvmVerifyProofArgs,
+    proofKind: ProofKind = ProofKind.InitTransfer,
   ): Promise<string> {
     if (!vaa && !evmProof) {
       throw new Error("Must provide either VAA or EVM proof")
@@ -428,13 +429,13 @@ export class NearBridgeClient {
     let proverArgsSerialized: Uint8Array = new Uint8Array(0)
     if (vaa) {
       const proverArgs: WormholeVerifyProofArgs = {
-        proof_kind: ProofKind.DeployToken,
+        proof_kind: proofKind,
         vaa: vaa,
       }
       proverArgsSerialized = borshSerialize(WormholeVerifyProofArgsSchema, proverArgs)
     } else if (evmProof) {
       const proverArgs: EvmVerifyProofArgs = {
-        proof_kind: ProofKind.DeployToken,
+        proof_kind: proofKind,
         proof: evmProof.proof,
       }
       proverArgsSerialized = borshSerialize(EvmVerifyProofArgsSchema, proverArgs)
@@ -455,7 +456,7 @@ export class NearBridgeClient {
 
     const tx = await this.wallet.functionCall({
       contractId: this.lockerAddress,
-      methodName: "finalize_transfer",
+      methodName: "fin_transfer",
       args: serializedArgs,
       gas: GAS.FIN_TRANSFER,
       attachedDeposit: DEPOSIT.FIN_TRANSFER,

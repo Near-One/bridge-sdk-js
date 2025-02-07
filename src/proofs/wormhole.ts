@@ -9,5 +9,5 @@ export async function getVaa(txHash: string, network: "Mainnet" | "Testnet" | "D
     throw new Error("No VAA found")
   }
   const serialized = serialize(result)
-  return Buffer.from(serialized).toString("base64")
+  return Buffer.from(serialized).toString("hex")
 }
