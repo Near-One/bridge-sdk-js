@@ -251,6 +251,7 @@ export class SolanaBridgeClient {
           recipient: transfer.recipient,
           fee: new BN(transfer.fee.valueOf().toString()),
           nativeFee: new BN(transfer.nativeFee.valueOf().toString()),
+          message: "",
         })
         .accountsStrict({
           solVault,
@@ -282,6 +283,7 @@ export class SolanaBridgeClient {
           recipient: transfer.recipient,
           fee: new BN(transfer.fee.valueOf().toString()),
           nativeFee: new BN(transfer.nativeFee.valueOf().toString()),
+          message: "",
         })
         .accountsStrict({
           authority: this.authority()[0],

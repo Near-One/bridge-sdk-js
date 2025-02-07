@@ -185,7 +185,7 @@ export type BridgeTokenFactory = {
             {
               name: "sequence"
               docs: [
-                "message is posted, so it needs to be an [UncheckedAccount] for the",
+                "message is posted, so it needs to be an [`UncheckedAccount`] for the",
                 "[`initialize`](crate::initialize) instruction.",
                 "[`wormhole::post_message`] requires this account be mutable.",
               ]
@@ -451,7 +451,7 @@ export type BridgeTokenFactory = {
             {
               name: "sequence"
               docs: [
-                "message is posted, so it needs to be an [UncheckedAccount] for the",
+                "message is posted, so it needs to be an [`UncheckedAccount`] for the",
                 "[`initialize`](crate::initialize) instruction.",
                 "[`wormhole::post_message`] requires this account be mutable.",
               ]
@@ -631,7 +631,7 @@ export type BridgeTokenFactory = {
             {
               name: "sequence"
               docs: [
-                "message is posted, so it needs to be an [UncheckedAccount] for the",
+                "message is posted, so it needs to be an [`UncheckedAccount`] for the",
                 "[`initialize`](crate::initialize) instruction.",
                 "[`wormhole::post_message`] requires this account be mutable.",
               ]
@@ -813,7 +813,7 @@ export type BridgeTokenFactory = {
             {
               name: "sequence"
               docs: [
-                "message is posted, so it needs to be an [UncheckedAccount] for the",
+                "message is posted, so it needs to be an [`UncheckedAccount`] for the",
                 "[`initialize`](crate::initialize) instruction.",
                 "[`wormhole::post_message`] requires this account be mutable.",
               ]
@@ -948,7 +948,7 @@ export type BridgeTokenFactory = {
             {
               name: "sequence"
               docs: [
-                "message is posted, so it needs to be an [UncheckedAccount] for the",
+                "message is posted, so it needs to be an [`UncheckedAccount`] for the",
                 "[`initialize`](crate::initialize) instruction.",
                 "[`wormhole::post_message`] requires this account be mutable.",
               ]
@@ -1084,7 +1084,7 @@ export type BridgeTokenFactory = {
         {
           name: "wormholeSequence"
           docs: [
-            "message is posted, so it needs to be an [UncheckedAccount] for the",
+            "message is posted, so it needs to be an [`UncheckedAccount`] for the",
             "[`initialize`](crate::initialize) instruction.",
             "[`wormhole::post_message`] requires this account be mutable.",
           ]
@@ -1138,6 +1138,10 @@ export type BridgeTokenFactory = {
       args: [
         {
           name: "admin"
+          type: "pubkey"
+        },
+        {
+          name: "pausableAdmin"
           type: "pubkey"
         },
         {
@@ -1237,7 +1241,7 @@ export type BridgeTokenFactory = {
             {
               name: "sequence"
               docs: [
-                "message is posted, so it needs to be an [UncheckedAccount] for the",
+                "message is posted, so it needs to be an [`UncheckedAccount`] for the",
                 "[`initialize`](crate::initialize) instruction.",
                 "[`wormhole::post_message`] requires this account be mutable.",
               ]
@@ -1299,6 +1303,117 @@ export type BridgeTokenFactory = {
       ]
       args: []
     },
+    {
+      name: "pause"
+      discriminator: [211, 22, 221, 251, 74, 121, 193, 47]
+      accounts: [
+        {
+          name: "config"
+          writable: true
+          pda: {
+            seeds: [
+              {
+                kind: "const"
+                value: [99, 111, 110, 102, 105, 103]
+              },
+            ]
+          }
+        },
+        {
+          name: "signer"
+          writable: true
+          signer: true
+        },
+      ]
+      args: []
+    },
+    {
+      name: "setAdmin"
+      discriminator: [251, 163, 0, 52, 91, 194, 187, 92]
+      accounts: [
+        {
+          name: "config"
+          writable: true
+          pda: {
+            seeds: [
+              {
+                kind: "const"
+                value: [99, 111, 110, 102, 105, 103]
+              },
+            ]
+          }
+        },
+        {
+          name: "signer"
+          writable: true
+          signer: true
+        },
+      ]
+      args: [
+        {
+          name: "admin"
+          type: "pubkey"
+        },
+      ]
+    },
+    {
+      name: "setPausableAdmin"
+      discriminator: [128, 59, 6, 173, 50, 0, 213, 197]
+      accounts: [
+        {
+          name: "config"
+          writable: true
+          pda: {
+            seeds: [
+              {
+                kind: "const"
+                value: [99, 111, 110, 102, 105, 103]
+              },
+            ]
+          }
+        },
+        {
+          name: "signer"
+          writable: true
+          signer: true
+        },
+      ]
+      args: [
+        {
+          name: "pausableAdmin"
+          type: "pubkey"
+        },
+      ]
+    },
+    {
+      name: "unpause"
+      discriminator: [169, 144, 4, 38, 10, 141, 188, 255]
+      accounts: [
+        {
+          name: "config"
+          writable: true
+          pda: {
+            seeds: [
+              {
+                kind: "const"
+                value: [99, 111, 110, 102, 105, 103]
+              },
+            ]
+          }
+        },
+        {
+          name: "signer"
+          writable: true
+          signer: true
+        },
+      ]
+      args: [
+        {
+          name: "paused"
+          type: "u8"
+        },
+      ]
+    },
   ]
   accounts: [
     {
@@ -1351,6 +1466,16 @@ export type BridgeTokenFactory = {
       name: "invalidFee"
       msg: "Invalid fee"
     },
+    {
+      code: 6008
+      name: "paused"
+      msg: "paused"
+    },
+    {
+      code: 6009
+      name: "unauthorized"
+      msg: "unauthorized"
+    },
   ]
   types: [
     {
@@ -1381,9 +1506,17 @@ export type BridgeTokenFactory = {
             }
           },
           {
+            name: "paused"
+            type: "u8"
+          },
+          {
+            name: "pausableAdmin"
+            type: "pubkey"
+          },
+          {
             name: "padding"
             type: {
-              array: ["u8", 100]
+              array: ["u8", 67]
             }
           },
         ]
@@ -1492,6 +1625,10 @@ export type BridgeTokenFactory = {
             name: "nativeFee"
             type: "u64"
           },
+          {
+            name: "message"
+            type: "string"
+          },
         ]
       }
     },
@@ -1571,6 +1708,16 @@ export type BridgeTokenFactory = {
   ]
   constants: [
     {
+      name: "allPaused"
+      type: "u8"
+      value: "3"
+    },
+    {
+      name: "allUnpaused"
+      type: "u8"
+      value: "0"
+    },
+    {
       name: "authoritySeed"
       type: "bytes"
       value: "[97, 117, 116, 104, 111, 114, 105, 116, 121]"
@@ -1579,6 +1726,16 @@ export type BridgeTokenFactory = {
       name: "configSeed"
       type: "bytes"
       value: "[99, 111, 110, 102, 105, 103]"
+    },
+    {
+      name: "finalizeTransferPaused"
+      type: "u8"
+      value: "2"
+    },
+    {
+      name: "initTransferPaused"
+      type: "u8"
+      value: "1"
     },
     {
       name: "maxAllowedDecimals"

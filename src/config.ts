@@ -18,7 +18,7 @@ const ADDRESSES = {
     near: "omni-locker.testnet",
     sol: {
       locker: "Gy1XPwYZURfBzHiGAxnw3SYC33SfqsEpGSS5zeBge28p",
-      wormhole: "Bridge1p5gheXUvJ6jGWGeCsgPKgnE3YgdGKRVCMY9o",
+      wormhole: "3u8hJUVTA4jH1wYAyUur7FFZVQ8H635K3tSHHF4ssjQ5",
     },
   },
 } as const
