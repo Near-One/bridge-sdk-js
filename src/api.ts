@@ -85,14 +85,12 @@ export class OmniBridgeAPI {
   async getFee(
     sender: OmniAddress,
     recipient: OmniAddress,
-    tokenAddress: string,
+    tokenAddress: OmniAddress,
   ): Promise<ApiFeeResponse> {
     const url = new URL(`${this.getBaseUrl()}/api/v1/transfer-fee`)
     url.searchParams.set("sender", sender)
     url.searchParams.set("recipient", recipient)
     url.searchParams.set("token", tokenAddress)
-
-    console.log(url.toString())
 
     const response = await fetch(url)
     if (!response.ok) {
@@ -103,7 +101,7 @@ export class OmniBridgeAPI {
   }
 
   async getTransfer(originChain: Chain, originNonce: number): Promise<Transfer> {
-    const url = new URL(`${this.getBaseUrl()}/api/v1/transfers/transfer`)
+    const url = new URL(`${this.getBaseUrl()}/api/v1/transfers/transfer/`)
     url.searchParams.set("origin_chain", originChain)
     url.searchParams.set("origin_nonce", originNonce.toString())
 
@@ -115,9 +113,15 @@ export class OmniBridgeAPI {
     return await response.json()
   }
 
-  async findOmniTransfers(sender: OmniAddress, offset: number, limit: number): Promise<Transfer[]> {
-    const url = new URL(`${this.getBaseUrl()}/api/v1/transfers`)
+  async findOmniTransfers(
+    sender: OmniAddress,
+    transactionId: string,
+    offset: number,
+    limit: number,
+  ): Promise<Transfer[]> {
+    const url = new URL(`${this.getBaseUrl()}/api/v1/transfers/`)
     url.searchParams.set("sender", sender)
+    url.searchParams.set("transaction_id", transactionId)
     url.searchParams.set("offset", offset.toString())
     url.searchParams.set("limit", limit.toString())
 
