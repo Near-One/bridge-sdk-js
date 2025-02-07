@@ -1,19 +1,18 @@
 import { ethers } from "ethers"
 import { addresses } from "../config"
-import type {
-  BridgeDeposit,
+import {
+  type BridgeDeposit,
   ChainKind,
-  MPCSignature,
-  OmniAddress,
-  OmniTransferMessage,
-  TokenMetadata,
-  TransferMessagePayload,
+  type MPCSignature,
+  type OmniAddress,
+  type OmniTransferMessage,
+  type TokenMetadata,
+  type TransferMessagePayload,
 } from "../types"
 import { getChain } from "../utils"
 
 // Type helpers for EVM chains
-export type EVMChainKind = typeof ChainKind.Eth | typeof ChainKind.Base | typeof ChainKind.Arb
-export type ChainTag<T extends EVMChainKind> = keyof T
+export type EVMChainKind = ChainKind.Eth | ChainKind.Base | ChainKind.Arb
 
 // Contract ABI for the bridge token factory
 const BRIDGE_TOKEN_FACTORY_ABI = [
@@ -25,37 +24,19 @@ const BRIDGE_TOKEN_FACTORY_ABI = [
 ] as const
 
 /**
- * Helper functions for chain operations
- */
-export const ChainUtils = {
-  getTag: <T extends ChainKind>(chain: T): ChainTag<T> => {
-    return Object.keys(chain)[0] as ChainTag<T>
-  },
-
-  isEVMChain: (chain: ChainKind): chain is EVMChainKind => {
-    const tag = ChainUtils.getTag(chain)
-    return tag === "Eth" || tag === "Base" || tag === "Arb"
-  },
-
-  areEqual: (a: ChainKind, b: ChainKind): boolean => {
-    return ChainUtils.getTag(a) === ChainUtils.getTag(b)
-  },
-} as const
-
-/**
  * Gas limits for EVM transactions mapped by chain tag
  * @internal
  */
 const GAS_LIMIT = {
   DEPLOY_TOKEN: {
-    Eth: 500000,
-    Base: 500000,
-    Arb: 3000000, // Arbitrum typically needs higher gas limits
+    [ChainKind.Eth]: 500000,
+    [ChainKind.Base]: 500000,
+    [ChainKind.Arb]: 3000000, // Arbitrum typically needs higher gas limits
   },
   LOG_METADATA: {
-    Eth: 100000,
-    Base: 100000,
-    Arb: 600000,
+    [ChainKind.Eth]: 100000,
+    [ChainKind.Base]: 100000,
+    [ChainKind.Arb]: 600000,
   },
 } as const
 
@@ -64,8 +45,6 @@ const GAS_LIMIT = {
  */
 export class EvmBridgeClient {
   private factory: ethers.Contract
-  private chainKind: EVMChainKind
-  private chainTag: ChainTag<EVMChainKind>
 
   /**
    * Creates a new EVM bridge client instance
@@ -75,29 +54,22 @@ export class EvmBridgeClient {
    */
   constructor(
     private wallet: ethers.Signer,
-    chain: ChainKind,
+    private chain: EVMChainKind,
   ) {
-    if (!ChainUtils.isEVMChain(chain)) {
-      throw new Error(`Chain ${String(ChainUtils.getTag(chain))} is not an EVM chain`)
-    }
-
-    this.chainKind = chain
-    this.chainTag = ChainUtils.getTag(chain)
-
     // Get Omni Bridge address from global config based on chain
     let bridgeAddress: string
-    switch (this.chainTag) {
-      case "Eth":
+    switch (chain) {
+      case ChainKind.Eth:
         bridgeAddress = addresses.eth
         break
-      case "Base":
+      case ChainKind.Base:
         bridgeAddress = addresses.base
         break
-      case "Arb":
+      case ChainKind.Arb:
         bridgeAddress = addresses.arb
         break
       default:
-        throw new Error(`Factory address not configured for chain ${this.chainTag}`)
+        throw new Error(`Factory address not configured for chain ${chain}`)
     }
 
     this.factory = new ethers.Contract(bridgeAddress, BRIDGE_TOKEN_FACTORY_ABI, this.wallet)
@@ -113,8 +85,8 @@ export class EvmBridgeClient {
     const sourceChain = getChain(tokenAddress)
 
     // Validate source chain matches the client's chain
-    if (!ChainUtils.areEqual(sourceChain, this.chainKind)) {
-      throw new Error(`Token address must be on ${this.chainTag}`)
+    if (sourceChain !== this.chain) {
+      throw new Error(`Token address must be on ${ChainKind[this.chain]} chain`)
     }
 
     // Extract token address from OmniAddress
@@ -123,7 +95,7 @@ export class EvmBridgeClient {
     try {
       // Call logMetadata function on the contract
       const tx = await this.factory.logMetadata(tokenAccountId, {
-        gasLimit: GAS_LIMIT.LOG_METADATA[this.chainTag],
+        gasLimit: GAS_LIMIT.LOG_METADATA[this.chain],
       })
       return tx.hash
     } catch (error) {
@@ -148,7 +120,7 @@ export class EvmBridgeClient {
     tokenAddress: string
   }> {
     const tx = await this.factory.deployToken(signature.toBytes(true), metadata, {
-      gasLimit: GAS_LIMIT.DEPLOY_TOKEN[this.chainTag],
+      gasLimit: GAS_LIMIT.DEPLOY_TOKEN[this.chain],
     })
 
     const receipt = await tx.wait()
@@ -175,8 +147,8 @@ export class EvmBridgeClient {
     const sourceChain = getChain(transfer.tokenAddress)
 
     // Validate source chain matches the client's chain
-    if (!ChainUtils.areEqual(sourceChain, this.chainKind)) {
-      throw new Error(`Token address must be on ${this.chainTag}`)
+    if (sourceChain !== this.chain) {
+      throw new Error(`Token address must be on ${ChainKind[this.chain]} chain`)
     }
 
     const [_, tokenAccountId] = transfer.tokenAddress.split(":")
@@ -218,9 +190,9 @@ export class EvmBridgeClient {
       destination_nonce: BigInt(transferMessage.destination_nonce),
       origin_chain: Number(transferMessage.transfer_id.origin_chain),
       origin_nonce: BigInt(transferMessage.transfer_id.origin_nonce),
-      token_address: this.extractEvmAddress(transferMessage.token_address),
+      token_address: transferMessage.token_address.split(":")[1],
       amount: BigInt(transferMessage.amount),
-      recipient: this.extractEvmAddress(transferMessage.recipient),
+      recipient: transferMessage.recipient.split(":")[1],
       fee_recipient: transferMessage.fee_recipient ?? "",
     }
 
@@ -235,21 +207,7 @@ export class EvmBridgeClient {
     }
   }
 
-  /**
-   * Helper method to extract EVM address from OmniAddress
-   * @param omniAddress - The OmniAddress to extract from
-   * @returns The EVM address
-   */
-  private extractEvmAddress(omniAddress: OmniAddress): string {
-    const chain = getChain(omniAddress)
-    const [_, address] = omniAddress.split(":")
-    if (!ChainUtils.isEVMChain(chain)) {
-      throw new Error(`Invalid EVM address: ${omniAddress}`)
-    }
-    return address
-  }
-
   private isNativeToken(omniAddress: OmniAddress): boolean {
-    return this.extractEvmAddress(omniAddress) === "0x0000000000000000000000000000000000000000"
+    return omniAddress.split(":")[1] === "0x0000000000000000000000000000000000000000"
   }
 }
