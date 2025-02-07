@@ -17,10 +17,10 @@ exports[`OmniBridgeAPI Integration Tests > findOmniTransfers > should fetch tran
       },
     },
     "transfer_message": {
-      "amount": 2000000000000000,
+      "amount": 2000000000000000n,
       "fee": {
-        "fee": "0",
-        "native_fee": "0",
+        "fee": 0n,
+        "native_fee": 0n,
       },
       "msg": "",
       "recipient": "near:amogas.testnet",
@@ -54,10 +54,10 @@ exports[`OmniBridgeAPI Integration Tests > getTransfer > should fetch transfer d
     },
   },
   "transfer_message": {
-    "amount": 1000000000000000,
+    "amount": 1000000000000000n,
     "fee": {
-      "fee": "0",
-      "native_fee": "0",
+      "fee": 0n,
+      "native_fee": 0n,
     },
     "msg": "",
     "recipient": "near:amogas.testnet",
