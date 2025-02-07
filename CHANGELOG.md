@@ -1,5 +1,15 @@
 # omni-bridge-sdk
 
+## 0.6.0
+
+### Minor Changes
+
+- 2ccf03e: feat(solana): update bridge implementation with message support, pause functionality, new admin roles, and updated testnet contract address
+
+### Patch Changes
+
+- 2ccf03e: fix(near): include native fee in storage deposit calculations
+
 ## 0.5.0
 
 ### Minor Changes
