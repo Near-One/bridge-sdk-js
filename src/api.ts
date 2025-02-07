@@ -37,8 +37,8 @@ const TransferMessageSchema = z.object({
 
 const TransfersQuerySchema = z
   .object({
-    sender: z.string().nullable().optional(),
-    transaction_id: z.string().nullable().optional(),
+    sender: z.string().optional(),
+    transaction_id: z.string().optional(),
     offset: z.number().default(0),
     limit: z.number().default(10),
   })
@@ -94,7 +94,7 @@ export class OmniBridgeAPI {
     this.baseUrl = config.baseUrl ?? this.getDefaultBaseUrl()
   }
 
-  private getDefaultBaseUrl(): string {
+  public getDefaultBaseUrl(): string {
     return getNetwork() === "testnet"
       ? "https://testnet.api.bridge.nearone.org"
       : "https://api.bridge.nearone.org"
@@ -108,6 +108,7 @@ export class OmniBridgeAPI {
     }
 
     if (!response.ok) {
+      console.log(response)
       throw new ApiError("API request failed", response.status, response.statusText)
     }
 
