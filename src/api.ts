@@ -108,7 +108,6 @@ export class OmniBridgeAPI {
     }
 
     if (!response.ok) {
-      console.log(response)
       throw new ApiError("API request failed", response.status, response.statusText)
     }
 

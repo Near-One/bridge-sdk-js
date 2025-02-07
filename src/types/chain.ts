@@ -1,25 +1,13 @@
-import type { Unit } from "borsher"
 import { BorshSchema } from "borsher"
 
-export type ChainKind =
-  | { Eth: Unit }
-  | { Near: Unit }
-  | { Sol: Unit }
-  | { Arb: Unit }
-  | { Base: Unit }
+export enum ChainKind {
+  Eth = 0,
+  Near = 1,
+  Sol = 2,
+  Arb = 3,
+  Base = 4,
+}
 
-export const ChainKind = {
-  Eth: { Eth: {} } as ChainKind,
-  Near: { Near: {} } as ChainKind,
-  Sol: { Sol: {} } as ChainKind,
-  Arb: { Arb: {} } as ChainKind,
-  Base: { Base: {} } as ChainKind,
-} as const
-
-export const ChainKindSchema = BorshSchema.Enum({
-  Eth: BorshSchema.Unit,
-  Near: BorshSchema.Unit,
-  Sol: BorshSchema.Unit,
-  Arb: BorshSchema.Unit,
-  Base: BorshSchema.Unit,
-})
+// TypeScript Enums like this serialize to simple numbers in Borsh.
+// This is highly specific to numeric enums, though. It does not apply to much else.
+export const ChainKindSchema = BorshSchema.u8

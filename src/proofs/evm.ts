@@ -3,7 +3,7 @@ import { RLP } from "@ethereumjs/rlp"
 import { MapDB, bigIntToHex } from "@ethereumjs/util"
 import { ethers } from "ethers"
 import type { BlockTag, Log, TransactionReceipt, TransactionReceiptParams } from "ethers"
-import { type ChainTag, ChainUtils, type EVMChainKind } from "../clients/evm"
+import type { EVMChainKind } from "../clients"
 import { ChainKind, type EvmProof } from "../types"
 
 interface BlockHeader {
@@ -29,15 +29,14 @@ interface BlockHeader {
   parentBeaconBlockRoot?: string
 }
 
-const RPC_URLS: Record<ChainTag<EVMChainKind>, string> = {
-  Eth: "https://eth.llamarpc.com",
-  Base: "https://mainnet.base.org",
-  Arb: "https://arb1.arbitrum.io/rpc",
+const RPC_URLS: Record<EVMChainKind, string> = {
+  [ChainKind.Eth]: "https://eth.llamarpc.com",
+  [ChainKind.Base]: "https://mainnet.base.org",
+  [ChainKind.Arb]: "https://arb1.arbitrum.io/rpc",
 }
 
-function getChainRpcUrl(chain: ChainKind): string {
-  const chainTag = ChainUtils.getTag(chain)
-  const url = RPC_URLS[chainTag]
+function getChainRpcUrl(chain: EVMChainKind): string {
+  const url = RPC_URLS[chain]
   if (!url) {
     throw new Error(`No RPC URL configured for chain: ${chain}`)
   }
@@ -61,15 +60,14 @@ class ExtendedProvider extends ethers.JsonRpcProvider {
 export async function getEvmProof(
   txHash: string,
   topic: string,
-  chain: ChainKind = ChainKind.Eth,
+  chain: EVMChainKind = ChainKind.Eth,
 ): Promise<EvmProof> {
-  console.log()
   const rpcUrl = getChainRpcUrl(chain)
 
   const provider = new ExtendedProvider(rpcUrl)
   const receipt = await provider.getTransactionReceipt(txHash)
   if (!receipt) {
-    throw new Error(`Transaction receipt not found on ${ChainUtils.getTag(chain)}`)
+    throw new Error(`Transaction receipt not found on ${ChainKind[chain]}`)
   }
 
   const blockNumber = bigIntToHex(BigInt(receipt.blockNumber))
