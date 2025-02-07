@@ -119,7 +119,7 @@
             {
               "name": "sequence",
               "docs": [
-                "message is posted, so it needs to be an [UncheckedAccount] for the",
+                "message is posted, so it needs to be an [`UncheckedAccount`] for the",
                 "[`initialize`](crate::initialize) instruction.",
                 "[`wormhole::post_message`] requires this account be mutable."
               ],
@@ -325,7 +325,7 @@
             {
               "name": "sequence",
               "docs": [
-                "message is posted, so it needs to be an [UncheckedAccount] for the",
+                "message is posted, so it needs to be an [`UncheckedAccount`] for the",
                 "[`initialize`](crate::initialize) instruction.",
                 "[`wormhole::post_message`] requires this account be mutable."
               ],
@@ -505,7 +505,7 @@
             {
               "name": "sequence",
               "docs": [
-                "message is posted, so it needs to be an [UncheckedAccount] for the",
+                "message is posted, so it needs to be an [`UncheckedAccount`] for the",
                 "[`initialize`](crate::initialize) instruction.",
                 "[`wormhole::post_message`] requires this account be mutable."
               ],
@@ -687,7 +687,7 @@
             {
               "name": "sequence",
               "docs": [
-                "message is posted, so it needs to be an [UncheckedAccount] for the",
+                "message is posted, so it needs to be an [`UncheckedAccount`] for the",
                 "[`initialize`](crate::initialize) instruction.",
                 "[`wormhole::post_message`] requires this account be mutable."
               ],
@@ -822,7 +822,7 @@
             {
               "name": "sequence",
               "docs": [
-                "message is posted, so it needs to be an [UncheckedAccount] for the",
+                "message is posted, so it needs to be an [`UncheckedAccount`] for the",
                 "[`initialize`](crate::initialize) instruction.",
                 "[`wormhole::post_message`] requires this account be mutable."
               ],
@@ -958,7 +958,7 @@
         {
           "name": "wormhole_sequence",
           "docs": [
-            "message is posted, so it needs to be an [UncheckedAccount] for the",
+            "message is posted, so it needs to be an [`UncheckedAccount`] for the",
             "[`initialize`](crate::initialize) instruction.",
             "[`wormhole::post_message`] requires this account be mutable."
           ],
@@ -1012,6 +1012,10 @@
       "args": [
         {
           "name": "admin",
+          "type": "pubkey"
+        },
+        {
+          "name": "pausable_admin",
           "type": "pubkey"
         },
         {
@@ -1111,7 +1115,7 @@
             {
               "name": "sequence",
               "docs": [
-                "message is posted, so it needs to be an [UncheckedAccount] for the",
+                "message is posted, so it needs to be an [`UncheckedAccount`] for the",
                 "[`initialize`](crate::initialize) instruction.",
                 "[`wormhole::post_message`] requires this account be mutable."
               ],
@@ -1172,6 +1176,117 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "pause",
+      "discriminator": [211, 22, 221, 251, 74, 121, 193, 47],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
+            ]
+          }
+        },
+        {
+          "name": "signer",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_admin",
+      "discriminator": [251, 163, 0, 52, 91, 194, 187, 92],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
+            ]
+          }
+        },
+        {
+          "name": "signer",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "admin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "set_pausable_admin",
+      "discriminator": [128, 59, 6, 173, 50, 0, 213, 197],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
+            ]
+          }
+        },
+        {
+          "name": "signer",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "pausable_admin",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "unpause",
+      "discriminator": [169, 144, 4, 38, 10, 141, 188, 255],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [99, 111, 110, 102, 105, 103]
+              }
+            ]
+          }
+        },
+        {
+          "name": "signer",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "u8"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -1224,6 +1339,16 @@
       "code": 6007,
       "name": "InvalidFee",
       "msg": "Invalid fee"
+    },
+    {
+      "code": 6008,
+      "name": "Paused",
+      "msg": "Paused"
+    },
+    {
+      "code": 6009,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
     }
   ],
   "types": [
@@ -1255,9 +1380,17 @@
             }
           },
           {
+            "name": "paused",
+            "type": "u8"
+          },
+          {
+            "name": "pausable_admin",
+            "type": "pubkey"
+          },
+          {
             "name": "padding",
             "type": {
-              "array": ["u8", 100]
+              "array": ["u8", 67]
             }
           }
         ]
@@ -1365,6 +1498,10 @@
           {
             "name": "native_fee",
             "type": "u64"
+          },
+          {
+            "name": "message",
+            "type": "string"
           }
         ]
       }
@@ -1445,6 +1582,16 @@
   ],
   "constants": [
     {
+      "name": "ALL_PAUSED",
+      "type": "u8",
+      "value": "3"
+    },
+    {
+      "name": "ALL_UNPAUSED",
+      "type": "u8",
+      "value": "0"
+    },
+    {
       "name": "AUTHORITY_SEED",
       "type": "bytes",
       "value": "[97, 117, 116, 104, 111, 114, 105, 116, 121]"
@@ -1453,6 +1600,16 @@
       "name": "CONFIG_SEED",
       "type": "bytes",
       "value": "[99, 111, 110, 102, 105, 103]"
+    },
+    {
+      "name": "FINALIZE_TRANSFER_PAUSED",
+      "type": "u8",
+      "value": "2"
+    },
+    {
+      "name": "INIT_TRANSFER_PAUSED",
+      "type": "u8",
+      "value": "1"
     },
     {
       "name": "MAX_ALLOWED_DECIMALS",
