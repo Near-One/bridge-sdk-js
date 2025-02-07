@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.6.2
+
+### Patch Changes
+
+- 8cfd726: Update API methods
+
 ## 0.6.1
 
 ### Patch Changes
