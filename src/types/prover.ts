@@ -1,12 +1,18 @@
-import { BorshSchema } from "borsher"
+import { BorshSchema, type Unit } from "borsher"
 import type { AccountId, Fee, Nonce, OmniAddress, U128 } from "./common"
 
-export enum ProofKind {
-  InitTransfer = 0,
-  FinTransfer = 1,
-  DeployToken = 2,
-  LogMetadata = 3,
-}
+export type ProofKind =
+  | { InitTransfer: Unit }
+  | { FinTransfer: Unit }
+  | { DeployToken: Unit }
+  | { LogMetadata: Unit }
+
+export const ProofKind = {
+  InitTransfer: { InitTransfer: {} } as ProofKind,
+  FinTransfer: { FinTransfer: {} } as ProofKind,
+  DeployToken: { DeployToken: {} } as ProofKind,
+  LogMetadata: { LogMetadata: {} } as ProofKind,
+} as const
 
 export const ProofKindSchema = BorshSchema.Enum({
   InitTransfer: BorshSchema.Unit,
