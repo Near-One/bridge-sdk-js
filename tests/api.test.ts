@@ -37,9 +37,25 @@ const mockTransfer = {
   updated_fee: [],
 }
 
+const normalizedTransfer = {
+  ...mockTransfer,
+  transfer_message: {
+    ...mockTransfer.transfer_message,
+    fee: {
+      fee: BigInt(mockTransfer.transfer_message.fee.fee),
+      native_fee: BigInt(mockTransfer.transfer_message.fee.native_fee),
+    },
+  },
+}
+
 const mockFee = {
   native_token_fee: 1000,
   transferred_token_fee: 2000,
+  usd_fee: 1.5,
+}
+const normalizedFee = {
+  native_token_fee: BigInt(1000),
+  transferred_token_fee: BigInt(2000),
   usd_fee: 1.5,
 }
 
@@ -47,13 +63,13 @@ const restHandlers = [
   http.get(`${BASE_URL}/api/v1/transfers/transfer/status`, () => {
     return HttpResponse.json("Initialized")
   }),
-  http.get(`${BASE_URL}/api/v1/transfers/transfer`, () => {
+  http.get(`${BASE_URL}/api/v1/transfers/transfer/`, () => {
     return HttpResponse.json(mockTransfer)
   }),
   http.get(`${BASE_URL}/api/v1/transfer-fee`, () => {
     return HttpResponse.json(mockFee)
   }),
-  http.get(`${BASE_URL}/api/v1/transfers`, () => {
+  http.get(`${BASE_URL}/api/v1/transfers/`, () => {
     return HttpResponse.json([mockTransfer])
   }),
 ]
@@ -77,14 +93,14 @@ describe("OmniBridgeAPI", () => {
         }),
       )
 
-      await expect(api.getTransferStatus("Eth", 123)).rejects.toThrow("Transfer not found")
+      await expect(api.getTransferStatus("Eth", 123)).rejects.toThrow("Resource not found")
     })
   })
 
   describe("getFee", () => {
     it("should fetch fee successfully", async () => {
-      const fee = await api.getFee("near:sender.near", "near:recipient.near", "token.near")
-      expect(fee).toEqual(mockFee)
+      const fee = await api.getFee("near:sender.near", "near:recipient.near", "near:token.near")
+      expect(fee).toEqual(normalizedFee)
     })
 
     it("should handle missing parameters", async () => {
@@ -95,7 +111,7 @@ describe("OmniBridgeAPI", () => {
       )
 
       await expect(
-        api.getFee("near:sender.near", "near:recipient.near", "token.near"),
+        api.getFee("near:sender.near", "near:recipient.near", "near:token.near"),
       ).rejects.toThrow("API request failed")
     })
   })
@@ -103,19 +119,23 @@ describe("OmniBridgeAPI", () => {
   describe("getTransfer", () => {
     it("should fetch single transfer successfully", async () => {
       const transfer = await api.getTransfer("Eth", 123)
-      expect(transfer).toEqual(mockTransfer)
+      expect(transfer).toEqual(normalizedTransfer)
     })
   })
 
   describe("findOmniTransfers", () => {
     it("should fetch transfers list successfully", async () => {
-      const transfers = await api.findOmniTransfers("near:sender.near", 0, 10)
-      expect(transfers).toEqual([mockTransfer])
+      const transfers = await api.findOmniTransfers({ sender: "near:sender.near" })
+      expect(transfers).toEqual([normalizedTransfer])
     })
 
     it("should handle pagination parameters", async () => {
-      const transfers = await api.findOmniTransfers("near:sender.near", 10, 5)
-      expect(transfers).toEqual([mockTransfer])
+      const transfers = await api.findOmniTransfers({
+        sender: "near:sender.near",
+        limit: 10,
+        offset: 5,
+      })
+      expect(transfers).toEqual([normalizedTransfer])
     })
   })
 })
