@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.7.2
+
+### Patch Changes
+
+- a10c1ab: feat: improve bigint parsing to handle scientific notation and preserve precision
+
 ## 0.7.1
 
 ### Patch Changes
