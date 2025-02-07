@@ -1,0 +1,71 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`OmniBridgeAPI Integration Tests > findOmniTransfers > should fetch transfers for a specific transaction 1`] = `
+[
+  {
+    "finalised": null,
+    "finalised_on_near": null,
+    "id": {
+      "origin_chain": "Eth",
+      "origin_nonce": 54,
+    },
+    "initialized": {
+      "EVMLog": {
+        "block_height": 7581798,
+        "block_timestamp_seconds": 1737983736,
+        "transaction_hash": "0x0b08b481f24e9df5fc5988777933796173e1f5ef9aa4878557df0a4f5b7d8ad0",
+      },
+    },
+    "transfer_message": {
+      "amount": 2000000000000000,
+      "fee": {
+        "fee": "0",
+        "native_fee": "0",
+      },
+      "msg": "",
+      "recipient": "near:amogas.testnet",
+      "sender": "eth:0x2bd45d0d7171ffc91c0f00ee6d1156d8970a5efd",
+      "token": "eth:0x0000000000000000000000000000000000000000",
+    },
+    "updated_fee": [],
+  },
+]
+`;
+
+exports[`OmniBridgeAPI Integration Tests > getTransfer > should fetch transfer details for a known transfer 1`] = `
+{
+  "finalised": {
+    "NearReceipt": {
+      "block_height": 185995645,
+      "block_timestamp_seconds": 1737974975,
+      "transaction_hash": "6sshxgapFkxN8DBXGBdNkRCc8F2rjMmTuvydagPiS34C",
+    },
+  },
+  "finalised_on_near": null,
+  "id": {
+    "origin_chain": "Eth",
+    "origin_nonce": 53,
+  },
+  "initialized": {
+    "EVMLog": {
+      "block_height": 7581040,
+      "block_timestamp_seconds": 1737974100,
+      "transaction_hash": "0x5eb66c1978c0ee118051bcc7aa6c86b34da7fbc3d1be6c30f7d8343bdfeb04c4",
+    },
+  },
+  "transfer_message": {
+    "amount": 1000000000000000,
+    "fee": {
+      "fee": "0",
+      "native_fee": "0",
+    },
+    "msg": "",
+    "recipient": "near:amogas.testnet",
+    "sender": "eth:0x2bd45d0d7171ffc91c0f00ee6d1156d8970a5efd",
+    "token": "eth:0x0000000000000000000000000000000000000000",
+  },
+  "updated_fee": [],
+}
+`;
+
+exports[`OmniBridgeAPI Integration Tests > getTransferStatus > should fetch status for a known transfer 1`] = `"Finalised"`;

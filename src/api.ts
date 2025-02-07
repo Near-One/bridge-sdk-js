@@ -1,85 +1,134 @@
+import { z } from "zod"
 import { getNetwork } from "./config"
 import type { OmniAddress } from "./types"
 
-// Types from OpenAPI spec
-export type Chain = "Eth" | "Near" | "Sol" | "Arb" | "Base"
+const ChainSchema = z.enum(["Eth", "Near", "Sol", "Arb", "Base"])
+type Chain = z.infer<typeof ChainSchema>
 
-export interface Transaction {
-  block_height: number
-  block_timestamp_seconds: number
-  transaction_hash: string
+const TransactionSchema = z.object({
+  block_height: z.number().int().min(0),
+  block_timestamp_seconds: z.number().int().min(0),
+  transaction_hash: z.string(),
+})
+
+const SolanaTransactionSchema = z.object({
+  slot: z.number().int().min(0),
+  block_timestamp_seconds: z.number().int().min(0),
+  signature: z.string(),
+})
+
+const TransactionWrapperSchema = z.object({
+  NearReceipt: TransactionSchema.optional(),
+  EVMLog: TransactionSchema.optional(),
+  Solana: SolanaTransactionSchema.optional(),
+})
+
+const TransferMessageSchema = z.object({
+  token: z.string(),
+  amount: z.number().int().min(0),
+  sender: z.string(),
+  recipient: z.string(),
+  fee: z.object({
+    fee: z.coerce.bigint().min(0n),
+    native_fee: z.coerce.bigint().min(0n),
+  }),
+  msg: z.string(),
+})
+
+const TransfersQuerySchema = z
+  .object({
+    sender: z.string().nullable().optional(),
+    transaction_id: z.string().nullable().optional(),
+    offset: z.number().default(0),
+    limit: z.number().default(10),
+  })
+  .refine((data) => data.sender || data.transaction_id, {
+    message: "Either sender or transactionId must be provided",
+  })
+
+type TransfersQuery = Partial<z.input<typeof TransfersQuerySchema>>
+
+const TransferSchema = z.object({
+  id: z.object({
+    origin_chain: ChainSchema,
+    origin_nonce: z.number().int().min(0),
+  }),
+  initialized: TransactionWrapperSchema.nullable(),
+  finalised_on_near: TransactionWrapperSchema.nullable(),
+  finalised: TransactionWrapperSchema.nullable(),
+  transfer_message: TransferMessageSchema,
+  updated_fee: z.array(TransactionWrapperSchema),
+})
+
+const ApiFeeResponseSchema = z.object({
+  native_token_fee: z.coerce.bigint().min(0n).nullable(),
+  transferred_token_fee: z.coerce.bigint().min(0n).nullable(),
+  usd_fee: z.number(),
+})
+
+const TransferStatusSchema = z.enum(["Initialized", "FinalisedOnNear", "Finalised"])
+
+type Transfer = z.infer<typeof TransferSchema>
+type ApiFeeResponse = z.infer<typeof ApiFeeResponseSchema>
+type TransferStatus = z.infer<typeof TransferStatusSchema>
+
+interface ApiClientConfig {
+  baseUrl?: string
 }
 
-export interface TransactionWrapper {
-  NearReceipt?: Transaction
-  EVMLog?: Transaction
-}
-
-export interface TransferMessage {
-  token: string
-  amount: number
-  sender: string
-  recipient: string
-  fee: {
-    fee: number
-    native_fee: number
+class ApiError extends Error {
+  constructor(
+    message: string,
+    public status?: number,
+    public statusText?: string,
+  ) {
+    super(message)
+    this.name = "ApiError"
   }
-  msg: string
 }
-
-export interface Transfer {
-  id: {
-    origin_chain: Chain
-    origin_nonce: number
-  }
-  initialized: TransactionWrapper | null
-  finalised_on_near: TransactionWrapper | null
-  finalised: TransactionWrapper | null
-  transfer_message: TransferMessage
-  updated_fee: TransactionWrapper[]
-}
-
-export interface ApiFeeResponse {
-  native_token_fee: number
-  transferred_token_fee: number | null
-  usd_fee: number
-}
-
-export type TransferStatus = "Initialized" | "FinalisedOnNear" | "Finalised"
 
 export class OmniBridgeAPI {
-  private baseUrl?: string
+  private readonly baseUrl: string
 
-  constructor(baseUrl?: string) {
-    this.baseUrl = baseUrl
+  constructor(config: ApiClientConfig = {}) {
+    this.baseUrl = config.baseUrl ?? this.getDefaultBaseUrl()
   }
 
-  public getBaseUrl(): string {
-    if (this.baseUrl) {
-      return this.baseUrl
-    }
+  private getDefaultBaseUrl(): string {
     return getNetwork() === "testnet"
       ? "https://testnet.api.bridge.nearone.org"
       : "https://api.bridge.nearone.org"
   }
 
-  async getTransferStatus(originChain: Chain, originNonce: number): Promise<TransferStatus> {
-    const url = new URL(`${this.getBaseUrl()}/api/v1/transfers/transfer/status`)
-    url.searchParams.set("origin_chain", originChain)
-    url.searchParams.set("origin_nonce", originNonce.toString())
-
+  private async fetchWithValidation<T extends z.ZodType>(url: URL, schema: T): Promise<z.infer<T>> {
     const response = await fetch(url)
 
     if (response.status === 404) {
-      throw new Error("Transfer not found")
+      throw new ApiError("Resource not found", response.status, response.statusText)
     }
 
     if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`)
+      throw new ApiError("API request failed", response.status, response.statusText)
     }
 
-    const status: TransferStatus = await response.json()
-    return status
+    const data = await response.json()
+    return schema.parse(data)
+  }
+
+  private buildUrl(path: string, params: Record<string, string> = {}): URL {
+    const url = new URL(`${this.baseUrl}${path}`)
+    for (const [key, value] of Object.entries(params)) {
+      url.searchParams.set(key, value)
+    }
+    return url
+  }
+
+  async getTransferStatus(originChain: Chain, originNonce: number): Promise<TransferStatus> {
+    const url = this.buildUrl("/api/v1/transfers/transfer/status", {
+      origin_chain: originChain,
+      origin_nonce: originNonce.toString(),
+    })
+    return this.fetchWithValidation(url, TransferStatusSchema)
   }
 
   async getFee(
@@ -87,49 +136,34 @@ export class OmniBridgeAPI {
     recipient: OmniAddress,
     tokenAddress: OmniAddress,
   ): Promise<ApiFeeResponse> {
-    const url = new URL(`${this.getBaseUrl()}/api/v1/transfer-fee`)
-    url.searchParams.set("sender", sender)
-    url.searchParams.set("recipient", recipient)
-    url.searchParams.set("token", tokenAddress)
-
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`)
-    }
-
-    return await response.json()
+    const url = this.buildUrl("/api/v1/transfer-fee", {
+      sender,
+      recipient,
+      token: tokenAddress,
+    })
+    return this.fetchWithValidation(url, ApiFeeResponseSchema)
   }
 
   async getTransfer(originChain: Chain, originNonce: number): Promise<Transfer> {
-    const url = new URL(`${this.getBaseUrl()}/api/v1/transfers/transfer/`)
-    url.searchParams.set("origin_chain", originChain)
-    url.searchParams.set("origin_nonce", originNonce.toString())
-
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`)
-    }
-
-    return await response.json()
+    const url = this.buildUrl("/api/v1/transfers/transfer/", {
+      origin_chain: originChain,
+      origin_nonce: originNonce.toString(),
+    })
+    return this.fetchWithValidation(url, TransferSchema)
   }
 
-  async findOmniTransfers(
-    sender: OmniAddress,
-    transactionId: string,
-    offset: number,
-    limit: number,
-  ): Promise<Transfer[]> {
-    const url = new URL(`${this.getBaseUrl()}/api/v1/transfers/`)
-    url.searchParams.set("sender", sender)
-    url.searchParams.set("transaction_id", transactionId)
-    url.searchParams.set("offset", offset.toString())
-    url.searchParams.set("limit", limit.toString())
+  async findOmniTransfers(query: TransfersQuery): Promise<Transfer[]> {
+    const params = TransfersQuerySchema.parse(query)
 
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`)
+    const urlParams: Record<string, string> = {
+      offset: params.offset.toString(),
+      limit: params.limit.toString(),
     }
 
-    return await response.json()
+    if (params.sender) urlParams.sender = params.sender
+    if (params.transaction_id) urlParams.transaction_id = params.transaction_id
+
+    const url = this.buildUrl("/api/v1/transfers/", urlParams)
+    return this.fetchWithValidation(url, z.array(TransferSchema))
   }
 }
