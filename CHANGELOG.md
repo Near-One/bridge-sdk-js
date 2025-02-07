@@ -1,5 +1,16 @@
 # omni-bridge-sdk
 
+## 0.7.0
+
+### Minor Changes
+
+- cebedb7: refactor(chains): convert ChainKind from tagged union to enum for simpler type system
+- e47c3d6: Migrate to Zod for runtime validation, improve error handling, and add comprehensive testing
+
+### Patch Changes
+
+- 837544c: improve: add type safety to bridge client factory with proper generics and overloads
+
 ## 0.6.2
 
 ### Patch Changes
