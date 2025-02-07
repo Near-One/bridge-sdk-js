@@ -3,7 +3,7 @@ import { getNetwork } from "./config"
 import type { OmniAddress } from "./types"
 
 const ChainSchema = z.enum(["Eth", "Near", "Sol", "Arb", "Base"])
-type Chain = z.infer<typeof ChainSchema>
+export type Chain = z.infer<typeof ChainSchema>
 
 const TransactionSchema = z.object({
   block_height: z.number().int().min(0),
@@ -46,7 +46,7 @@ const TransfersQuerySchema = z
     message: "Either sender or transactionId must be provided",
   })
 
-type TransfersQuery = Partial<z.input<typeof TransfersQuerySchema>>
+export type TransfersQuery = Partial<z.input<typeof TransfersQuerySchema>>
 
 const TransferSchema = z.object({
   id: z.object({
@@ -68,9 +68,9 @@ const ApiFeeResponseSchema = z.object({
 
 const TransferStatusSchema = z.enum(["Initialized", "FinalisedOnNear", "Finalised"])
 
-type Transfer = z.infer<typeof TransferSchema>
-type ApiFeeResponse = z.infer<typeof ApiFeeResponseSchema>
-type TransferStatus = z.infer<typeof TransferStatusSchema>
+export type Transfer = z.infer<typeof TransferSchema>
+export type ApiFeeResponse = z.infer<typeof ApiFeeResponseSchema>
+export type TransferStatus = z.infer<typeof TransferStatusSchema>
 
 interface ApiClientConfig {
   baseUrl?: string
