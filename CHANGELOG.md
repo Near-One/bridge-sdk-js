@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.7.1
+
+### Patch Changes
+
+- 08db6b7: fix(api): Export type definitions
+
 ## 0.7.0
 
 ### Minor Changes
