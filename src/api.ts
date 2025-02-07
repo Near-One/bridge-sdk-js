@@ -5,6 +5,44 @@ import type { OmniAddress } from "./types"
 const ChainSchema = z.enum(["Eth", "Near", "Sol", "Arb", "Base"])
 export type Chain = z.infer<typeof ChainSchema>
 
+// Custom transformer for safe BigInt coercion that handles scientific notation
+const safeBigInt = (nullable = false) => {
+  const transformer = z.preprocess(
+    (val) => {
+      if (val === null && nullable) return null
+
+      try {
+        // If it's a number, convert to string without scientific notation
+        if (typeof val === "number") {
+          return BigInt(val.toLocaleString("fullwide", { useGrouping: false }))
+        }
+
+        // If it's a string, try direct conversion first
+        if (typeof val === "string") {
+          try {
+            // Try direct BigInt conversion first (handles numeric strings)
+            return BigInt(val)
+          } catch {
+            // If direct conversion fails, it might be scientific notation
+            const num = Number(val)
+            if (!Number.isNaN(num)) {
+              return BigInt(num.toLocaleString("fullwide", { useGrouping: false }))
+            }
+            throw new Error(`Cannot convert ${val} to BigInt`)
+          }
+        }
+
+        return val
+      } catch {
+        throw new Error(`Invalid BigInt value: ${val}`)
+      }
+    },
+    nullable ? z.bigint().min(0n).nullable() : z.bigint().min(0n),
+  )
+
+  return transformer
+}
+
 const TransactionSchema = z.object({
   block_height: z.number().int().min(0),
   block_timestamp_seconds: z.number().int().min(0),
@@ -25,12 +63,12 @@ const TransactionWrapperSchema = z.object({
 
 const TransferMessageSchema = z.object({
   token: z.string(),
-  amount: z.number().int().min(0),
+  amount: safeBigInt(),
   sender: z.string(),
   recipient: z.string(),
   fee: z.object({
-    fee: z.coerce.bigint().min(0n),
-    native_fee: z.coerce.bigint().min(0n),
+    fee: safeBigInt(),
+    native_fee: safeBigInt(),
   }),
   msg: z.string(),
 })
@@ -61,8 +99,8 @@ const TransferSchema = z.object({
 })
 
 const ApiFeeResponseSchema = z.object({
-  native_token_fee: z.coerce.bigint().min(0n).nullable(),
-  transferred_token_fee: z.coerce.bigint().min(0n).nullable(),
+  native_token_fee: safeBigInt(true),
+  transferred_token_fee: safeBigInt(true),
   usd_fee: z.number(),
 })
 

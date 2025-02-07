@@ -61,20 +61,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
   describe("getTransfer", () => {
     it("should fetch transfer details for a known transfer", async () => {
       const transfer = await api.getTransfer("Eth", 53)
-
-      // Need to convert BigInts to strings for snapshot
-      const snapshotSafeTransfer = {
-        ...transfer,
-        transfer_message: {
-          ...transfer.transfer_message,
-          fee: {
-            fee: transfer.transfer_message.fee.fee.toString(),
-            native_fee: transfer.transfer_message.fee.native_fee.toString(),
-          },
-        },
-      }
-
-      expect(snapshotSafeTransfer).toMatchSnapshot()
+      expect(transfer).toMatchSnapshot()
     })
 
     it("should handle non-existent transfer", async () => {
@@ -86,19 +73,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
       const txId = "0x0b08b481f24e9df5fc5988777933796173e1f5ef9aa4878557df0a4f5b7d8ad0"
       const transfers = await api.findOmniTransfers({ transaction_id: txId })
 
-      // Convert BigInts to strings for snapshot
-      const snapshotSafeTransfers = transfers.map((transfer) => ({
-        ...transfer,
-        transfer_message: {
-          ...transfer.transfer_message,
-          fee: {
-            fee: transfer.transfer_message.fee.fee.toString(),
-            native_fee: transfer.transfer_message.fee.native_fee.toString(),
-          },
-        },
-      }))
-
-      expect(snapshotSafeTransfers).toMatchSnapshot()
+      expect(transfers).toMatchSnapshot()
     })
 
     it("should fetch transfers for a specific sender", async () => {
@@ -122,7 +97,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
           finalised: expect.toBeOneOf([expect.anything(), undefined, null]), // null or transaction object
           transfer_message: {
             token: expect.any(String),
-            amount: expect.any(Number),
+            amount: expect.any(BigInt),
             sender: expect.any(String),
             recipient: expect.any(String),
             fee: {

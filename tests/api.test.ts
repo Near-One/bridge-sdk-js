@@ -41,6 +41,7 @@ const normalizedTransfer = {
   ...mockTransfer,
   transfer_message: {
     ...mockTransfer.transfer_message,
+    amount: BigInt(mockTransfer.transfer_message.amount),
     fee: {
       fee: BigInt(mockTransfer.transfer_message.fee.fee),
       native_fee: BigInt(mockTransfer.transfer_message.fee.native_fee),
