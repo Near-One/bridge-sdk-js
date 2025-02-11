@@ -135,7 +135,7 @@ export class OmniBridgeAPI {
   public getDefaultBaseUrl(): string {
     return getNetwork() === "testnet"
       ? "https://testnet.api.bridge.nearone.org"
-      : "https://api.bridge.nearone.org"
+      : "https://mainnet.api.bridge.nearone.org"
   }
 
   private async fetchWithValidation<T extends z.ZodType>(url: URL, schema: T): Promise<z.infer<T>> {
