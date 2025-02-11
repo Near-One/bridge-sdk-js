@@ -28,7 +28,7 @@ importers:
         version: 0.0.2
       '@near-wallet-selector/core':
         specifier: ^8.9.16
-        version: 8.9.16(near-api-js@5.0.1)
+        version: 8.10.0(near-api-js@5.0.1)
       '@solana/spl-token':
         specifier: ^0.4.12
         version: 0.4.12(@solana/web3.js@1.98.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.7.3)(utf-8-validate@5.0.10)
@@ -678,8 +678,8 @@ packages:
   '@near-js/wallet-account@1.3.1':
     resolution: {integrity: sha512-POOKarJnYsTK0zEXygm43ecGlraPl5qagQHl+By5bk0zQFgeKaoFIJK/n04xUoGBhZTBIVp1/q7q3O1pB57hqg==}
 
-  '@near-wallet-selector/core@8.9.16':
-    resolution: {integrity: sha512-Bq+bZvwpsYgs8g4mtDMEMUpHwD/+VlHY3hj5pLv6o6C/3Ym0/540/8ydd9VUhMsdpY0Dhv2SLamKiL6PJK6THA==}
+  '@near-wallet-selector/core@8.10.0':
+    resolution: {integrity: sha512-zh1xz9Hza85hxQHUHJb+w5GhH+qjQBp+iHejuMkgOVjmFsUNwWV3RhGA9WUM1CXQTplYhuJ1oRbRV5MKL1K58Q==}
     peerDependencies:
       near-api-js: ^4.0.0 || ^5.0.0
 
@@ -3815,7 +3815,7 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  '@near-wallet-selector/core@8.9.16(near-api-js@5.0.1)':
+  '@near-wallet-selector/core@8.10.0(near-api-js@5.0.1)':
     dependencies:
       borsh: 1.0.0
       events: 3.3.0
