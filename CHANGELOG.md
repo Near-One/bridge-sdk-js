@@ -1,5 +1,13 @@
 # omni-bridge-sdk
 
+## 0.7.3
+
+### Patch Changes
+
+- 9bc3197: fix(api): use correct mainnet API base URL with 'mainnet' subdomain
+- 039266c: Bump @near-wallet-selector/core from 8.9.16 to 8.10.0
+- 718936d: Bump @wormhole-foundation/sdk from 1.5.2 to 1.6.0
+
 ## 0.7.2
 
 ### Patch Changes
