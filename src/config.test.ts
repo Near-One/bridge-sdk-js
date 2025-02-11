@@ -37,7 +37,7 @@ describe("Config", () => {
 
   it("should set the base URL for OmniBridgeAPI", () => {
     const api = new OmniBridgeAPI()
-    expect(api.getDefaultBaseUrl()).toBe("https://api.bridge.nearone.org")
+    expect(api.getDefaultBaseUrl()).toBe("https://mainnet.api.bridge.nearone.org")
     setNetwork("testnet")
     expect(api.getDefaultBaseUrl()).toBe("https://testnet.api.bridge.nearone.org")
   })
