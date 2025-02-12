@@ -1,5 +1,15 @@
 # omni-bridge-sdk
 
+## 0.8.0
+
+### Minor Changes
+
+- bcf4226: fix(config): update testnet addresses for multiple networks
+
+### Patch Changes
+
+- d8fc52f: test(config): fix broken tests
+
 ## 0.7.3
 
 ### Patch Changes
