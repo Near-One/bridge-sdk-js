@@ -12,12 +12,12 @@ const ADDRESSES = {
     },
   },
   testnet: {
-    arb: "0xd025b38762B4A4E36F0Cde483b86CB13ea00D989",
-    base: "0x0C981337fFe39a555d3A40dbb32f21aD0eF33FFA",
-    eth: "0x3701B9859Dbb9a4333A3dd933ab18e9011ddf2C8",
-    near: "omni-locker.testnet",
+    arb: "0x0C981337fFe39a555d3A40dbb32f21aD0eF33FFA",
+    base: "0xa56b860017152cD296ad723E8409Abd6e5D86d4d",
+    eth: "0x68a86e0Ea5B1d39F385c1326e4d493526dFe4401",
+    near: "omni.n-bridge.testnet",
     sol: {
-      locker: "Gy1XPwYZURfBzHiGAxnw3SYC33SfqsEpGSS5zeBge28p",
+      locker: "862HdJV59Vp83PbcubUnvuXc4EAXP8CDDs6LTxFpunTe",
       wormhole: "3u8hJUVTA4jH1wYAyUur7FFZVQ8H635K3tSHHF4ssjQ5",
     },
   },
