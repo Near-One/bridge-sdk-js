@@ -1,6 +1,6 @@
 {
   "name": "omni-bridge-sdk",
-  "version": "0.7.3",
+  "version": "0.8.0",
   "description": "SDK for Omni bridge transfers",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
