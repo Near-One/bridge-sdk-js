@@ -6,26 +6,26 @@ exports[`OmniBridgeAPI Integration Tests > findOmniTransfers > should fetch tran
     "finalised": null,
     "finalised_on_near": null,
     "id": {
-      "origin_chain": "Eth",
-      "origin_nonce": 54,
+      "origin_chain": "Near",
+      "origin_nonce": 1,
     },
     "initialized": {
-      "EVMLog": {
-        "block_height": 7581798,
-        "block_timestamp_seconds": 1737983736,
-        "transaction_hash": "0x0b08b481f24e9df5fc5988777933796173e1f5ef9aa4878557df0a4f5b7d8ad0",
+      "NearReceipt": {
+        "block_height": 137141103,
+        "block_timestamp_seconds": 1736635744,
+        "transaction_hash": "DQM4d3B6Jxr4qnvGay4bpZ7aTQQogpUgQxVLAVWk5doF",
       },
     },
     "transfer_message": {
-      "amount": 2000000000000000n,
+      "amount": 10000n,
       "fee": {
-        "fee": 0n,
-        "native_fee": 0n,
+        "fee": 20n,
+        "native_fee": 10n,
       },
       "msg": "",
-      "recipient": "near:amogas.testnet",
-      "sender": "eth:0x2bd45d0d7171ffc91c0f00ee6d1156d8970a5efd",
-      "token": "eth:0x0000000000000000000000000000000000000000",
+      "recipient": "base:0xcf6462b9fce5af3e6c660c83453eca18ff468773",
+      "sender": "near:frolik.near",
+      "token": "near:wrap.near",
     },
     "updated_fee": [],
   },
@@ -35,37 +35,37 @@ exports[`OmniBridgeAPI Integration Tests > findOmniTransfers > should fetch tran
 exports[`OmniBridgeAPI Integration Tests > getTransfer > should fetch transfer details for a known transfer 1`] = `
 {
   "finalised": {
-    "NearReceipt": {
-      "block_height": 185995645,
-      "block_timestamp_seconds": 1737974975,
-      "transaction_hash": "6sshxgapFkxN8DBXGBdNkRCc8F2rjMmTuvydagPiS34C",
+    "EVMLog": {
+      "block_height": 26239591,
+      "block_timestamp_seconds": 1739268529,
+      "transaction_hash": "0xf802fcc209d7d3bbb6b90393c06f3c821b34a9d1c3b2beb42cd1e7468ea1cfce",
     },
   },
   "finalised_on_near": null,
   "id": {
-    "origin_chain": "Eth",
-    "origin_nonce": 53,
+    "origin_chain": "Near",
+    "origin_nonce": 22,
   },
   "initialized": {
-    "EVMLog": {
-      "block_height": 7581040,
-      "block_timestamp_seconds": 1737974100,
-      "transaction_hash": "0x5eb66c1978c0ee118051bcc7aa6c86b34da7fbc3d1be6c30f7d8343bdfeb04c4",
+    "NearReceipt": {
+      "block_height": 139475752,
+      "block_timestamp_seconds": 1739268494,
+      "transaction_hash": "7wLmrkv9K85aWT8KKEn7roAyFwTT4FS3ZrdUMvxLkym8",
     },
   },
   "transfer_message": {
-    "amount": 1000000000000000n,
+    "amount": 1000000000000000000000n,
     "fee": {
       "fee": 0n,
-      "native_fee": 0n,
+      "native_fee": 3483371056966369000000n,
     },
     "msg": "",
-    "recipient": "near:amogas.testnet",
-    "sender": "eth:0x2bd45d0d7171ffc91c0f00ee6d1156d8970a5efd",
-    "token": "eth:0x0000000000000000000000000000000000000000",
+    "recipient": "base:0xd51c5283b8727206bf9be2b2db4e5673efaf519c",
+    "sender": "near:marior.near",
+    "token": "near:burn-1411.meme-cooking.near",
   },
   "updated_fee": [],
 }
 `;
 
-exports[`OmniBridgeAPI Integration Tests > getTransferStatus > should fetch status for a known transfer 1`] = `"Finalised"`;
+exports[`OmniBridgeAPI Integration Tests > getTransferStatus > should fetch status for a known transfer 1`] = `"Initialized"`;

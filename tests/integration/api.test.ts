@@ -8,18 +8,18 @@ describe("OmniBridgeAPI Integration Tests", () => {
   let api: OmniBridgeAPI
 
   beforeEach(() => {
-    setNetwork("testnet")
+    setNetwork("mainnet")
     api = new OmniBridgeAPI()
   })
 
   describe("getFee", () => {
     it("should fetch real fee information", async () => {
-      const sender: OmniAddress = omniAddress(ChainKind.Near, "bridge-sender.testnet")
+      const sender: OmniAddress = omniAddress(ChainKind.Near, "bridge-sender.near")
       const recipient: OmniAddress = omniAddress(
         ChainKind.Eth,
         "0x000000F8637F1731D906643027c789EFA60BfE11",
       )
-      const tokenAddress: OmniAddress = "near:warp.testnet"
+      const tokenAddress: OmniAddress = "near:warp.near"
 
       const fee = await api.getFee(sender, recipient, tokenAddress)
 
@@ -50,7 +50,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
   })
   describe("getTransferStatus", () => {
     it("should fetch status for a known transfer", async () => {
-      const status = await api.getTransferStatus("Eth", 53)
+      const status = await api.getTransferStatus("Near", 1)
       expect(status).toMatchSnapshot()
     })
 
@@ -60,7 +60,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
   })
   describe("getTransfer", () => {
     it("should fetch transfer details for a known transfer", async () => {
-      const transfer = await api.getTransfer("Eth", 53)
+      const transfer = await api.getTransfer("Near", 22)
       expect(transfer).toMatchSnapshot()
     })
 
@@ -70,14 +70,14 @@ describe("OmniBridgeAPI Integration Tests", () => {
   })
   describe("findOmniTransfers", () => {
     it("should fetch transfers for a specific transaction", async () => {
-      const txId = "0x0b08b481f24e9df5fc5988777933796173e1f5ef9aa4878557df0a4f5b7d8ad0"
+      const txId = "DQM4d3B6Jxr4qnvGay4bpZ7aTQQogpUgQxVLAVWk5doF"
       const transfers = await api.findOmniTransfers({ transaction_id: txId })
 
       expect(transfers).toMatchSnapshot()
     })
 
     it("should fetch transfers for a specific sender", async () => {
-      const sender = "near:r-near.testnet"
+      const sender = "near:frolik.near"
       const transfers = await api.findOmniTransfers({ sender })
 
       // Verify structure and pagination
