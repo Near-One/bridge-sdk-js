@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.8.1
+
+### Patch Changes
+
+- fe97b45: feat: support transaction injection in bridge clients
+
 ## 0.8.0
 
 ### Minor Changes
