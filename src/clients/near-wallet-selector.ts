@@ -78,6 +78,12 @@ interface InitTransferMessage {
   native_token_fee: string
 }
 
+interface StorageDepositOptions {
+  additionalTransactions?: Array<Optional<Transaction, "signerId">>
+}
+
+interface InitTransferOptions extends StorageDepositOptions {}
+
 /**
  * Interface representing the results of various balance queries
  * @property regBalance - Required balance for account registration
@@ -283,14 +289,19 @@ export class NearWalletSelectorBridgeClient {
 
   async storageDeposit(
     transfer: OmniTransferMessage,
+    options: StorageDepositOptions = {},
   ): Promise<Array<Optional<Transaction, "signerId">>> {
     // Performs a storage deposit on behalf of the token_locker so that the tokens can be transferred to the locker.
     // To be called once for each NEP-141
 
+    // Start with any injected transactions
+    const transactions: Array<Optional<Transaction, "signerId">> = [
+      ...(options.additionalTransactions || []),
+    ]
+
     if (getChain(transfer.tokenAddress) !== ChainKind.Near) {
       throw new Error("Token address must be on NEAR")
     }
-    const transactions: Array<Optional<Transaction, "signerId">> = []
     const tokenAddress = transfer.tokenAddress.split(":")[1]
 
     // First, check if the FT has the token locker contract registered for storage
@@ -368,12 +379,19 @@ export class NearWalletSelectorBridgeClient {
    * @returns Promise resolving to InitTransferEvent
    */
 
-  async initTransfer(transfer: OmniTransferMessage): Promise<InitTransferEvent> {
+  async initTransfer(
+    transfer: OmniTransferMessage,
+    options: InitTransferOptions = {},
+  ): Promise<InitTransferEvent> {
     if (getChain(transfer.tokenAddress) !== ChainKind.Near) {
       throw new Error("Token address must be on NEAR")
     }
     const tokenAddress = transfer.tokenAddress.split(":")[1]
-    const transactions = await this.storageDeposit(transfer)
+
+    // Pass through any additional transactions to storageDeposit
+    const transactions = await this.storageDeposit(transfer, {
+      additionalTransactions: options.additionalTransactions,
+    })
 
     const initTransferMessage: InitTransferMessage = {
       recipient: transfer.recipient,
