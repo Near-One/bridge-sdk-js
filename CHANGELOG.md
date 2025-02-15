@@ -1,5 +1,13 @@
 # omni-bridge-sdk
 
+## 0.8.2
+
+### Patch Changes
+
+- aa50e97: Bump @types/node from 22.13.1 to 22.13.4
+- 86c9e02: Bump @wormhole-foundation/sdk from 1.6.0 to 1.9.0
+- 948a648: Bump zod from 3.24.1 to 3.24.2
+
 ## 0.8.1
 
 ### Patch Changes
