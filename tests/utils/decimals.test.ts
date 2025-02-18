@@ -65,6 +65,18 @@ describe("verifyTransferAmount", () => {
     expect(verifyTransferAmount(amount, fee, 24, 9)).toBe(false)
   })
 
+  it("rejects near-equal amount and fee that would normalize to zero", () => {
+    const amount = 1000000000000000000000000n // 1.0 NEAR
+    const fee = 999999999999999999999999n // 0.999999999999999999999999 NEAR
+    expect(verifyTransferAmount(amount, fee, 24, 9)).toBe(false)
+  })
+
+  it("handles edge case where normalization of difference is zero", () => {
+    const amount = 100n
+    const fee = 1n
+    expect(verifyTransferAmount(amount, fee, 24, 9)).toBe(false)
+  })
+
   it("approves valid ETH to Solana transfer", () => {
     const amount = 2000000000000000000n // 2.0 ETH
     const fee = 1000000000000000000n // 1.0 ETH fee

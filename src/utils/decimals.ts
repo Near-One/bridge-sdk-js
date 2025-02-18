@@ -48,12 +48,11 @@ export function verifyTransferAmount(
     // Use the minimum of origin and destination decimals for normalization
     const minDecimals = Math.min(originDecimals, destinationDecimals)
 
-    // First normalize amount and fee to the minimum decimals
-    const normalizedAmount = normalizeAmount(amount, originDecimals, minDecimals)
-    const normalizedFee = normalizeAmount(fee, originDecimals, minDecimals)
+    // First normalize amount minus fee to the minimum decimals
+    const normalizedAmount = normalizeAmount(amount - fee, originDecimals, minDecimals)
 
     // Check if amount minus fee is greater than 0
-    return normalizedAmount > normalizedFee && normalizedAmount - normalizedFee > 0n
+    return normalizedAmount > 0n
   } catch {
     // If we hit any math errors, the amount is effectively too small
     return false
