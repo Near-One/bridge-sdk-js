@@ -1,5 +1,12 @@
 # omni-bridge-sdk
 
+## 0.9.1
+
+### Patch Changes
+
+- 5ca8e9f: Bump @changesets/cli from 2.27.12 to 2.28.0
+- cabc157: feat: implement cross-chain token address resolution and transfer validation
+
 ## 0.9.0
 
 ### Minor Changes
