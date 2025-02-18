@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.9.0
+
+### Minor Changes
+
+- c93223d: feat: add decimal normalization checks to prevent dust amounts in cross-chain transfers
+
 ## 0.8.2
 
 ### Patch Changes
