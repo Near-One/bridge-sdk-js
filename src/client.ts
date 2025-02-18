@@ -8,7 +8,7 @@ import { NearWalletSelectorBridgeClient } from "./clients/near-wallet-selector"
 import { SolanaBridgeClient } from "./clients/solana"
 import { addresses } from "./config"
 import { ChainKind, type InitTransferEvent, type OmniTransferMessage } from "./types"
-import { getChain } from "./utils"
+import { getChain, getTokenAddress } from "./utils"
 import {
   getMinimumTransferableAmount,
   getTokenDecimals,
@@ -49,13 +49,15 @@ export async function omniTransfer(
   transfer: OmniTransferMessage,
 ): Promise<string | InitTransferEvent> {
   // Get chain information
-  const sourceChain = getChain(transfer.tokenAddress)
-  const destinationChain = getChain(transfer.recipient)
+  const destChain = getChain(transfer.recipient)
+
+  const sourceTokenAddress = transfer.tokenAddress
+  const destTokenAddress = await getTokenAddress(transfer.tokenAddress, destChain)
 
   // Get token decimals
   const contractId = addresses.near // Use NEAR contract for decimal verification
-  const sourceDecimals = await getTokenDecimals(contractId, transfer.tokenAddress)
-  const destinationDecimals = await getTokenDecimals(contractId, transfer.recipient)
+  const sourceDecimals = await getTokenDecimals(contractId, sourceTokenAddress)
+  const destinationDecimals = await getTokenDecimals(contractId, destTokenAddress)
 
   // Verify transfer amount will be valid after normalization
   const isValid = verifyTransferAmount(
@@ -67,7 +69,10 @@ export async function omniTransfer(
 
   if (!isValid) {
     // Get minimum amount
-    const minAmount = getMinimumAmount(sourceChain, destinationChain)
+    const minAmount = getMinimumTransferableAmount(
+      sourceDecimals.decimals,
+      destinationDecimals.decimals,
+    )
     throw new Error(
       `Transfer amount too small - would result in 0 after decimal normalization. Minimum transferable amount is ${minAmount}`,
     )
@@ -91,33 +96,4 @@ export async function omniTransfer(
   }
 
   return await client.initTransfer(transfer)
-}
-
-/**
- * Helper to get minimum transferable amount between chains
- */
-function getMinimumAmount(sourceChain: ChainKind, destinationChain: ChainKind): string {
-  let sourceDecimals = 18 // Default EVM decimals
-  let destDecimals = 18
-
-  switch (sourceChain) {
-    case ChainKind.Near:
-      sourceDecimals = 24
-      break
-    case ChainKind.Sol:
-      sourceDecimals = 9
-      break
-  }
-
-  switch (destinationChain) {
-    case ChainKind.Near:
-      destDecimals = 24
-      break
-    case ChainKind.Sol:
-      destDecimals = 9
-      break
-  }
-
-  const minAmount = getMinimumTransferableAmount(sourceDecimals, destDecimals)
-  return minAmount.toString()
 }

@@ -5381,7 +5381,7 @@ snapshots:
 
   isomorphic-unfetch@3.1.0:
     dependencies:
-      node-fetch: 2.6.7
+      node-fetch: 2.7.0
       unfetch: 4.2.0
     transitivePeerDependencies:
       - encoding

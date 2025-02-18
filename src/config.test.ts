@@ -10,7 +10,7 @@ describe("Config", () => {
 
   it("should set the network to testnet", () => {
     setNetwork("testnet")
-    expect(addresses.near).toBe("omni.n-bridge.testnet")
+    expect(addresses.near).toBe("omni-locker.testnet")
   })
 
   it("should set the network to mainnet", () => {
@@ -31,7 +31,7 @@ describe("Config", () => {
     expect(addresses.arb).toBe("0x0C981337fFe39a555d3A40dbb32f21aD0eF33FFA")
     expect(addresses.base).toBe("0xa56b860017152cD296ad723E8409Abd6e5D86d4d")
     expect(addresses.eth).toBe("0x68a86e0Ea5B1d39F385c1326e4d493526dFe4401")
-    expect(addresses.near).toBe("omni.n-bridge.testnet")
+    expect(addresses.near).toBe("omni-locker.testnet")
     expect(addresses.sol.locker).toBe("862HdJV59Vp83PbcubUnvuXc4EAXP8CDDs6LTxFpunTe")
   })
 
