@@ -53,14 +53,11 @@ export async function omniTransfer(
 
   const sourceTokenAddress = transfer.tokenAddress
   const destTokenAddress = await getTokenAddress(transfer.tokenAddress, destChain)
-  console.log("Destination token address:", destTokenAddress)
 
   // Get token decimals
   const contractId = addresses.near // Use NEAR contract for decimal verification
   const sourceDecimals = await getTokenDecimals(contractId, sourceTokenAddress)
-  console.log("Source decimals:", sourceDecimals)
   const destinationDecimals = await getTokenDecimals(contractId, destTokenAddress)
-  console.log("Destination decimals:", destinationDecimals)
 
   // Verify transfer amount will be valid after normalization
   const isValid = verifyTransferAmount(

@@ -53,7 +53,6 @@ describe("Token Conversion", () => {
 
     // Setup our mock implementations
     mockConvertToNear.mockImplementation(async (tokenAddress: OmniAddress) => {
-      console.log("convertToNear called with:", tokenAddress)
       const mapping = TOKEN_MAPPING[tokenAddress]
       if (!mapping?.[ChainKind.Near]) {
         throw new Error("Invalid token address")
@@ -63,7 +62,6 @@ describe("Token Conversion", () => {
 
     mockConvertFromNear.mockImplementation(
       async (tokenAddress: OmniAddress, destinationChain: ChainKind) => {
-        console.log("convertFromNear called with:", tokenAddress, destinationChain)
         const mapping = TOKEN_MAPPING[tokenAddress]
         if (!mapping?.[destinationChain]) {
           throw new Error("Conversion failed")

@@ -48,7 +48,6 @@ const mockGetTokenDecimals = async (_contract: string, address: string) => {
   if (address.startsWith("eth:")) {
     return { decimals: 18, origin_decimals: 18 }
   }
-  console.log(address)
   throw new Error("Unexpected token address")
 }
 
