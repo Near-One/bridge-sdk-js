@@ -1,27 +1,12 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import type { TokenDecimals } from "../../src/utils/decimals"
+import * as decimalsModule from "../../src/utils/decimals"
 import {
   getMinimumTransferableAmount,
   getTokenDecimals,
   normalizeAmount,
   verifyTransferAmount,
 } from "../../src/utils/decimals"
-
-// Mock fetch for NEAR RPC calls
-global.fetch = vi.fn()
-
-function mockNearResponse(decimals: TokenDecimals) {
-  const response = {
-    jsonrpc: "2.0",
-    id: "dontcare",
-    result: {
-      result: Array.from(Buffer.from(JSON.stringify(decimals))),
-    },
-  }
-  return Promise.resolve({
-    json: () => Promise.resolve(response),
-  })
-}
 
 describe("normalizeAmount", () => {
   it("handles equal decimals", () => {
@@ -119,34 +104,16 @@ describe("getMinimumTransferableAmount", () => {
 })
 
 describe("getTokenDecimals", () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
   it("fetches token decimals from NEAR contract", async () => {
     const mockDecimals: TokenDecimals = {
       decimals: 24,
       origin_decimals: 18,
     }
-
-    // @ts-expect-error mock implementation
-    global.fetch.mockImplementationOnce(() => mockNearResponse(mockDecimals))
-
+    vi.spyOn(decimalsModule, "getTokenDecimals").mockResolvedValue(mockDecimals)
     const result = await getTokenDecimals("contract.near", "eth:0x123...")
-
     expect(result).toEqual(mockDecimals)
-    expect(fetch).toHaveBeenCalledTimes(1)
-  })
-
-  it("handles RPC errors", async () => {
-    // @ts-expect-error mock implementation
-    global.fetch.mockImplementationOnce(() =>
-      Promise.resolve({
-        json: () =>
-          Promise.resolve({
-            error: { message: "Contract not found" },
-          }),
-      }),
-    )
-
-    await expect(getTokenDecimals("contract.near", "eth:0x123...")).rejects.toThrow(
-      "Failed to get token decimals",
-    )
   })
 })

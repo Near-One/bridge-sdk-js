@@ -1,6 +1,22 @@
 import { ethers } from "ethers"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import type { TokenDecimals } from "../src/utils/decimals"
+import type * as decimalsModule from "../src/utils/decimals" // Import for selective mocking
+import { getTokenDecimals } from "../src/utils/decimals"
+import { getTokenAddress } from "../src/utils/tokens" // Import getTokenAddress
+
+// Mock getTokenDecimals *before* importing client.ts, using importActual
+vi.mock("../src/utils/decimals", async () => {
+  const actual = await vi.importActual<typeof decimalsModule>("../src/utils/decimals")
+  return {
+    ...actual, // Keep all the *real* exports
+    getTokenDecimals: vi.fn(), // *Only* mock getTokenDecimals
+  }
+})
+
+// Mock getTokenAddress
+vi.mock("../src/utils/tokens", () => ({
+  getTokenAddress: vi.fn(),
+}))
 
 // Mock all the clients and dependencies
 vi.mock("../src/clients/evm", () => ({
@@ -21,24 +37,23 @@ vi.mock("../src/clients/solana", () => ({
   SolanaBridgeClient: vi.fn(),
 }))
 
-// Important: Mock fetch before importing omniTransfer
-global.fetch = vi.fn()
+// Shared mock implementation for getTokenDecimals
+const mockGetTokenDecimals = async (_contract: string, address: string) => {
+  if (address.startsWith("near:")) {
+    return { decimals: 24, origin_decimals: 24 }
+  }
+  if (address.startsWith("sol:")) {
+    return { decimals: 9, origin_decimals: 9 }
+  }
+  if (address.startsWith("eth:")) {
+    return { decimals: 18, origin_decimals: 18 }
+  }
+  console.log(address)
+  throw new Error("Unexpected token address")
+}
 
 // Import after mocks are set up
 import { omniTransfer } from "../src/client"
-
-function mockNearResponse(decimals: TokenDecimals) {
-  const response = {
-    jsonrpc: "2.0",
-    id: "dontcare",
-    result: {
-      result: Array.from(Buffer.from(JSON.stringify(decimals))),
-    },
-  }
-  return Promise.resolve({
-    json: () => Promise.resolve(response),
-  })
-}
 
 describe("omniTransfer", () => {
   // Setup mock wallet
@@ -50,24 +65,13 @@ describe("omniTransfer", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    // Set default mock implementation
+    vi.mocked(getTokenDecimals).mockImplementation(mockGetTokenDecimals)
   })
 
   it("rejects transfer of 1 yoctoNEAR to Solana", async () => {
-    // Mock token decimal responses
-    // @ts-expect-error mock implementation
-    global.fetch.mockImplementation((_url, options) => {
-      const body = JSON.parse(options.body)
-      if (body.params.args_base64) {
-        const args = JSON.parse(Buffer.from(body.params.args_base64, "base64").toString())
-        if (args.address.startsWith("near:")) {
-          return mockNearResponse({ decimals: 24, origin_decimals: 24 })
-        }
-        if (args.address.startsWith("sol:")) {
-          return mockNearResponse({ decimals: 9, origin_decimals: 9 })
-        }
-      }
-      throw new Error("Unexpected RPC call")
-    })
+    // Mock getTokenAddress
+    vi.mocked(getTokenAddress).mockResolvedValue("sol:mocked_sol_address")
 
     await expect(
       omniTransfer(wallet, {
@@ -81,21 +85,8 @@ describe("omniTransfer", () => {
   })
 
   it("allows valid NEAR to Solana transfer", async () => {
-    // Mock token decimal responses
-    // @ts-expect-error mock implementation
-    global.fetch.mockImplementation((_url, options) => {
-      const body = JSON.parse(options.body)
-      if (body.params.args_base64) {
-        const args = JSON.parse(Buffer.from(body.params.args_base64, "base64").toString())
-        if (args.address.startsWith("near:")) {
-          return mockNearResponse({ decimals: 24, origin_decimals: 24 })
-        }
-        if (args.address.startsWith("sol:")) {
-          return mockNearResponse({ decimals: 9, origin_decimals: 9 })
-        }
-      }
-      throw new Error("Unexpected RPC call")
-    })
+    // Mock getTokenAddress to return a Solana address
+    vi.mocked(getTokenAddress).mockResolvedValue("sol:mocked_sol_address")
 
     const result = await omniTransfer(wallet, {
       tokenAddress: "near:token.near",
@@ -109,21 +100,8 @@ describe("omniTransfer", () => {
   })
 
   it("rejects transfer where fee equals amount", async () => {
-    // Mock token decimal responses
-    // @ts-expect-error mock implementation
-    global.fetch.mockImplementation((_url, options) => {
-      const body = JSON.parse(options.body)
-      if (body.params.args_base64) {
-        const args = JSON.parse(Buffer.from(body.params.args_base64, "base64").toString())
-        if (args.address.startsWith("eth:")) {
-          return mockNearResponse({ decimals: 18, origin_decimals: 18 })
-        }
-        if (args.address.startsWith("sol:")) {
-          return mockNearResponse({ decimals: 9, origin_decimals: 9 })
-        }
-      }
-      throw new Error("Unexpected RPC call")
-    })
+    // Mock getTokenAddress
+    vi.mocked(getTokenAddress).mockResolvedValue("sol:mocked_sol_address")
 
     await expect(
       omniTransfer(wallet, {
@@ -137,16 +115,11 @@ describe("omniTransfer", () => {
   })
 
   it("handles NEAR RPC errors gracefully", async () => {
-    // Mock RPC error
-    // @ts-expect-error mock implementation
-    global.fetch.mockImplementationOnce(() =>
-      Promise.resolve({
-        json: () =>
-          Promise.resolve({
-            error: { message: "Contract not found" },
-          }),
-      }),
-    )
+    // Mock RPC error using mockRejectedValueOnce
+    vi.mocked(getTokenDecimals).mockRejectedValueOnce(new Error("Failed to get token decimals"))
+
+    // Mock getTokenAddress
+    vi.mocked(getTokenAddress).mockResolvedValue("sol:mocked_sol_address")
 
     await expect(
       omniTransfer(wallet, {
@@ -157,5 +130,20 @@ describe("omniTransfer", () => {
         recipient: "sol:pubkey",
       }),
     ).rejects.toThrow("Failed to get token decimals")
+  })
+
+  it("handles getTokenAddress errors gracefully", async () => {
+    // Mock RPC error using mockRejectedValueOnce
+    vi.mocked(getTokenAddress).mockRejectedValueOnce(new Error("Failed to get token address"))
+
+    await expect(
+      omniTransfer(wallet, {
+        tokenAddress: "near:token.near",
+        amount: 1000000000000000000000000n,
+        fee: 0n,
+        nativeFee: 0n,
+        recipient: "sol:pubkey",
+      }),
+    ).rejects.toThrow("Failed to get token address")
   })
 })

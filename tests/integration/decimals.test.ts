@@ -23,7 +23,7 @@ describe("getTokenDecimals integration", () => {
   }, 10000) // Increase timeout for RPC call
 
   it("handles invalid token addresses", async () => {
-    const invalidAddress = "sol:invalid"
+    const invalidAddress = "sol:invalid.testnet"
     await expect(getTokenDecimals("omni-locker.testnet", invalidAddress)).rejects.toMatchSnapshot()
   })
 })

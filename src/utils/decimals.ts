@@ -1,3 +1,5 @@
+import { getProviderByNetwork, view } from "@near-js/client"
+
 import { addresses } from "../config"
 import type { OmniAddress } from "../types"
 
@@ -86,38 +88,15 @@ export async function getTokenDecimals(
   contractId: string,
   tokenAddress: OmniAddress,
 ): Promise<TokenDecimals> {
-  const response = await fetch(`https://rpc.${addresses.network}.near.org`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  const rpcProvider = getProviderByNetwork(addresses.network)
+  return await view<TokenDecimals>({
+    account: contractId,
+    method: "get_token_decimals",
+    args: {
+      address: tokenAddress,
     },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: "dontcare",
-      method: "query",
-      params: {
-        request_type: "call_function",
-        finality: "final",
-        account_id: contractId,
-        method_name: "get_token_decimals",
-        args_base64: Buffer.from(JSON.stringify({ address: tokenAddress })).toString("base64"),
-      },
-    }),
+    deps: { rpcProvider },
   })
-
-  const result = await response.json()
-
-  if (result.error) {
-    throw new Error(
-      `Failed to get token decimals: ${result.error.message || JSON.stringify(result.error)}`,
-    )
-  }
-
-  // Parse the result which is returned as an encoded JSON string
-  const decoded = Buffer.from(result.result.result).toString()
-  const decimals = JSON.parse(decoded) as TokenDecimals
-
-  return decimals
 }
 
 /**
