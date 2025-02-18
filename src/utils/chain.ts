@@ -1,5 +1,5 @@
-import { ChainKind } from "./types"
-import type { OmniAddress } from "./types"
+import type { OmniAddress } from "../types"
+import { ChainKind } from "../types"
 
 type ChainPrefix = "eth" | "near" | "sol" | "arb" | "base"
 

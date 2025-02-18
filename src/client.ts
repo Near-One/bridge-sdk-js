@@ -6,7 +6,14 @@ import { EvmBridgeClient } from "./clients/evm"
 import { NearBridgeClient } from "./clients/near"
 import { NearWalletSelectorBridgeClient } from "./clients/near-wallet-selector"
 import { SolanaBridgeClient } from "./clients/solana"
+import { addresses } from "./config"
 import { ChainKind, type InitTransferEvent, type OmniTransferMessage } from "./types"
+import { getChain } from "./utils"
+import {
+  getMinimumTransferableAmount,
+  getTokenDecimals,
+  verifyTransferAmount,
+} from "./utils/decimals"
 
 type Client =
   | EvmBridgeClient
@@ -30,10 +37,43 @@ export function isWalletSelector(wallet: SolWallet | WalletSelector): wallet is 
   )
 }
 
+/**
+ * Validates and executes a cross-chain token transfer
+ * @param wallet The wallet to use for the transfer
+ * @param transfer The transfer details
+ * @returns Promise resolving to transaction hash or InitTransferEvent
+ * @throws If the transfer amount would be invalid after decimal normalization
+ */
 export async function omniTransfer(
   wallet: EthWallet | NearAccount | WalletSelector | SolWallet,
   transfer: OmniTransferMessage,
 ): Promise<string | InitTransferEvent> {
+  // Get chain information
+  const sourceChain = getChain(transfer.tokenAddress)
+  const destinationChain = getChain(transfer.recipient)
+
+  // Get token decimals
+  const contractId = addresses.near // Use NEAR contract for decimal verification
+  const sourceDecimals = await getTokenDecimals(contractId, transfer.tokenAddress)
+  const destinationDecimals = await getTokenDecimals(contractId, transfer.recipient)
+
+  // Verify transfer amount will be valid after normalization
+  const isValid = verifyTransferAmount(
+    transfer.amount,
+    transfer.fee,
+    sourceDecimals.decimals,
+    destinationDecimals.decimals,
+  )
+
+  if (!isValid) {
+    // Get minimum amount
+    const minAmount = getMinimumAmount(sourceChain, destinationChain)
+    throw new Error(
+      `Transfer amount too small - would result in 0 after decimal normalization. Minimum transferable amount is ${minAmount}`,
+    )
+  }
+
+  // Initialize appropriate client
   let client: Client | null = null
 
   if (wallet instanceof EthWallet) {
@@ -51,4 +91,33 @@ export async function omniTransfer(
   }
 
   return await client.initTransfer(transfer)
+}
+
+/**
+ * Helper to get minimum transferable amount between chains
+ */
+function getMinimumAmount(sourceChain: ChainKind, destinationChain: ChainKind): string {
+  let sourceDecimals = 18 // Default EVM decimals
+  let destDecimals = 18
+
+  switch (sourceChain) {
+    case ChainKind.Near:
+      sourceDecimals = 24
+      break
+    case ChainKind.Sol:
+      sourceDecimals = 9
+      break
+  }
+
+  switch (destinationChain) {
+    case ChainKind.Near:
+      destDecimals = 24
+      break
+    case ChainKind.Sol:
+      destDecimals = 9
+      break
+  }
+
+  const minAmount = getMinimumTransferableAmount(sourceDecimals, destDecimals)
+  return minAmount.toString()
 }

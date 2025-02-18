@@ -1,0 +1,10 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`getTokenDecimals integration > fetches decimals for JLU token on Solana 1`] = `
+{
+  "decimals": 9,
+  "origin_decimals": 18,
+}
+`;
+
+exports[`getTokenDecimals integration > handles invalid token addresses 1`] = `[TypeError: The first argument must be of type string or an instance of Buffer, ArrayBuffer, or Array or an Array-like Object. Received undefined]`;
