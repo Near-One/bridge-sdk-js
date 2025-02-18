@@ -80,5 +80,5 @@ export async function getTokenAddress(
 
   // Non-NEAR to non-NEAR conversion (via NEAR as intermediary)
   const nearToken = await convertToNear(tokenAddress)
-  return convertFromNear(`near:${nearToken}`, destinationChain)
+  return convertFromNear(nearToken, destinationChain)
 }

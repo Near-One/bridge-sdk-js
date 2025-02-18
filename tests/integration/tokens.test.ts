@@ -73,7 +73,7 @@ describe("Token Conversion Integration Tests", () => {
         "eth:0xa2e932310e7294451d8417aa9b2e647e67df3288",
         ChainKind.Sol,
       )
-      expect(result).toMatchInlineSnapshot("null")
+      expect(result).toMatchInlineSnapshot(`"sol:FUfkKBMpZ74vdWmPjjLpmuekqVkBMjbHqHedVGdSv929"`)
     })
 
     it("converts Base to Arbitrum", async () => {
@@ -81,7 +81,7 @@ describe("Token Conversion Integration Tests", () => {
         "base:0xf66f061ac678378c949bdfd3cb8c974272db3f59",
         ChainKind.Arb,
       )
-      expect(result).toMatchInlineSnapshot("null")
+      expect(result).toMatchInlineSnapshot(`"arb:0x02eea354d135d1a912967c2d2a6147deb01ef92e"`)
     })
 
     it("converts Solana to Base", async () => {
@@ -89,7 +89,7 @@ describe("Token Conversion Integration Tests", () => {
         "sol:FUfkKBMpZ74vdWmPjjLpmuekqVkBMjbHqHedVGdSv929",
         ChainKind.Base,
       )
-      expect(result).toMatchInlineSnapshot("null")
+      expect(result).toMatchInlineSnapshot(`"base:0xf66f061ac678378c949bdfd3cb8c974272db3f59"`)
     })
   })
 
