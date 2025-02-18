@@ -49,4 +49,7 @@ export const addresses = {
   get sol() {
     return ADDRESSES[selectedNetwork].sol
   },
+  get network() {
+    return selectedNetwork
+  },
 }
