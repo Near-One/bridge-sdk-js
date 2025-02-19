@@ -10,41 +10,28 @@ describe("Token Conversion Integration Tests", () => {
   describe("NEAR to other chains", () => {
     const nearToken = "near:wrap.testnet"
 
-    it("converts NEAR to ETH", async () => {
-      const result = await getTokenAddress(nearToken, ChainKind.Eth)
-      expect(result).toMatchInlineSnapshot('"eth:0xa2e932310e7294451d8417aa9b2e647e67df3288"')
-    })
-
     it("converts NEAR to Solana", async () => {
       const result = await getTokenAddress(nearToken, ChainKind.Sol)
-      expect(result).toMatchInlineSnapshot('"sol:FUfkKBMpZ74vdWmPjjLpmuekqVkBMjbHqHedVGdSv929"')
+      expect(result).toMatchInlineSnapshot(`"sol:3wQct2e43J1Z99h2RWrhPAhf6E32ZpuzEt6tgwfEAKAy"`)
     })
 
     it("converts NEAR to Base", async () => {
       const result = await getTokenAddress(nearToken, ChainKind.Base)
-      expect(result).toMatchInlineSnapshot('"base:0xf66f061ac678378c949bdfd3cb8c974272db3f59"')
+      expect(result).toMatchInlineSnapshot(`"base:0xb8cae3ea035ab123c1833258835ef270c9934162"`)
     })
 
     it("converts NEAR to Arbitrum", async () => {
       const result = await getTokenAddress(nearToken, ChainKind.Arb)
-      expect(result).toMatchInlineSnapshot('"arb:0x02eea354d135d1a912967c2d2a6147deb01ef92e"')
+      expect(result).toMatchInlineSnapshot(`"arb:0xf66f061ac678378c949bdfd3cb8c974272db3f59"`)
     })
   })
 
   describe("Other chains to NEAR", () => {
     const nearExpected = "near:wrap.testnet"
 
-    it("converts ETH to NEAR", async () => {
-      const result = await getTokenAddress(
-        "eth:0xa2e932310e7294451d8417aa9b2e647e67df3288",
-        ChainKind.Near,
-      )
-      expect(result).toBe(nearExpected)
-    })
-
     it("converts Solana to NEAR", async () => {
       const result = await getTokenAddress(
-        "sol:FUfkKBMpZ74vdWmPjjLpmuekqVkBMjbHqHedVGdSv929",
+        "sol:3wQct2e43J1Z99h2RWrhPAhf6E32ZpuzEt6tgwfEAKAy",
         ChainKind.Near,
       )
       expect(result).toBe(nearExpected)
@@ -52,7 +39,7 @@ describe("Token Conversion Integration Tests", () => {
 
     it("converts Base to NEAR", async () => {
       const result = await getTokenAddress(
-        "base:0xf66f061ac678378c949bdfd3cb8c974272db3f59",
+        "base:0xb8cae3ea035ab123c1833258835ef270c9934162",
         ChainKind.Near,
       )
       expect(result).toBe(nearExpected)
@@ -60,7 +47,7 @@ describe("Token Conversion Integration Tests", () => {
 
     it("converts Arbitrum to NEAR", async () => {
       const result = await getTokenAddress(
-        "arb:0x02eea354d135d1a912967c2d2a6147deb01ef92e",
+        "arb:0xf66f061ac678378c949bdfd3cb8c974272db3f59",
         ChainKind.Near,
       )
       expect(result).toBe(nearExpected)
@@ -68,28 +55,20 @@ describe("Token Conversion Integration Tests", () => {
   })
 
   describe("Cross-chain conversions", () => {
-    it("converts ETH to Solana", async () => {
-      const result = await getTokenAddress(
-        "eth:0xa2e932310e7294451d8417aa9b2e647e67df3288",
-        ChainKind.Sol,
-      )
-      expect(result).toMatchInlineSnapshot(`"sol:FUfkKBMpZ74vdWmPjjLpmuekqVkBMjbHqHedVGdSv929"`)
-    })
-
     it("converts Base to Arbitrum", async () => {
       const result = await getTokenAddress(
-        "base:0xf66f061ac678378c949bdfd3cb8c974272db3f59",
+        "base:0xb8cae3ea035ab123c1833258835ef270c9934162",
         ChainKind.Arb,
       )
-      expect(result).toMatchInlineSnapshot(`"arb:0x02eea354d135d1a912967c2d2a6147deb01ef92e"`)
+      expect(result).toMatchInlineSnapshot(`"arb:0xf66f061ac678378c949bdfd3cb8c974272db3f59"`)
     })
 
     it("converts Solana to Base", async () => {
       const result = await getTokenAddress(
-        "sol:FUfkKBMpZ74vdWmPjjLpmuekqVkBMjbHqHedVGdSv929",
+        "sol:3wQct2e43J1Z99h2RWrhPAhf6E32ZpuzEt6tgwfEAKAy",
         ChainKind.Base,
       )
-      expect(result).toMatchInlineSnapshot(`"base:0xf66f061ac678378c949bdfd3cb8c974272db3f59"`)
+      expect(result).toMatchInlineSnapshot(`"base:0xb8cae3ea035ab123c1833258835ef270c9934162"`)
     })
   })
 

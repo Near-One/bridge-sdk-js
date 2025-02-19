@@ -119,15 +119,6 @@ export class NearWalletSelectorBridgeClient {
       this.lockerAddress = lockerAddress
       return
     }
-    const network = this.selector.options.network.networkId
-    if (network === "testnet") {
-      this.lockerAddress = "omni-locker.testnet"
-    } else if (network === "mainnet") {
-      this.lockerAddress = "omni.bridge.near"
-    }
-    if (!this.lockerAddress) {
-      throw new Error("OMNI_BRIDGE_NEAR address not configured")
-    }
   }
 
   /**

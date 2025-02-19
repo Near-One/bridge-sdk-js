@@ -15,7 +15,7 @@ const ADDRESSES = {
     arb: "0x0C981337fFe39a555d3A40dbb32f21aD0eF33FFA",
     base: "0xa56b860017152cD296ad723E8409Abd6e5D86d4d",
     eth: "0x68a86e0Ea5B1d39F385c1326e4d493526dFe4401",
-    near: "omni-locker.testnet",
+    near: "omni.n-bridge.testnet",
     sol: {
       locker: "862HdJV59Vp83PbcubUnvuXc4EAXP8CDDs6LTxFpunTe",
       wormhole: "3u8hJUVTA4jH1wYAyUur7FFZVQ8H635K3tSHHF4ssjQ5",
