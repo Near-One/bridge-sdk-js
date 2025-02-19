@@ -1,11 +1,19 @@
-import { describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, it, vi } from "vitest"
 import { setNetwork } from "../../src/config"
 import { getTokenDecimals } from "../../src/utils/decimals"
 
-describe("getTokenDecimals integration", () => {
+describe.concurrent("getTokenDecimals integration", () => {
   setNetwork("testnet")
 
-  it("fetches decimals for JLU token on Solana", async () => {
+  beforeAll(() => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    vi.spyOn(console, "debug").mockImplementation(() => {})
+  })
+  afterAll(() => {
+    vi.restoreAllMocks()
+  })
+
+  it("fetches decimals for JLU token on Solana", async ({ expect }) => {
     const tokenAddress = "sol:rLFLkpdMZsVLWziDfz5WWqVgVnFbPdKicSNQcj9QVxL"
     const decimals = await getTokenDecimals("omni-locker.testnet", tokenAddress)
 
@@ -22,7 +30,7 @@ describe("getTokenDecimals integration", () => {
     })
   }, 10000) // Increase timeout for RPC call
 
-  it("handles invalid token addresses", async () => {
+  it("handles invalid token addresses", async ({ expect }) => {
     const invalidAddress = "sol:invalid.testnet"
     await expect(getTokenDecimals("omni-locker.testnet", invalidAddress)).rejects.toMatchSnapshot()
   })
