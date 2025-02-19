@@ -1,5 +1,12 @@
 # omni-bridge-sdk
 
+## 0.9.2
+
+### Patch Changes
+
+- 033c137: Fix: Resolve `@near-js/client` to CJS in Vitest config to fix ESM import errors during testing. This prevents test failures caused by a broken ESM build in the `@near-js/client` library.
+- 2424970: Update NEAR testnet address
+
 ## 0.9.1
 
 ### Patch Changes
