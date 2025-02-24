@@ -8,13 +8,13 @@ Token deployment in Omni Bridge follows a three-phase process:
 
 1. **Initialize** - Log token metadata on source chain
 2. **Finalize** - Deploy token on destination chain using proof
-3. **Bind** - (NEAR only) Bind the deployed token back to NEAR
+3. **Bind** - (NEAR-involved flows only) Bind the deployed token back to NEAR
 
 Important: To deploy a token on any chain, it must first exist on NEAR. You cannot directly deploy from Ethereum to Solana - the token must first be deployed on NEAR.
 
 ## Chain-Specific Deployments
 
-### NEAR Chain Deployment
+### Deploying FROM NEAR to Foreign Chains
 
 ```typescript
 import { NearBridgeClient, ChainKind } from "omni-bridge-sdk";
@@ -39,15 +39,15 @@ const deployTxHash = await client.deployToken(
   vaa // Wormhole VAA containing deployment approval
 );
 
-// 3. For tokens being deployed TO NEAR, bind them after deployment
+// 3. For tokens being deployed FROM NEAR to foreign chains, bind them back to NEAR after deployment
 await client.bindToken(
-  ChainKind.Eth, // Source chain
+  ChainKind.Eth, // Destination chain where token was deployed
   vaa, // Optional: Wormhole VAA
   evmProof // Optional: EVM proof (for EVM chains)
 );
 ```
 
-### EVM Chain Deployment (Ethereum/Base/Arbitrum)
+### Deploying FROM EVM Chains (Ethereum/Base/Arbitrum) TO NEAR
 
 ```typescript
 import { EvmBridgeClient, ChainKind } from "omni-bridge-sdk";
@@ -73,9 +73,11 @@ const { txHash, tokenAddress } = await client.deployToken(
     decimals: 18,
   }
 );
+
+// Note: When deploying FROM EVM chains TO NEAR, no bindToken step is needed
 ```
 
-### Solana Deployment
+### Deploying FROM Solana TO NEAR
 
 ```typescript
 import { SolanaBridgeClient } from "omni-bridge-sdk";
@@ -108,6 +110,8 @@ const { txHash, tokenAddress } = await client.deployToken(
   },
   payer // Optional payer
 );
+
+// Note: When deploying FROM Solana TO NEAR, no bindToken step is needed
 ```
 
 ## Error Handling
@@ -215,24 +219,23 @@ if (!signature.isValidFor(ChainKind.Eth)) {
 }
 ```
 
-### 4. Binding Failures
+### 4. NEAR to Foreign Chain Binding Failures
 
 ```typescript
-// For NEAR tokens, ensure proof is ready before binding
+// For NEAR to foreign chain deployments, ensure proof is ready before binding back to NEAR
 while ((await api.getDeploymentStatus(txHash)).status !== "ready_for_bind") {
   await new Promise((r) => setTimeout(r, 1000));
 }
-await client.bindToken(sourceChain, vaa);
+await client.bindToken(destinationChain, vaa, evmProof); // evmProof only needed for EVM chains
 ```
 
 ## Chain Support Matrix
 
 | Source Chain | Destination Chains  | Required Steps                        |
 | ------------ | ------------------- | ------------------------------------- |
-| NEAR         | ETH, BASE, ARB, SOL | logMetadata → deployToken             |
-| ETH/BASE/ARB | NEAR                | logMetadata → deployToken → bindToken |
-| SOL          | NEAR                | logMetadata → deployToken → bindToken |
-| SOL          | ETH, BASE, ARB      | logMetadata → deployToken             |
+| NEAR         | ETH, BASE, ARB, SOL | logMetadata → deployToken → bindToken |
+| ETH/BASE/ARB | NEAR                | logMetadata → deployToken             |
+| SOL          | NEAR                | logMetadata → deployToken             |
 
 ## Appendix
 
