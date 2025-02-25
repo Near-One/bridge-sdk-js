@@ -12,35 +12,53 @@ Token deployment in Omni Bridge follows a three-phase process:
 
 Important: To deploy a token on any chain, it must first exist on NEAR. You cannot directly deploy from Ethereum to Solana - the token must first be deployed on NEAR.
 
-## Chain-Specific Deployments
+## Chain-Specific Deployment Examples
+
+For all cross-chain deployments, you'll need two clients: one for the source chain and one for the destination chain.
+- Source chain client handles `logMetadata`
+- Destination chain client handles `deployToken`
+- NEAR client always handles `bindToken` (when required)
 
 ### Deploying FROM NEAR to Foreign Chains
 
 ```typescript
-import { NearBridgeClient, ChainKind } from "omni-bridge-sdk";
+import { NearBridgeClient, EvmBridgeClient, ChainKind } from "omni-bridge-sdk";
 import { connect } from "near-api-js";
+import { ethers } from "ethers";
 
-// Setup NEAR connection
+// Setup NEAR connection (source chain)
 const near = await connect({
   networkId: "testnet",
   nodeUrl: "https://rpc.testnet.near.org",
 });
-const account = await near.account("client.near");
+const nearAccount = await near.account("client.near");
 
-// Initialize client
-const client = new NearBridgeClient(account);
+// Initialize NEAR client (source chain)
+const nearClient = new NearBridgeClient(nearAccount);
 
-// 1. Log metadata for existing NEAR token
-const logTxHash = await client.logMetadata("near:token.near");
+// 1. Log metadata for existing NEAR token (done on source chain)
+const logTxHash = await nearClient.logMetadata("near:token.near");
 
-// 2. Deploy to destination chain (e.g., Ethereum)
-const deployTxHash = await client.deployToken(
-  ChainKind.Eth,
-  vaa // Wormhole VAA containing deployment approval
+// Setup EVM wallet (destination chain, e.g., Ethereum)
+const provider = new ethers.providers.Web3Provider(window.ethereum);
+const evmWallet = provider.getSigner();
+
+// Initialize EVM client (destination chain)
+const evmClient = new EvmBridgeClient(evmWallet, ChainKind.Eth);
+
+// 2. Deploy token on destination chain (done on destination chain)
+const { txHash, tokenAddress } = await evmClient.deployToken(
+  signature, // MPC signature authorizing deployment
+  {
+    token: "token_id",
+    name: "Token Name",
+    symbol: "TKN",
+    decimals: 18,
+  }
 );
 
-// 3. For tokens being deployed FROM NEAR to foreign chains, bind them back to NEAR after deployment
-await client.bindToken(
+// 3. Bind the deployed token back to NEAR (always done with NEAR client)
+await nearClient.bindToken(
   ChainKind.Eth, // Destination chain where token was deployed
   vaa, // Optional: Wormhole VAA
   evmProof // Optional: EVM proof (for EVM chains)
@@ -50,21 +68,32 @@ await client.bindToken(
 ### Deploying FROM EVM Chains (Ethereum/Base/Arbitrum) TO NEAR
 
 ```typescript
-import { EvmBridgeClient, ChainKind } from "omni-bridge-sdk";
+import { EvmBridgeClient, NearBridgeClient, ChainKind } from "omni-bridge-sdk";
 import { ethers } from "ethers";
+import { connect } from "near-api-js";
 
-// Setup EVM wallet
+// Setup EVM wallet (source chain)
 const provider = new ethers.providers.Web3Provider(window.ethereum);
-const wallet = provider.getSigner();
+const evmWallet = provider.getSigner();
 
-// Initialize client for specific chain
-const client = new EvmBridgeClient(wallet, ChainKind.Eth);
+// Initialize EVM client (source chain)
+const evmClient = new EvmBridgeClient(evmWallet, ChainKind.Eth);
 
-// 1. Log metadata for existing token
-const logTxHash = await client.logMetadata("eth:0x123...");
+// 1. Log metadata for existing token (done on source chain)
+const logTxHash = await evmClient.logMetadata("eth:0x123...");
 
-// 2. Deploy token using MPC signature
-const { txHash, tokenAddress } = await client.deployToken(
+// Setup NEAR connection (destination chain)
+const near = await connect({
+  networkId: "testnet",
+  nodeUrl: "https://rpc.testnet.near.org",
+});
+const nearAccount = await near.account("client.near");
+
+// Initialize NEAR client (destination chain)
+const nearClient = new NearBridgeClient(nearAccount);
+
+// 2. Deploy token on NEAR (done on destination chain)
+const { txHash, tokenAddress } = await nearClient.deployToken(
   signature, // MPC signature authorizing deployment
   {
     token: "token_id",
@@ -80,35 +109,45 @@ const { txHash, tokenAddress } = await client.deployToken(
 ### Deploying FROM Solana TO NEAR
 
 ```typescript
-import { SolanaBridgeClient } from "omni-bridge-sdk";
+import { SolanaBridgeClient, NearBridgeClient, ChainKind } from "omni-bridge-sdk";
 import { Connection, PublicKey, Keypair } from "@solana/web3.js";
+import { connect } from "near-api-js";
 
-// Setup Solana connection
+// Setup Solana connection (source chain)
 const connection = new Connection("https://api.testnet.solana.com");
-const payer = Keypair.generate();
+const solanaPayer = Keypair.generate();
 
-// Initialize client
-const client = new SolanaBridgeClient(
-  provider,
+// Initialize Solana client (source chain)
+const solanaClient = new SolanaBridgeClient(
+  connection,
   new PublicKey("wormhole_program_id")
 );
 
-// 1. Log metadata for existing SPL token
-const logTxHash = await client.logMetadata(
+// 1. Log metadata for existing SPL token (done on source chain)
+const logTxHash = await solanaClient.logMetadata(
   tokenPubkey,
-  payer // Optional payer for transaction
+  solanaPayer // Optional payer for transaction
 );
 
-// 2. Deploy token using MPC signature
-const { txHash, tokenAddress } = await client.deployToken(
+// Setup NEAR connection (destination chain)
+const near = await connect({
+  networkId: "testnet",
+  nodeUrl: "https://rpc.testnet.near.org",
+});
+const nearAccount = await near.account("client.near");
+
+// Initialize NEAR client (destination chain)
+const nearClient = new NearBridgeClient(nearAccount);
+
+// 2. Deploy token on NEAR (done on destination chain)
+const { txHash, tokenAddress } = await nearClient.deployToken(
   signature,
   {
     token: "token_id",
     name: "Token Name",
     symbol: "TKN",
     decimals: 9,
-  },
-  payer // Optional payer
+  }
 );
 
 // Note: When deploying FROM Solana TO NEAR, no bindToken step is needed
@@ -222,11 +261,25 @@ if (!signature.isValidFor(ChainKind.Eth)) {
 ### 4. NEAR to Foreign Chain Binding Failures
 
 ```typescript
+import { OmniBridgeAPI, NearBridgeClient, ChainKind } from "omni-bridge-sdk";
+import { connect } from "near-api-js";
+
+// Setup API and NEAR client
+const api = new OmniBridgeAPI("testnet");
+const near = await connect({
+  networkId: "testnet",
+  nodeUrl: "https://rpc.testnet.near.org",
+});
+const account = await near.account("client.near");
+const nearClient = new NearBridgeClient(account);
+
 // For NEAR to foreign chain deployments, ensure proof is ready before binding back to NEAR
 while ((await api.getDeploymentStatus(txHash)).status !== "ready_for_bind") {
   await new Promise((r) => setTimeout(r, 1000));
 }
-await client.bindToken(destinationChain, vaa, evmProof); // evmProof only needed for EVM chains
+
+// bindToken is always done with a NEAR client
+await nearClient.bindToken(destinationChain, vaa, evmProof); // evmProof only needed for EVM chains
 ```
 
 ## Chain Support Matrix
