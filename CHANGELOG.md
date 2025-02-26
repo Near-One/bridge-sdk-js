@@ -1,5 +1,18 @@
 # omni-bridge-sdk
 
+## 0.9.3
+
+### Patch Changes
+
+- d540745: chore(deps): bump @wormhole-foundation/sdk from 1.9.0 to 1.10.0
+- b5b807c: chore(deps-dev): bump lefthook from 1.10.10 to 1.11.1
+- 626c190: chore(deps-dev): bump msw from 2.7.0 to 2.7.3
+- 055a5bb: chore(deps-dev): bump @types/node from 22.13.4 to 22.13.5
+- 1ae7845: chore(deps-dev): bump vitest from 3.0.5 to 3.0.6
+- 60d458a: chore(deps-dev): bump @arethetypeswrong/cli from 0.17.3 to 0.17.4
+- 71880ff: Improve test performance
+- 55c2674: chore(deps-dev): bump @changesets/cli from 2.28.0 to 2.28.1
+
 ## 0.9.2
 
 ### Patch Changes
