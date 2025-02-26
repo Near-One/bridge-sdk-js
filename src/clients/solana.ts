@@ -1,6 +1,10 @@
 import { BN, Program, type Provider } from "@coral-xyz/anchor"
 import type { MethodsBuilder } from "@coral-xyz/anchor/dist/cjs/program/namespace/methods"
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token"
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token"
 import {
   Keypair,
   type ParsedAccountData,
@@ -122,6 +126,8 @@ export class SolanaBridgeClient {
    */
   async logMetadata(token: OmniAddress, payer?: Keypair): Promise<string> {
     const tokenPublicKey = new PublicKey(token.split(":")[1])
+    const tokenProgram = await this.getTokenProgramForMint(tokenPublicKey)
+
     const wormholeMessage = Keypair.generate()
     const [metadata] = PublicKey.findProgramAddressSync(
       [Buffer.from("metadata", "utf-8"), MPL_PROGRAM_ID.toBuffer(), tokenPublicKey.toBuffer()],
@@ -150,7 +156,7 @@ export class SolanaBridgeClient {
             message: wormholeMessage.publicKey,
           },
           systemProgram: SystemProgram.programId,
-          tokenProgram: TOKEN_PROGRAM_ID,
+          tokenProgram: tokenProgram,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         })
         .signers(payer instanceof Keypair ? [wormholeMessage, payer] : [wormholeMessage])
@@ -271,8 +277,9 @@ export class SolanaBridgeClient {
         })
     } else {
       const mint = new PublicKey(transfer.tokenAddress.split(":")[1])
+      const tokenProgram = await this.getTokenProgramForMint(mint)
       const [from] = PublicKey.findProgramAddressSync(
-        [payerPubKey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+        [payerPubKey.toBuffer(), tokenProgram.toBuffer(), mint.toBuffer()],
         ASSOCIATED_TOKEN_PROGRAM_ID,
       )
       const vault = (await this.isBridgedToken(mint)) ? null : this.vaultId(mint)[0]
@@ -304,7 +311,7 @@ export class SolanaBridgeClient {
             wormholeProgram: this.wormholeProgramId,
             message: wormholeMessage.publicKey,
           },
-          tokenProgram: TOKEN_PROGRAM_ID,
+          tokenProgram: tokenProgram,
         })
     }
 
@@ -374,8 +381,9 @@ export class SolanaBridgeClient {
     )
 
     // Calculate recipient's associated token account
+    const tokenProgram = await this.getTokenProgramForMint(tokenPubkey)
     const [recipientATA] = PublicKey.findProgramAddressSync(
-      [recipientPubkey.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), tokenPubkey.toBuffer()],
+      [recipientPubkey.toBuffer(), tokenProgram.toBuffer(), tokenPubkey.toBuffer()],
       ASSOCIATED_TOKEN_PROGRAM_ID,
     )
 
@@ -417,7 +425,7 @@ export class SolanaBridgeClient {
           },
           systemProgram: SystemProgram.programId,
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-          tokenProgram: TOKEN_PROGRAM_ID,
+          tokenProgram: tokenProgram,
         })
         .signers([wormholeMessage])
         .rpc()
@@ -443,7 +451,11 @@ export class SolanaBridgeClient {
     }
 
     const data = mintInfo.value.data as ParsedAccountData
-    if (!data.parsed || data.program !== "spl-token" || data.parsed.type !== "mint") {
+    if (
+      !data.parsed ||
+      (data.program !== "spl-token" && data.program !== "spl-token-2022") ||
+      data.parsed.type !== "mint"
+    ) {
       throw new Error("Not a valid SPL token mint")
     }
 
@@ -451,5 +463,18 @@ export class SolanaBridgeClient {
       data.parsed.info.mintAuthority &&
       data.parsed.info.mintAuthority.toString() === this.authority()[0].toString()
     )
+  }
+
+  private async getTokenProgramForMint(mint: PublicKey): Promise<PublicKey> {
+    const accountInfo = await this.program.provider.connection.getAccountInfo(mint)
+    if (!accountInfo) {
+      throw new Error("Failed to find mint account")
+    }
+
+    // Check the owner of the mint account
+    if (accountInfo.owner.equals(TOKEN_2022_PROGRAM_ID)) {
+      return TOKEN_2022_PROGRAM_ID
+    }
+    return TOKEN_PROGRAM_ID
   }
 }
