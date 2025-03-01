@@ -1,5 +1,15 @@
 # omni-bridge-sdk
 
+## 0.10.0
+
+### Minor Changes
+
+- e1283c4: feat(sol): support Token-2022 standard
+
+### Patch Changes
+
+- 4075951: refactor(serialization): replace borsher with @zorsh/zorsh for improved type safety
+
 ## 0.9.3
 
 ### Patch Changes
