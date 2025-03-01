@@ -1,6 +1,5 @@
-import { borshDeserialize, borshSerialize } from "borsher"
 import { describe, expect, it } from "vitest"
-import { type InitTransferResult, type ProverResult, ProverResultSchema } from "../../src/types"
+import { type ProverResult, ProverResultSchema } from "../../src/types"
 
 describe("Borsh Serialization", () => {
   describe("InitTransfer", () => {
@@ -18,8 +17,8 @@ describe("Borsh Serialization", () => {
     }
 
     it("should correctly serialize and deserialize InitTransfer", () => {
-      const serialized = borshSerialize(ProverResultSchema, initTransfer)
-      const deserialized = borshDeserialize<ProverResult>(ProverResultSchema, serialized)
+      const serialized = ProverResultSchema.serialize(initTransfer)
+      const deserialized = ProverResultSchema.deserialize(serialized)
       expect(deserialized).toEqual(initTransfer)
     })
 
@@ -30,9 +29,13 @@ describe("Borsh Serialization", () => {
           amount: 9007199254740991n, // Number.MAX_SAFE_INTEGER
         },
       }
-      const serialized = borshSerialize(ProverResultSchema, largeAmount)
-      const deserialized = borshDeserialize<InitTransferResult>(ProverResultSchema, serialized)
-      expect(deserialized.InitTransfer.amount).toBe(9007199254740991n)
+      const serialized = ProverResultSchema.serialize(largeAmount)
+      const deserialized = ProverResultSchema.deserialize(serialized)
+      if ("InitTransfer" in deserialized) {
+        expect(deserialized.InitTransfer.amount).toBe(9007199254740991n)
+      } else {
+        throw new Error("Expected InitTransfer variant")
+      }
     })
   })
 
@@ -47,8 +50,8 @@ describe("Borsh Serialization", () => {
     }
 
     it("should correctly serialize and deserialize FinTransfer", () => {
-      const serialized = borshSerialize(ProverResultSchema, finTransfer)
-      const deserialized = borshDeserialize<ProverResult>(ProverResultSchema, serialized)
+      const serialized = ProverResultSchema.serialize(finTransfer)
+      const deserialized = ProverResultSchema.deserialize(serialized)
       expect(deserialized).toEqual(finTransfer)
     })
   })
@@ -63,8 +66,8 @@ describe("Borsh Serialization", () => {
     }
 
     it("should correctly serialize and deserialize DeployToken", () => {
-      const serialized = borshSerialize(ProverResultSchema, deployToken)
-      const deserialized = borshDeserialize<ProverResult>(ProverResultSchema, serialized)
+      const serialized = ProverResultSchema.serialize(deployToken)
+      const deserialized = ProverResultSchema.deserialize(serialized)
       expect(deserialized).toEqual(deployToken)
     })
   })
@@ -81,8 +84,8 @@ describe("Borsh Serialization", () => {
     }
 
     it("should correctly serialize and deserialize LogMetadata", () => {
-      const serialized = borshSerialize(ProverResultSchema, logMetadata)
-      const deserialized = borshDeserialize<ProverResult>(ProverResultSchema, serialized)
+      const serialized = ProverResultSchema.serialize(logMetadata)
+      const deserialized = ProverResultSchema.deserialize(serialized)
       expect(deserialized).toEqual(logMetadata)
     })
   })
@@ -101,8 +104,8 @@ describe("Borsh Serialization", () => {
           emitter_address: "near:emitter.near",
         },
       }
-      const serialized = borshSerialize(ProverResultSchema, zeroValuesMsg)
-      const deserialized = borshDeserialize<ProverResult>(ProverResultSchema, serialized)
+      const serialized = ProverResultSchema.serialize(zeroValuesMsg)
+      const deserialized = ProverResultSchema.deserialize(serialized)
       expect(deserialized).toEqual(zeroValuesMsg)
     })
   })

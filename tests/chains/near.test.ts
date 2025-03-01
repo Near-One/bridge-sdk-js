@@ -1,20 +1,12 @@
 import type { Account } from "near-api-js"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NearBridgeClient } from "../../src/clients/near"
-import { ChainKind, ProofKind } from "../../src/types"
-
-// Mock the entire borsher module
-vi.mock("borsher", () => ({
-  borshSerialize: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
-  BorshSchema: {
-    Enum: vi.fn().mockReturnValue({}),
-    Unit: {},
-    String: vi.fn().mockReturnValue({}),
-    Struct: vi.fn().mockReturnValue({}),
-    Option: vi.fn().mockReturnValue({}),
-    Vec: vi.fn().mockReturnValue({}),
-  },
-}))
+import {
+  BindTokenArgsSchema,
+  ChainKind,
+  ProofKind,
+  WormholeVerifyProofArgsSchema,
+} from "../../src/types"
 
 describe("NearBridgeClient", () => {
   let mockWallet: Account
@@ -198,10 +190,19 @@ describe("NearBridgeClient", () => {
 
       const txHash = await client.bindToken(destinationChain, mockVaa)
 
+      const proverArgs = WormholeVerifyProofArgsSchema.serialize({
+        proof_kind: ProofKind.DeployToken,
+        vaa: mockVaa,
+      })
+      const bindTokenArgs = BindTokenArgsSchema.serialize({
+        chain_kind: destinationChain,
+        prover_args: proverArgs,
+      })
+
       expect(mockWallet.functionCall).toHaveBeenCalledWith({
         contractId: mockLockerAddress,
         methodName: "bind_token",
-        args: Uint8Array.from([1, 2, 3]),
+        args: bindTokenArgs,
         gas: BigInt(3e14),
         attachedDeposit: BigInt(2e23),
       })

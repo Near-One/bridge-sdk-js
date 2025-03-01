@@ -1,6 +1,5 @@
 import { callViewMethod, createRpcClientWrapper } from "@near-js/client"
 import type { Optional, Transaction, WalletSelector } from "@near-wallet-selector/core"
-import { borshSerialize } from "borsher"
 import { JsonRpcProvider } from "near-api-js/lib/providers"
 import { addresses } from "../config"
 import {
@@ -177,14 +176,14 @@ export class NearWalletSelectorBridgeClient {
       proof_kind: ProofKind.DeployToken,
       vaa: vaa,
     }
-    const proverArgsSerialized = borshSerialize(WormholeVerifyProofArgsSchema, proverArgs)
+    const proverArgsSerialized = WormholeVerifyProofArgsSchema.serialize(proverArgs)
 
     // Construct deploy token arguments
     const args: DeployTokenArgs = {
       chain_kind: destinationChain,
       prover_args: proverArgsSerialized,
     }
-    const serializedArgs = borshSerialize(DeployTokenArgsSchema, args)
+    const serializedArgs = DeployTokenArgsSchema.serialize(args)
 
     const wallet = await this.selector.wallet()
     const outcome = await wallet.signAndSendTransaction({
@@ -242,13 +241,13 @@ export class NearWalletSelectorBridgeClient {
         proof_kind: ProofKind.DeployToken,
         vaa: vaa,
       }
-      proverArgsSerialized = borshSerialize(WormholeVerifyProofArgsSchema, proverArgs)
+      proverArgsSerialized = WormholeVerifyProofArgsSchema.serialize(proverArgs)
     } else if (evmProof) {
       const proverArgs: EvmVerifyProofArgs = {
         proof_kind: ProofKind.DeployToken,
         proof: evmProof.proof,
       }
-      proverArgsSerialized = borshSerialize(EvmVerifyProofArgsSchema, proverArgs)
+      proverArgsSerialized = EvmVerifyProofArgsSchema.serialize(proverArgs)
     }
 
     // Construct bind token arguments
@@ -256,7 +255,7 @@ export class NearWalletSelectorBridgeClient {
       chain_kind: sourceChain,
       prover_args: proverArgsSerialized,
     }
-    const serializedArgs = borshSerialize(BindTokenArgsSchema, args)
+    const serializedArgs = BindTokenArgsSchema.serialize(args)
     const wallet = await this.selector.wallet()
     const outcome = await wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
@@ -527,13 +526,13 @@ export class NearWalletSelectorBridgeClient {
         proof_kind: ProofKind.DeployToken,
         vaa: vaa,
       }
-      proverArgsSerialized = borshSerialize(WormholeVerifyProofArgsSchema, proverArgs)
+      proverArgsSerialized = WormholeVerifyProofArgsSchema.serialize(proverArgs)
     } else if (evmProof) {
       const proverArgs: EvmVerifyProofArgs = {
         proof_kind: ProofKind.DeployToken,
         proof: evmProof.proof,
       }
-      proverArgsSerialized = borshSerialize(EvmVerifyProofArgsSchema, proverArgs)
+      proverArgsSerialized = EvmVerifyProofArgsSchema.serialize(proverArgs)
     }
 
     const args: FinTransferArgs = {
@@ -547,7 +546,7 @@ export class NearWalletSelectorBridgeClient {
       ],
       prover_args: proverArgsSerialized,
     }
-    const serializedArgs = borshSerialize(FinTransferArgsSchema, args)
+    const serializedArgs = FinTransferArgsSchema.serialize(args)
 
     const wallet = await this.selector.wallet()
     const outcome = await wallet.signAndSendTransaction({
