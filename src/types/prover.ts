@@ -1,25 +1,14 @@
-import { BorshSchema, type Unit } from "borsher"
+import { b } from "@zorsh/zorsh"
 import type { AccountId, Fee, Nonce, OmniAddress, U128 } from "./common"
 
-export type ProofKind =
-  | { InitTransfer: Unit }
-  | { FinTransfer: Unit }
-  | { DeployToken: Unit }
-  | { LogMetadata: Unit }
+export enum ProofKind {
+  InitTransfer = 0,
+  FinTransfer = 1,
+  DeployToken = 2,
+  LogMetadata = 3,
+}
 
-export const ProofKind = {
-  InitTransfer: { InitTransfer: {} } as ProofKind,
-  FinTransfer: { FinTransfer: {} } as ProofKind,
-  DeployToken: { DeployToken: {} } as ProofKind,
-  LogMetadata: { LogMetadata: {} } as ProofKind,
-} as const
-
-export const ProofKindSchema = BorshSchema.Enum({
-  InitTransfer: BorshSchema.Unit,
-  FinTransfer: BorshSchema.Unit,
-  DeployToken: BorshSchema.Unit,
-  LogMetadata: BorshSchema.Unit,
-})
+export const ProofKindSchema = b.nativeEnum(ProofKind)
 
 export type InitTransferMessage = {
   origin_nonce: Nonce
@@ -32,15 +21,15 @@ export type InitTransferMessage = {
   emitter_address: OmniAddress
 }
 
-export const InitTransferMessageSchema = BorshSchema.Struct({
-  origin_nonce: BorshSchema.u64,
-  token: BorshSchema.String,
-  amount: BorshSchema.u128,
-  recipient: BorshSchema.String,
-  fee: BorshSchema.u128,
-  sender: BorshSchema.String,
-  msg: BorshSchema.String,
-  emitter_address: BorshSchema.String,
+export const InitTransferMessageSchema = b.struct({
+  origin_nonce: b.u64(),
+  token: b.string(),
+  amount: b.u128(),
+  recipient: b.string(),
+  fee: b.u128(),
+  sender: b.string(),
+  msg: b.string(),
+  emitter_address: b.string(),
 })
 
 export type FinTransferMessage = {
@@ -50,11 +39,11 @@ export type FinTransferMessage = {
   emitter_address: OmniAddress
 }
 
-export const FinTransferMessageSchema = BorshSchema.Struct({
-  transfer_id: BorshSchema.String,
-  fee_recipient: BorshSchema.String,
-  amount: BorshSchema.u128,
-  emitter_address: BorshSchema.String,
+export const FinTransferMessageSchema = b.struct({
+  transfer_id: b.string(),
+  fee_recipient: b.string(),
+  amount: b.u128(),
+  emitter_address: b.string(),
 })
 
 export type DeployTokenMessage = {
@@ -63,10 +52,10 @@ export type DeployTokenMessage = {
   emitter_address: OmniAddress
 }
 
-export const DeployTokenMessageSchema = BorshSchema.Struct({
-  token: BorshSchema.String,
-  token_address: BorshSchema.String,
-  emitter_address: BorshSchema.String,
+export const DeployTokenMessageSchema = b.struct({
+  token: b.string(),
+  token_address: b.string(),
+  emitter_address: b.string(),
 })
 
 export type LogMetadataMessage = {
@@ -77,12 +66,12 @@ export type LogMetadataMessage = {
   emitter_address: OmniAddress
 }
 
-export const LogMetadataMessageSchema = BorshSchema.Struct({
-  token_address: BorshSchema.String,
-  name: BorshSchema.String,
-  symbol: BorshSchema.String,
-  decimals: BorshSchema.u8,
-  emitter_address: BorshSchema.String,
+export const LogMetadataMessageSchema = b.struct({
+  token_address: b.string(),
+  name: b.string(),
+  symbol: b.string(),
+  decimals: b.u8(),
+  emitter_address: b.string(),
 })
 
 export type ProverResult =
@@ -96,45 +85,31 @@ export type FinTransferResult = Extract<ProverResult, { FinTransfer: FinTransfer
 export type DeployTokenResult = Extract<ProverResult, { DeployToken: DeployTokenMessage }>
 export type LogMetadataResult = Extract<ProverResult, { LogMetadata: LogMetadataMessage }>
 
-export const ProverResultSchema = BorshSchema.Enum({
+export const ProverResultSchema = b.enum({
   InitTransfer: InitTransferMessageSchema,
   FinTransfer: FinTransferMessageSchema,
   DeployToken: DeployTokenMessageSchema,
   LogMetadata: LogMetadataMessageSchema,
 })
 
-export type EvmProof = {
-  log_index: bigint
-  log_entry_data: Uint8Array
-  receipt_index: bigint
-  receipt_data: Uint8Array
-  header_data: Uint8Array
-  proof: Uint8Array[]
-}
-
-export const EvmProofSchema = BorshSchema.Struct({
-  log_index: BorshSchema.u64,
-  log_entry_data: BorshSchema.Vec(BorshSchema.u8),
-  receipt_index: BorshSchema.u64,
-  receipt_data: BorshSchema.Vec(BorshSchema.u8),
-  header_data: BorshSchema.Vec(BorshSchema.u8),
-  proof: BorshSchema.Vec(BorshSchema.Vec(BorshSchema.u8)),
+export const EvmProofSchema = b.struct({
+  log_index: b.u64(),
+  log_entry_data: b.vec(b.u8()),
+  receipt_index: b.u64(),
+  receipt_data: b.vec(b.u8()),
+  header_data: b.vec(b.u8()),
+  proof: b.vec(b.vec(b.u8())),
 })
+export type EvmProof = b.infer<typeof EvmProofSchema>
 
-export type EvmVerifyProofArgs = {
-  proof_kind: ProofKind
-  proof: EvmProof
-}
-export const EvmVerifyProofArgsSchema = BorshSchema.Struct({
+export const EvmVerifyProofArgsSchema = b.struct({
   proof_kind: ProofKindSchema,
-  proof: EvmProofSchema, // assuming EvmProofSchema is defined as before
+  proof: EvmProofSchema,
 })
+export type EvmVerifyProofArgs = b.infer<typeof EvmVerifyProofArgsSchema>
 
-export type WormholeVerifyProofArgs = {
-  proof_kind: ProofKind
-  vaa: string
-}
-export const WormholeVerifyProofArgsSchema = BorshSchema.Struct({
+export const WormholeVerifyProofArgsSchema = b.struct({
   proof_kind: ProofKindSchema,
-  vaa: BorshSchema.String,
+  vaa: b.string(),
 })
+export type WormholeVerifyProofArgs = b.infer<typeof WormholeVerifyProofArgsSchema>

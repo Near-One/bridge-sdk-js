@@ -1,3 +1,4 @@
+import type { WithImplicitCoercion } from "node:buffer"
 import { describe, it } from "vitest"
 import { ChainKind, type EvmProof } from "../types"
 import { getEvmProof } from "./evm"

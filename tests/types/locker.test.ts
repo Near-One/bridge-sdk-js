@@ -1,4 +1,3 @@
-import { borshDeserialize } from "borsher"
 import { describe, expect, test } from "vitest"
 import {
   type BindTokenArgs,
@@ -12,11 +11,6 @@ import {
   FinTransferArgsSchema,
   type StorageDepositAction,
   StorageDepositActionSchema,
-  serializeBindTokenArgs,
-  serializeClaimFeeArgs,
-  serializeDeployTokenArgs,
-  serializeFinTransferArgs,
-  serializeStorageDepositAction,
 } from "../../src/types"
 
 describe("Chain Kind Types", () => {
@@ -28,8 +22,8 @@ describe("Chain Kind Types", () => {
         storage_deposit_amount: 1000000n,
       }
 
-      const serialized = serializeStorageDepositAction(action)
-      const deserialized = borshDeserialize(StorageDepositActionSchema, serialized)
+      const serialized = StorageDepositActionSchema.serialize(action)
+      const deserialized = StorageDepositActionSchema.deserialize(serialized)
 
       expect(deserialized).toEqual(action)
     })
@@ -41,8 +35,8 @@ describe("Chain Kind Types", () => {
         storage_deposit_amount: null,
       }
 
-      const serialized = serializeStorageDepositAction(action)
-      const deserialized = borshDeserialize(StorageDepositActionSchema, serialized)
+      const serialized = StorageDepositActionSchema.serialize(action)
+      const deserialized = StorageDepositActionSchema.deserialize(serialized)
 
       expect(deserialized).toEqual(action)
     })
@@ -54,8 +48,8 @@ describe("Chain Kind Types", () => {
         storage_deposit_amount: 1000000n,
       }
 
-      const serialized = serializeStorageDepositAction(action)
-      const deserialized = borshDeserialize(StorageDepositActionSchema, serialized)
+      const serialized = StorageDepositActionSchema.serialize(action)
+      const deserialized = StorageDepositActionSchema.deserialize(serialized)
 
       expect(deserialized).toEqual(action)
     })
@@ -80,8 +74,8 @@ describe("Chain Kind Types", () => {
         prover_args: new Uint8Array([1, 2, 3]),
       }
 
-      const serialized = serializeFinTransferArgs(args)
-      const deserialized: FinTransferArgs = borshDeserialize(FinTransferArgsSchema, serialized)
+      const serialized = FinTransferArgsSchema.serialize(args)
+      const deserialized = FinTransferArgsSchema.deserialize(serialized)
 
       expect({
         ...deserialized,
@@ -96,8 +90,8 @@ describe("Chain Kind Types", () => {
         prover_args: new Uint8Array([1, 2, 3]),
       }
 
-      const serialized = serializeFinTransferArgs(args)
-      const deserialized: FinTransferArgs = borshDeserialize(FinTransferArgsSchema, serialized)
+      const serialized = FinTransferArgsSchema.serialize(args)
+      const deserialized = FinTransferArgsSchema.deserialize(serialized)
 
       expect({
         ...deserialized,
@@ -121,8 +115,8 @@ describe("Chain Kind Types", () => {
           prover_args: new Uint8Array([1, 2, 3]),
         }
 
-        const serialized = serializeFinTransferArgs(args)
-        const deserialized: FinTransferArgs = borshDeserialize(FinTransferArgsSchema, serialized)
+        const serialized = FinTransferArgsSchema.serialize(args)
+        const deserialized = FinTransferArgsSchema.deserialize(serialized)
         expect({
           ...deserialized,
           prover_args: Uint8Array.from(deserialized.prover_args),
@@ -138,8 +132,8 @@ describe("Chain Kind Types", () => {
         prover_args: new Uint8Array([1, 2, 3]),
       }
 
-      const serialized = serializeClaimFeeArgs(args)
-      const deserialized: ClaimFeeArgs = borshDeserialize(ClaimFeeArgsSchema, serialized)
+      const serialized = ClaimFeeArgsSchema.serialize(args)
+      const deserialized = ClaimFeeArgsSchema.deserialize(serialized)
 
       expect({
         ...deserialized,
@@ -153,8 +147,8 @@ describe("Chain Kind Types", () => {
         prover_args: new Uint8Array([]),
       }
 
-      const serialized = serializeClaimFeeArgs(args)
-      const deserialized: ClaimFeeArgs = borshDeserialize(ClaimFeeArgsSchema, serialized)
+      const serialized = ClaimFeeArgsSchema.serialize(args)
+      const deserialized = ClaimFeeArgsSchema.deserialize(serialized)
 
       expect({
         ...deserialized,
@@ -170,8 +164,8 @@ describe("Chain Kind Types", () => {
         prover_args: new Uint8Array([1, 2, 3]),
       }
 
-      const serialized = serializeBindTokenArgs(args)
-      const deserialized: BindTokenArgs = borshDeserialize(BindTokenArgsSchema, serialized)
+      const serialized = BindTokenArgsSchema.serialize(args)
+      const deserialized = BindTokenArgsSchema.deserialize(serialized)
       expect({
         ...deserialized,
         prover_args: Uint8Array.from(deserialized.prover_args),
@@ -186,8 +180,8 @@ describe("Chain Kind Types", () => {
         prover_args: new Uint8Array([1, 2, 3]),
       }
 
-      const serialized = serializeDeployTokenArgs(args)
-      const deserialized: DeployTokenArgs = borshDeserialize(DeployTokenArgsSchema, serialized)
+      const serialized = DeployTokenArgsSchema.serialize(args)
+      const deserialized = DeployTokenArgsSchema.deserialize(serialized)
       expect({
         ...deserialized,
         prover_args: Uint8Array.from(deserialized.prover_args),
@@ -203,8 +197,8 @@ describe("Chain Kind Types", () => {
         storage_deposit_amount: BigInt("340282366920938463463374607431768211455"), // u128 max
       }
 
-      const serialized = serializeStorageDepositAction(action)
-      const deserialized = borshDeserialize(StorageDepositActionSchema, serialized)
+      const serialized = StorageDepositActionSchema.serialize(action)
+      const deserialized = StorageDepositActionSchema.deserialize(serialized)
 
       expect(deserialized).toEqual(action)
     })
@@ -217,8 +211,8 @@ describe("Chain Kind Types", () => {
         prover_args: largeProverArgs,
       }
 
-      const serialized = serializeFinTransferArgs(args)
-      const deserialized: FinTransferArgs = borshDeserialize(FinTransferArgsSchema, serialized)
+      const serialized = FinTransferArgsSchema.serialize(args)
+      const deserialized = FinTransferArgsSchema.deserialize(serialized)
       expect({
         ...deserialized,
         prover_args: Uint8Array.from(deserialized.prover_args),
@@ -234,8 +228,8 @@ describe("Chain Kind Types", () => {
         storage_deposit_amount: 1000000n,
       }
 
-      const serialized = serializeStorageDepositAction(action)
-      const deserialized = borshDeserialize(StorageDepositActionSchema, serialized)
+      const serialized = StorageDepositActionSchema.serialize(action)
+      const deserialized = StorageDepositActionSchema.deserialize(serialized)
 
       expect(deserialized).toEqual(action)
     })
