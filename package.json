@@ -35,6 +35,8 @@
     "@near-js/client": "^0.0.2",
     "@near-wallet-selector/core": "^8.10.0",
     "@solana/spl-token": "^0.4.12",
+    "@solana/wallet-adapter-base": "^0.9.23",
+    "@solana/wallet-adapter-wallets": "^0.19.32",
     "@solana/web3.js": "^1.98.0",
     "@wormhole-foundation/sdk": "^1.11.0",
     "@zorsh/zorsh": "^0.3.1",

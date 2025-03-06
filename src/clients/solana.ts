@@ -1,19 +1,22 @@
-import { BN, Program, type Provider } from "@coral-xyz/anchor"
+import { AnchorProvider, BN, Program } from "@coral-xyz/anchor"
 import type { MethodsBuilder } from "@coral-xyz/anchor/dist/cjs/program/namespace/methods"
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token"
+import type { SignerWalletAdapter } from "@solana/wallet-adapter-base"
 import {
+  Connection,
   Keypair,
   type ParsedAccountData,
   PublicKey,
   SYSVAR_CLOCK_PUBKEY,
   SYSVAR_RENT_PUBKEY,
   SystemProgram,
+  type Transaction,
 } from "@solana/web3.js"
-import { addresses } from "../config"
+import { addresses, getNetwork } from "../config"
 import {
   ChainKind,
   type DepositPayload,
@@ -32,6 +35,8 @@ const MPL_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1
 export class SolanaBridgeClient {
   private readonly wormholeProgramId: PublicKey
   private readonly program: Program<BridgeTokenFactory>
+  private readonly wallet: SignerWalletAdapter
+  private readonly connection: Connection
 
   private static getConstant(name: string) {
     const value = (BRIDGE_TOKEN_FACTORY_IDL as BridgeTokenFactory).constants.find(
@@ -52,10 +57,37 @@ export class SolanaBridgeClient {
   }
 
   constructor(
-    provider: Provider,
+    wallet: SignerWalletAdapter,
     wormholeProgramId: PublicKey = new PublicKey(addresses.sol.wormhole),
   ) {
     this.wormholeProgramId = wormholeProgramId
+    this.wallet = wallet
+
+    const url =
+      getNetwork() === "testnet"
+        ? "https://api.testnet.solana.com"
+        : "https://api.mainnet-beta.solana.com"
+    this.connection = new Connection(url, "confirmed")
+
+    // Create an AnchorProvider with the wallet adapter
+    if (!wallet.publicKey) {
+      throw new Error("Wallet must have a public key")
+    }
+
+    const provider = new AnchorProvider(
+      this.connection,
+      {
+        signTransaction: async () => {
+          throw new Error("Should not be called")
+        },
+        signAllTransactions: async () => {
+          throw new Error("Should not be called")
+        },
+        publicKey: wallet.publicKey,
+      },
+      AnchorProvider.defaultOptions(),
+    )
+
     const bridgeTokenFactory = BRIDGE_TOKEN_FACTORY_IDL as BridgeTokenFactory
     // @ts-ignore We have to override the address for Mainnet/Testnet
     bridgeTokenFactory.address = addresses.sol.locker
@@ -119,12 +151,55 @@ export class SolanaBridgeClient {
   }
 
   /**
-   * Logs metadata for a token
-   * @param token - The token's public key
-   * @param payer - Optional payer keypair
+   * Uses wallet adapter to sign and send a transaction
+   * @param transaction The transaction to sign and send
    * @returns Promise resolving to transaction signature
    */
-  async logMetadata(token: OmniAddress, payer?: Keypair): Promise<string> {
+  private async signAndSendTransaction(transaction: Transaction): Promise<string> {
+    if (!this.wallet.connected) {
+      throw new Error("Wallet not connected")
+    }
+
+    try {
+      // Use the wallet adapter's sendTransaction method
+      const signature = await this.wallet.sendTransaction(transaction, this.connection)
+
+      // Wait for confirmation
+      await this.connection.confirmTransaction(signature)
+
+      return signature
+    } catch (error) {
+      throw new Error(`Failed to sign and send transaction: ${error}`)
+    }
+  }
+
+  /**
+   * Builds transaction using Anchor Program methods and returns it without signing
+   * @param methodBuilder The Anchor method builder
+   * @param additionalSigners Additional signers to add
+   * @returns Promise resolving to Transaction object
+   */
+  private async buildTransaction(
+    // biome-ignore lint/suspicious/noExplicitAny: Arbitrary types
+    methodBuilder: MethodsBuilder<BridgeTokenFactory, any, any>,
+    additionalSigners: Keypair[] = [],
+  ): Promise<Transaction> {
+    const tx = await methodBuilder.transaction()
+    // Add additional signers' signatures if needed for transaction simulation
+    if (additionalSigners.length > 0) {
+      for (const signer of additionalSigners) {
+        tx.sign(signer)
+      }
+    }
+    return tx
+  }
+
+  /**
+   * Logs metadata for a token
+   * @param token - The token's public key
+   * @returns Promise resolving to transaction signature
+   */
+  async logMetadata(token: OmniAddress): Promise<string> {
     const tokenPublicKey = new PublicKey(token.split(":")[1])
     const tokenProgram = await this.getTokenProgramForMint(tokenPublicKey)
 
@@ -136,33 +211,34 @@ export class SolanaBridgeClient {
     const [vault] = this.vaultId(tokenPublicKey)
 
     try {
-      const tx = await this.program.methods
-        .logMetadata()
-        .accountsStrict({
-          authority: this.authority()[0],
-          mint: tokenPublicKey,
-          metadata,
-          vault,
-          common: {
-            payer: payer?.publicKey || this.program.provider.publicKey,
-            config: this.config()[0],
-            bridge: this.wormholeBridgeId()[0],
-            feeCollector: this.wormholeFeeCollectorId()[0],
-            sequence: this.wormholeSequenceId()[0],
-            clock: SYSVAR_CLOCK_PUBKEY,
-            rent: SYSVAR_RENT_PUBKEY,
-            systemProgram: SystemProgram.programId,
-            wormholeProgram: this.wormholeProgramId,
-            message: wormholeMessage.publicKey,
-          },
+      // Build the transaction using Anchor
+      const methodBuilder = this.program.methods.logMetadata().accountsStrict({
+        authority: this.authority()[0],
+        mint: tokenPublicKey,
+        metadata,
+        vault,
+        common: {
+          payer: this.program.provider.publicKey,
+          config: this.config()[0],
+          bridge: this.wormholeBridgeId()[0],
+          feeCollector: this.wormholeFeeCollectorId()[0],
+          sequence: this.wormholeSequenceId()[0],
+          clock: SYSVAR_CLOCK_PUBKEY,
+          rent: SYSVAR_RENT_PUBKEY,
           systemProgram: SystemProgram.programId,
-          tokenProgram: tokenProgram,
-          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-        })
-        .signers(payer instanceof Keypair ? [wormholeMessage, payer] : [wormholeMessage])
-        .rpc()
+          wormholeProgram: this.wormholeProgramId,
+          message: wormholeMessage.publicKey,
+        },
+        systemProgram: SystemProgram.programId,
+        tokenProgram: tokenProgram,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      })
 
-      return tx
+      // Convert to transaction
+      const transaction = await this.buildTransaction(methodBuilder, [wormholeMessage])
+
+      // Send to wallet for signing and submission
+      return await this.signAndSendTransaction(transaction)
     } catch (e) {
       throw new Error(`Failed to log metadata: ${e}`)
     }
@@ -172,13 +248,11 @@ export class SolanaBridgeClient {
    * Deploys a new wrapped token
    * @param signature - MPC signature authorizing the deployment
    * @param tokenMetadata - Token metadata
-   * @param payer - Optional payer public key
    * @returns Promise resolving to transaction hash and token address
    */
   async deployToken(
     signature: MPCSignature,
     payload: TokenMetadata,
-    payer?: Keypair,
   ): Promise<{ txHash: string; tokenAddress: string }> {
     const wormholeMessage = Keypair.generate()
     const [mint] = this.wrappedMintId(payload.token)
@@ -188,7 +262,8 @@ export class SolanaBridgeClient {
     )
 
     try {
-      const tx = await this.program.methods
+      // Build the transaction using Anchor
+      const methodBuilder = this.program.methods
         .deployToken({
           payload,
           signature: [...signature.toBytes()],
@@ -196,7 +271,7 @@ export class SolanaBridgeClient {
         .accountsStrict({
           authority: this.authority()[0],
           common: {
-            payer: payer?.publicKey || this.program.provider.publicKey,
+            payer: this.program.provider.publicKey,
             config: this.config()[0],
             bridge: this.wormholeBridgeId()[0],
             feeCollector: this.wormholeFeeCollectorId()[0],
@@ -213,11 +288,15 @@ export class SolanaBridgeClient {
           tokenProgram: TOKEN_PROGRAM_ID,
           tokenMetadataProgram: MPL_PROGRAM_ID,
         })
-        .signers(payer instanceof Keypair ? [wormholeMessage, payer] : [wormholeMessage])
-        .rpc()
+
+      // Convert to transaction
+      const transaction = await this.buildTransaction(methodBuilder, [wormholeMessage])
+
+      // Send to wallet for signing and submission
+      const txHash = await this.signAndSendTransaction(transaction)
 
       return {
-        txHash: tx,
+        txHash,
         tokenAddress: mint.toString(),
       }
     } catch (e) {
@@ -236,22 +315,22 @@ export class SolanaBridgeClient {
    * @throws {Error} If token address is not on Solana
    * @returns Promise resolving to transaction hash
    */
-  async initTransfer(transfer: OmniTransferMessage, payer?: Keypair): Promise<string> {
+  async initTransfer(transfer: OmniTransferMessage): Promise<string> {
     if (getChain(transfer.tokenAddress) !== ChainKind.Sol) {
       throw new Error("Token address must be on Solana")
     }
     const wormholeMessage = Keypair.generate()
 
-    const payerPubKey = payer?.publicKey || this.program.provider.publicKey
+    const payerPubKey = this.program.provider.publicKey
     if (!payerPubKey) {
       throw new Error("Payer is not configured")
     }
     const [solVault] = this.solVaultId()
 
     // biome-ignore lint/suspicious/noExplicitAny: initTransfer or initTransferSol
-    let method: MethodsBuilder<BridgeTokenFactory, any, any>
+    let methodBuilder: MethodsBuilder<BridgeTokenFactory, any, any>
     if (transfer.tokenAddress === `sol:${PublicKey.default.toBase58()}`) {
-      method = this.program.methods
+      methodBuilder = this.program.methods
         .initTransferSol({
           amount: new BN(transfer.amount.valueOf().toString()),
           recipient: transfer.recipient,
@@ -284,7 +363,7 @@ export class SolanaBridgeClient {
       )
       const vault = (await this.isBridgedToken(mint)) ? null : this.vaultId(mint)[0]
 
-      method = this.program.methods
+      methodBuilder = this.program.methods
         .initTransfer({
           amount: new BN(transfer.amount.valueOf().toString()),
           recipient: transfer.recipient,
@@ -316,11 +395,11 @@ export class SolanaBridgeClient {
     }
 
     try {
-      const tx = await method
-        .signers(payer instanceof Keypair ? [wormholeMessage, payer] : [wormholeMessage])
-        .rpc()
+      // Convert to transaction
+      const transaction = await this.buildTransaction(methodBuilder, [wormholeMessage])
 
-      return tx
+      // Send to wallet for signing and submission
+      return await this.signAndSendTransaction(transaction)
     } catch (e) {
       throw new Error(`Failed to init transfer: ${e}`)
     }
@@ -391,7 +470,8 @@ export class SolanaBridgeClient {
     const vault = (await this.isBridgedToken(tokenPubkey)) ? null : this.vaultId(tokenPubkey)[0]
 
     try {
-      const tx = await this.program.methods
+      // Build the transaction using Anchor
+      const methodBuilder = this.program.methods
         .finalizeTransfer({
           payload: {
             destinationNonce: new BN(payload.destination_nonce.toString()),
@@ -427,10 +507,12 @@ export class SolanaBridgeClient {
           associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
           tokenProgram: tokenProgram,
         })
-        .signers([wormholeMessage])
-        .rpc()
 
-      return tx
+      // Convert to transaction
+      const transaction = await this.buildTransaction(methodBuilder, [wormholeMessage])
+
+      // Send to wallet for signing and submission
+      return await this.signAndSendTransaction(transaction)
     } catch (e) {
       throw new Error(`Failed to finalize transfer: ${e}`)
     }
@@ -444,7 +526,7 @@ export class SolanaBridgeClient {
   }
 
   private async isBridgedToken(token: PublicKey): Promise<boolean> {
-    const mintInfo = await this.program.provider.connection.getParsedAccountInfo(token)
+    const mintInfo = await this.connection.getParsedAccountInfo(token)
 
     if (!mintInfo.value) {
       throw new Error("Failed to find mint account")
@@ -466,7 +548,7 @@ export class SolanaBridgeClient {
   }
 
   private async getTokenProgramForMint(mint: PublicKey): Promise<PublicKey> {
-    const accountInfo = await this.program.provider.connection.getAccountInfo(mint)
+    const accountInfo = await this.connection.getAccountInfo(mint)
     if (!accountInfo) {
       throw new Error("Failed to find mint account")
     }

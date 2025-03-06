@@ -1,5 +1,6 @@
 import type { Provider } from "@coral-xyz/anchor"
 import type { WalletSelector } from "@near-wallet-selector/core"
+import type { SignerWalletAdapter } from "@solana/wallet-adapter-base"
 import type { ethers } from "ethers"
 import { Account } from "near-api-js"
 import { EvmBridgeClient } from "./clients/evm"
@@ -68,10 +69,9 @@ type WalletTypes = {
  *
  * @example Solana
  * ```typescript
- * import { Connection, Keypair } from '@solana/web3.js';
+ * import { SignerWalletAdapter, Keypair } from '@solana/web3.js';
  *
- * const connection = new Connection('https://api.mainnet-beta.solana.com');
- * const client = getClient(ChainKind.Sol, connection);
+ * const client = getClient(ChainKind.Sol, walletAdapter);
  * // Type: SolanaBridgeClient
  * const signature = await client.transfer({ ... });
  * ```
@@ -93,7 +93,7 @@ export function getClient(
 export function getClient(chain: ChainKind.Eth, wallet: ethers.Signer): EvmBridgeClient
 export function getClient(chain: ChainKind.Base, wallet: ethers.Signer): EvmBridgeClient
 export function getClient(chain: ChainKind.Arb, wallet: ethers.Signer): EvmBridgeClient
-export function getClient(chain: ChainKind.Sol, wallet: Provider): SolanaBridgeClient
+export function getClient(chain: ChainKind.Sol, wallet: SignerWalletAdapter): SolanaBridgeClient
 
 // Generic implementation
 export function getClient<T extends ChainKind>(chain: T, wallet: WalletTypes[T]): ClientTypes[T] {
@@ -108,8 +108,8 @@ export function getClient<T extends ChainKind>(chain: T, wallet: WalletTypes[T])
     case ChainKind.Arb:
       return new EvmBridgeClient(wallet as ethers.Signer, chain) as ClientTypes[T]
     case ChainKind.Sol:
-      return new SolanaBridgeClient(wallet as Provider) as ClientTypes[T]
+      return new SolanaBridgeClient(wallet as SignerWalletAdapter) as ClientTypes[T]
     default:
-      throw new Error(`No client implementation for chain: ${chain}`)
+      throw new Error(`No client implementation for chain: ${chain} `)
   }
 }
