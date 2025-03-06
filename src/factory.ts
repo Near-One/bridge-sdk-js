@@ -1,4 +1,3 @@
-import type { Provider } from "@coral-xyz/anchor"
 import type { WalletSelector } from "@near-wallet-selector/core"
 import type { SignerWalletAdapter } from "@solana/wallet-adapter-base"
 import type { ethers } from "ethers"
@@ -24,7 +23,7 @@ type WalletTypes = {
   [ChainKind.Eth]: ethers.Signer
   [ChainKind.Base]: ethers.Signer
   [ChainKind.Arb]: ethers.Signer
-  [ChainKind.Sol]: Provider
+  [ChainKind.Sol]: SignerWalletAdapter
 }
 
 /**
