@@ -1,5 +1,5 @@
-import type { Provider as SolWallet } from "@coral-xyz/anchor"
 import type { WalletSelector } from "@near-wallet-selector/core"
+import type { SignerWalletAdapter as SolWallet } from "@solana/wallet-adapter-base"
 import { Wallet as EthWallet } from "ethers"
 import { Account as NearAccount } from "near-api-js"
 import { EvmBridgeClient } from "./clients/evm"
@@ -28,7 +28,7 @@ export function isSolWallet(wallet: SolWallet | WalletSelector): wallet is SolWa
   )
 }
 
-export function isWalletSelector(wallet: SolWallet | WalletSelector): wallet is WalletSelector {
+export function isWalletSelector(wallet: WalletSelector | SolWallet): wallet is WalletSelector {
   return (
     wallet &&
     typeof wallet === "object" &&
