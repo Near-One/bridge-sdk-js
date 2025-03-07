@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.10.1
+
+### Patch Changes
+
+- 298c40a: feat(token): Improve token resolution, helpful error messages
+
 ## 0.10.0
 
 ### Minor Changes
