@@ -23,7 +23,6 @@ export async function getBridgedToken(
   destinationChain: ChainKind,
 ): Promise<OmniAddress | null> {
   const rpcProvider = getProviderByNetwork(addresses.network)
-  console.log(ChainKind[destinationChain].toString())
   return await view<OmniAddress>({
     account: addresses.near,
     method: "get_bridged_token",

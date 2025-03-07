@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, it, vi } from "vitest"
 import { setNetwork } from "../../src"
 import { ChainKind } from "../../src/types"
-import { getTokenAddress } from "../../src/utils/tokens"
+import { getBridgedToken } from "../../src/utils/tokens"
 
 describe.concurrent("Token Conversion Integration Tests", () => {
   beforeAll(() => {
@@ -11,17 +11,17 @@ describe.concurrent("Token Conversion Integration Tests", () => {
     const nearToken = "near:wrap.testnet"
 
     it("converts NEAR to Solana", async ({ expect }) => {
-      const result = await getTokenAddress(nearToken, ChainKind.Sol)
+      const result = await getBridgedToken(nearToken, ChainKind.Sol)
       expect(result).toMatchInlineSnapshot(`"sol:3wQct2e43J1Z99h2RWrhPAhf6E32ZpuzEt6tgwfEAKAy"`)
     })
 
     it("converts NEAR to Base", async ({ expect }) => {
-      const result = await getTokenAddress(nearToken, ChainKind.Base)
+      const result = await getBridgedToken(nearToken, ChainKind.Base)
       expect(result).toMatchInlineSnapshot(`"base:0xb8cae3ea035ab123c1833258835ef270c9934162"`)
     })
 
     it("converts NEAR to Arbitrum", async ({ expect }) => {
-      const result = await getTokenAddress(nearToken, ChainKind.Arb)
+      const result = await getBridgedToken(nearToken, ChainKind.Arb)
       expect(result).toMatchInlineSnapshot(`"arb:0xf66f061ac678378c949bdfd3cb8c974272db3f59"`)
     })
   })
@@ -30,7 +30,7 @@ describe.concurrent("Token Conversion Integration Tests", () => {
     const nearExpected = "near:wrap.testnet"
 
     it("converts Solana to NEAR", async ({ expect }) => {
-      const result = await getTokenAddress(
+      const result = await getBridgedToken(
         "sol:3wQct2e43J1Z99h2RWrhPAhf6E32ZpuzEt6tgwfEAKAy",
         ChainKind.Near,
       )
@@ -38,7 +38,7 @@ describe.concurrent("Token Conversion Integration Tests", () => {
     })
 
     it("converts Base to NEAR", async ({ expect }) => {
-      const result = await getTokenAddress(
+      const result = await getBridgedToken(
         "base:0xb8cae3ea035ab123c1833258835ef270c9934162",
         ChainKind.Near,
       )
@@ -46,7 +46,7 @@ describe.concurrent("Token Conversion Integration Tests", () => {
     })
 
     it("converts Arbitrum to NEAR", async ({ expect }) => {
-      const result = await getTokenAddress(
+      const result = await getBridgedToken(
         "arb:0xf66f061ac678378c949bdfd3cb8c974272db3f59",
         ChainKind.Near,
       )
@@ -56,7 +56,7 @@ describe.concurrent("Token Conversion Integration Tests", () => {
 
   describe("Cross-chain conversions", () => {
     it("converts Base to Arbitrum", async ({ expect }) => {
-      const result = await getTokenAddress(
+      const result = await getBridgedToken(
         "base:0xb8cae3ea035ab123c1833258835ef270c9934162",
         ChainKind.Arb,
       )
@@ -64,7 +64,7 @@ describe.concurrent("Token Conversion Integration Tests", () => {
     })
 
     it("converts Solana to Base", async ({ expect }) => {
-      const result = await getTokenAddress(
+      const result = await getBridgedToken(
         "sol:3wQct2e43J1Z99h2RWrhPAhf6E32ZpuzEt6tgwfEAKAy",
         ChainKind.Base,
       )
@@ -80,20 +80,14 @@ describe.concurrent("Token Conversion Integration Tests", () => {
       vi.restoreAllMocks()
     })
 
-    it("throws error when source and destination chains are the same", async ({ expect }) => {
-      await expect(getTokenAddress("near:wrap.testnet", ChainKind.Near)).rejects.toThrow(
-        "Source and destination chains must be different",
-      )
-    })
-
     it("throws error for invalid token address format", async ({ expect }) => {
-      await expect(getTokenAddress("sol:address", ChainKind.Eth)).rejects.toThrow()
+      await expect(getBridgedToken("sol:address", ChainKind.Eth)).rejects.toThrow()
     })
 
     it("throws error for unknown token address", async ({ expect }) => {
       await expect(
-        getTokenAddress("eth:0x1234567890123456789012345678901234567890", ChainKind.Near),
-      ).rejects.toThrow()
+        getBridgedToken("eth:0x1234567890123456789012345678901234567890", ChainKind.Near),
+      ).resolves.toBeNull()
     })
   })
 })
