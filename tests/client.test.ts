@@ -2,7 +2,7 @@ import { ethers } from "ethers"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type * as decimalsModule from "../src/utils/decimals" // Import for selective mocking
 import { getTokenDecimals } from "../src/utils/decimals"
-import { getTokenAddress } from "../src/utils/tokens" // Import getTokenAddress
+import { getBridgedToken } from "../src/utils/tokens" // Import getBridgedToken
 
 // Mock getTokenDecimals *before* importing client.ts, using importActual
 vi.mock("../src/utils/decimals", async () => {
@@ -13,9 +13,9 @@ vi.mock("../src/utils/decimals", async () => {
   }
 })
 
-// Mock getTokenAddress
+// Mock getBridgedToken
 vi.mock("../src/utils/tokens", () => ({
-  getTokenAddress: vi.fn(),
+  getBridgedToken: vi.fn(),
 }))
 
 // Mock all the clients and dependencies
@@ -69,8 +69,8 @@ describe("omniTransfer", () => {
   })
 
   it("rejects transfer of 1 yoctoNEAR to Solana", async () => {
-    // Mock getTokenAddress
-    vi.mocked(getTokenAddress).mockResolvedValue("sol:mocked_sol_address")
+    // Mock getBridgedToken
+    vi.mocked(getBridgedToken).mockResolvedValue("sol:mocked_sol_address")
 
     await expect(
       omniTransfer(wallet, {
@@ -84,8 +84,8 @@ describe("omniTransfer", () => {
   })
 
   it("allows valid NEAR to Solana transfer", async () => {
-    // Mock getTokenAddress to return a Solana address
-    vi.mocked(getTokenAddress).mockResolvedValue("sol:mocked_sol_address")
+    // Mock getBridgedToken to return a Solana address
+    vi.mocked(getBridgedToken).mockResolvedValue("sol:mocked_sol_address")
 
     const result = await omniTransfer(wallet, {
       tokenAddress: "near:token.near",
@@ -99,8 +99,8 @@ describe("omniTransfer", () => {
   })
 
   it("rejects transfer where fee equals amount", async () => {
-    // Mock getTokenAddress
-    vi.mocked(getTokenAddress).mockResolvedValue("sol:mocked_sol_address")
+    // Mock getBridgedToken
+    vi.mocked(getBridgedToken).mockResolvedValue("sol:mocked_sol_address")
 
     await expect(
       omniTransfer(wallet, {
@@ -117,8 +117,8 @@ describe("omniTransfer", () => {
     // Mock RPC error using mockRejectedValueOnce
     vi.mocked(getTokenDecimals).mockRejectedValueOnce(new Error("Failed to get token decimals"))
 
-    // Mock getTokenAddress
-    vi.mocked(getTokenAddress).mockResolvedValue("sol:mocked_sol_address")
+    // Mock getBridgedToken
+    vi.mocked(getBridgedToken).mockResolvedValue("sol:mocked_sol_address")
 
     await expect(
       omniTransfer(wallet, {
@@ -131,9 +131,9 @@ describe("omniTransfer", () => {
     ).rejects.toThrow("Failed to get token decimals")
   })
 
-  it("handles getTokenAddress errors gracefully", async () => {
+  it("handles getBridgedToken errors gracefully", async () => {
     // Mock RPC error using mockRejectedValueOnce
-    vi.mocked(getTokenAddress).mockRejectedValueOnce(new Error("Failed to get token address"))
+    vi.mocked(getBridgedToken).mockRejectedValueOnce(new Error("Failed to get token address"))
 
     await expect(
       omniTransfer(wallet, {
