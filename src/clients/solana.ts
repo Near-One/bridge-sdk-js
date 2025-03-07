@@ -185,6 +185,8 @@ export class SolanaBridgeClient {
     additionalSigners: Keypair[] = [],
   ): Promise<Transaction> {
     const tx = await methodBuilder.transaction()
+
+    tx.recentBlockhash = (await this.connection.getLatestBlockhash()).blockhash
     // Add additional signers' signatures if needed for transaction simulation
     if (additionalSigners.length > 0) {
       for (const signer of additionalSigners) {
