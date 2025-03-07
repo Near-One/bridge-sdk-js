@@ -8,7 +8,7 @@ import { NearWalletSelectorBridgeClient } from "./clients/near-wallet-selector"
 import { SolanaBridgeClient } from "./clients/solana"
 import { addresses } from "./config"
 import { ChainKind, type InitTransferEvent, type OmniTransferMessage } from "./types"
-import { getChain, getTokenAddress } from "./utils"
+import { getBridgedToken, getChain } from "./utils"
 import {
   getMinimumTransferableAmount,
   getTokenDecimals,
@@ -52,7 +52,14 @@ export async function omniTransfer(
   const destChain = getChain(transfer.recipient)
 
   const sourceTokenAddress = transfer.tokenAddress
-  const destTokenAddress = await getTokenAddress(transfer.tokenAddress, destChain)
+  const destTokenAddress = await getBridgedToken(transfer.tokenAddress, destChain)
+
+  // Check if destination token address is null
+  if (!destTokenAddress) {
+    throw new Error(
+      `Token ${transfer.tokenAddress} is not registered on the destination chain. Please deploy the token first.`,
+    )
+  }
 
   // Get token decimals
   const contractId = addresses.near // Use NEAR contract for decimal verification
