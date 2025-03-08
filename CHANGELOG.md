@@ -1,5 +1,13 @@
 # omni-bridge-sdk
 
+## 0.10.2
+
+### Patch Changes
+
+- e090c22: chore(deps): bump @solana/spl-token from 0.4.12 to 0.4.13
+- f235b34: chore(deps): bump @near-js/client from 0.0.2 to 0.0.3
+- 061c1b4: chore(deps): bump @wormhole-foundation/sdk from 1.11.0 to 1.13.1
+
 ## 0.10.1
 
 ### Patch Changes
