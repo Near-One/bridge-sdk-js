@@ -27,6 +27,7 @@ interface BlockHeader {
   blobGasUsed?: string
   excessBlobGas?: string
   parentBeaconBlockRoot?: string
+  requestsHash?: string
 }
 
 const RPC_URLS: Record<EVMChainKind, string> = {
@@ -161,6 +162,7 @@ function encodeBlockHeader(header: BlockHeader): Uint8Array {
     header.blobGasUsed,
     header.excessBlobGas,
     header.parentBeaconBlockRoot,
+    header.requestsHash,
   ]
     .filter((item) => item !== undefined)
     .map((item) => (item === "0x0" ? "0x" : item))
