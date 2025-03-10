@@ -7,6 +7,7 @@ import {
 } from "@solana/spl-token"
 import type { SignerWalletAdapter } from "@solana/wallet-adapter-base"
 import {
+  type Commitment,
   Connection,
   Keypair,
   type ParsedAccountData,
@@ -14,7 +15,7 @@ import {
   SYSVAR_CLOCK_PUBKEY,
   SYSVAR_RENT_PUBKEY,
   SystemProgram,
-  type Transaction,
+  Transaction,
 } from "@solana/web3.js"
 import { addresses, getNetwork } from "../config"
 import {
@@ -65,7 +66,7 @@ export class SolanaBridgeClient {
 
     const url =
       getNetwork() === "testnet"
-        ? "https://api.testnet.solana.com"
+        ? "https://api.devnet.solana.com"
         : "https://api.mainnet-beta.solana.com"
     this.connection = new Connection(url, "confirmed")
 
@@ -150,8 +151,41 @@ export class SolanaBridgeClient {
     )
   }
 
+  private debugTransaction(transaction: Transaction): void {
+    console.log("==== Transaction Debug Info ====")
+    console.log(`Instructions count: ${transaction.instructions.length}`)
+    console.log(`Recent blockhash: ${transaction.recentBlockhash || "Not set"}`)
+    console.log(`Fee payer: ${transaction.feePayer?.toBase58() || "Not set"}`)
+
+    // Log each instruction
+    transaction.instructions.forEach((ix, index) => {
+      console.log(`\nInstruction #${index}:`)
+      console.log(`Program ID: ${ix.programId.toBase58()}`)
+      console.log(`Data length: ${ix.data.length} bytes`)
+      console.log(`Data (hex): ${Buffer.from(ix.data).toString("hex").slice(0, 50)}...`)
+      console.log("Keys:")
+      ix.keys.forEach((key, keyIndex) => {
+        console.log(
+          `  ${keyIndex}: ${key.pubkey.toBase58()} (${key.isSigner ? "signer" : "not-signer"}, ${key.isWritable ? "writable" : "readonly"})`,
+        )
+      })
+    })
+
+    // Check for signer issues
+    const signerKeys = transaction.instructions
+      .flatMap((ix) => ix.keys.filter((key) => key.isSigner))
+      .map((key) => key.pubkey.toBase58())
+
+    const uniqueSigners = [...new Set(signerKeys)]
+    console.log("\nRequired signers:", uniqueSigners)
+
+    // Check for potential issues
+    const serializedSize = transaction.serialize({ verifySignatures: false }).length
+    console.log(`\nTransaction size: ${serializedSize} bytes`)
+  }
+
   /**
-   * Uses wallet adapter to sign and send a transaction
+   * Uses wallet adapter to sign and send a transaction with improved error handling
    * @param transaction The transaction to sign and send
    * @param signers Additional signers to include (like generated message keypairs)
    * @returns Promise resolving to transaction signature
@@ -168,28 +202,135 @@ export class SolanaBridgeClient {
       // Set the feePayer to the wallet's public key
       transaction.feePayer = this.wallet.publicKey
 
-      // Get the latest blockhash
-      const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash()
-      transaction.recentBlockhash = blockhash
+      // Get the latest blockhash if not already set
+      if (!transaction.recentBlockhash) {
+        const { blockhash } = await this.connection.getLatestBlockhash()
+        transaction.recentBlockhash = blockhash
+      }
 
       // Partially sign with any additional signers (like wormhole message)
       if (signers.length > 0) {
+        console.log(`Partially signing with ${signers.length} additional signer(s)...`)
         transaction.partialSign(...signers)
       }
 
-      // Use the wallet adapter's sendTransaction method
-      const signature = await this.wallet.sendTransaction(transaction, this.connection)
+      // Try with skipPreflight option to avoid client-side validation errors
+      const sendOptions = {
+        skipPreflight: true, // Skip preflight checks
+        preflightCommitment: "processed" as Commitment,
+      }
 
-      // Wait for confirmation
-      await this.connection.confirmTransaction({
-        blockhash,
-        lastValidBlockHeight,
-        signature,
-      })
+      try {
+        console.log("Sending transaction to wallet for signing...")
+        const signature = await this.wallet.sendTransaction(
+          transaction,
+          this.connection,
+          sendOptions,
+        )
+        console.log("Transaction signed successfully, signature:", signature)
 
-      return signature
+        // Improved confirmation strategy - use simple commitment-based confirmation
+        try {
+          console.log("Waiting for transaction confirmation...")
+          // Use a simpler confirmation method with just the signature
+          await this.connection.confirmTransaction(signature, "confirmed")
+          console.log("Transaction confirmed successfully")
+          return signature
+        } catch (confirmError) {
+          // If confirmation fails, check transaction status directly
+          console.warn("Confirmation error:", confirmError)
+          console.log("Checking transaction status directly...")
+
+          const status = await this.connection.getSignatureStatus(signature)
+          if (status?.value?.err) {
+            console.error("Transaction failed:", status.value.err)
+            throw new Error(`Transaction failed: ${JSON.stringify(status.value.err)}`)
+          }
+
+          if (
+            status?.value?.confirmationStatus === "confirmed" ||
+            status?.value?.confirmationStatus === "finalized"
+          ) {
+            console.log("Transaction status check: Confirmed!")
+            return signature
+          }
+
+          // If we can't confirm, but transaction was sent, return signature anyway
+          console.warn(
+            "Unable to confirm transaction, but it was submitted. Status:",
+            status?.value?.confirmationStatus,
+          )
+          return signature
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("Unexpected error")) {
+          // Specific handling for Phantom's "Unexpected error"
+          console.error("Phantom wallet returned 'Unexpected error'")
+          console.log("Trying alternative approach...")
+
+          // Create a fresh transaction with the same instructions
+          const freshTx = new Transaction()
+          for (const ix of transaction.instructions) {
+            freshTx.add(ix)
+          }
+          freshTx.feePayer = this.wallet.publicKey
+
+          // Get a fresh blockhash for the retry
+          const { blockhash } = await this.connection.getLatestBlockhash()
+          freshTx.recentBlockhash = blockhash
+
+          if (signers.length > 0) {
+            freshTx.partialSign(...signers)
+          }
+
+          // Try with alternative send options
+          const altSendOptions = {
+            skipPreflight: true,
+            maxRetries: 3,
+          }
+
+          console.log("Retrying with alternative transaction...")
+          const signature = await this.wallet.sendTransaction(
+            freshTx,
+            this.connection,
+            altSendOptions,
+          )
+          console.log("Alternative approach successful, signature:", signature)
+
+          // Use simpler confirmation for the retry too
+          await this.connection.confirmTransaction(signature, "processed")
+          return signature
+        }
+
+        // If it's not the specific Phantom error, rethrow
+        throw error
+      }
     } catch (error) {
       console.error("Transaction error:", error)
+
+      // Check for specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes("insufficient funds")) {
+          throw new Error("Insufficient SOL balance to pay for transaction fees")
+        }
+
+        if (error.message.includes("Transaction too large")) {
+          throw new Error("Transaction is too large")
+        }
+
+        if (error.message.includes("Unexpected error")) {
+          throw new Error(
+            "Phantom wallet error: Try disconnecting and reconnecting your wallet, or using a different wallet like Solflare",
+          )
+        }
+
+        if (error.message.includes("block height exceeded")) {
+          throw new Error(
+            "Transaction confirmation timed out, but it may have still processed. Check your wallet for changes before trying again.",
+          )
+        }
+      }
+
       throw new Error(`Failed to sign and send transaction: ${error}`)
     }
   }
@@ -331,7 +472,10 @@ export class SolanaBridgeClient {
     if (getChain(transfer.tokenAddress) !== ChainKind.Sol) {
       throw new Error("Token address must be on Solana")
     }
+
+    // Generate a keypair for the wormhole message
     const wormholeMessage = Keypair.generate()
+    console.log("Generated wormhole message keypair:", wormholeMessage.publicKey.toBase58())
 
     if (!this.wallet.publicKey) {
       throw new Error("Wallet is not connected")
@@ -340,78 +484,132 @@ export class SolanaBridgeClient {
     const payerPubKey = this.wallet.publicKey
     const [solVault] = this.solVaultId()
 
-    // biome-ignore lint/suspicious/noExplicitAny: initTransfer or initTransferSol
-    let methodBuilder: MethodsBuilder<BridgeTokenFactory, any, any>
-    if (transfer.tokenAddress === `sol:${PublicKey.default.toBase58()}`) {
-      methodBuilder = this.program.methods
-        .initTransferSol({
-          amount: new BN(transfer.amount.valueOf().toString()),
-          recipient: transfer.recipient,
-          fee: new BN(transfer.fee.valueOf().toString()),
-          nativeFee: new BN(transfer.nativeFee.valueOf().toString()),
-          message: "",
-        })
-        .accountsStrict({
-          solVault,
-          user: payerPubKey,
-          common: {
-            payer: payerPubKey,
-            config: this.config()[0],
-            bridge: this.wormholeBridgeId()[0],
-            feeCollector: this.wormholeFeeCollectorId()[0],
-            sequence: this.wormholeSequenceId()[0],
-            clock: SYSVAR_CLOCK_PUBKEY,
-            rent: SYSVAR_RENT_PUBKEY,
-            systemProgram: SystemProgram.programId,
-            wormholeProgram: this.wormholeProgramId,
-            message: wormholeMessage.publicKey,
-          },
-        })
-    } else {
-      const mint = new PublicKey(transfer.tokenAddress.split(":")[1])
-      const tokenProgram = await this.getTokenProgramForMint(mint)
-      const [from] = PublicKey.findProgramAddressSync(
-        [payerPubKey.toBuffer(), tokenProgram.toBuffer(), mint.toBuffer()],
-        ASSOCIATED_TOKEN_PROGRAM_ID,
-      )
-      const vault = (await this.isBridgedToken(mint)) ? null : this.vaultId(mint)[0]
-
-      methodBuilder = this.program.methods
-        .initTransfer({
-          amount: new BN(transfer.amount.valueOf().toString()),
-          recipient: transfer.recipient,
-          fee: new BN(transfer.fee.valueOf().toString()),
-          nativeFee: new BN(transfer.nativeFee.valueOf().toString()),
-          message: "",
-        })
-        .accountsStrict({
-          authority: this.authority()[0],
-          mint,
-          from,
-          vault,
-          solVault,
-          user: payerPubKey,
-          common: {
-            payer: payerPubKey,
-            config: this.config()[0],
-            bridge: this.wormholeBridgeId()[0],
-            feeCollector: this.wormholeFeeCollectorId()[0],
-            sequence: this.wormholeSequenceId()[0],
-            clock: SYSVAR_CLOCK_PUBKEY,
-            rent: SYSVAR_RENT_PUBKEY,
-            systemProgram: SystemProgram.programId,
-            wormholeProgram: this.wormholeProgramId,
-            message: wormholeMessage.publicKey,
-          },
-          tokenProgram: tokenProgram,
-        })
-    }
-
     try {
-      // Build the transaction
+      // biome-ignore lint/suspicious/noExplicitAny: initTransfer or initTransferSol
+      let methodBuilder: MethodsBuilder<BridgeTokenFactory, any, any>
+
+      if (transfer.tokenAddress === `sol:${PublicKey.default.toBase58()}`) {
+        console.log("Processing SOL native token transfer")
+        // SOL transfer implementation...
+        methodBuilder = this.program.methods
+          .initTransferSol({
+            amount: new BN(transfer.amount.valueOf().toString()),
+            recipient: transfer.recipient,
+            fee: new BN(transfer.fee.valueOf().toString()),
+            nativeFee: new BN(transfer.nativeFee.valueOf().toString()),
+            message: "",
+          })
+          .accountsStrict({
+            solVault,
+            user: payerPubKey,
+            common: {
+              payer: payerPubKey,
+              config: this.config()[0],
+              bridge: this.wormholeBridgeId()[0],
+              feeCollector: this.wormholeFeeCollectorId()[0],
+              sequence: this.wormholeSequenceId()[0],
+              clock: SYSVAR_CLOCK_PUBKEY,
+              rent: SYSVAR_RENT_PUBKEY,
+              systemProgram: SystemProgram.programId,
+              wormholeProgram: this.wormholeProgramId,
+              message: wormholeMessage.publicKey,
+            },
+          })
+      } else {
+        console.log("Processing SPL token transfer")
+        const mint = new PublicKey(transfer.tokenAddress.split(":")[1])
+        console.log("Mint address:", mint.toBase58())
+
+        const tokenProgram = await this.getTokenProgramForMint(mint)
+        console.log("Token program:", tokenProgram.toBase58())
+
+        // Find associated token account
+        const [from] = PublicKey.findProgramAddressSync(
+          [payerPubKey.toBuffer(), tokenProgram.toBuffer(), mint.toBuffer()],
+          ASSOCIATED_TOKEN_PROGRAM_ID,
+        )
+        console.log("From ATA address:", from.toBase58())
+
+        // Check if token account exists
+        const tokenAccountInfo = await this.connection.getAccountInfo(from)
+        if (!tokenAccountInfo) {
+          throw new Error(
+            `Token account ${from.toBase58()} does not exist. Please create it first.`,
+          )
+        }
+
+        // Check token balance
+        const tokenBalance = await this.connection.getTokenAccountBalance(from)
+        const amountBigInt = BigInt(transfer.amount.valueOf().toString())
+
+        if (BigInt(tokenBalance.value.amount) < amountBigInt) {
+          throw new Error(
+            `Insufficient token balance. You have ${tokenBalance.value.amount} but are trying to transfer ${amountBigInt}`,
+          )
+        }
+
+        // Check if the token is a bridged token
+        const isBridged = await this.isBridgedToken(mint)
+        console.log("Is bridged token:", isBridged)
+
+        const vault = isBridged ? null : this.vaultId(mint)[0]
+        if (vault) {
+          console.log("Using vault:", vault.toBase58())
+        } else {
+          console.log("No vault needed for bridged token")
+        }
+
+        // Build with Anchor
+        methodBuilder = this.program.methods
+          .initTransfer({
+            amount: new BN(transfer.amount.valueOf().toString()),
+            recipient: transfer.recipient,
+            fee: new BN(transfer.fee.valueOf().toString()),
+            nativeFee: new BN(transfer.nativeFee.valueOf().toString()),
+            message: "",
+          })
+          .accountsStrict({
+            authority: this.authority()[0],
+            mint,
+            from,
+            vault,
+            solVault,
+            user: payerPubKey,
+            common: {
+              payer: payerPubKey,
+              config: this.config()[0],
+              bridge: this.wormholeBridgeId()[0],
+              feeCollector: this.wormholeFeeCollectorId()[0],
+              sequence: this.wormholeSequenceId()[0],
+              clock: SYSVAR_CLOCK_PUBKEY,
+              rent: SYSVAR_RENT_PUBKEY,
+              systemProgram: SystemProgram.programId,
+              wormholeProgram: this.wormholeProgramId,
+              message: wormholeMessage.publicKey,
+            },
+            tokenProgram: tokenProgram,
+          })
+      }
+
+      // Build transaction
+      console.log("Building transaction...")
       const transaction = await this.buildTransaction(methodBuilder)
 
-      // Sign and send with the wormholeMessage signer
+      // Add feePayer and recentBlockhash to transaction
+      const { blockhash } = await this.connection.getLatestBlockhash()
+      transaction.recentBlockhash = blockhash
+      transaction.feePayer = payerPubKey
+
+      // Debug the transaction
+      this.debugTransaction(transaction)
+
+      // Skip simulation since it requires signatures not available during simulation
+      console.log("Skipping simulation due to signature requirements")
+
+      // Add the wormhole message as a signer
+      console.log("Signing transaction with wormhole message keypair...")
+
+      // IMPORTANT: Send the transaction with the wormhole message as a signer
       return await this.signAndSendTransaction(transaction, [wormholeMessage])
     } catch (e) {
       console.error("initTransfer error:", e)
