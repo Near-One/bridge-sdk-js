@@ -153,47 +153,58 @@ export class SolanaBridgeClient {
   /**
    * Uses wallet adapter to sign and send a transaction
    * @param transaction The transaction to sign and send
+   * @param signers Additional signers to include (like generated message keypairs)
    * @returns Promise resolving to transaction signature
    */
-  private async signAndSendTransaction(transaction: Transaction): Promise<string> {
-    if (!this.wallet.connected) {
+  private async signAndSendTransaction(
+    transaction: Transaction,
+    signers: Keypair[] = [],
+  ): Promise<string> {
+    if (!this.wallet.connected || !this.wallet.publicKey) {
       throw new Error("Wallet not connected")
     }
 
     try {
+      // Set the feePayer to the wallet's public key
+      transaction.feePayer = this.wallet.publicKey
+
+      // Get the latest blockhash
+      const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash()
+      transaction.recentBlockhash = blockhash
+
+      // Partially sign with any additional signers (like wormhole message)
+      if (signers.length > 0) {
+        transaction.partialSign(...signers)
+      }
+
       // Use the wallet adapter's sendTransaction method
       const signature = await this.wallet.sendTransaction(transaction, this.connection)
 
       // Wait for confirmation
-      await this.connection.confirmTransaction(signature)
+      await this.connection.confirmTransaction({
+        blockhash,
+        lastValidBlockHeight,
+        signature,
+      })
 
       return signature
     } catch (error) {
+      console.error("Transaction error:", error)
       throw new Error(`Failed to sign and send transaction: ${error}`)
     }
   }
 
   /**
-   * Builds transaction using Anchor Program methods and returns it without signing
+   * Builds transaction using Anchor Program methods
    * @param methodBuilder The Anchor method builder
-   * @param additionalSigners Additional signers to add
    * @returns Promise resolving to Transaction object
    */
   private async buildTransaction(
     // biome-ignore lint/suspicious/noExplicitAny: Arbitrary types
     methodBuilder: MethodsBuilder<BridgeTokenFactory, any, any>,
-    additionalSigners: Keypair[] = [],
   ): Promise<Transaction> {
-    const tx = await methodBuilder.transaction()
-
-    tx.recentBlockhash = (await this.connection.getLatestBlockhash()).blockhash
-    // Add additional signers' signatures if needed for transaction simulation
-    if (additionalSigners.length > 0) {
-      for (const signer of additionalSigners) {
-        tx.sign(signer)
-      }
-    }
-    return tx
+    // We don't add signers here - we'll do that in signAndSendTransaction
+    return await methodBuilder.transaction()
   }
 
   /**
@@ -236,12 +247,13 @@ export class SolanaBridgeClient {
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       })
 
-      // Convert to transaction
-      const transaction = await this.buildTransaction(methodBuilder, [wormholeMessage])
+      // Build the transaction
+      const transaction = await this.buildTransaction(methodBuilder)
 
       // Send to wallet for signing and submission
-      return await this.signAndSendTransaction(transaction)
+      return await this.signAndSendTransaction(transaction, [wormholeMessage])
     } catch (e) {
+      console.error("logMetadata error:", e)
       throw new Error(`Failed to log metadata: ${e}`)
     }
   }
@@ -292,10 +304,10 @@ export class SolanaBridgeClient {
         })
 
       // Convert to transaction
-      const transaction = await this.buildTransaction(methodBuilder, [wormholeMessage])
+      const transaction = await this.buildTransaction(methodBuilder)
 
       // Send to wallet for signing and submission
-      const txHash = await this.signAndSendTransaction(transaction)
+      const txHash = await this.signAndSendTransaction(transaction, [wormholeMessage])
 
       return {
         txHash,
@@ -311,9 +323,7 @@ export class SolanaBridgeClient {
    * This transaction generates a proof that is subsequently used to mint/unlock
    * corresponding tokens on the destination chain.
    *
-   * @param token - Omni address of the SPL token to transfer
-   * @param recipient - Recipient's Omni address on the destination chain where tokens will be minted
-   * @param amount - Amount of the tokens to transfer
+   * @param transfer - The transfer details
    * @throws {Error} If token address is not on Solana
    * @returns Promise resolving to transaction hash
    */
@@ -323,10 +333,11 @@ export class SolanaBridgeClient {
     }
     const wormholeMessage = Keypair.generate()
 
-    const payerPubKey = this.program.provider.publicKey
-    if (!payerPubKey) {
-      throw new Error("Payer is not configured")
+    if (!this.wallet.publicKey) {
+      throw new Error("Wallet is not connected")
     }
+
+    const payerPubKey = this.wallet.publicKey
     const [solVault] = this.solVaultId()
 
     // biome-ignore lint/suspicious/noExplicitAny: initTransfer or initTransferSol
@@ -397,12 +408,13 @@ export class SolanaBridgeClient {
     }
 
     try {
-      // Convert to transaction
-      const transaction = await this.buildTransaction(methodBuilder, [wormholeMessage])
+      // Build the transaction
+      const transaction = await this.buildTransaction(methodBuilder)
 
-      // Send to wallet for signing and submission
-      return await this.signAndSendTransaction(transaction)
+      // Sign and send with the wormholeMessage signer
+      return await this.signAndSendTransaction(transaction, [wormholeMessage])
     } catch (e) {
+      console.error("initTransfer error:", e)
       throw new Error(`Failed to init transfer: ${e}`)
     }
   }
@@ -511,10 +523,10 @@ export class SolanaBridgeClient {
         })
 
       // Convert to transaction
-      const transaction = await this.buildTransaction(methodBuilder, [wormholeMessage])
+      const transaction = await this.buildTransaction(methodBuilder)
 
       // Send to wallet for signing and submission
-      return await this.signAndSendTransaction(transaction)
+      return await this.signAndSendTransaction(transaction, [wormholeMessage])
     } catch (e) {
       throw new Error(`Failed to finalize transfer: ${e}`)
     }
