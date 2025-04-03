@@ -43,23 +43,43 @@ const safeBigInt = (nullable = false) => {
   return transformer
 }
 
-const TransactionSchema = z.object({
+// Updated based on OpenAPI spec
+const NearReceiptTransactionSchema = z.object({
   block_height: z.number().int().min(0),
   block_timestamp_seconds: z.number().int().min(0),
   transaction_hash: z.string(),
 })
 
-const SolanaTransactionSchema = z.object({
-  slot: z.number().int().min(0),
+const EVMLogTransactionSchema = z.object({
+  block_height: z.number().int().min(0),
   block_timestamp_seconds: z.number().int().min(0),
-  signature: z.string(),
+  transaction_hash: z.string(),
 })
 
-const TransactionWrapperSchema = z.object({
-  NearReceipt: TransactionSchema.optional(),
-  EVMLog: TransactionSchema.optional(),
-  Solana: SolanaTransactionSchema.optional(),
+// Updated to make all fields optional since we saw an empty Solana object in the example
+const SolanaTransactionSchema = z.object({
+  slot: z.number().int().min(0).optional(),
+  block_timestamp_seconds: z.number().int().min(0).optional(),
+  signature: z.string().optional(),
 })
+
+// Update to match the Transaction schema in OpenAPI spec - one of these fields will be present
+const TransactionSchema = z
+  .object({
+    NearReceipt: NearReceiptTransactionSchema.optional(),
+    EVMLog: EVMLogTransactionSchema.optional(),
+    Solana: SolanaTransactionSchema.optional(),
+  })
+  .refine(
+    (data) => {
+      // Ensure exactly one of the fields is defined
+      const definedFields = [data.NearReceipt, data.EVMLog, data.Solana].filter(
+        (field) => field !== undefined,
+      )
+      return definedFields.length === 1
+    },
+    { message: "Exactly one transaction type must be present" },
+  )
 
 const TransferMessageSchema = z.object({
   token: z.string(),
@@ -70,7 +90,7 @@ const TransferMessageSchema = z.object({
     fee: safeBigInt(),
     native_fee: safeBigInt(),
   }),
-  msg: z.string(),
+  msg: z.string().nullable(),
 })
 
 const TransfersQuerySchema = z
@@ -83,7 +103,6 @@ const TransfersQuerySchema = z
   .refine((data) => data.sender || data.transaction_id, {
     message: "Either sender or transactionId must be provided",
   })
-
 export type TransfersQuery = Partial<z.input<typeof TransfersQuerySchema>>
 
 const TransferSchema = z.object({
@@ -91,20 +110,28 @@ const TransferSchema = z.object({
     origin_chain: ChainSchema,
     origin_nonce: z.number().int().min(0),
   }),
-  initialized: TransactionWrapperSchema.nullable(),
-  finalised_on_near: TransactionWrapperSchema.nullable(),
-  finalised: TransactionWrapperSchema.nullable(),
+  initialized: z.union([z.null(), TransactionSchema]),
+  signed: z.union([z.null(), TransactionSchema]),
+  finalised_on_near: z.union([z.null(), TransactionSchema]),
+  finalised: z.union([z.null(), TransactionSchema]),
+  claimed: z.union([z.null(), TransactionSchema]),
   transfer_message: TransferMessageSchema,
-  updated_fee: z.array(TransactionWrapperSchema),
+  updated_fee: z.array(TransactionSchema),
 })
 
 const ApiFeeResponseSchema = z.object({
   native_token_fee: safeBigInt(true),
-  transferred_token_fee: safeBigInt(true),
+  transferred_token_fee: safeBigInt(true).nullable(),
   usd_fee: z.number(),
 })
 
-const TransferStatusSchema = z.enum(["Initialized", "FinalisedOnNear", "Finalised"])
+const TransferStatusSchema = z.enum([
+  "Initialized",
+  "Signed",
+  "FinalisedOnNear",
+  "Finalised",
+  "Claimed",
+])
 
 export type Transfer = z.infer<typeof TransferSchema>
 export type ApiFeeResponse = z.infer<typeof ApiFeeResponseSchema>
@@ -183,7 +210,8 @@ export class OmniBridgeAPI {
   }
 
   async getTransfer(originChain: Chain, originNonce: number): Promise<Transfer> {
-    const url = this.buildUrl("/api/v1/transfers/transfer/", {
+    const url = this.buildUrl("/api/v1/transfers/transfer", {
+      // Removed trailing slash
       origin_chain: originChain,
       origin_nonce: originNonce.toString(),
     })
@@ -201,7 +229,7 @@ export class OmniBridgeAPI {
     if (params.sender) urlParams.sender = params.sender
     if (params.transaction_id) urlParams.transaction_id = params.transaction_id
 
-    const url = this.buildUrl("/api/v1/transfers/", urlParams)
+    const url = this.buildUrl("/api/v1/transfers", urlParams)
     return this.fetchWithValidation(url, z.array(TransferSchema))
   }
 }

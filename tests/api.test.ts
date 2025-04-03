@@ -21,8 +21,10 @@ const mockTransfer = {
       transaction_hash: "0x123...",
     },
   },
+  signed: null,
   finalised_on_near: null,
   finalised: null,
+  claimed: null,
   transfer_message: {
     token: "token.near",
     amount: 1000000,
@@ -64,13 +66,13 @@ const restHandlers = [
   http.get(`${BASE_URL}/api/v1/transfers/transfer/status`, () => {
     return HttpResponse.json("Initialized")
   }),
-  http.get(`${BASE_URL}/api/v1/transfers/transfer/`, () => {
+  http.get(`${BASE_URL}/api/v1/transfers/transfer`, () => {
     return HttpResponse.json(mockTransfer)
   }),
   http.get(`${BASE_URL}/api/v1/transfer-fee`, () => {
     return HttpResponse.json(mockFee)
   }),
-  http.get(`${BASE_URL}/api/v1/transfers/`, () => {
+  http.get(`${BASE_URL}/api/v1/transfers`, () => {
     return HttpResponse.json([mockTransfer])
   }),
 ]
