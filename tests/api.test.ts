@@ -66,13 +66,13 @@ const restHandlers = [
   http.get(`${BASE_URL}/api/v1/transfers/transfer/status`, () => {
     return HttpResponse.json("Initialized")
   }),
-  http.get(`${BASE_URL}/api/v1/transfers/transfer/`, () => {
+  http.get(`${BASE_URL}/api/v1/transfers/transfer`, () => {
     return HttpResponse.json(mockTransfer)
   }),
   http.get(`${BASE_URL}/api/v1/transfer-fee`, () => {
     return HttpResponse.json(mockFee)
   }),
-  http.get(`${BASE_URL}/api/v1/transfers/`, () => {
+  http.get(`${BASE_URL}/api/v1/transfers`, () => {
     return HttpResponse.json([mockTransfer])
   }),
 ]
