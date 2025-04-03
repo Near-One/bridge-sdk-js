@@ -111,22 +111,20 @@ const TransferSchema = z.object({
     origin_nonce: z.number().int().min(0),
   }),
   initialized: z.union([z.null(), TransactionSchema]),
-  signed: z.union([z.null(), TransactionSchema]), // Added signed status
+  signed: z.union([z.null(), TransactionSchema]),
   finalised_on_near: z.union([z.null(), TransactionSchema]),
   finalised: z.union([z.null(), TransactionSchema]),
-  claimed: z.union([z.null(), TransactionSchema]), // Added claimed status
+  claimed: z.union([z.null(), TransactionSchema]),
   transfer_message: TransferMessageSchema,
-  updated_fee: z.array(TransactionSchema), // Changed to array of TransactionSchema
+  updated_fee: z.array(TransactionSchema),
 })
 
-// Updated to match the transfer-fee endpoint response
 const ApiFeeResponseSchema = z.object({
-  native_token_fee: safeBigInt(true), // Updated from safeBigInt to string
-  transferred_token_fee: safeBigInt(true).nullable(), // Updated to be nullable
+  native_token_fee: safeBigInt(true),
+  transferred_token_fee: safeBigInt(true).nullable(),
   usd_fee: z.number(),
 })
 
-// Updated transfer status enum based on OpenAPI spec
 const TransferStatusSchema = z.enum([
   "Initialized",
   "Signed",
@@ -231,7 +229,7 @@ export class OmniBridgeAPI {
     if (params.sender) urlParams.sender = params.sender
     if (params.transaction_id) urlParams.transaction_id = params.transaction_id
 
-    const url = this.buildUrl("/api/v1/transfers", urlParams) // Removed trailing slash
+    const url = this.buildUrl("/api/v1/transfers", urlParams)
     return this.fetchWithValidation(url, z.array(TransferSchema))
   }
 }

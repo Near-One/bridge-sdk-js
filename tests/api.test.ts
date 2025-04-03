@@ -21,8 +21,10 @@ const mockTransfer = {
       transaction_hash: "0x123...",
     },
   },
+  signed: null,
   finalised_on_near: null,
   finalised: null,
+  claimed: null,
   transfer_message: {
     token: "token.near",
     amount: 1000000,
