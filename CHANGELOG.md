@@ -1,5 +1,16 @@
 # omni-bridge-sdk
 
+## 0.10.2
+
+### Patch Changes
+
+- f8370d3: chore(deps-dev): bump @types/node from 22.13.8 to 22.13.9
+- e090c22: chore(deps): bump @solana/spl-token from 0.4.12 to 0.4.13
+- f235b34: chore(deps): bump @near-js/client from 0.0.2 to 0.0.3
+- 061c1b4: chore(deps): bump @wormhole-foundation/sdk from 1.11.0 to 1.13.1
+- 50e0926: fix(api): Match new API schema
+- 7409fdf: chore: Updated block header for EVM proof
+
 ## 0.10.1
 
 ### Patch Changes
