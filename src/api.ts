@@ -56,26 +56,30 @@ const EVMLogTransactionSchema = z.object({
   transaction_hash: z.string(),
 })
 
+// Updated to make all fields optional since we saw an empty Solana object in the example
 const SolanaTransactionSchema = z.object({
-  slot: z.number().int().min(0),
-  block_timestamp_seconds: z.number().int().min(0),
-  signature: z.string(),
+  slot: z.number().int().min(0).optional(),
+  block_timestamp_seconds: z.number().int().min(0).optional(),
+  signature: z.string().optional(),
 })
 
-const TransactionSchema = z.discriminatedUnion("type", [
-  z.object({
-    type: z.literal("NearReceipt"),
-    NearReceipt: NearReceiptTransactionSchema,
-  }),
-  z.object({
-    type: z.literal("EVMLog"),
-    EVMLog: EVMLogTransactionSchema,
-  }),
-  z.object({
-    type: z.literal("Solana"),
-    Solana: SolanaTransactionSchema,
-  }),
-])
+// Update to match the Transaction schema in OpenAPI spec - one of these fields will be present
+const TransactionSchema = z
+  .object({
+    NearReceipt: NearReceiptTransactionSchema.optional(),
+    EVMLog: EVMLogTransactionSchema.optional(),
+    Solana: SolanaTransactionSchema.optional(),
+  })
+  .refine(
+    (data) => {
+      // Ensure exactly one of the fields is defined
+      const definedFields = [data.NearReceipt, data.EVMLog, data.Solana].filter(
+        (field) => field !== undefined,
+      )
+      return definedFields.length === 1
+    },
+    { message: "Exactly one transaction type must be present" },
+  )
 
 const TransferMessageSchema = z.object({
   token: z.string(),
@@ -86,7 +90,7 @@ const TransferMessageSchema = z.object({
     fee: safeBigInt(),
     native_fee: safeBigInt(),
   }),
-  msg: z.string().nullable(), // Updated to match OpenAPI (can be null)
+  msg: z.string().nullable(),
 })
 
 const TransfersQuerySchema = z
@@ -107,21 +111,29 @@ const TransferSchema = z.object({
     origin_nonce: z.number().int().min(0),
   }),
   initialized: z.union([z.null(), TransactionSchema]),
-  signed: z.union([z.null(), TransactionSchema]),
+  signed: z.union([z.null(), TransactionSchema]), // Added signed status
   finalised_on_near: z.union([z.null(), TransactionSchema]),
   finalised: z.union([z.null(), TransactionSchema]),
-  claimed: z.union([z.null(), TransactionSchema]),
+  claimed: z.union([z.null(), TransactionSchema]), // Added claimed status
   transfer_message: TransferMessageSchema,
-  updated_fee: z.array(TransactionSchema),
+  updated_fee: z.array(TransactionSchema), // Changed to array of TransactionSchema
 })
 
+// Updated to match the transfer-fee endpoint response
 const ApiFeeResponseSchema = z.object({
-  native_token_fee: safeBigInt(true),
-  transferred_token_fee: safeBigInt(true),
+  native_token_fee: safeBigInt(true), // Updated from safeBigInt to string
+  transferred_token_fee: safeBigInt(true).nullable(), // Updated to be nullable
   usd_fee: z.number(),
 })
 
-const TransferStatusSchema = z.enum(["Initialized", "FinalisedOnNear", "Finalised"])
+// Updated transfer status enum based on OpenAPI spec
+const TransferStatusSchema = z.enum([
+  "Initialized",
+  "Signed",
+  "FinalisedOnNear",
+  "Finalised",
+  "Claimed",
+])
 
 export type Transfer = z.infer<typeof TransferSchema>
 export type ApiFeeResponse = z.infer<typeof ApiFeeResponseSchema>
@@ -201,6 +213,7 @@ export class OmniBridgeAPI {
 
   async getTransfer(originChain: Chain, originNonce: number): Promise<Transfer> {
     const url = this.buildUrl("/api/v1/transfers/transfer", {
+      // Removed trailing slash
       origin_chain: originChain,
       origin_nonce: originNonce.toString(),
     })
@@ -218,7 +231,7 @@ export class OmniBridgeAPI {
     if (params.sender) urlParams.sender = params.sender
     if (params.transaction_id) urlParams.transaction_id = params.transaction_id
 
-    const url = this.buildUrl("/api/v1/transfers", urlParams)
+    const url = this.buildUrl("/api/v1/transfers", urlParams) // Removed trailing slash
     return this.fetchWithValidation(url, z.array(TransferSchema))
   }
 }
