@@ -43,7 +43,14 @@ const safeBigInt = (nullable = false) => {
   return transformer
 }
 
-const TransactionSchema = z.object({
+// Updated based on OpenAPI spec
+const NearReceiptTransactionSchema = z.object({
+  block_height: z.number().int().min(0),
+  block_timestamp_seconds: z.number().int().min(0),
+  transaction_hash: z.string(),
+})
+
+const EVMLogTransactionSchema = z.object({
   block_height: z.number().int().min(0),
   block_timestamp_seconds: z.number().int().min(0),
   transaction_hash: z.string(),
@@ -55,11 +62,20 @@ const SolanaTransactionSchema = z.object({
   signature: z.string(),
 })
 
-const TransactionWrapperSchema = z.object({
-  NearReceipt: TransactionSchema.optional(),
-  EVMLog: TransactionSchema.optional(),
-  Solana: SolanaTransactionSchema.optional(),
-})
+const TransactionSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("NearReceipt"),
+    NearReceipt: NearReceiptTransactionSchema,
+  }),
+  z.object({
+    type: z.literal("EVMLog"),
+    EVMLog: EVMLogTransactionSchema,
+  }),
+  z.object({
+    type: z.literal("Solana"),
+    Solana: SolanaTransactionSchema,
+  }),
+])
 
 const TransferMessageSchema = z.object({
   token: z.string(),
@@ -70,7 +86,7 @@ const TransferMessageSchema = z.object({
     fee: safeBigInt(),
     native_fee: safeBigInt(),
   }),
-  msg: z.string(),
+  msg: z.string().nullable(), // Updated to match OpenAPI (can be null)
 })
 
 const TransfersQuerySchema = z
@@ -83,7 +99,6 @@ const TransfersQuerySchema = z
   .refine((data) => data.sender || data.transaction_id, {
     message: "Either sender or transactionId must be provided",
   })
-
 export type TransfersQuery = Partial<z.input<typeof TransfersQuerySchema>>
 
 const TransferSchema = z.object({
@@ -91,11 +106,13 @@ const TransferSchema = z.object({
     origin_chain: ChainSchema,
     origin_nonce: z.number().int().min(0),
   }),
-  initialized: TransactionWrapperSchema.nullable(),
-  finalised_on_near: TransactionWrapperSchema.nullable(),
-  finalised: TransactionWrapperSchema.nullable(),
+  initialized: z.union([z.null(), TransactionSchema]),
+  signed: z.union([z.null(), TransactionSchema]),
+  finalised_on_near: z.union([z.null(), TransactionSchema]),
+  finalised: z.union([z.null(), TransactionSchema]),
+  claimed: z.union([z.null(), TransactionSchema]),
   transfer_message: TransferMessageSchema,
-  updated_fee: z.array(TransactionWrapperSchema),
+  updated_fee: z.array(TransactionSchema),
 })
 
 const ApiFeeResponseSchema = z.object({
@@ -183,7 +200,7 @@ export class OmniBridgeAPI {
   }
 
   async getTransfer(originChain: Chain, originNonce: number): Promise<Transfer> {
-    const url = this.buildUrl("/api/v1/transfers/transfer/", {
+    const url = this.buildUrl("/api/v1/transfers/transfer", {
       origin_chain: originChain,
       origin_nonce: originNonce.toString(),
     })
@@ -201,7 +218,7 @@ export class OmniBridgeAPI {
     if (params.sender) urlParams.sender = params.sender
     if (params.transaction_id) urlParams.transaction_id = params.transaction_id
 
-    const url = this.buildUrl("/api/v1/transfers/", urlParams)
+    const url = this.buildUrl("/api/v1/transfers", urlParams)
     return this.fetchWithValidation(url, z.array(TransferSchema))
   }
 }
