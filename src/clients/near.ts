@@ -47,12 +47,9 @@ const GAS = {
  * @internal
  */
 const DEPOSIT = {
-  LOG_METADATA: BigInt(2e23), // 0.2 NEAR
-  DEPLOY_TOKEN: BigInt(4e24), // 4 NEAR
-  BIND_TOKEN: BigInt(2e23), // 0.2 NEAR
-  SIGN_TRANSFER: BigInt(5e23), // 0.5 NEAR
+  LOG_METADATA: BigInt(1), // 1 yoctoNEAR
+  SIGN_TRANSFER: BigInt(1), // 1 yoctoNEAR
   INIT_TRANSFER: BigInt(1), // 1 yoctoNEAR
-  FIN_TRANSFER: BigInt(1), // 1 yoctoNEAR
 } as const
 
 /**
@@ -183,12 +180,19 @@ export class NearBridgeClient {
     }
     const serializedArgs = DeployTokenArgsSchema.serialize(args)
 
+    // Retrieve required deposit dynamically for deploy_token
+    const deployDepositStr = await this.wallet.viewFunction({
+      contractId: this.lockerAddress,
+      methodName: "required_balance_for_deploy_token",
+    })
+    const deployDeposit = BigInt(deployDepositStr)
+
     const tx = await this.wallet.functionCall({
       contractId: this.lockerAddress,
       methodName: "deploy_token",
       args: serializedArgs,
       gas: GAS.DEPLOY_TOKEN,
-      attachedDeposit: DEPOSIT.DEPLOY_TOKEN,
+      attachedDeposit: deployDeposit,
     })
 
     return tx.transaction.hash
@@ -244,12 +248,20 @@ export class NearBridgeClient {
     }
     const serializedArgs = BindTokenArgsSchema.serialize(args)
 
+    // Retrieve required deposit dynamically for bind_token
+    const bindDepositStr = await this.wallet.viewFunction({
+      contractId: this.lockerAddress,
+      methodName: "required_balance_for_bind_token",
+      args: { account_id: this.wallet.accountId },
+    })
+    const bindDeposit = BigInt(bindDepositStr)
+
     const tx = await this.wallet.functionCall({
       contractId: this.lockerAddress,
       methodName: "bind_token",
       args: serializedArgs,
       gas: GAS.BIND_TOKEN,
-      attachedDeposit: DEPOSIT.BIND_TOKEN,
+      attachedDeposit: bindDeposit,
     })
 
     return tx.transaction.hash
@@ -446,12 +458,20 @@ export class NearBridgeClient {
     }
     const serializedArgs = FinTransferArgsSchema.serialize(args)
 
+    // Retrieve required deposit dynamically for fin_transfer
+    const finDepositStr = await this.wallet.viewFunction({
+      contractId: this.lockerAddress,
+      methodName: "required_balance_for_fin_transfer",
+      args: { account_id: this.wallet.accountId },
+    })
+    const finDeposit = BigInt(finDepositStr)
+
     const tx = await this.wallet.functionCall({
       contractId: this.lockerAddress,
       methodName: "fin_transfer",
       args: serializedArgs,
       gas: GAS.FIN_TRANSFER,
-      attachedDeposit: DEPOSIT.FIN_TRANSFER,
+      attachedDeposit: finDeposit,
     })
     return tx.transaction.hash
   }
