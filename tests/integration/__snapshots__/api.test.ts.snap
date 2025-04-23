@@ -1,6 +1,38 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`OmniBridgeAPI Integration Tests > findOmniTransfers > should fetch transfers for a specific transaction 1`] = `[]`;
+exports[`OmniBridgeAPI Integration Tests > findOmniTransfers > should fetch transfers for a specific transaction 1`] = `
+[
+  {
+    "claimed": null,
+    "finalised": null,
+    "finalised_on_near": null,
+    "id": {
+      "origin_chain": "Near",
+      "origin_nonce": 1,
+    },
+    "initialized": {
+      "NearReceipt": {
+        "block_height": 137141103,
+        "block_timestamp_seconds": 1736635744,
+        "transaction_hash": "DQM4d3B6Jxr4qnvGay4bpZ7aTQQogpUgQxVLAVWk5doF",
+      },
+    },
+    "signed": null,
+    "transfer_message": {
+      "amount": 10000n,
+      "fee": {
+        "fee": 20n,
+        "native_fee": 10n,
+      },
+      "msg": "",
+      "recipient": "base:0xcf6462b9fce5af3e6c660c83453eca18ff468773",
+      "sender": "near:frolik.near",
+      "token": "near:wrap.near",
+    },
+    "updated_fee": [],
+  },
+]
+`;
 
 exports[`OmniBridgeAPI Integration Tests > getTransfer > should fetch transfer details for a known transfer 1`] = `
 {
