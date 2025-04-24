@@ -267,7 +267,6 @@ export class NearWalletSelectorBridgeClient {
       contractId: this.lockerAddress,
       methodName: "required_balance_for_bind_token",
     })
-    const bindDeposit = BigInt(bindDepositStr)
 
     const outcome = await wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
@@ -278,7 +277,7 @@ export class NearWalletSelectorBridgeClient {
             methodName: "bind_token",
             args: serializedArgs,
             gas: GAS.BIND_TOKEN.toString(),
-            deposit: bindDeposit.toString(),
+            deposit: bindDepositStr,
           },
         },
       ],
@@ -567,7 +566,6 @@ export class NearWalletSelectorBridgeClient {
       contractId: this.lockerAddress,
       methodName: "required_balance_for_fin_transfer",
     })
-    const finDeposit = BigInt(finDepositStr)
 
     const outcome = await wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
@@ -578,7 +576,7 @@ export class NearWalletSelectorBridgeClient {
             methodName: "finalize_transfer",
             args: serializedArgs,
             gas: GAS.FIN_TRANSFER.toString(),
-            deposit: finDeposit.toString(),
+            deposit: finDepositStr,
           },
         },
       ],
