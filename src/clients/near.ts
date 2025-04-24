@@ -252,7 +252,6 @@ export class NearBridgeClient {
     const bindDepositStr = await this.wallet.viewFunction({
       contractId: this.lockerAddress,
       methodName: "required_balance_for_bind_token",
-      args: { account_id: this.wallet.accountId },
     })
     const bindDeposit = BigInt(bindDepositStr)
 
@@ -462,7 +461,6 @@ export class NearBridgeClient {
     const finDepositStr = await this.wallet.viewFunction({
       contractId: this.lockerAddress,
       methodName: "required_balance_for_fin_transfer",
-      args: { account_id: this.wallet.accountId },
     })
     const finDeposit = BigInt(finDepositStr)
 
@@ -497,16 +495,10 @@ export class NearBridgeClient {
           this.wallet.viewFunction({
             contractId: this.lockerAddress,
             methodName: "required_balance_for_fin_transfer",
-            args: {
-              account_id: this.wallet.accountId,
-            },
           }),
           this.wallet.viewFunction({
             contractId: this.lockerAddress,
             methodName: "required_balance_for_bind_token",
-            args: {
-              account_id: this.wallet.accountId,
-            },
           }),
           this.wallet.viewFunction({
             contractId: this.lockerAddress,

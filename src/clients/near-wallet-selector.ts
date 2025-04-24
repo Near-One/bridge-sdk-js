@@ -187,7 +187,6 @@ export class NearWalletSelectorBridgeClient {
       contractId: this.lockerAddress,
       methodName: "required_balance_for_deploy_token",
     })
-    const deployDeposit = BigInt(deployDepositStr)
 
     const wallet = await this.selector.wallet()
     const outcome = await wallet.signAndSendTransaction({
@@ -199,7 +198,7 @@ export class NearWalletSelectorBridgeClient {
             methodName: "deploy_token",
             args: serializedArgs,
             gas: GAS.DEPLOY_TOKEN.toString(),
-            deposit: deployDeposit.toString(),
+            deposit: deployDepositStr,
           },
         },
       ],
@@ -262,14 +261,11 @@ export class NearWalletSelectorBridgeClient {
     const serializedArgs = BindTokenArgsSchema.serialize(args)
 
     const wallet = await this.selector.wallet()
-    const accounts = await wallet.getAccounts()
-    const accountId = accounts[0].accountId
 
     // Retrieve required deposit dynamically for bind_token
     const bindDepositStr = await this.viewFunction({
       contractId: this.lockerAddress,
       methodName: "required_balance_for_bind_token",
-      args: { account_id: accountId },
     })
     const bindDeposit = BigInt(bindDepositStr)
 
@@ -565,14 +561,11 @@ export class NearWalletSelectorBridgeClient {
     const serializedArgs = FinTransferArgsSchema.serialize(args)
 
     const wallet = await this.selector.wallet()
-    const accounts = await wallet.getAccounts()
-    const accountId = accounts[0].accountId
 
     // Retrieve required deposit dynamically for fin_transfer
     const finDepositStr = await this.viewFunction({
       contractId: this.lockerAddress,
       methodName: "required_balance_for_fin_transfer",
-      args: { account_id: accountId },
     })
     const finDeposit = BigInt(finDepositStr)
 
@@ -628,16 +621,10 @@ export class NearWalletSelectorBridgeClient {
           this.viewFunction({
             contractId: this.lockerAddress,
             methodName: "required_balance_for_fin_transfer",
-            args: {
-              account_id: accountId,
-            },
           }),
           this.viewFunction({
             contractId: this.lockerAddress,
             methodName: "required_balance_for_bind_token",
-            args: {
-              account_id: accountId,
-            },
           }),
           this.viewFunction({
             contractId: this.lockerAddress,
