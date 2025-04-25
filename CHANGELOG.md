@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.10.3
+
+### Patch Changes
+
+- ff38df2: fix(near): Dynamic deposit amounts
+
 ## 0.10.2
 
 ### Patch Changes
