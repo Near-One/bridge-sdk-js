@@ -13,6 +13,7 @@ describe("NearBridgeClient", () => {
   let client: NearBridgeClient
   const mockLockerAddress = "test.near"
   const mockTxHash = "mock-tx-hash"
+  const mockViewFunction = "2"
 
   beforeEach(() => {
     // Create mock wallet with functionCall method
@@ -22,6 +23,7 @@ describe("NearBridgeClient", () => {
           hash: mockTxHash,
         },
       }),
+      viewFunction: vi.fn().mockResolvedValue(mockViewFunction),
       connection: {
         networkId: "testnet",
       },
@@ -105,7 +107,7 @@ describe("NearBridgeClient", () => {
             functionCall: expect.objectContaining({
               methodName: "log_metadata",
               gas: BigInt(3e14),
-              deposit: BigInt(2e23),
+              deposit: BigInt(1),
             }),
           }),
         ]),
@@ -177,7 +179,7 @@ describe("NearBridgeClient", () => {
         methodName: "deploy_token",
         args: expect.any(Uint8Array), // We can't easily check the exact serialized value
         gas: BigInt(1.2e14),
-        attachedDeposit: BigInt(4e24),
+        attachedDeposit: BigInt(2),
       })
       expect(txHash).toBe(mockTxHash)
     })
@@ -204,7 +206,7 @@ describe("NearBridgeClient", () => {
         methodName: "bind_token",
         args: bindTokenArgs,
         gas: BigInt(3e14),
-        attachedDeposit: BigInt(2e23),
+        attachedDeposit: BigInt(2),
       })
       expect(txHash).toBe(mockTxHash)
     })
@@ -259,7 +261,7 @@ describe("NearBridgeClient", () => {
         methodName: "fin_transfer",
         args: expect.any(Uint8Array),
         gas: BigInt(3e14),
-        attachedDeposit: BigInt(1),
+        attachedDeposit: BigInt(2),
       })
       expect(txHash).toBe(mockTxHash)
     })
@@ -279,7 +281,7 @@ describe("NearBridgeClient", () => {
         methodName: "fin_transfer",
         args: expect.any(Uint8Array),
         gas: BigInt(3e14),
-        attachedDeposit: BigInt(1),
+        attachedDeposit: BigInt(2),
       })
       expect(txHash).toBe(mockTxHash)
     })

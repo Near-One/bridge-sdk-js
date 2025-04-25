@@ -48,12 +48,9 @@ const GAS = {
  * @internal
  */
 const DEPOSIT = {
-  LOG_METADATA: BigInt(2e23), // 0.2 NEAR
-  DEPLOY_TOKEN: BigInt(4e24), // 4 NEAR
-  BIND_TOKEN: BigInt(2e23), // 0.2 NEAR
-  SIGN_TRANSFER: BigInt(5e23), // 0.5 NEAR
+  LOG_METADATA: BigInt(1), // 1 yoctoNEAR
+  SIGN_TRANSFER: BigInt(1), // 1 yoctoNEAR
   INIT_TRANSFER: BigInt(1), // 1 yoctoNEAR
-  FIN_TRANSFER: BigInt(1), // 1 yoctoNEAR
 } as const
 
 /**
@@ -185,6 +182,12 @@ export class NearWalletSelectorBridgeClient {
     }
     const serializedArgs = DeployTokenArgsSchema.serialize(args)
 
+    // Retrieve required deposit dynamically for deploy_token
+    const deployDepositStr = await this.viewFunction({
+      contractId: this.lockerAddress,
+      methodName: "required_balance_for_deploy_token",
+    })
+
     const wallet = await this.selector.wallet()
     const outcome = await wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
@@ -195,7 +198,7 @@ export class NearWalletSelectorBridgeClient {
             methodName: "deploy_token",
             args: serializedArgs,
             gas: GAS.DEPLOY_TOKEN.toString(),
-            deposit: DEPOSIT.DEPLOY_TOKEN.toString(),
+            deposit: deployDepositStr,
           },
         },
       ],
@@ -256,7 +259,15 @@ export class NearWalletSelectorBridgeClient {
       prover_args: proverArgsSerialized,
     }
     const serializedArgs = BindTokenArgsSchema.serialize(args)
+
     const wallet = await this.selector.wallet()
+
+    // Retrieve required deposit dynamically for bind_token
+    const bindDepositStr = await this.viewFunction({
+      contractId: this.lockerAddress,
+      methodName: "required_balance_for_bind_token",
+    })
+
     const outcome = await wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
       actions: [
@@ -266,7 +277,7 @@ export class NearWalletSelectorBridgeClient {
             methodName: "bind_token",
             args: serializedArgs,
             gas: GAS.BIND_TOKEN.toString(),
-            deposit: DEPOSIT.BIND_TOKEN.toString(),
+            deposit: bindDepositStr,
           },
         },
       ],
@@ -549,6 +560,13 @@ export class NearWalletSelectorBridgeClient {
     const serializedArgs = FinTransferArgsSchema.serialize(args)
 
     const wallet = await this.selector.wallet()
+
+    // Retrieve required deposit dynamically for fin_transfer
+    const finDepositStr = await this.viewFunction({
+      contractId: this.lockerAddress,
+      methodName: "required_balance_for_fin_transfer",
+    })
+
     const outcome = await wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
       actions: [
@@ -558,7 +576,7 @@ export class NearWalletSelectorBridgeClient {
             methodName: "finalize_transfer",
             args: serializedArgs,
             gas: GAS.FIN_TRANSFER.toString(),
-            deposit: DEPOSIT.FIN_TRANSFER.toString(),
+            deposit: finDepositStr,
           },
         },
       ],
@@ -601,16 +619,10 @@ export class NearWalletSelectorBridgeClient {
           this.viewFunction({
             contractId: this.lockerAddress,
             methodName: "required_balance_for_fin_transfer",
-            args: {
-              account_id: accountId,
-            },
           }),
           this.viewFunction({
             contractId: this.lockerAddress,
             methodName: "required_balance_for_bind_token",
-            args: {
-              account_id: accountId,
-            },
           }),
           this.viewFunction({
             contractId: this.lockerAddress,
