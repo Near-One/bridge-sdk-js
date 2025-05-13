@@ -40,13 +40,15 @@ vi.mock("../src/clients/solana", () => ({
 // Shared mock implementation for getTokenDecimals
 const mockGetTokenDecimals = async (_contract: string, address: string) => {
   if (address.startsWith("near:")) {
-    return { decimals: 24, origin_decimals: 24 }
+    throw new Error(
+      "Token decimals cannot be queried using NEAR addresses. Use the token's foreign chain representation (e.g., eth:0x...) to query decimals.",
+    )
   }
   if (address.startsWith("sol:")) {
-    return { decimals: 9, origin_decimals: 9 }
+    return { decimals: 9, origin_decimals: 24 }
   }
   if (address.startsWith("eth:")) {
-    return { decimals: 18, origin_decimals: 18 }
+    return { decimals: 18, origin_decimals: 24 }
   }
   throw new Error("Unexpected token address")
 }

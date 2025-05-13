@@ -92,6 +92,17 @@ export async function omniTransfer(
     originDecimals = decimals.decimals
   }
 
+  // We're dealing with foreign chain → foreign chain transfer
+  if (
+    getChain(sourceTokenAddress) !== ChainKind.Near &&
+    getChain(destTokenAddress) !== ChainKind.Near
+  ) {
+    const source = await getTokenDecimals(contractId, sourceTokenAddress)
+    const dest = await getTokenDecimals(contractId, destTokenAddress)
+    originDecimals = source.decimals
+    destinationDecimals = dest.decimals
+  }
+
   if (originDecimals === undefined || destinationDecimals === undefined) {
     throw new Error("Failed to get token decimals")
   }
