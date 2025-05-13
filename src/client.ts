@@ -61,25 +61,43 @@ export async function omniTransfer(
     )
   }
 
+  let originDecimals: number | undefined
+  let destinationDecimals: number | undefined
+
   // Get token decimals
   const contractId = addresses.near // Use NEAR contract for decimal verification
-  const sourceDecimals = await getTokenDecimals(contractId, sourceTokenAddress)
-  const destinationDecimals = await getTokenDecimals(contractId, destTokenAddress)
+
+  // If the origin chain is NEAR, just get the token decimals for the destination address
+  // e.g., USDC on NEAR → ETH, get the decimals for `eth:0x...`
+  if (getChain(sourceTokenAddress) === ChainKind.Near) {
+    const decimals = await getTokenDecimals(contractId, destTokenAddress)
+    originDecimals = decimals.origin_decimals
+    destinationDecimals = decimals.decimals
+  }
+
+  // If the destination chain is NEAR, we need to get the decimals from the source token address
+  // e.g., USDC on ETH → NEAR, get the decimals for `eth:0x...`
+  if (getChain(destTokenAddress) === ChainKind.Near) {
+    const decimals = await getTokenDecimals(contractId, sourceTokenAddress)
+    destinationDecimals = decimals.origin_decimals
+    originDecimals = decimals.decimals
+  }
+
+  if (originDecimals === undefined || destinationDecimals === undefined) {
+    throw new Error("Failed to get token decimals")
+  }
 
   // Verify transfer amount will be valid after normalization
   const isValid = verifyTransferAmount(
     transfer.amount,
     transfer.fee,
-    sourceDecimals.decimals,
-    destinationDecimals.decimals,
+    originDecimals,
+    destinationDecimals,
   )
 
   if (!isValid) {
     // Get minimum amount
-    const minAmount = getMinimumTransferableAmount(
-      sourceDecimals.decimals,
-      destinationDecimals.decimals,
-    )
+    const minAmount = getMinimumTransferableAmount(originDecimals, destinationDecimals)
     throw new Error(
       `Transfer amount too small - would result in 0 after decimal normalization. Minimum transferable amount is ${minAmount}`,
     )
