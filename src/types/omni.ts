@@ -31,6 +31,7 @@ export interface OmniTransferMessage {
   fee: bigint
   nativeFee: bigint
   recipient: OmniAddress
+  message?: string
 }
 
 export interface TokenMetadata {

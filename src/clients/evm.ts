@@ -160,7 +160,7 @@ export class EvmBridgeClient {
         transfer.fee,
         transfer.nativeFee,
         transfer.recipient,
-        "",
+        transfer.message || "",
         {
           value: this.isNativeToken(transfer.tokenAddress)
             ? transfer.amount + transfer.nativeFee
