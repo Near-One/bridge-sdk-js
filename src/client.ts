@@ -67,16 +67,25 @@ export async function omniTransfer(
   // Get token decimals
   const contractId = addresses.near // Use NEAR contract for decimal verification
 
-  // If the origin chain is NEAR, just get the token decimals for the destination address
-  // e.g., USDC on NEAR → ETH, get the decimals for `eth:0x...`
+  // Special handling for NEAR tokens:
+  // Decimals are stored under foreign chain addresses, not under NEAR addresses
+
+  // Case 1: NEAR → Foreign Chain
+  // e.g., USDC on NEAR → ETH
+  // We query the destination address (eth:0x...) to get both decimals:
+  // - origin_decimals: the NEAR token's decimals
+  // - decimals: the decimals on the destination chain
   if (getChain(sourceTokenAddress) === ChainKind.Near) {
     const decimals = await getTokenDecimals(contractId, destTokenAddress)
     originDecimals = decimals.origin_decimals
     destinationDecimals = decimals.decimals
   }
 
-  // If the destination chain is NEAR, we need to get the decimals from the source token address
-  // e.g., USDC on ETH → NEAR, get the decimals for `eth:0x...`
+  // Case 2: Foreign Chain → NEAR
+  // e.g., USDC on ETH → NEAR
+  // We query the source address (eth:0x...) to get both decimals:
+  // - decimals: the foreign chain's decimals
+  // - origin_decimals: what the token will have on NEAR
   if (getChain(destTokenAddress) === ChainKind.Near) {
     const decimals = await getTokenDecimals(contractId, sourceTokenAddress)
     destinationDecimals = decimals.origin_decimals
