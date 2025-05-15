@@ -120,6 +120,7 @@ interface OmniTransferMessage {
   fee: bigint; // Token fee
   nativeFee: bigint; // Gas fee in native token
   recipient: OmniAddress; // Destination address
+  message?: string // Optional message field
 }
 ```
 
