@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.10.4
+
+### Patch Changes
+
+- 517ca08: feat: add message field to init transfer
+
 ## 0.10.3
 
 ### Patch Changes
