@@ -10,6 +10,7 @@ import {
   DeployTokenArgsSchema,
   type EvmVerifyProofArgs,
   EvmVerifyProofArgsSchema,
+  type FastFinTransferArgs,
   type FinTransferArgs,
   FinTransferArgsSchema,
   type InitTransferEvent,
@@ -39,6 +40,7 @@ const GAS = {
   FIN_TRANSFER: BigInt(3e14), // 3 TGas
   SIGN_TRANSFER: BigInt(3e14), // 3 TGas
   STORAGE_DEPOSIT: BigInt(1e14), // 1 TGas
+  FAST_FIN_TRANSFER: BigInt(3e14), // 3 TGas
 } as const
 
 /**
@@ -556,5 +558,87 @@ export class NearBridgeClient {
       return tx.transaction.hash
     }
     return storage
+  }
+
+  /**
+   * Gets the required balance for fast transfer operations
+   * @private
+   * @returns Promise resolving to the required balance amount in yoctoNEAR
+   */
+  private async getRequiredBalanceForFastTransfer(): Promise<bigint> {
+    const balanceStr = await this.wallet.viewFunction({
+      contractId: this.lockerAddress,
+      methodName: "required_balance_for_fast_transfer",
+    })
+    return BigInt(balanceStr)
+  }
+
+  /**
+   * Performs a fast finalize transfer on NEAR chain.
+   * This is a single-transaction operation that combines init and finalize transfer
+   * with relayer support for automated processing.
+   *
+   * @param args - Fast finalize transfer arguments containing token, amount, recipient, etc.
+   * @returns Promise resolving to the transaction hash
+   * @throws {Error} If the transaction fails or required storage deposit fails
+   */
+  async fastFinTransfer(args: FastFinTransferArgs): Promise<string> {
+    // Get required balance for fast transfer
+    const requiredBalance = await this.getRequiredBalanceForFastTransfer()
+    const storageDepositAmount = args.storage_deposit_amount
+      ? BigInt(args.storage_deposit_amount)
+      : BigInt(0)
+    const totalRequiredBalance = requiredBalance + storageDepositAmount
+
+    // Check current storage balance and deposit if needed
+    const storage = await this.wallet.viewFunction({
+      contractId: this.lockerAddress,
+      methodName: "storage_balance_of",
+      args: {
+        account_id: this.wallet.accountId,
+      },
+    })
+
+    const existingBalance = storage?.available ? BigInt(storage.available) : BigInt(0)
+    const neededAmount = totalRequiredBalance - existingBalance
+
+    if (neededAmount > 0) {
+      await this.wallet.functionCall({
+        contractId: this.lockerAddress,
+        methodName: "storage_deposit",
+        args: {},
+        gas: GAS.STORAGE_DEPOSIT,
+        attachedDeposit: neededAmount,
+      })
+    }
+
+    // Construct message for ft_transfer_call
+    const message = {
+      FastFinTransfer: {
+        recipient: args.recipient,
+        fee: args.fee,
+        transfer_id: args.transfer_id,
+        msg: args.msg,
+        storage_deposit_amount: args.storage_deposit_amount,
+        relayer: args.relayer,
+      },
+    }
+
+    const transferArgs = {
+      receiver_id: this.lockerAddress,
+      amount: args.amount,
+      msg: JSON.stringify(message),
+    }
+
+    // Execute the fast finalize transfer
+    const tx = await this.wallet.functionCall({
+      contractId: args.token_id,
+      methodName: "ft_transfer_call",
+      args: transferArgs,
+      gas: GAS.FAST_FIN_TRANSFER,
+      attachedDeposit: DEPOSIT.INIT_TRANSFER,
+    })
+
+    return tx.transaction.hash
   }
 }

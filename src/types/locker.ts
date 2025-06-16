@@ -49,3 +49,17 @@ export const DeployTokenArgsSchema = b.struct({
 })
 
 export type DeployTokenArgs = b.infer<typeof DeployTokenArgsSchema>
+
+export type FastFinTransferArgs = {
+  token_id: AccountId
+  amount: string
+  transfer_id: TransferId
+  recipient: string
+  fee: {
+    fee: string
+    native_fee: string
+  }
+  msg: string
+  storage_deposit_amount?: string
+  relayer: AccountId
+}
