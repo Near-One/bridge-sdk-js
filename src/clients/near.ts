@@ -26,10 +26,10 @@ import {
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
 } from "../types/index.js"
-import { omniAddress } from "../utils/chain.js"
+import { isEvmChain, omniAddress } from "../utils/chain.js"
 import { getChain } from "../utils/index.js"
 import { getBridgedToken } from "../utils/tokens.js"
-import { type EvmBridgeClient, isEvmChain } from "./evm.js"
+import type { EvmBridgeClient } from "./evm.js"
 
 /**
  * Configuration for NEAR network gas limits.
