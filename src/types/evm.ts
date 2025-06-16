@@ -31,3 +31,15 @@ export type TransferMessagePayload = {
   recipient: OmniAddress
   fee_recipient: string | null // NEAR AccountId or null
 }
+
+// InitTransfer event from EVM bridge contracts
+export interface EvmInitTransferEvent {
+  sender: string // EVM address
+  tokenAddress: string // EVM address
+  originNonce: bigint
+  amount: bigint
+  fee: bigint
+  nativeTokenFee: bigint
+  recipient: string // OmniAddress string
+  message: string
+}
