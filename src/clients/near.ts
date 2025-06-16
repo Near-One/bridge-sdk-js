@@ -1,6 +1,5 @@
 import type { Account } from "@near-js/accounts"
 import { actionCreators } from "@near-js/transactions"
-import { ethers } from "ethers"
 import { addresses } from "../config.js"
 import {
   type AccountId,
@@ -9,7 +8,6 @@ import {
   ChainKind,
   type DeployTokenArgs,
   DeployTokenArgsSchema,
-  type EvmInitTransferEvent,
   type EvmVerifyProofArgs,
   EvmVerifyProofArgsSchema,
   type FastFinTransferArgs,
@@ -28,7 +26,10 @@ import {
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
 } from "../types/index.js"
+import { omniAddress } from "../utils/chain.js"
 import { getChain } from "../utils/index.js"
+import { getBridgedToken } from "../utils/tokens.js"
+import { type EvmBridgeClient, isEvmChain } from "./evm.js"
 
 /**
  * Configuration for NEAR network gas limits.
@@ -578,11 +579,20 @@ export class NearBridgeClient {
 
   /**
    * Performs a fast finalize transfer on NEAR chain.
-   * This is a single-transaction operation that combines init and finalize transfer
-   * with relayer support for automated processing.
    *
-   * @param args - Fast finalize transfer arguments containing token, amount, recipient, etc.
-   * @returns Promise resolving to the transaction hash
+   * This method enables relayers to "front" tokens to users immediately upon detecting
+   * an InitTransfer event on an EVM chain, without waiting for full cryptographic finality.
+   * The relayer provides their own tokens to the user instantly, and later gets reimbursed
+   * when the original cross-chain proof is processed.
+   *
+   * The process:
+   * 1. Relayer transfers their own tokens from their NEAR account to the bridge contract
+   * 2. Bridge contract immediately sends tokens to the final recipient
+   * 3. Bridge marks the transfer as completed and records the relayer as owed reimbursement
+   * 4. Later, when the slow cryptographic proof arrives, the relayer gets reimbursed
+   *
+   * @param args - Fast finalize transfer arguments containing token, amount, recipient, transfer_id, relayer info, etc.
+   * @returns Promise resolving to the NEAR transaction hash
    * @throws {Error} If the transaction fails or required storage deposit fails
    */
   async fastFinTransfer(args: FastFinTransferArgs): Promise<string> {
@@ -646,82 +656,15 @@ export class NearBridgeClient {
   }
 
   /**
-   * Gets the NEAR token ID for a given OmniAddress
-   * @param address - OmniAddress of the token on its origin chain
-   * @returns Promise resolving to the NEAR NEP-141 token account ID
-   */
-  async getTokenId(address: OmniAddress): Promise<AccountId> {
-    const tokenId = await this.wallet.viewFunction({
-      contractId: this.lockerAddress,
-      methodName: "get_token_id",
-      args: {
-        address: address,
-      },
-    })
-    return tokenId
-  }
-
-  /**
-   * Parses InitTransfer event from EVM transaction receipt
-   * @private
-   * @param provider - Ethers provider for the EVM chain
-   * @param txHash - Transaction hash to parse
-   * @returns Promise resolving to the parsed InitTransfer event
-   */
-  private async parseInitTransferEvent(
-    provider: ethers.Provider,
-    txHash: string,
-  ): Promise<EvmInitTransferEvent> {
-    const receipt = await provider.getTransactionReceipt(txHash)
-    if (!receipt) {
-      throw new Error(`Transaction receipt not found for hash: ${txHash}`)
-    }
-
-    // ABI for InitTransfer event
-    const initTransferEventAbi = [
-      "event InitTransfer(address indexed sender, address indexed tokenAddress, uint64 indexed originNonce, uint128 amount, uint128 fee, uint128 nativeTokenFee, string recipient, string message)",
-    ]
-
-    const iface = new ethers.Interface(initTransferEventAbi)
-
-    // Find the InitTransfer event in the logs
-    for (const log of receipt.logs) {
-      try {
-        const parsedLog = iface.parseLog({
-          topics: log.topics,
-          data: log.data,
-        })
-
-        if (parsedLog?.name === "InitTransfer") {
-          return {
-            sender: parsedLog.args.sender,
-            tokenAddress: parsedLog.args.tokenAddress,
-            originNonce: parsedLog.args.originNonce,
-            amount: parsedLog.args.amount,
-            fee: parsedLog.args.fee,
-            nativeTokenFee: parsedLog.args.nativeTokenFee,
-            recipient: parsedLog.args.recipient,
-            message: parsedLog.args.message,
-          }
-        }
-      } catch {
-        // Continue searching other logs if this one doesn't match
-      }
-    }
-
-    throw new Error("InitTransfer event not found in transaction logs")
-  }
-
-  /**
    * Performs a complete fast transfer from EVM to NEAR.
    * This function orchestrates the entire fast transfer process:
    * 1. Fetches and parses the InitTransfer event from the EVM transaction
-   * 2. Gets the corresponding NEAR token ID
+   * 2. Gets the corresponding NEAR token ID using getBridgedToken
    * 3. Executes the fast finalize transfer on NEAR
    *
    * @param originChain - The EVM chain where the original transfer was initiated
    * @param evmTxHash - Transaction hash of the InitTransfer on the EVM chain
-   * @param evmProvider - Ethers provider for the EVM chain
+   * @param evmClient - EVM bridge client for parsing the transaction
    * @param storageDepositAmount - Optional storage deposit amount in yoctoNEAR
    * @returns Promise resolving to the NEAR transaction hash
    * @throws {Error} If the origin chain is not supported for fast transfers
@@ -731,29 +674,26 @@ export class NearBridgeClient {
   async nearFastTransfer(
     originChain: ChainKind,
     evmTxHash: string,
-    evmProvider: ethers.Provider,
+    evmClient: EvmBridgeClient,
     storageDepositAmount?: string,
   ): Promise<string> {
     // Validate supported chains for fast transfer
-    if (originChain === ChainKind.Sol || originChain === ChainKind.Near) {
+    if (!isEvmChain(originChain)) {
       throw new Error(`Fast transfer is not supported for chain kind: ${originChain}`)
     }
 
     // Step 1: Parse the InitTransfer event from EVM transaction
-    const transferEvent = await this.parseInitTransferEvent(evmProvider, evmTxHash)
+    const transferEvent = await evmClient.parseInitTransferEvent(evmTxHash)
 
-    // Step 2: Get the NEAR token ID for the EVM token
-    const chainPrefix =
-      originChain === ChainKind.Eth
-        ? "eth"
-        : originChain === ChainKind.Arb
-          ? "arb"
-          : originChain === ChainKind.Base
-            ? "base"
-            : "eth" // default fallback
-    const omniTokenAddress: OmniAddress =
-      `${chainPrefix}:${transferEvent.tokenAddress}` as OmniAddress
-    const nearTokenId = await this.getTokenId(omniTokenAddress)
+    // Step 2: Get the NEAR token ID for the EVM token using getBridgedToken
+    const omniTokenAddress = omniAddress(originChain, transferEvent.tokenAddress)
+    const nearTokenAddress = await getBridgedToken(omniTokenAddress, ChainKind.Near)
+
+    if (!nearTokenAddress) {
+      throw new Error(`No bridged token found on NEAR for ${omniTokenAddress}`)
+    }
+
+    const nearTokenId = nearTokenAddress.split(":")[1] // Extract account ID from near:account.near
 
     // Step 3: Construct the transfer ID
     const transferId: TransferId = {
