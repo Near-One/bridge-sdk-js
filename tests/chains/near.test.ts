@@ -6,7 +6,10 @@ import {
   type EvmVerifyProofArgs,
   type InitTransferEvent,
   type LogMetadataEvent,
+  MPCSignature,
+  type OmniAddress,
   type OmniTransferMessage,
+  PayloadType,
   ProofKind,
   type SignTransferEvent,
 } from "../../src/types/index.js"
@@ -17,6 +20,7 @@ describe("NearBridgeClient", () => {
   const mockLockerAddress = "test.near"
   const mockTxHash = "mock-tx-hash"
   const mockTokenAddress = "test-token.near"
+  const mockTokenOmniAddress: OmniAddress = `near:${mockTokenAddress}`
 
   beforeEach(() => {
     // Create comprehensive mock wallet
@@ -67,9 +71,18 @@ describe("NearBridgeClient", () => {
 
   describe("logMetadata", () => {
     const mockLogMetadataEvent: LogMetadataEvent = {
-      name: "Test Token",
-      symbol: "TEST",
-      decimals: 18,
+      metadata_payload: {
+        name: "Test Token",
+        symbol: "TEST",
+        decimals: 18,
+        prefix: "test",
+        token: "test-token.near",
+      },
+      signature: new MPCSignature(
+        { affine_point: "mock-r" },
+        { scalar: "mock-s" },
+        0,
+      ),
     }
 
     beforeEach(() => {
@@ -254,7 +267,7 @@ describe("NearBridgeClient", () => {
 
   describe("initTransfer", () => {
     const mockTransfer: OmniTransferMessage = {
-      tokenAddress: `near:${mockTokenAddress}`,
+      tokenAddress: mockTokenOmniAddress,
       recipient: "eth:0x1234567890123456789012345678901234567890",
       amount: BigInt("1000000000000000000"),
       fee: BigInt("100000000000000000"),
@@ -263,15 +276,17 @@ describe("NearBridgeClient", () => {
 
     const mockInitTransferEvent: InitTransferEvent = {
       transfer_message: {
-        origin_chain: "Near",
         origin_nonce: 1,
-        token: mockTokenAddress,
-        recipient: mockTransfer.recipient,
+        token: mockTokenOmniAddress,
         amount: mockTransfer.amount.toString(),
+        recipient: mockTransfer.recipient,
         fee: {
           fee: mockTransfer.fee.toString(),
           native_fee: mockTransfer.nativeFee.toString(),
         },
+        sender: "near:test-account.near",
+        msg: "",
+        destination_nonce: 1,
       },
     }
 
@@ -312,7 +327,10 @@ describe("NearBridgeClient", () => {
     })
 
     it("should throw error if token address is not on NEAR", async () => {
-      const invalidTransfer = { ...mockTransfer, tokenAddress: "eth:0x123" }
+      const invalidTransfer: OmniTransferMessage = {
+        ...mockTransfer,
+        tokenAddress: "eth:0x123" as OmniAddress,
+      }
       await expect(client.initTransfer(invalidTransfer)).rejects.toThrow(
         "Token address must be on NEAR",
       )
@@ -358,24 +376,38 @@ describe("NearBridgeClient", () => {
   describe("signTransfer", () => {
     const mockInitTransferEvent: InitTransferEvent = {
       transfer_message: {
-        origin_chain: "Near",
         origin_nonce: 1,
-        token: mockTokenAddress,
-        recipient: "eth:0x1234567890123456789012345678901234567890",
+        token: mockTokenOmniAddress,
         amount: "1000000000000000000",
+        recipient: "eth:0x1234567890123456789012345678901234567890",
         fee: {
           fee: "100000000000000000",
           native_fee: "50000000000000000",
         },
+        sender: "near:test-account.near",
+        msg: "",
+        destination_nonce: 1,
       },
     }
 
     const mockSignTransferEvent: SignTransferEvent = {
-      transfer_id: {
-        origin_chain: "Near",
-        origin_nonce: 1,
+      signature: new MPCSignature(
+        { affine_point: "mock-r" },
+        { scalar: "mock-s" },
+        0,
+      ),
+      message_payload: {
+        prefix: PayloadType.TransferMessage,
+        destination_nonce: "1",
+        transfer_id: {
+          origin_chain: "Near",
+          origin_nonce: 1,
+        },
+        token_address: mockTokenOmniAddress,
+        amount: "1000000000000000000",
+        recipient: "eth:0x1234567890123456789012345678901234567890",
+        fee_recipient: "fee-recipient.near",
       },
-      vaa: "mock-signed-vaa",
     }
 
     const mockFeeRecipient = "fee-recipient.near"
