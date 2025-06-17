@@ -454,7 +454,7 @@ export class NearWalletSelectorBridgeClient {
   ): Promise<SignTransferEvent> {
     const args: SignTransferArgs = {
       transfer_id: {
-        origin_chain: "Near",
+        origin_chain: getChain(initTransferEvent.transfer_message.sender),
         origin_nonce: BigInt(initTransferEvent.transfer_message.origin_nonce),
       },
       fee_recipient: feeRecipient,

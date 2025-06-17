@@ -700,7 +700,7 @@ export class NearBridgeClient {
 
     // Step 3: Construct the transfer ID
     const transferId: TransferId = {
-      origin_chain: ChainKind[originChain], // Convert enum to string
+      origin_chain: originChain, // Use numeric enum value
       origin_nonce: transferEvent.originNonce,
     }
 

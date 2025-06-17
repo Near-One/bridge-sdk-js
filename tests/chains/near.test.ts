@@ -587,7 +587,7 @@ describe("NearBridgeClient", () => {
       token_id: "wrap.near",
       amount: "1000000000000000000000000",
       transfer_id: {
-        origin_chain: "Eth",
+        origin_chain: ChainKind.Eth,
         origin_nonce: 123n,
       },
       recipient: "recipient.near",
