@@ -1,6 +1,6 @@
 import { z } from "zod"
-import { getNetwork } from "./config"
-import type { OmniAddress } from "./types"
+import { getNetwork } from "./config.js"
+import type { OmniAddress } from "./types/index.js"
 
 const ChainSchema = z.enum(["Eth", "Near", "Sol", "Arb", "Base"])
 export type Chain = z.infer<typeof ChainSchema>

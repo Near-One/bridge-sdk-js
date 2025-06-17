@@ -387,19 +387,19 @@ Currently supported chains:
 
 ```bash
 # Install dependencies
-pnpm install
+bun install
 
 # Build
-pnpm build
+bun run build
 
 # Run tests
-pnpm test
+bun run test
 
 # Type checking
-pnpm typecheck
+bun run typecheck
 
 # Linting
-pnpm lint
+bun run lint
 ```
 
 ## License

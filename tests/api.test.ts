@@ -1,8 +1,8 @@
 import { http, HttpResponse } from "msw"
 import { setupServer } from "msw/node"
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest"
-import { OmniBridgeAPI } from "../src/api"
-import { setNetwork } from "../src/config"
+import { OmniBridgeAPI } from "../src/api.js"
+import { setNetwork } from "../src/config.js"
 
 setNetwork("testnet")
 const api = new OmniBridgeAPI()

@@ -1,4 +1,4 @@
-import type { Nonce, OmniAddress } from "./common"
+import type { Nonce, OmniAddress } from "./common.js"
 
 export enum PayloadType {
   TransferMessage = "TransferMessage",

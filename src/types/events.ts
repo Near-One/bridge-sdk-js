@@ -1,6 +1,6 @@
-import type { OmniAddress } from "./common"
-import type { TransferMessagePayload } from "./evm"
-import type { MPCSignature } from "./mpc"
+import type { OmniAddress } from "./common.js"
+import type { TransferMessagePayload } from "./evm.js"
+import type { MPCSignature } from "./mpc.js"
 
 export interface MetadataPayload {
   decimals: number

@@ -1,3 +1,3 @@
-export * from "./chain"
-export * from "./decimals"
-export * from "./tokens"
+export * from "./chain.js"
+export * from "./decimals.js"
+export * from "./tokens.js"

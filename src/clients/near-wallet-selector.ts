@@ -1,7 +1,8 @@
 import { callViewMethod, createRpcClientWrapper } from "@near-js/client"
+import { JsonRpcProvider } from "@near-js/providers"
+import type { FinalExecutionOutcome } from "@near-js/types"
 import type { Optional, Transaction, WalletSelector } from "@near-wallet-selector/core"
-import { JsonRpcProvider } from "near-api-js/lib/providers"
-import { addresses } from "../config"
+import { addresses } from "../config.js"
 import {
   type AccountId,
   type BindTokenArgs,
@@ -24,8 +25,8 @@ import {
   type U128,
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
-} from "../types"
-import { getChain } from "../utils"
+} from "../types/index.js"
+import { getChain } from "../utils/index.js"
 
 /**
  * Configuration for NEAR network gas limits.
@@ -132,7 +133,7 @@ export class NearWalletSelectorBridgeClient {
     const args: LogMetadataArgs = { token_id: tokenAccountId }
 
     const wallet = await this.selector.wallet()
-    const outcome = await wallet.signAndSendTransaction({
+    const outcome: FinalExecutionOutcome = await wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
       actions: [
         {
@@ -189,7 +190,7 @@ export class NearWalletSelectorBridgeClient {
     })
 
     const wallet = await this.selector.wallet()
-    const outcome = await wallet.signAndSendTransaction({
+    const outcome: FinalExecutionOutcome = await wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
       actions: [
         {
@@ -421,7 +422,7 @@ export class NearWalletSelectorBridgeClient {
       ],
     })
     const wallet = await this.selector.wallet()
-    const tx = await wallet.signAndSendTransactions({ transactions })
+    const tx: FinalExecutionOutcome[] = await wallet.signAndSendTransactions({ transactions })
     if (!tx) {
       throw new Error("Transaction failed")
     }
@@ -464,7 +465,7 @@ export class NearWalletSelectorBridgeClient {
     }
 
     const wallet = await this.selector.wallet()
-    const outcome = await wallet.signAndSendTransaction({
+    const outcome: FinalExecutionOutcome = await wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
       actions: [
         {

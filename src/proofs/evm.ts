@@ -1,10 +1,10 @@
 import { createMPT, createMerkleProof } from "@ethereumjs/mpt"
 import { RLP } from "@ethereumjs/rlp"
 import { MapDB, bigIntToHex } from "@ethereumjs/util"
-import { ethers } from "ethers"
 import type { BlockTag, Log, TransactionReceipt, TransactionReceiptParams } from "ethers"
-import type { EVMChainKind } from "../clients"
-import { ChainKind, type EvmProof } from "../types"
+import { ethers } from "ethers"
+import type { EVMChainKind } from "../clients/index.js"
+import { ChainKind, type EvmProof } from "../types/index.js"
 
 interface BlockHeader {
   parentHash: string

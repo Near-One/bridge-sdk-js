@@ -1,6 +1,6 @@
-import type { ChainKind } from "./chain"
-import type { OmniAddress } from "./common"
-import type { ProofKind } from "./prover"
+import type { ChainKind } from "./chain.js"
+import type { OmniAddress } from "./common.js"
+import type { ProofKind } from "./prover.js"
 
 export type TokenDeployment = {
   id: string

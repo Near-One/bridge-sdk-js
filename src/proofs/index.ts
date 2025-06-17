@@ -1,2 +1,2 @@
-export * from "./wormhole"
-export * from "./evm"
+export * from "./wormhole.js"
+export * from "./evm.js"

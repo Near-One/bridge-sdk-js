@@ -1,33 +1,51 @@
-import type { Account } from "near-api-js"
+import type { Account } from "@near-js/accounts"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { NearBridgeClient } from "../../src/clients/near"
+import { NearBridgeClient } from "../../src/clients/near.js"
 import {
-  BindTokenArgsSchema,
   ChainKind,
+  type EvmVerifyProofArgs,
+  type InitTransferEvent,
+  type LogMetadataEvent,
+  type OmniTransferMessage,
   ProofKind,
-  WormholeVerifyProofArgsSchema,
-} from "../../src/types"
+  type SignTransferEvent,
+} from "../../src/types/index.js"
 
 describe("NearBridgeClient", () => {
   let mockWallet: Account
   let client: NearBridgeClient
   const mockLockerAddress = "test.near"
   const mockTxHash = "mock-tx-hash"
-  const mockViewFunction = "2"
+  const mockTokenAddress = "test-token.near"
 
   beforeEach(() => {
-    // Create mock wallet with functionCall method
+    // Create comprehensive mock wallet
     mockWallet = {
+      accountId: "test-account.near",
+      connection: {
+        networkId: "testnet",
+      },
+      signAndSendTransaction: vi.fn().mockResolvedValue({
+        transaction: {
+          hash: mockTxHash,
+        },
+        receipts_outcome: [
+          {
+            outcome: {
+              logs: [],
+            },
+          },
+        ],
+      }),
+      viewFunction: vi.fn().mockResolvedValue("1000000000000000000000000"),
       functionCall: vi.fn().mockResolvedValue({
         transaction: {
           hash: mockTxHash,
         },
       }),
-      viewFunction: vi.fn().mockResolvedValue(mockViewFunction),
-      connection: {
-        networkId: "testnet",
+      provider: {
+        callFunction: vi.fn().mockResolvedValue("1000000000000000000000000"),
       },
-      signTransaction: vi.fn().mockResolvedValue({ signature: mockTxHash }),
     } as unknown as Account
 
     // Create client instance
@@ -39,40 +57,27 @@ describe("NearBridgeClient", () => {
       const client = new NearBridgeClient(mockWallet, mockLockerAddress)
       expect(client).toBeInstanceOf(NearBridgeClient)
     })
+
+    it("should use provided locker address when specified", () => {
+      const customAddress = "custom.near"
+      const client = new NearBridgeClient(mockWallet, customAddress)
+      expect(client).toBeInstanceOf(NearBridgeClient)
+    })
   })
 
   describe("logMetadata", () => {
-    // Mock setTimeout to execute immediately
-    const originalSetTimeout = global.setTimeout
-
-    const mockProvider = {
-      sendTransactionAsync: vi.fn(),
-      txStatus: vi.fn(),
-    }
-
-    const mockLogMetadataEvent = {
+    const mockLogMetadataEvent: LogMetadataEvent = {
       name: "Test Token",
       symbol: "TEST",
       decimals: 18,
     }
 
     beforeEach(() => {
-      // Mock setTimeout to run immediately
-      vi.spyOn(global, "setTimeout").mockImplementation((fn) => {
-        fn()
-        // biome-ignore lint/suspicious/noExplicitAny: Test mock
-        return {} as any
-      })
-
-      // Reset mocks
-      // @ts-expect-error: Account.signTransaction is protected but necessary here
-      mockWallet.signTransaction = vi
-        .fn()
-        .mockResolvedValue(["mock-tx-hash", { transaction: "mock-signed-tx" }])
-
-      // Default successful response
-      const successResponse = {
-        final_execution_status: "EXECUTED",
+      // Mock successful response with LogMetadataEvent
+      mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue({
+        transaction: {
+          hash: mockTxHash,
+        },
         receipts_outcome: [
           {
             outcome: {
@@ -80,29 +85,20 @@ describe("NearBridgeClient", () => {
             },
           },
         ],
-      }
-
-      mockProvider.sendTransactionAsync = vi.fn().mockResolvedValue(successResponse)
-      mockProvider.txStatus = vi.fn().mockResolvedValue(successResponse)
-
-      // Update wallet with mock provider
-      // @ts-expect-error: Just override it anyway
-      mockWallet.connection.provider = mockProvider
+      })
     })
 
     it("should throw error if token address is not on NEAR", async () => {
       await expect(client.logMetadata("eth:0x123")).rejects.toThrow("Token address must be on NEAR")
     })
 
-    it("should call signTransaction with correct arguments", async () => {
+    it("should call signAndSendTransaction with correct arguments", async () => {
       const tokenAddress = "near:test-token.near"
       await client.logMetadata(tokenAddress)
 
-      // Testing the first argument is the correct contract
-      // @ts-expect-error: Account.signTransaction is protected but necessary here
-      expect(mockWallet.signTransaction).toHaveBeenCalledWith(
-        mockLockerAddress,
-        expect.arrayContaining([
+      expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith({
+        receiverId: mockLockerAddress,
+        actions: [
           expect.objectContaining({
             functionCall: expect.objectContaining({
               methodName: "log_metadata",
@@ -110,47 +106,21 @@ describe("NearBridgeClient", () => {
               deposit: BigInt(1),
             }),
           }),
-        ]),
-      )
+        ],
+        waitUntil: "FINAL",
+      })
     })
 
-    it("should poll for transaction status and return event data", async () => {
+    it("should return parsed LogMetadataEvent from transaction logs", async () => {
       const tokenAddress = "near:test-token.near"
       const result = await client.logMetadata(tokenAddress)
 
-      expect(mockProvider.sendTransactionAsync).toHaveBeenCalledWith({
-        transaction: "mock-signed-tx",
-      })
       expect(result).toEqual(mockLogMetadataEvent)
     })
 
-    it("should throw error if transaction times out", async () => {
-      // Override the mock to simulate a pending transaction
-      const pendingResponse = {
-        final_execution_status: "PENDING",
-        receipts_outcome: [],
-      }
-
-      mockProvider.sendTransactionAsync = vi.fn().mockResolvedValue(pendingResponse)
-      // Make txStatus always return pending
-      mockProvider.txStatus = vi.fn().mockResolvedValue(pendingResponse)
-
-      // Let setTimeout actually wait a tiny bit to allow for status check
-      vi.spyOn(global, "setTimeout").mockImplementation((fn) => {
-        // biome-ignore lint/suspicious/noExplicitAny: Test mock
-        return originalSetTimeout(fn, 1) as any
-      })
-
-      const tokenAddress = "near:test-token.near"
-      await expect(client.logMetadata(tokenAddress)).rejects.toThrow(
-        "Transaction polling timed out after 60 seconds",
-      )
-    })
-
     it("should throw error if LogMetadataEvent not found in logs", async () => {
-      // Override the sendTransactionAsync mock for this test
-      mockProvider.sendTransactionAsync = vi.fn().mockResolvedValue({
-        final_execution_status: "EXECUTED",
+      mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue({
+        transaction: { hash: mockTxHash },
         receipts_outcome: [
           {
             outcome: {
@@ -168,56 +138,43 @@ describe("NearBridgeClient", () => {
   })
 
   describe("deployToken", () => {
-    it("should call deploy_token with correct arguments", async () => {
-      const destinationChain = ChainKind.Eth
-      const mockVaa = "mock-vaa"
+    const mockVaa = "mock-vaa"
+    const mockDeployDeposit = "2000000000000000000000000"
 
+    beforeEach(() => {
+      mockWallet.viewFunction = vi.fn().mockResolvedValue(mockDeployDeposit)
+    })
+
+    it("should call deployToken with correct arguments and dynamic deposit", async () => {
+      const destinationChain = ChainKind.Eth
       const txHash = await client.deployToken(destinationChain, mockVaa)
 
-      expect(mockWallet.functionCall).toHaveBeenCalledWith({
+      expect(mockWallet.viewFunction).toHaveBeenCalledWith({
         contractId: mockLockerAddress,
-        methodName: "deploy_token",
-        args: expect.any(Uint8Array), // We can't easily check the exact serialized value
-        gas: BigInt(1.2e14),
-        attachedDeposit: BigInt(2),
+        methodName: "required_balance_for_deploy_token",
       })
+
+      expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith({
+        receiverId: mockLockerAddress,
+        actions: [
+          expect.objectContaining({
+            functionCall: expect.objectContaining({
+              methodName: "deploy_token",
+              gas: BigInt(1.2e14),
+              deposit: BigInt(mockDeployDeposit),
+            }),
+          }),
+        ],
+      })
+
       expect(txHash).toBe(mockTxHash)
     })
   })
 
   describe("bindToken", () => {
-    it("should call bind_token with correct arguments", async () => {
-      const destinationChain = ChainKind.Eth
-      const mockVaa = "mock-vaa"
-
-      const txHash = await client.bindToken(destinationChain, mockVaa)
-
-      const proverArgs = WormholeVerifyProofArgsSchema.serialize({
-        proof_kind: ProofKind.DeployToken,
-        vaa: mockVaa,
-      })
-      const bindTokenArgs = BindTokenArgsSchema.serialize({
-        chain_kind: destinationChain,
-        prover_args: proverArgs,
-      })
-
-      expect(mockWallet.functionCall).toHaveBeenCalledWith({
-        contractId: mockLockerAddress,
-        methodName: "bind_token",
-        args: bindTokenArgs,
-        gas: BigInt(3e14),
-        attachedDeposit: BigInt(2),
-      })
-      expect(txHash).toBe(mockTxHash)
-    })
-  })
-  describe("finalizeTransfer", () => {
-    const mockToken = "test-token.near"
-    const mockAccount = "recipient.near"
-    const mockStorageDeposit = BigInt(1000000000000000000000000)
     const mockVaa = "mock-vaa"
-    const mockEvmProof = {
-      proof_kind: ProofKind.FinTransfer,
+    const mockEvmProof: EvmVerifyProofArgs = {
+      proof_kind: ProofKind.DeployToken,
       proof: {
         log_index: BigInt(1),
         log_entry_data: new Uint8Array([1, 2, 3]),
@@ -227,6 +184,273 @@ describe("NearBridgeClient", () => {
         proof: [new Uint8Array([10, 11, 12])],
       },
     }
+
+    beforeEach(() => {
+      mockWallet.provider.callFunction = vi.fn().mockResolvedValue("3000000000000000000000000")
+    })
+
+    it("should throw error if neither VAA nor EVM proof is provided", async () => {
+      await expect(client.bindToken(ChainKind.Eth)).rejects.toThrow(
+        "Must provide either VAA or EVM proof",
+      )
+    })
+
+    it("should throw error if EVM proof is provided for non-EVM chain", async () => {
+      await expect(client.bindToken(ChainKind.Near, undefined, mockEvmProof)).rejects.toThrow(
+        "EVM proof is only valid for Ethereum, Arbitrum, or Base",
+      )
+    })
+
+    it("should call bindToken with VAA correctly", async () => {
+      const sourceChain = ChainKind.Sol
+      const txHash = await client.bindToken(sourceChain, mockVaa)
+
+      expect(mockWallet.provider.callFunction).toHaveBeenCalledWith(
+        mockLockerAddress,
+        "required_balance_for_bind_token",
+        {},
+      )
+
+      expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith({
+        receiverId: mockLockerAddress,
+        actions: [
+          expect.objectContaining({
+            functionCall: expect.objectContaining({
+              methodName: "bind_token",
+              gas: BigInt(3e14),
+            }),
+          }),
+        ],
+      })
+
+      expect(txHash).toBe(mockTxHash)
+    })
+
+    it("should call bindToken with EVM proof correctly", async () => {
+      const sourceChain = ChainKind.Eth
+      const txHash = await client.bindToken(sourceChain, undefined, mockEvmProof)
+
+      expect(mockWallet.provider.callFunction).toHaveBeenCalledWith(
+        mockLockerAddress,
+        "required_balance_for_bind_token",
+        {},
+      )
+
+      expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith({
+        receiverId: mockLockerAddress,
+        actions: [
+          expect.objectContaining({
+            functionCall: expect.objectContaining({
+              methodName: "bind_token",
+              gas: BigInt(3e14),
+            }),
+          }),
+        ],
+      })
+
+      expect(txHash).toBe(mockTxHash)
+    })
+  })
+
+  describe("initTransfer", () => {
+    const mockTransfer: OmniTransferMessage = {
+      tokenAddress: `near:${mockTokenAddress}`,
+      recipient: "eth:0x1234567890123456789012345678901234567890",
+      amount: BigInt("1000000000000000000"),
+      fee: BigInt("100000000000000000"),
+      nativeFee: BigInt("50000000000000000"),
+    }
+
+    const mockInitTransferEvent: InitTransferEvent = {
+      transfer_message: {
+        origin_chain: "Near",
+        origin_nonce: 1,
+        token: mockTokenAddress,
+        recipient: mockTransfer.recipient,
+        amount: mockTransfer.amount.toString(),
+        fee: {
+          fee: mockTransfer.fee.toString(),
+          native_fee: mockTransfer.nativeFee.toString(),
+        },
+      },
+    }
+
+    beforeEach(() => {
+      // Mock storage balance calls
+      mockWallet.provider.callFunction = vi
+        .fn()
+        .mockImplementation((_contractId: string, methodName: string, _args: unknown) => {
+          if (methodName === "storage_balance_of") {
+            return Promise.resolve({
+              total: "1000000000000000000000000",
+              available: "500000000000000000000000",
+            })
+          }
+          if (methodName.includes("required_balance_for")) {
+            return Promise.resolve("1000000000000000000000")
+          }
+          if (methodName === "storage_balance_bounds") {
+            return Promise.resolve({
+              min: "1000000000000000000000",
+              max: "2000000000000000000000",
+            })
+          }
+          return Promise.resolve("1000000000000000000000000")
+        })
+
+      // Mock successful initTransfer
+      mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue({
+        transaction: { hash: mockTxHash },
+        receipts_outcome: [
+          {
+            outcome: {
+              logs: [`{"InitTransferEvent": ${JSON.stringify(mockInitTransferEvent)}}`],
+            },
+          },
+        ],
+      })
+    })
+
+    it("should throw error if token address is not on NEAR", async () => {
+      const invalidTransfer = { ...mockTransfer, tokenAddress: "eth:0x123" }
+      await expect(client.initTransfer(invalidTransfer)).rejects.toThrow(
+        "Token address must be on NEAR",
+      )
+    })
+
+    it("should call ft_transfer_call with correct arguments", async () => {
+      const result = await client.initTransfer(mockTransfer)
+
+      expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith({
+        receiverId: mockTokenAddress,
+        actions: [
+          expect.objectContaining({
+            functionCall: expect.objectContaining({
+              methodName: "ft_transfer_call",
+              gas: BigInt(3e14),
+              deposit: BigInt(1),
+            }),
+          }),
+        ],
+      })
+
+      expect(result).toEqual(mockInitTransferEvent)
+    })
+
+    it("should throw error if InitTransferEvent not found in logs", async () => {
+      mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue({
+        transaction: { hash: mockTxHash },
+        receipts_outcome: [
+          {
+            outcome: {
+              logs: ["Some other event"],
+            },
+          },
+        ],
+      })
+
+      await expect(client.initTransfer(mockTransfer)).rejects.toThrow(
+        "InitTransferEvent not found in transaction logs",
+      )
+    })
+  })
+
+  describe("signTransfer", () => {
+    const mockInitTransferEvent: InitTransferEvent = {
+      transfer_message: {
+        origin_chain: "Near",
+        origin_nonce: 1,
+        token: mockTokenAddress,
+        recipient: "eth:0x1234567890123456789012345678901234567890",
+        amount: "1000000000000000000",
+        fee: {
+          fee: "100000000000000000",
+          native_fee: "50000000000000000",
+        },
+      },
+    }
+
+    const mockSignTransferEvent: SignTransferEvent = {
+      transfer_id: {
+        origin_chain: "Near",
+        origin_nonce: 1,
+      },
+      vaa: "mock-signed-vaa",
+    }
+
+    const mockFeeRecipient = "fee-recipient.near"
+
+    beforeEach(() => {
+      mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue({
+        transaction: { hash: mockTxHash },
+        receipts_outcome: [
+          {
+            outcome: {
+              logs: [`{"SignTransferEvent": ${JSON.stringify(mockSignTransferEvent)}}`],
+            },
+          },
+        ],
+      })
+    })
+
+    it("should call sign_transfer with correct arguments", async () => {
+      const result = await client.signTransfer(mockInitTransferEvent, mockFeeRecipient)
+
+      expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith({
+        receiverId: mockLockerAddress,
+        actions: [
+          expect.objectContaining({
+            functionCall: expect.objectContaining({
+              methodName: "sign_transfer",
+              gas: BigInt(3e14),
+              deposit: BigInt(1),
+            }),
+          }),
+        ],
+        waitUntil: "FINAL",
+      })
+
+      expect(result).toEqual(mockSignTransferEvent)
+    })
+
+    it("should throw error if SignTransferEvent not found in logs", async () => {
+      mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue({
+        transaction: { hash: mockTxHash },
+        receipts_outcome: [
+          {
+            outcome: {
+              logs: ["Some other event"],
+            },
+          },
+        ],
+      })
+
+      await expect(client.signTransfer(mockInitTransferEvent, mockFeeRecipient)).rejects.toThrow(
+        "SignTransferEvent not found in transaction logs",
+      )
+    })
+  })
+
+  describe("finalizeTransfer", () => {
+    const mockToken = "test-token.near"
+    const mockAccount = "recipient.near"
+    const mockStorageDeposit = BigInt("1000000000000000000000000")
+    const mockVaa = "mock-vaa"
+    const mockEvmProof: EvmVerifyProofArgs = {
+      proof_kind: ProofKind.InitTransfer,
+      proof: {
+        log_index: BigInt(1),
+        log_entry_data: new Uint8Array([1, 2, 3]),
+        receipt_index: BigInt(0),
+        receipt_data: new Uint8Array([4, 5, 6]),
+        header_data: new Uint8Array([7, 8, 9]),
+        proof: [new Uint8Array([10, 11, 12])],
+      },
+    }
+
+    beforeEach(() => {
+      mockWallet.provider.callFunction = vi.fn().mockResolvedValue("4000000000000000000000000")
+    })
 
     it("should throw error if neither VAA nor EVM proof is provided", async () => {
       await expect(
@@ -256,13 +480,24 @@ describe("NearBridgeClient", () => {
         mockVaa,
       )
 
-      expect(mockWallet.functionCall).toHaveBeenCalledWith({
-        contractId: mockLockerAddress,
-        methodName: "fin_transfer",
-        args: expect.any(Uint8Array),
-        gas: BigInt(3e14),
-        attachedDeposit: BigInt(2),
+      expect(mockWallet.provider.callFunction).toHaveBeenCalledWith(
+        mockLockerAddress,
+        "required_balance_for_fin_transfer",
+        {},
+      )
+
+      expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith({
+        receiverId: mockLockerAddress,
+        actions: [
+          expect.objectContaining({
+            functionCall: expect.objectContaining({
+              methodName: "fin_transfer",
+              gas: BigInt(3e14),
+            }),
+          }),
+        ],
       })
+
       expect(txHash).toBe(mockTxHash)
     })
 
@@ -276,19 +511,45 @@ describe("NearBridgeClient", () => {
         mockEvmProof,
       )
 
-      expect(mockWallet.functionCall).toHaveBeenCalledWith({
-        contractId: mockLockerAddress,
-        methodName: "fin_transfer",
-        args: expect.any(Uint8Array),
-        gas: BigInt(3e14),
-        attachedDeposit: BigInt(2),
+      expect(mockWallet.provider.callFunction).toHaveBeenCalledWith(
+        mockLockerAddress,
+        "required_balance_for_fin_transfer",
+        {},
+      )
+
+      expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith({
+        receiverId: mockLockerAddress,
+        actions: [
+          expect.objectContaining({
+            functionCall: expect.objectContaining({
+              methodName: "fin_transfer",
+              gas: BigInt(3e14),
+            }),
+          }),
+        ],
       })
+
       expect(txHash).toBe(mockTxHash)
     })
 
-    it("should handle errors from functionCall", async () => {
+    it("should use custom proof kind when provided", async () => {
+      const customProofKind = ProofKind.FinTransfer
+      const txHash = await client.finalizeTransfer(
+        mockToken,
+        mockAccount,
+        mockStorageDeposit,
+        ChainKind.Sol,
+        mockVaa,
+        undefined,
+        customProofKind,
+      )
+
+      expect(txHash).toBe(mockTxHash)
+    })
+
+    it("should handle errors from signAndSendTransaction", async () => {
       const error = new Error("NEAR finalize transfer error")
-      mockWallet.functionCall = vi.fn().mockRejectedValue(error)
+      mockWallet.signAndSendTransaction = vi.fn().mockRejectedValue(error)
 
       await expect(
         client.finalizeTransfer(mockToken, mockAccount, mockStorageDeposit, ChainKind.Sol, mockVaa),

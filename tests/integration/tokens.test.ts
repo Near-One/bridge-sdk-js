@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, it, vi } from "vitest"
-import { setNetwork } from "../../src"
-import { ChainKind } from "../../src/types"
-import { getBridgedToken } from "../../src/utils/tokens"
+import { setNetwork } from "../../src/index.js"
+import { ChainKind } from "../../src/types/index.js"
+import { getBridgedToken } from "../../src/utils/tokens.js"
 
 describe.concurrent("Token Conversion Integration Tests", () => {
   beforeAll(() => {

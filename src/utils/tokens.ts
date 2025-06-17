@@ -1,6 +1,6 @@
 import { getProviderByNetwork, view } from "@near-js/client"
-import { addresses } from "../config"
-import { ChainKind, type OmniAddress } from "../types"
+import { addresses } from "../config.js"
+import { ChainKind, type OmniAddress } from "../types/index.js"
 
 /**
  * Converts a token address from one chain to its equivalent on another chain.

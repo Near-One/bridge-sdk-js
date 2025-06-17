@@ -1,5 +1,5 @@
 import { ethers } from "ethers"
-import { addresses } from "../config"
+import { addresses } from "../config.js"
 import {
   type BridgeDeposit,
   ChainKind,
@@ -8,8 +8,8 @@ import {
   type OmniTransferMessage,
   type TokenMetadata,
   type TransferMessagePayload,
-} from "../types"
-import { getChain } from "../utils"
+} from "../types/index.js"
+import { getChain } from "../utils/index.js"
 
 // Type helpers for EVM chains
 export type EVMChainKind = ChainKind.Eth | ChainKind.Base | ChainKind.Arb

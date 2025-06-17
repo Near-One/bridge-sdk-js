@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest"
-import { addresses, setNetwork } from "../src/config"
-import { OmniBridgeAPI } from "./api"
+import { addresses, setNetwork } from "../src/config.js"
+import { OmniBridgeAPI } from "./api.js"
 
 describe("Config", () => {
   beforeEach(() => {
