@@ -78,11 +78,7 @@ describe("NearBridgeClient", () => {
         prefix: "test",
         token: "test-token.near",
       },
-      signature: new MPCSignature(
-        { affine_point: "mock-r" },
-        { scalar: "mock-s" },
-        0,
-      ),
+      signature: new MPCSignature({ affine_point: "mock-r" }, { scalar: "mock-s" }, 0),
     }
 
     beforeEach(() => {
@@ -391,11 +387,7 @@ describe("NearBridgeClient", () => {
     }
 
     const mockSignTransferEvent: SignTransferEvent = {
-      signature: new MPCSignature(
-        { affine_point: "mock-r" },
-        { scalar: "mock-s" },
-        0,
-      ),
+      signature: new MPCSignature({ affine_point: "mock-r" }, { scalar: "mock-s" }, 0),
       message_payload: {
         prefix: PayloadType.TransferMessage,
         destination_nonce: "1",
