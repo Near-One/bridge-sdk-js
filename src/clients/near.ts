@@ -679,7 +679,7 @@ export class NearBridgeClient {
   ): Promise<string> {
     // Validate supported chains for fast transfer
     if (!isEvmChain(originChain)) {
-      throw new Error(`Fast transfer is not supported for chain kind: ${originChain}`)
+      throw new Error(`Fast transfer is not supported for chain kind: ${ChainKind[originChain]}`)
     }
 
     // Step 1: Parse the InitTransfer event from EVM transaction

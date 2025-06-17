@@ -4,6 +4,7 @@ import { NearBridgeClient } from "../../src/clients/near.js"
 import {
   ChainKind,
   type EvmVerifyProofArgs,
+  type FastFinTransferArgs,
   type InitTransferEvent,
   type LogMetadataEvent,
   MPCSignature,
@@ -578,6 +579,158 @@ describe("NearBridgeClient", () => {
       await expect(
         client.finalizeTransfer(mockToken, mockAccount, mockStorageDeposit, ChainKind.Sol, mockVaa),
       ).rejects.toThrow("NEAR finalize transfer error")
+    })
+  })
+
+  describe("fastFinTransfer", () => {
+    const mockFastFinTransferArgs: FastFinTransferArgs = {
+      token_id: "wrap.near",
+      amount: "1000000000000000000000000",
+      transfer_id: "0x123abc",
+      recipient: "recipient.near",
+      fee: {
+        fee: "100000000000000000000000",
+        native_fee: "1000000000000000000000",
+      },
+      msg: "",
+      storage_deposit_amount: "125000000000000000000000",
+      relayer: "relayer.near",
+    }
+
+    beforeEach(() => {
+      // Mock getRequiredBalanceForFastTransfer
+      vi.spyOn(client, "getRequiredBalanceForFastTransfer").mockResolvedValue(
+        BigInt("1000000000000000000000000"),
+      )
+
+      // Mock viewFunction for storage_balance_of
+      mockWallet.viewFunction = vi.fn().mockImplementation((args) => {
+        if (args.methodName === "storage_balance_of") {
+          return Promise.resolve({
+            total: "125000000000000000000000",
+            available: "125000000000000000000000",
+          })
+        }
+        return Promise.resolve("2")
+      })
+    })
+
+    it("should successfully execute fast finalize transfer", async () => {
+      const txHash = await client.fastFinTransfer(mockFastFinTransferArgs)
+
+      expect(client.getRequiredBalanceForFastTransfer).toHaveBeenCalled()
+      expect(mockWallet.viewFunction).toHaveBeenCalledWith({
+        contractId: mockLockerAddress,
+        methodName: "storage_balance_of",
+        args: {
+          account_id: mockWallet.accountId,
+        },
+      })
+
+      // Should call storage_deposit first, then ft_transfer_call
+      expect(mockWallet.functionCall).toHaveBeenCalledTimes(2)
+      expect(mockWallet.functionCall).toHaveBeenNthCalledWith(1, {
+        contractId: mockLockerAddress,
+        methodName: "storage_deposit",
+        args: {},
+        gas: BigInt(1e14),
+        attachedDeposit: BigInt("1000000000000000000000000"), // totalRequiredBalance (1125000000000000000000000) - existingBalance (125000000000000000000000)
+      })
+      expect(mockWallet.functionCall).toHaveBeenNthCalledWith(2, {
+        contractId: mockFastFinTransferArgs.token_id,
+        methodName: "ft_transfer_call",
+        args: {
+          receiver_id: mockLockerAddress,
+          amount: mockFastFinTransferArgs.amount,
+          msg: expect.stringContaining("FastFinTransfer"),
+        },
+        gas: BigInt(3e14),
+        attachedDeposit: BigInt(1),
+      })
+      expect(txHash).toBe(mockTxHash)
+    })
+
+    it("should handle case without storage deposit amount", async () => {
+      const argsWithoutStorageDeposit = {
+        ...mockFastFinTransferArgs,
+        storage_deposit_amount: undefined,
+      }
+
+      const txHash = await client.fastFinTransfer(argsWithoutStorageDeposit)
+
+      // Should call storage_deposit first (with required balance only), then ft_transfer_call
+      expect(mockWallet.functionCall).toHaveBeenCalledTimes(2)
+      expect(mockWallet.functionCall).toHaveBeenNthCalledWith(1, {
+        contractId: mockLockerAddress,
+        methodName: "storage_deposit",
+        args: {},
+        gas: BigInt(1e14),
+        attachedDeposit: BigInt("875000000000000000000000"), // required balance - existing balance
+      })
+      expect(mockWallet.functionCall).toHaveBeenNthCalledWith(2, {
+        contractId: argsWithoutStorageDeposit.token_id,
+        methodName: "ft_transfer_call",
+        args: {
+          receiver_id: mockLockerAddress,
+          amount: argsWithoutStorageDeposit.amount,
+          msg: expect.stringContaining("FastFinTransfer"),
+        },
+        gas: BigInt(3e14),
+        attachedDeposit: BigInt(1),
+      })
+      expect(txHash).toBe(mockTxHash)
+    })
+
+    it("should deposit storage when storage balance is insufficient", async () => {
+      // Mock insufficient storage balance
+      mockWallet.viewFunction = vi.fn().mockImplementation((args) => {
+        if (args.methodName === "storage_balance_of") {
+          return Promise.resolve(null) // No storage balance
+        }
+        return Promise.resolve("2")
+      })
+
+      const txHash = await client.fastFinTransfer(mockFastFinTransferArgs)
+
+      // Should call storage_deposit first, then ft_transfer_call
+      expect(mockWallet.functionCall).toHaveBeenCalledTimes(2)
+      expect(mockWallet.functionCall).toHaveBeenNthCalledWith(1, {
+        contractId: mockLockerAddress,
+        methodName: "storage_deposit",
+        args: {},
+        gas: BigInt(1e14),
+        attachedDeposit: BigInt("1125000000000000000000000"), // full required balance + storage deposit
+      })
+      expect(mockWallet.functionCall).toHaveBeenNthCalledWith(2, {
+        contractId: mockFastFinTransferArgs.token_id,
+        methodName: "ft_transfer_call",
+        args: {
+          receiver_id: mockLockerAddress,
+          amount: mockFastFinTransferArgs.amount,
+          msg: expect.stringContaining("FastFinTransfer"),
+        },
+        gas: BigInt(3e14),
+        attachedDeposit: BigInt(1),
+      })
+      expect(txHash).toBe(mockTxHash)
+    })
+
+    it("should handle errors from functionCall", async () => {
+      const error = new Error("NEAR fast finalize transfer error")
+      mockWallet.functionCall = vi.fn().mockRejectedValue(error)
+
+      await expect(client.fastFinTransfer(mockFastFinTransferArgs)).rejects.toThrow(
+        "NEAR fast finalize transfer error",
+      )
+    })
+
+    it("should handle errors from getRequiredBalanceForFastTransfer", async () => {
+      const error = new Error("Failed to get required balance")
+      vi.spyOn(client, "getRequiredBalanceForFastTransfer").mockRejectedValue(error)
+
+      await expect(client.fastFinTransfer(mockFastFinTransferArgs)).rejects.toThrow(
+        "Failed to get required balance",
+      )
     })
   })
 })
