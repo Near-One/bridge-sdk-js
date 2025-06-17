@@ -351,7 +351,7 @@ export class NearBridgeClient {
     const args: SignTransferArgs = {
       transfer_id: {
         origin_chain: "Near",
-        origin_nonce: initTransferEvent.transfer_message.origin_nonce,
+        origin_nonce: BigInt(initTransferEvent.transfer_message.origin_nonce),
       },
       fee_recipient: feeRecipient,
       fee: {
@@ -569,7 +569,7 @@ export class NearBridgeClient {
    * @private
    * @returns Promise resolving to the required balance amount in yoctoNEAR
    */
-  private async getRequiredBalanceForFastTransfer(): Promise<bigint> {
+  async getRequiredBalanceForFastTransfer(): Promise<bigint> {
     const balanceStr = await this.wallet.viewFunction({
       contractId: this.lockerAddress,
       methodName: "required_balance_for_fast_transfer",
@@ -630,7 +630,10 @@ export class NearBridgeClient {
       FastFinTransfer: {
         recipient: args.recipient,
         fee: args.fee,
-        transfer_id: args.transfer_id,
+        transfer_id: {
+          origin_chain: args.transfer_id.origin_chain,
+          origin_nonce: args.transfer_id.origin_nonce.toString(),
+        },
         msg: args.msg,
         storage_deposit_amount: args.storage_deposit_amount,
         relayer: args.relayer,
@@ -698,7 +701,7 @@ export class NearBridgeClient {
     // Step 3: Construct the transfer ID
     const transferId: TransferId = {
       origin_chain: ChainKind[originChain], // Convert enum to string
-      origin_nonce: Number(transferEvent.originNonce),
+      origin_nonce: transferEvent.originNonce,
     }
 
     // Step 4: Execute the fast finalize transfer

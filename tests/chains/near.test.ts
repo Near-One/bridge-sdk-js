@@ -586,7 +586,10 @@ describe("NearBridgeClient", () => {
     const mockFastFinTransferArgs: FastFinTransferArgs = {
       token_id: "wrap.near",
       amount: "1000000000000000000000000",
-      transfer_id: "0x123abc",
+      transfer_id: {
+        origin_chain: "Eth",
+        origin_nonce: 123n,
+      },
       recipient: "recipient.near",
       fee: {
         fee: "100000000000000000000000",

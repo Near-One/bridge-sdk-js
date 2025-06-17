@@ -253,7 +253,7 @@ export class EvmBridgeClient {
           return {
             sender: parsedLog.args.sender,
             tokenAddress: parsedLog.args.tokenAddress,
-            originNonce: parsedLog.args.originNonce,
+            originNonce: parsedLog.args.originNonce.toBigInt(),
             amount: parsedLog.args.amount,
             fee: parsedLog.args.fee,
             nativeTokenFee: parsedLog.args.nativeTokenFee,
