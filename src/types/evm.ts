@@ -7,7 +7,7 @@ export enum PayloadType {
 }
 
 export interface TransferId {
-  origin_chain: string
+  origin_chain: number // u8 in rust
   origin_nonce: bigint
 }
 
