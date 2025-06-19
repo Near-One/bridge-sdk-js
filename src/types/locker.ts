@@ -60,6 +60,7 @@ export type FastFinTransferArgs = {
     native_fee: string
   }
   msg: string
+  origin_amount: string
   storage_deposit_amount?: string
   relayer: AccountId
 }

@@ -223,7 +223,7 @@ export class EvmBridgeClient {
    * @returns Promise resolving to the parsed InitTransfer event
    * @throws {Error} If transaction receipt is not found or InitTransfer event is not found
    */
-  async parseInitTransferEvent(txHash: string): Promise<EvmInitTransferEvent> {
+  async getInitTransferEvent(txHash: string): Promise<EvmInitTransferEvent> {
     const provider = this.wallet.provider
     if (!provider) {
       throw new Error("Provider not available on wallet")
@@ -253,7 +253,10 @@ export class EvmBridgeClient {
           return {
             sender: parsedLog.args.sender,
             tokenAddress: parsedLog.args.tokenAddress,
-            originNonce: parsedLog.args.originNonce.toBigInt(),
+            originNonce:
+              typeof parsedLog.args.originNonce === "bigint"
+                ? parsedLog.args.originNonce
+                : parsedLog.args.originNonce.toBigInt(),
             amount: parsedLog.args.amount,
             fee: parsedLog.args.fee,
             nativeTokenFee: parsedLog.args.nativeTokenFee,

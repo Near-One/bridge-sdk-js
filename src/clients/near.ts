@@ -26,8 +26,13 @@ import {
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
 } from "../types/index.js"
-import { isEvmChain, omniAddress } from "../utils/chain.js"
-import { getChain } from "../utils/index.js"
+import {
+  getChain,
+  getTokenDecimals,
+  isEvmChain,
+  normalizeAmount,
+  omniAddress,
+} from "../utils/index.js"
 import { getBridgedToken } from "../utils/tokens.js"
 import type { EvmBridgeClient } from "./evm.js"
 
@@ -598,9 +603,7 @@ export class NearBridgeClient {
   async fastFinTransfer(args: FastFinTransferArgs): Promise<string> {
     // Get required balance for fast transfer
     const requiredBalance = await this.getRequiredBalanceForFastTransfer()
-    const storageDepositAmount = args.storage_deposit_amount
-      ? BigInt(args.storage_deposit_amount)
-      : BigInt(0)
+    const storageDepositAmount = BigInt(args.storage_deposit_amount ?? 0)
     const totalRequiredBalance = requiredBalance + storageDepositAmount
 
     // Check current storage balance and deposit if needed
@@ -635,6 +638,7 @@ export class NearBridgeClient {
           origin_nonce: args.transfer_id.origin_nonce.toString(),
         },
         msg: args.msg,
+        origin_amount: args.origin_amount,
         storage_deposit_amount: args.storage_deposit_amount,
         relayer: args.relayer,
       },
@@ -686,7 +690,7 @@ export class NearBridgeClient {
     }
 
     // Step 1: Parse the InitTransfer event from EVM transaction
-    const transferEvent = await evmClient.parseInitTransferEvent(evmTxHash)
+    const transferEvent = await evmClient.getInitTransferEvent(evmTxHash)
 
     // Step 2: Get the NEAR token ID for the EVM token using getBridgedToken
     const omniTokenAddress = omniAddress(originChain, transferEvent.tokenAddress)
@@ -698,22 +702,37 @@ export class NearBridgeClient {
 
     const nearTokenId = nearTokenAddress.split(":")[1] // Extract account ID from near:account.near
 
-    // Step 3: Construct the transfer ID
+    // Step 3: Normalize the amount & fee based on source/destination decimals
+    const sourceDecimals = await getTokenDecimals(addresses.near, omniTokenAddress)
+    const destinationDecimals = await getTokenDecimals(addresses.near, nearTokenAddress)
+    const normalizedAmount = normalizeAmount(
+      transferEvent.amount,
+      sourceDecimals.decimals,
+      destinationDecimals.decimals,
+    )
+    const normalizedFee = normalizeAmount(
+      transferEvent.fee,
+      sourceDecimals.decimals,
+      destinationDecimals.decimals,
+    )
+
+    // Step 4: Construct the transfer ID
     const transferId: TransferId = {
       origin_chain: originChain, // Use numeric enum value
       origin_nonce: transferEvent.originNonce,
     }
 
-    // Step 4: Execute the fast finalize transfer
+    // Step 5: Execute the fast finalize transfer
     const fastTransferArgs: FastFinTransferArgs = {
       token_id: nearTokenId,
-      amount: transferEvent.amount.toString(),
+      amount: normalizedAmount.toString(),
       transfer_id: transferId,
       recipient: transferEvent.recipient,
       fee: {
-        fee: transferEvent.fee.toString(),
+        fee: normalizedFee.toString(),
         native_fee: transferEvent.nativeTokenFee.toString(),
       },
+      origin_amount: transferEvent.amount.toString(),
       msg: transferEvent.message,
       storage_deposit_amount: storageDepositAmount,
       relayer: this.wallet.accountId,

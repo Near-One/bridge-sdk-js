@@ -590,6 +590,7 @@ describe("NearBridgeClient", () => {
         origin_chain: ChainKind.Eth,
         origin_nonce: 123n,
       },
+      origin_amount: "1000000000000000000000000",
       recipient: "recipient.near",
       fee: {
         fee: "100000000000000000000000",
