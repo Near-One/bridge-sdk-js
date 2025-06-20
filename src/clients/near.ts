@@ -702,27 +702,31 @@ export class NearBridgeClient {
 
     const nearTokenId = nearTokenAddress.split(":")[1] // Extract account ID from near:account.near
 
-    // Step 3: Normalize the amount & fee based on source/destination decimals
-    const sourceDecimals = await getTokenDecimals(addresses.near, omniTokenAddress)
-    const destinationDecimals = await getTokenDecimals(addresses.near, nearTokenAddress)
+    // Step 3: Fetch the decimal information for the tokens
+    const tokenDecimals = await getTokenDecimals(addresses.near, omniTokenAddress)
+    const sourceDecimals = tokenDecimals.origin_decimals
+    const destinationDecimals = tokenDecimals.decimals
+
+    // Step 4: Normalize the decimals between both chains
     const normalizedAmount = normalizeAmount(
       transferEvent.amount,
-      sourceDecimals.decimals,
-      destinationDecimals.decimals,
+      sourceDecimals,
+      destinationDecimals,
     )
-    const normalizedFee = normalizeAmount(
-      transferEvent.fee,
-      sourceDecimals.decimals,
-      destinationDecimals.decimals,
+    const normalizedFee = normalizeAmount(transferEvent.fee, sourceDecimals, destinationDecimals)
+    const normalizedNativeTokenFee = normalizeAmount(
+      transferEvent.nativeTokenFee,
+      sourceDecimals,
+      destinationDecimals,
     )
 
-    // Step 4: Construct the transfer ID
+    // Step 5: Construct the transfer ID
     const transferId: TransferId = {
       origin_chain: originChain, // Use numeric enum value
       origin_nonce: transferEvent.originNonce,
     }
 
-    // Step 5: Execute the fast finalize transfer
+    // Step 6: Execute the fast finalize transfer
     const fastTransferArgs: FastFinTransferArgs = {
       token_id: nearTokenId,
       amount: normalizedAmount.toString(),
@@ -730,7 +734,7 @@ export class NearBridgeClient {
       recipient: transferEvent.recipient,
       fee: {
         fee: normalizedFee.toString(),
-        native_fee: transferEvent.nativeTokenFee.toString(),
+        native_fee: normalizedNativeTokenFee.toString(),
       },
       origin_amount: transferEvent.amount.toString(),
       msg: transferEvent.message,
