@@ -249,20 +249,22 @@ export class EvmBridgeClient {
           data: log.data,
         })
 
-        if (parsedLog?.name === "InitTransfer") {
-          return {
-            sender: parsedLog.args.sender,
-            tokenAddress: parsedLog.args.tokenAddress,
-            originNonce:
-              typeof parsedLog.args.originNonce === "bigint"
-                ? parsedLog.args.originNonce
-                : parsedLog.args.originNonce.toBigInt(),
-            amount: parsedLog.args.amount,
-            fee: parsedLog.args.fee,
-            nativeTokenFee: parsedLog.args.nativeTokenFee,
-            recipient: parsedLog.args.recipient,
-            message: parsedLog.args.message,
-          }
+        if (!parsedLog) {
+          throw new Error("InitTransfer event not found in transaction logs")
+        }
+
+        return {
+          sender: parsedLog.args.sender,
+          tokenAddress: parsedLog.args.tokenAddress,
+          originNonce:
+            typeof parsedLog.args.originNonce === "bigint"
+              ? parsedLog.args.originNonce
+              : parsedLog.args.originNonce.toBigInt(),
+          amount: parsedLog.args.amount,
+          fee: parsedLog.args.fee,
+          nativeTokenFee: parsedLog.args.nativeTokenFee,
+          recipient: parsedLog.args.recipient,
+          message: parsedLog.args.message,
         }
       } catch {
         // Continue searching other logs if this one doesn't match
