@@ -175,10 +175,11 @@ export class NearBridgeClient {
     const serializedArgs = DeployTokenArgsSchema.serialize(args)
 
     // Retrieve required deposit dynamically for deploy_token
-    const deployDepositStr = await this.wallet.viewFunction({
-      contractId: this.lockerAddress,
-      methodName: "required_balance_for_deploy_token",
-    })
+    const deployDepositStr = (await this.wallet.provider.callFunction(
+      this.lockerAddress,
+      "required_balance_for_deploy_token",
+      {},
+    )) as string
 
     const tx = await this.wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
@@ -617,56 +618,48 @@ export class NearBridgeClient {
     const totalRequiredBalance = requiredBalance + storageDepositAmount
 
     // Check current storage balance and deposit if needed
-    const storage = await this.wallet.viewFunction({
-      contractId: this.lockerAddress,
-      methodName: "storage_balance_of",
-      args: {
+    const storage = (await this.wallet.provider.callFunction(
+      this.lockerAddress,
+      "storage_balance_of",
+      {
         account_id: this.wallet.accountId,
       },
-    })
+    )) as { total: string; available: string }
 
     const existingBalance = storage?.available ? BigInt(storage.available) : BigInt(0)
     const neededAmount = totalRequiredBalance - existingBalance
 
     if (neededAmount > 0) {
-      await this.wallet.functionCall({
-        contractId: this.lockerAddress,
-        methodName: "storage_deposit",
-        args: {},
-        gas: GAS.STORAGE_DEPOSIT,
-        attachedDeposit: neededAmount,
+      await this.wallet.signAndSendTransaction({
+        receiverId: this.lockerAddress,
+        actions: [
+          actionCreators.functionCall(
+            "storage_deposit",
+            {},
+            BigInt(GAS.STORAGE_DEPOSIT),
+            BigInt(neededAmount),
+          ),
+        ],
       })
-    }
-
-    // Construct message for ft_transfer_call
-    const message = {
-      FastFinTransfer: {
-        recipient: args.recipient,
-        fee: args.fee,
-        transfer_id: {
-          origin_chain: args.transfer_id.origin_chain,
-          origin_nonce: args.transfer_id.origin_nonce.toString(),
-        },
-        msg: args.msg,
-        origin_amount: args.origin_amount,
-        storage_deposit_amount: args.storage_deposit_amount,
-        relayer: args.relayer,
-      },
     }
 
     const transferArgs = {
       receiver_id: this.lockerAddress,
       amount: args.amount,
-      msg: JSON.stringify(message),
+      msg: JSON.stringify(args),
     }
 
     // Execute the fast finalize transfer
-    const tx = await this.wallet.functionCall({
-      contractId: args.token_id,
-      methodName: "ft_transfer_call",
-      args: transferArgs,
-      gas: GAS.FAST_FIN_TRANSFER,
-      attachedDeposit: DEPOSIT.INIT_TRANSFER,
+    const tx = await this.wallet.signAndSendTransaction({
+      receiverId: args.token_id,
+      actions: [
+        actionCreators.functionCall(
+          "ft_transfer_call",
+          transferArgs,
+          BigInt(GAS.FAST_FIN_TRANSFER),
+          BigInt(DEPOSIT.INIT_TRANSFER),
+        ),
+      ],
     })
 
     return tx.transaction.hash
