@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.11.0
+
+### Minor Changes
+
+- 8404d01: feat: Switch to bun, latest NAJ, refactor
+
 ## 0.10.4
 
 ### Patch Changes
