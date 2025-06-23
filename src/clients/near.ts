@@ -26,13 +26,7 @@ import {
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
 } from "../types/index.js"
-import {
-  getChain,
-  getTokenDecimals,
-  isEvmChain,
-  normalizeAmount,
-  omniAddress,
-} from "../utils/index.js"
+import { getChain, isEvmChain, omniAddress } from "../utils/index.js"
 import { getBridgedToken } from "../utils/tokens.js"
 import type { EvmBridgeClient } from "./evm.js"
 
@@ -718,41 +712,24 @@ export class NearBridgeClient {
 
     const nearTokenId = nearTokenAddress.split(":")[1] // Extract account ID from near:account.near
 
-    // Step 3: Fetch the decimal information for the tokens
-    const tokenDecimals = await getTokenDecimals(addresses.near, omniTokenAddress)
-    const sourceDecimals = tokenDecimals.origin_decimals
-    const destinationDecimals = tokenDecimals.decimals
+    // Step 3: Amounts and fees are passed directly - contract handles normalization internally
 
-    // Step 4: Normalize the decimals between both chains
-    const normalizedAmount = normalizeAmount(
-      transferEvent.amount,
-      sourceDecimals,
-      destinationDecimals,
-    )
-    const normalizedFee = normalizeAmount(transferEvent.fee, sourceDecimals, destinationDecimals)
-    const normalizedNativeTokenFee = normalizeAmount(
-      transferEvent.nativeTokenFee,
-      sourceDecimals,
-      destinationDecimals,
-    )
-
-    // Step 5: Construct the transfer ID
+    // Step 4: Construct the transfer ID
     const transferId: TransferId = {
       origin_chain: originChain, // Use numeric enum value
       origin_nonce: transferEvent.originNonce,
     }
 
-    // Step 6: Execute the fast finalize transfer
+    // Step 5: Execute the fast finalize transfer - pass amounts directly
     const fastTransferArgs: FastFinTransferArgs = {
       token_id: nearTokenId,
-      amount: normalizedAmount.toString(),
+      amount: transferEvent.amount.toString(),
       transfer_id: transferId,
       recipient: transferEvent.recipient,
       fee: {
-        fee: normalizedFee.toString(),
-        native_fee: normalizedNativeTokenFee.toString(),
+        fee: transferEvent.fee.toString(),
+        native_fee: transferEvent.nativeTokenFee.toString(),
       },
-      origin_amount: transferEvent.amount.toString(),
       msg: transferEvent.message,
       storage_deposit_amount: storageDepositAmount,
       relayer: this.wallet.accountId,
