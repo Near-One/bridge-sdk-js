@@ -394,7 +394,7 @@ describe("NearBridgeClient", () => {
         destination_nonce: "1",
         transfer_id: {
           origin_chain: ChainKind.Near,
-          origin_nonce: "1",
+          origin_nonce: BigInt(1),
         },
         token_address: mockTokenOmniAddress,
         amount: "1000000000000000000",
