@@ -343,6 +343,17 @@ export class NearBridgeClient {
     return JSON.parse(event).InitTransferEvent
   }
 
+  parseSignTransferEvent(json: string): SignTransferEvent {
+    const parsed = JSON.parse(json, (key, value) => {
+      // Convert only if the key matches *and* the value is a decimal string
+      if (key === "origin_nonce" && typeof value === "string" && /^\d+$/.test(value)) {
+        return BigInt(value)
+      }
+      return value
+    })
+
+    return parsed.SignTransferEvent as SignTransferEvent
+  }
   /**
    * Signs transfer using the token locker
    * @param initTransferEvent - Transfer event of the previously-initiated transfer
@@ -392,7 +403,7 @@ export class NearBridgeClient {
       throw new Error("SignTransferEvent not found in transaction logs")
     }
 
-    return JSON.parse(event).SignTransferEvent
+    return this.parseSignTransferEvent(event)
   }
 
   /**
