@@ -1,7 +1,7 @@
 import { getProviderByNetwork, view } from "@near-js/client"
 
-import { addresses } from "../config"
-import type { OmniAddress } from "../types"
+import { addresses } from "../config.js"
+import type { OmniAddress } from "../types/index.js"
 
 export interface TokenDecimals {
   decimals: number

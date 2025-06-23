@@ -1,5 +1,4 @@
 import { BN, Program, type Provider } from "@coral-xyz/anchor"
-import type { MethodsBuilder } from "@coral-xyz/anchor/dist/cjs/program/namespace/methods"
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
@@ -13,7 +12,7 @@ import {
   SYSVAR_RENT_PUBKEY,
   SystemProgram,
 } from "@solana/web3.js"
-import { addresses } from "../config"
+import { addresses } from "../config.js"
 import {
   ChainKind,
   type DepositPayload,
@@ -22,10 +21,12 @@ import {
   type OmniTransferMessage,
   type TokenMetadata,
   type TransferMessagePayload,
-} from "../types"
-import type { BridgeTokenFactory } from "../types/solana/bridge_token_factory"
-import BRIDGE_TOKEN_FACTORY_IDL from "../types/solana/bridge_token_factory.json"
-import { getChain } from "../utils"
+} from "../types/index.js"
+import type { BridgeTokenFactory } from "../types/solana/bridge_token_factory.js"
+import BRIDGE_TOKEN_FACTORY_IDL from "../types/solana/bridge_token_factory.json" with {
+  type: "json",
+}
+import { getChain } from "../utils/index.js"
 
 const MPL_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
 
@@ -249,7 +250,7 @@ export class SolanaBridgeClient {
     const [solVault] = this.solVaultId()
 
     // biome-ignore lint/suspicious/noExplicitAny: initTransfer or initTransferSol
-    let method: MethodsBuilder<BridgeTokenFactory, any, any>
+    let method: any
     if (transfer.tokenAddress === `sol:${PublicKey.default.toBase58()}`) {
       method = this.program.methods
         .initTransferSol({

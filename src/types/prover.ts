@@ -1,5 +1,5 @@
 import { b } from "@zorsh/zorsh"
-import type { AccountId, Fee, Nonce, OmniAddress, U128 } from "./common"
+import type { AccountId, Fee, Nonce, OmniAddress, U128 } from "./common.js"
 
 export enum ProofKind {
   InitTransfer = 0,

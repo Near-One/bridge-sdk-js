@@ -1,5 +1,5 @@
-import type { OmniAddress } from "../types"
-import { ChainKind } from "../types"
+import type { OmniAddress } from "../types/index.js"
+import { ChainKind } from "../types/index.js"
 
 type ChainPrefix = "eth" | "near" | "sol" | "arb" | "base"
 

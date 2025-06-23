@@ -1,6 +1,6 @@
-import type { Account } from "near-api-js"
-import { functionCall } from "near-api-js/lib/transaction"
-import { addresses } from "../config"
+import type { Account } from "@near-js/accounts"
+import { actionCreators } from "@near-js/transactions"
+import { addresses } from "../config.js"
 import {
   type AccountId,
   type BindTokenArgs,
@@ -23,8 +23,8 @@ import {
   type U128,
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
-} from "../types"
-import { getChain } from "../utils"
+} from "../types/index.js"
+import { getChain } from "../utils/index.js"
 
 /**
  * Configuration for NEAR network gas limits.
@@ -117,9 +117,6 @@ export class NearBridgeClient {
    * @returns Promise resolving to the transaction hash
    */
   async logMetadata(tokenAddress: OmniAddress): Promise<LogMetadataEvent> {
-    const MAX_POLLING_ATTEMPTS = 60 // 60 seconds timeout
-    const POLLING_INTERVAL = 1000 // 1 second between attempts
-
     if (getChain(tokenAddress) !== ChainKind.Near) {
       throw new Error("Token address must be on NEAR")
     }
@@ -127,26 +124,18 @@ export class NearBridgeClient {
     const [_, tokenAccountId] = tokenAddress.split(":")
     const args: LogMetadataArgs = { token_id: tokenAccountId }
 
-    // Need to use signTransaction due to NEAR API limitations around timeouts
-    // @ts-expect-error: Account.signTransaction is protected but necessary here
-    const [txHash, signedTx] = await this.wallet.signTransaction(this.lockerAddress, [
-      functionCall("log_metadata", args, GAS.LOG_METADATA, DEPOSIT.LOG_METADATA),
-    ])
-
-    const provider = this.wallet.connection.provider
-    let outcome = await provider.sendTransactionAsync(signedTx)
-
-    // Poll for transaction execution
-    let attempts = 0
-    while (outcome.final_execution_status !== "EXECUTED" && attempts < MAX_POLLING_ATTEMPTS) {
-      await new Promise((resolve) => setTimeout(resolve, POLLING_INTERVAL))
-      outcome = await provider.txStatus(txHash, this.wallet.accountId, "INCLUDED")
-      attempts++
-    }
-
-    if (attempts >= MAX_POLLING_ATTEMPTS) {
-      throw new Error(`Transaction polling timed out after ${MAX_POLLING_ATTEMPTS} seconds`)
-    }
+    const outcome = await this.wallet.signAndSendTransaction({
+      receiverId: this.lockerAddress,
+      actions: [
+        actionCreators.functionCall(
+          "log_metadata",
+          args,
+          BigInt(GAS.LOG_METADATA),
+          BigInt(DEPOSIT.LOG_METADATA),
+        ),
+      ],
+      waitUntil: "FINAL",
+    })
 
     // Parse event from transaction logs
     const event = outcome.receipts_outcome
@@ -185,16 +174,18 @@ export class NearBridgeClient {
       contractId: this.lockerAddress,
       methodName: "required_balance_for_deploy_token",
     })
-    const deployDeposit = BigInt(deployDepositStr)
 
-    const tx = await this.wallet.functionCall({
-      contractId: this.lockerAddress,
-      methodName: "deploy_token",
-      args: serializedArgs,
-      gas: GAS.DEPLOY_TOKEN,
-      attachedDeposit: deployDeposit,
+    const tx = await this.wallet.signAndSendTransaction({
+      receiverId: this.lockerAddress,
+      actions: [
+        actionCreators.functionCall(
+          "deploy_token",
+          serializedArgs,
+          BigInt(GAS.DEPLOY_TOKEN),
+          BigInt(deployDepositStr),
+        ),
+      ],
     })
-
     return tx.transaction.hash
   }
 
@@ -249,18 +240,22 @@ export class NearBridgeClient {
     const serializedArgs = BindTokenArgsSchema.serialize(args)
 
     // Retrieve required deposit dynamically for bind_token
-    const bindDepositStr = await this.wallet.viewFunction({
-      contractId: this.lockerAddress,
-      methodName: "required_balance_for_bind_token",
-    })
-    const bindDeposit = BigInt(bindDepositStr)
+    const bindDepositStr = (await this.wallet.provider.callFunction(
+      this.lockerAddress,
+      "required_balance_for_bind_token",
+      {},
+    )) as string
 
-    const tx = await this.wallet.functionCall({
-      contractId: this.lockerAddress,
-      methodName: "bind_token",
-      args: serializedArgs,
-      gas: GAS.BIND_TOKEN,
-      attachedDeposit: bindDeposit,
+    const tx = await this.wallet.signAndSendTransaction({
+      receiverId: this.lockerAddress,
+      actions: [
+        actionCreators.functionCall(
+          "bind_token",
+          serializedArgs,
+          BigInt(GAS.BIND_TOKEN),
+          BigInt(bindDepositStr),
+        ),
+      ],
     })
 
     return tx.transaction.hash
@@ -314,12 +309,16 @@ export class NearBridgeClient {
       memo: null,
       msg: JSON.stringify(initTransferMessage),
     }
-    const tx = await this.wallet.functionCall({
-      contractId: tokenAddress,
-      methodName: "ft_transfer_call",
-      args,
-      gas: GAS.INIT_TRANSFER,
-      attachedDeposit: DEPOSIT.INIT_TRANSFER,
+    const tx = await this.wallet.signAndSendTransaction({
+      receiverId: tokenAddress,
+      actions: [
+        actionCreators.functionCall(
+          "ft_transfer_call",
+          args,
+          BigInt(GAS.INIT_TRANSFER),
+          BigInt(DEPOSIT.INIT_TRANSFER),
+        ),
+      ],
     })
 
     // Parse event from transaction logs
@@ -343,9 +342,6 @@ export class NearBridgeClient {
     initTransferEvent: InitTransferEvent,
     feeRecipient: AccountId,
   ): Promise<SignTransferEvent> {
-    const MAX_POLLING_ATTEMPTS = 60 // 60 seconds timeout
-    const POLLING_INTERVAL = 1000 // 1 second between attempts
-
     const args: SignTransferArgs = {
       transfer_id: {
         origin_chain: "Near",
@@ -358,26 +354,18 @@ export class NearBridgeClient {
       },
     }
 
-    // Need to use signTransaction due to NEAR API limitations around timeouts
-    // @ts-expect-error: Account.signTransaction is protected but necessary here
-    const [txHash, signedTx] = await this.wallet.signTransaction(this.lockerAddress, [
-      functionCall("sign_transfer", args, GAS.SIGN_TRANSFER, DEPOSIT.SIGN_TRANSFER),
-    ])
-
-    const provider = this.wallet.connection.provider
-    let outcome = await provider.sendTransactionAsync(signedTx)
-
-    // Poll for transaction execution
-    let attempts = 0
-    while (outcome.final_execution_status !== "EXECUTED" && attempts < MAX_POLLING_ATTEMPTS) {
-      await new Promise((resolve) => setTimeout(resolve, POLLING_INTERVAL))
-      outcome = await provider.txStatus(txHash, this.wallet.accountId, "INCLUDED")
-      attempts++
-    }
-
-    if (attempts >= MAX_POLLING_ATTEMPTS) {
-      throw new Error(`Transaction polling timed out after ${MAX_POLLING_ATTEMPTS} seconds`)
-    }
+    const outcome = await this.wallet.signAndSendTransaction({
+      receiverId: this.lockerAddress,
+      actions: [
+        actionCreators.functionCall(
+          "sign_transfer",
+          args,
+          BigInt(GAS.SIGN_TRANSFER),
+          BigInt(DEPOSIT.SIGN_TRANSFER),
+        ),
+      ],
+      waitUntil: "FINAL",
+    })
 
     // Parse event from transaction logs
     const event = outcome.receipts_outcome
@@ -458,18 +446,23 @@ export class NearBridgeClient {
     const serializedArgs = FinTransferArgsSchema.serialize(args)
 
     // Retrieve required deposit dynamically for fin_transfer
-    const finDepositStr = await this.wallet.viewFunction({
-      contractId: this.lockerAddress,
-      methodName: "required_balance_for_fin_transfer",
-    })
-    const finDeposit = BigInt(finDepositStr)
+    const finDepositStr = await this.wallet.provider.callFunction(
+      this.lockerAddress,
+      "required_balance_for_fin_transfer",
+      {},
+    )
+    const finDeposit = BigInt(finDepositStr as string)
 
-    const tx = await this.wallet.functionCall({
-      contractId: this.lockerAddress,
-      methodName: "fin_transfer",
-      args: serializedArgs,
-      gas: GAS.FIN_TRANSFER,
-      attachedDeposit: finDeposit,
+    const tx = await this.wallet.signAndSendTransaction({
+      receiverId: this.lockerAddress,
+      actions: [
+        actionCreators.functionCall(
+          "fin_transfer",
+          serializedArgs,
+          BigInt(GAS.FIN_TRANSFER),
+          BigInt(finDeposit),
+        ),
+      ],
     })
     return tx.transaction.hash
   }
@@ -484,45 +477,45 @@ export class NearBridgeClient {
     try {
       const [regBalanceStr, initBalanceStr, finBalanceStr, bindBalanceStr, storage] =
         await Promise.all([
-          this.wallet.viewFunction({
-            contractId: this.lockerAddress,
-            methodName: "required_balance_for_account",
+          this.wallet.provider.callFunction(this.lockerAddress, "required_balance_for_account", {}),
+          this.wallet.provider.callFunction(
+            this.lockerAddress,
+            "required_balance_for_init_transfer",
+            {},
+          ),
+          this.wallet.provider.callFunction(
+            this.lockerAddress,
+            "required_balance_for_fin_transfer",
+            {},
+          ),
+          this.wallet.provider.callFunction(
+            this.lockerAddress,
+            "required_balance_for_bind_token",
+            {},
+          ),
+          this.wallet.provider.callFunction(this.lockerAddress, "storage_balance_of", {
+            account_id: this.wallet.accountId,
           }),
-          this.wallet.viewFunction({
-            contractId: this.lockerAddress,
-            methodName: "required_balance_for_init_transfer",
-          }),
-          this.wallet.viewFunction({
-            contractId: this.lockerAddress,
-            methodName: "required_balance_for_fin_transfer",
-          }),
-          this.wallet.viewFunction({
-            contractId: this.lockerAddress,
-            methodName: "required_balance_for_bind_token",
-          }),
-          this.wallet.viewFunction({
-            contractId: this.lockerAddress,
-            methodName: "storage_balance_of",
-            args: {
-              account_id: this.wallet.accountId,
-            },
+          this.wallet.provider.callFunction(this.lockerAddress, "storage_balance_of", {
+            account_id: this.wallet.accountId,
           }),
         ])
 
       // Convert storage balance to bigint
       let convertedStorage = null
       if (storage) {
+        const storageBalance = storage as { total: string; available: string }
         convertedStorage = {
-          total: BigInt(storage.total),
-          available: BigInt(storage.available),
+          total: BigInt(storageBalance.total),
+          available: BigInt(storageBalance.available),
         }
       }
 
       return {
-        regBalance: BigInt(regBalanceStr),
-        initBalance: BigInt(initBalanceStr),
-        finBalance: BigInt(finBalanceStr),
-        bindBalance: BigInt(bindBalanceStr),
+        regBalance: BigInt(regBalanceStr as string),
+        initBalance: BigInt(initBalanceStr as string),
+        finBalance: BigInt(finBalanceStr as string),
+        bindBalance: BigInt(bindBalanceStr as string),
         storage: convertedStorage,
       }
     } catch (error) {
@@ -533,32 +526,32 @@ export class NearBridgeClient {
 
   /// Performs a storage deposit on behalf of the token_locker so that the tokens can be transferred to the locker. To be called once for each NEP-141
   private async storageDepositForToken(tokenAddress: string): Promise<string> {
-    const storage = await this.wallet.viewFunction({
-      contractId: tokenAddress,
-      methodName: "storage_balance_of",
-      args: {
-        account_id: this.lockerAddress,
-      },
-    })
+    const storage = (await this.wallet.provider.callFunction(tokenAddress, "storage_balance_of", {
+      account_id: this.lockerAddress,
+    })) as string
     if (storage === null) {
       // Check how much is required
-      const bounds = await this.wallet.viewFunction({
-        contractId: tokenAddress,
-        methodName: "storage_balance_bounds",
-        args: {
+      const bounds = (await this.wallet.provider.callFunction(
+        tokenAddress,
+        "storage_balance_bounds",
+        {
           account_id: this.lockerAddress,
         },
-      })
+      )) as { min: string; max: string }
       const requiredAmount = BigInt(bounds.min)
 
-      const tx = await this.wallet.functionCall({
-        contractId: tokenAddress,
-        methodName: "storage_deposit",
-        args: {
-          account_id: this.lockerAddress,
-        },
-        gas: GAS.STORAGE_DEPOSIT,
-        attachedDeposit: requiredAmount,
+      const tx = await this.wallet.signAndSendTransaction({
+        receiverId: tokenAddress,
+        actions: [
+          actionCreators.functionCall(
+            "storage_deposit",
+            {
+              account_id: this.lockerAddress,
+            },
+            BigInt(GAS.STORAGE_DEPOSIT),
+            BigInt(requiredAmount),
+          ),
+        ],
       })
       return tx.transaction.hash
     }

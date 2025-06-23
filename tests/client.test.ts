@@ -1,8 +1,8 @@
 import { ethers } from "ethers"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import type * as decimalsModule from "../src/utils/decimals" // Import for selective mocking
-import { getTokenDecimals } from "../src/utils/decimals"
-import { getBridgedToken } from "../src/utils/tokens" // Import getBridgedToken
+import type * as decimalsModule from "../src/utils/decimals.js" // Import for selective mocking
+import { getTokenDecimals } from "../src/utils/decimals.js"
+import { getBridgedToken } from "../src/utils/tokens.js" // Import getBridgedToken
 
 // Mock getTokenDecimals *before* importing client.ts, using importActual
 vi.mock("../src/utils/decimals", async () => {
@@ -52,7 +52,7 @@ const mockGetTokenDecimals = async (_contract: string, address: string) => {
 }
 
 // Import after mocks are set up
-import { omniTransfer } from "../src/client"
+import { omniTransfer } from "../src/client.js"
 
 describe("omniTransfer", () => {
   // Setup mock wallet

@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import type { TokenDecimals } from "../../src/utils/decimals"
-import * as decimalsModule from "../../src/utils/decimals"
+import type { TokenDecimals } from "../../src/utils/decimals.js"
+import * as decimalsModule from "../../src/utils/decimals.js"
 import {
   getMinimumTransferableAmount,
   getTokenDecimals,
   normalizeAmount,
   verifyTransferAmount,
-} from "../../src/utils/decimals"
+} from "../../src/utils/decimals.js"
 
 describe("normalizeAmount", () => {
   it("handles equal decimals", () => {

@@ -1,7 +1,7 @@
 import { b } from "@zorsh/zorsh"
-import { ChainKindSchema } from "./chain"
-import type { AccountId } from "./common"
-import type { TransferId } from "./evm"
+import { ChainKindSchema } from "./chain.js"
+import type { AccountId } from "./common.js"
+import type { TransferId } from "./evm.js"
 
 export const StorageDepositActionSchema = b.struct({
   token_id: b.string(),

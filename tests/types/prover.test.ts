@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { type ProverResult, ProverResultSchema } from "../../src/types"
+import { type ProverResult, ProverResultSchema } from "../../src/types/index.js"
 
 describe("Borsh Serialization", () => {
   describe("InitTransfer", () => {

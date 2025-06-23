@@ -1,19 +1,19 @@
 import type { Provider as SolWallet } from "@coral-xyz/anchor"
+import { Account as NearAccount } from "@near-js/accounts"
 import type { WalletSelector } from "@near-wallet-selector/core"
 import { Wallet as EthWallet } from "ethers"
-import { Account as NearAccount } from "near-api-js"
-import { EvmBridgeClient } from "./clients/evm"
-import { NearBridgeClient } from "./clients/near"
-import { NearWalletSelectorBridgeClient } from "./clients/near-wallet-selector"
-import { SolanaBridgeClient } from "./clients/solana"
-import { addresses } from "./config"
-import { ChainKind, type InitTransferEvent, type OmniTransferMessage } from "./types"
-import { getBridgedToken, getChain } from "./utils"
+import { EvmBridgeClient } from "./clients/evm.js"
+import { NearWalletSelectorBridgeClient } from "./clients/near-wallet-selector.js"
+import { NearBridgeClient } from "./clients/near.js"
+import { SolanaBridgeClient } from "./clients/solana.js"
+import { addresses } from "./config.js"
+import { ChainKind, type InitTransferEvent, type OmniTransferMessage } from "./types/index.js"
 import {
   getMinimumTransferableAmount,
   getTokenDecimals,
   verifyTransferAmount,
-} from "./utils/decimals"
+} from "./utils/decimals.js"
+import { getBridgedToken, getChain } from "./utils/index.js"
 
 type Client =
   | EvmBridgeClient

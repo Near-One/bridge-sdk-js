@@ -11,7 +11,7 @@ import {
   FinTransferArgsSchema,
   type StorageDepositAction,
   StorageDepositActionSchema,
-} from "../../src/types"
+} from "../../src/types/index.js"
 
 describe("Chain Kind Types", () => {
   describe("StorageDepositAction", () => {

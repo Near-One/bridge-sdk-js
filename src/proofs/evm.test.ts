@@ -1,7 +1,6 @@
-import type { WithImplicitCoercion } from "node:buffer"
 import { describe, it } from "vitest"
-import { ChainKind, type EvmProof } from "../types"
-import { getEvmProof } from "./evm"
+import { ChainKind, type EvmProof } from "../types/index.js"
+import { getEvmProof } from "./evm.js"
 
 describe.concurrent("ProofGenerator", () => {
   const ERC20_TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
@@ -12,9 +11,7 @@ describe.concurrent("ProofGenerator", () => {
     receipt_data: Buffer.from(proof.receipt_data).toString("hex"),
     log_entry_data: Buffer.from(proof.log_entry_data).toString("hex"),
     header_data: Buffer.from(proof.header_data).toString("hex"),
-    proof: proof.proof.map((p: WithImplicitCoercion<ArrayBuffer | SharedArrayBuffer>) =>
-      Buffer.from(p).toString("hex"),
-    ),
+    proof: proof.proof.map((p) => Buffer.from(p).toString("hex")),
   })
 
   it("should generate proof for pre-Shapella transaction", async ({ expect }) => {

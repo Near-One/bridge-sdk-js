@@ -1,5 +1,5 @@
-import type { U128 } from "./common"
-import type { TransferId } from "./evm"
+import type { U128 } from "./common.js"
+import type { TransferId } from "./evm.js"
 
 export interface DepositPayload {
   destination_nonce: bigint

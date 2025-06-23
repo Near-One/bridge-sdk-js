@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, it, vi } from "vitest"
-import { setNetwork } from "../../src/config"
-import { getTokenDecimals } from "../../src/utils/decimals"
+import { setNetwork } from "../../src/config.js"
+import { getTokenDecimals } from "../../src/utils/decimals.js"
 
 describe.concurrent("getTokenDecimals integration", () => {
   setNetwork("testnet")

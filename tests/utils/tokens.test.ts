@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { ChainKind, type OmniAddress } from "../../src/types"
-import { getBridgedToken } from "../../src/utils"
+import { ChainKind, type OmniAddress } from "../../src/types/index.js"
+import { getBridgedToken } from "../../src/utils/index.js"
 
 // Mock @near-js/client
 vi.mock("@near-js/client", () => ({
