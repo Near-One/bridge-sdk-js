@@ -10,19 +10,7 @@ import {
   type TokenMetadata,
   type TransferMessagePayload,
 } from "../types/index.js"
-import { getChain } from "../utils/index.js"
-
-// Type helpers for EVM chains
-export type EVMChainKind = ChainKind.Eth | ChainKind.Base | ChainKind.Arb
-
-/**
- * Checks if a given chain is an EVM-compatible chain
- * @param chain - The chain to check
- * @returns true if the chain is EVM-compatible, false otherwise
- */
-export function isEvmChain(chain: ChainKind): chain is EVMChainKind {
-  return chain === ChainKind.Eth || chain === ChainKind.Base || chain === ChainKind.Arb
-}
+import { type EVMChainKind, getChain } from "../utils/index.js"
 
 // Contract ABI for the bridge token factory
 const BRIDGE_TOKEN_FACTORY_ABI = [

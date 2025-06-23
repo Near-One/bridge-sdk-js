@@ -1,8 +1,8 @@
 import { ethers } from "ethers"
 import { beforeEach, describe, expect, it } from "vitest"
-import { EvmBridgeClient } from "../../src/clients/evm"
-import { setNetwork } from "../../src/config"
-import { ChainKind } from "../../src/types"
+import { EvmBridgeClient } from "../../src/clients/evm.js"
+import { setNetwork } from "../../src/config.js"
+import { ChainKind } from "../../src/types/index.js"
 
 describe("EVM Client Integration Tests", () => {
   let evmClient: EvmBridgeClient
@@ -60,18 +60,6 @@ describe("EVM Client Integration Tests", () => {
       expect(event.amount).toBeGreaterThanOrEqual(0n)
       expect(event.fee).toBeGreaterThanOrEqual(0n)
       expect(event.nativeTokenFee).toBeGreaterThanOrEqual(0n)
-
-      // Log the parsed event for debugging
-      console.log("Parsed InitTransfer event:", {
-        sender: event.sender,
-        tokenAddress: event.tokenAddress,
-        originNonce: event.originNonce.toString(),
-        amount: event.amount.toString(),
-        fee: event.fee.toString(),
-        nativeTokenFee: event.nativeTokenFee.toString(),
-        recipient: event.recipient,
-        message: event.message,
-      })
     }, 30000) // 30 second timeout for network calls
 
     it("should throw error for transaction without InitTransfer event", async () => {

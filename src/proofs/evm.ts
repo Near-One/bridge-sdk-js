@@ -3,8 +3,8 @@ import { RLP } from "@ethereumjs/rlp"
 import { MapDB, bigIntToHex } from "@ethereumjs/util"
 import type { BlockTag, Log, TransactionReceipt, TransactionReceiptParams } from "ethers"
 import { ethers } from "ethers"
-import type { EVMChainKind } from "../clients/index.js"
 import { ChainKind, type EvmProof } from "../types/index.js"
+import type { EVMChainKind } from "../utils/chain.js"
 
 interface BlockHeader {
   parentHash: string
