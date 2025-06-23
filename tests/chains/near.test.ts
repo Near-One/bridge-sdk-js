@@ -440,9 +440,6 @@ describe("NearBridgeClient", () => {
         ],
         waitUntil: "FINAL",
       })
-      console.log(result)
-      console.log(mockSignTransferEvent)
-
       expect(result).toEqual(mockSignTransferEvent)
     })
 
