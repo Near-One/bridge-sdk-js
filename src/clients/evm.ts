@@ -3,16 +3,14 @@ import { addresses } from "../config.js"
 import {
   type BridgeDeposit,
   ChainKind,
+  type EvmInitTransferEvent,
   type MPCSignature,
   type OmniAddress,
   type OmniTransferMessage,
   type TokenMetadata,
   type TransferMessagePayload,
 } from "../types/index.js"
-import { getChain } from "../utils/index.js"
-
-// Type helpers for EVM chains
-export type EVMChainKind = ChainKind.Eth | ChainKind.Base | ChainKind.Arb
+import { type EVMChainKind, getChain } from "../utils/index.js"
 
 // Contract ABI for the bridge token factory
 const BRIDGE_TOKEN_FACTORY_ABI = [
@@ -205,6 +203,63 @@ export class EvmBridgeClient {
         `Failed to finalize transfer: ${error instanceof Error ? error.message : "Unknown error"}`,
       )
     }
+  }
+
+  /**
+   * Parses InitTransfer event from an EVM transaction receipt
+   * @param txHash - Transaction hash to parse
+   * @returns Promise resolving to the parsed InitTransfer event
+   * @throws {Error} If transaction receipt is not found or InitTransfer event is not found
+   */
+  async getInitTransferEvent(txHash: string): Promise<EvmInitTransferEvent> {
+    const provider = this.wallet.provider
+    if (!provider) {
+      throw new Error("Provider not available on wallet")
+    }
+
+    const receipt = await provider.getTransactionReceipt(txHash)
+    if (!receipt) {
+      throw new Error(`Transaction receipt not found for hash: ${txHash}`)
+    }
+
+    // ABI for InitTransfer event
+    const initTransferEventAbi = [
+      "event InitTransfer(address indexed sender, address indexed tokenAddress, uint64 indexed originNonce, uint128 amount, uint128 fee, uint128 nativeTokenFee, string recipient, string message)",
+    ]
+
+    const iface = new ethers.Interface(initTransferEventAbi)
+
+    // Find the InitTransfer event in the logs
+    for (const log of receipt.logs) {
+      try {
+        const parsedLog = iface.parseLog({
+          topics: log.topics,
+          data: log.data,
+        })
+
+        if (!parsedLog) {
+          throw new Error("InitTransfer event not found in transaction logs")
+        }
+
+        return {
+          sender: parsedLog.args.sender,
+          tokenAddress: parsedLog.args.tokenAddress,
+          originNonce:
+            typeof parsedLog.args.originNonce === "bigint"
+              ? parsedLog.args.originNonce
+              : parsedLog.args.originNonce.toBigInt(),
+          amount: parsedLog.args.amount,
+          fee: parsedLog.args.fee,
+          nativeTokenFee: parsedLog.args.nativeTokenFee,
+          recipient: parsedLog.args.recipient,
+          message: parsedLog.args.message,
+        }
+      } catch {
+        // Continue searching other logs if this one doesn't match
+      }
+    }
+
+    throw new Error("InitTransfer event not found in transaction logs")
   }
 
   private isNativeToken(omniAddress: OmniAddress): boolean {

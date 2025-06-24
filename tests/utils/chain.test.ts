@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { OmniAddress } from "../../src/types/index.js"
 import { ChainKind } from "../../src/types/index.js"
-import { getChain, omniAddress } from "../../src/utils/index.js"
+import { getChain, isEvmChain, omniAddress } from "../../src/utils/index.js"
 describe("Omni Address Utils", () => {
   describe("omniAddress", () => {
     it("should construct valid omni addresses", () => {
@@ -80,6 +80,27 @@ describe("Omni Address Utils", () => {
 
       // Suppress unused variable warnings
       expect(true).toBe(true)
+    })
+  })
+
+  describe("isEvmChain", () => {
+    it("should return true for EVM chains", () => {
+      expect(isEvmChain(ChainKind.Eth)).toBe(true)
+      expect(isEvmChain(ChainKind.Arb)).toBe(true)
+      expect(isEvmChain(ChainKind.Base)).toBe(true)
+    })
+
+    it("should return false for non-EVM chains", () => {
+      expect(isEvmChain(ChainKind.Near)).toBe(false)
+      expect(isEvmChain(ChainKind.Sol)).toBe(false)
+    })
+
+    it("should work with type checking", () => {
+      const chain = ChainKind.Eth
+      if (isEvmChain(chain)) {
+        // TypeScript should infer that chain is EVMChainKind here
+        expect([ChainKind.Eth, ChainKind.Arb, ChainKind.Base]).toContain(chain)
+      }
     })
   })
 })

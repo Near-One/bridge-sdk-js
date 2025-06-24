@@ -10,6 +10,7 @@ import {
   DeployTokenArgsSchema,
   type EvmVerifyProofArgs,
   EvmVerifyProofArgsSchema,
+  type FastFinTransferArgs,
   type FinTransferArgs,
   FinTransferArgsSchema,
   type InitTransferEvent,
@@ -20,11 +21,14 @@ import {
   ProofKind,
   type SignTransferArgs,
   type SignTransferEvent,
+  type TransferId,
   type U128,
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
 } from "../types/index.js"
-import { getChain } from "../utils/index.js"
+import { getChain, isEvmChain, omniAddress } from "../utils/index.js"
+import { getBridgedToken } from "../utils/tokens.js"
+import type { EvmBridgeClient } from "./evm.js"
 
 /**
  * Configuration for NEAR network gas limits.
@@ -39,6 +43,7 @@ const GAS = {
   FIN_TRANSFER: BigInt(3e14), // 3 TGas
   SIGN_TRANSFER: BigInt(3e14), // 3 TGas
   STORAGE_DEPOSIT: BigInt(1e14), // 1 TGas
+  FAST_FIN_TRANSFER: BigInt(3e14), // 3 TGas
 } as const
 
 /**
@@ -170,10 +175,11 @@ export class NearBridgeClient {
     const serializedArgs = DeployTokenArgsSchema.serialize(args)
 
     // Retrieve required deposit dynamically for deploy_token
-    const deployDepositStr = await this.wallet.viewFunction({
-      contractId: this.lockerAddress,
-      methodName: "required_balance_for_deploy_token",
-    })
+    const deployDepositStr = (await this.wallet.provider.callFunction(
+      this.lockerAddress,
+      "required_balance_for_deploy_token",
+      {},
+    )) as string
 
     const tx = await this.wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
@@ -332,6 +338,17 @@ export class NearBridgeClient {
     return JSON.parse(event).InitTransferEvent
   }
 
+  parseSignTransferEvent(json: string): SignTransferEvent {
+    const parsed = JSON.parse(json, (key, value) => {
+      // Convert only if the key matches *and* the value is a decimal string
+      if (key === "origin_nonce" && typeof value === "string" && /^\d+$/.test(value)) {
+        return BigInt(value)
+      }
+      return value
+    })
+
+    return parsed.SignTransferEvent as SignTransferEvent
+  }
   /**
    * Signs transfer using the token locker
    * @param initTransferEvent - Transfer event of the previously-initiated transfer
@@ -342,10 +359,15 @@ export class NearBridgeClient {
     initTransferEvent: InitTransferEvent,
     feeRecipient: AccountId,
   ): Promise<SignTransferEvent> {
+    // biome-ignore lint/suspicious/noExplicitAny: TS will complain that `toJSON()` does not exist on BigInt
+    // biome-ignore lint/complexity/useLiteralKeys: TS will complain that `toJSON()` does not exist on BigInt
+    ;(BigInt.prototype as any)["toJSON"] = function () {
+      return this.toString()
+    }
     const args: SignTransferArgs = {
       transfer_id: {
-        origin_chain: "Near",
-        origin_nonce: initTransferEvent.transfer_message.origin_nonce,
+        origin_chain: getChain(initTransferEvent.transfer_message.sender),
+        origin_nonce: BigInt(initTransferEvent.transfer_message.origin_nonce),
       },
       fee_recipient: feeRecipient,
       fee: {
@@ -376,7 +398,7 @@ export class NearBridgeClient {
       throw new Error("SignTransferEvent not found in transaction logs")
     }
 
-    return JSON.parse(event).SignTransferEvent
+    return this.parseSignTransferEvent(event)
   }
 
   /**
@@ -556,5 +578,156 @@ export class NearBridgeClient {
       return tx.transaction.hash
     }
     return storage
+  }
+
+  /**
+   * Gets the required balance for fast transfer operations
+   * @private
+   * @returns Promise resolving to the required balance amount in yoctoNEAR
+   */
+  async getRequiredBalanceForFastTransfer(): Promise<bigint> {
+    const balanceStr = await this.wallet.viewFunction({
+      contractId: this.lockerAddress,
+      methodName: "required_balance_for_fast_transfer",
+    })
+    return BigInt(balanceStr)
+  }
+
+  /**
+   * Performs a fast finalize transfer on NEAR chain.
+   *
+   * This method enables relayers to "front" tokens to users immediately upon detecting
+   * an InitTransfer event on an EVM chain, without waiting for full cryptographic finality.
+   * The relayer provides their own tokens to the user instantly, and later gets reimbursed
+   * when the original cross-chain proof is processed.
+   *
+   * The process:
+   * 1. Relayer transfers their own tokens from their NEAR account to the bridge contract
+   * 2. Bridge contract immediately sends tokens to the final recipient
+   * 3. Bridge marks the transfer as completed and records the relayer as owed reimbursement
+   * 4. Later, when the slow cryptographic proof arrives, the relayer gets reimbursed
+   *
+   * @param args - Fast finalize transfer arguments containing token, amount, recipient, transfer_id, relayer info, etc.
+   * @returns Promise resolving to the NEAR transaction hash
+   * @throws {Error} If the transaction fails or required storage deposit fails
+   */
+  async fastFinTransfer(args: FastFinTransferArgs): Promise<string> {
+    // Get required balance for fast transfer
+    const requiredBalance = await this.getRequiredBalanceForFastTransfer()
+    const storageDepositAmount = BigInt(args.storage_deposit_amount ?? 0)
+    const totalRequiredBalance = requiredBalance + storageDepositAmount
+
+    // Check current storage balance and deposit if needed
+    const storage = (await this.wallet.provider.callFunction(
+      this.lockerAddress,
+      "storage_balance_of",
+      {
+        account_id: this.wallet.accountId,
+      },
+    )) as { total: string; available: string }
+
+    const existingBalance = storage?.available ? BigInt(storage.available) : BigInt(0)
+    const neededAmount = totalRequiredBalance - existingBalance
+
+    if (neededAmount > 0) {
+      await this.wallet.signAndSendTransaction({
+        receiverId: this.lockerAddress,
+        actions: [
+          actionCreators.functionCall(
+            "storage_deposit",
+            {},
+            BigInt(GAS.STORAGE_DEPOSIT),
+            BigInt(neededAmount),
+          ),
+        ],
+      })
+    }
+
+    const transferArgs = {
+      receiver_id: this.lockerAddress,
+      amount: args.amount,
+      msg: JSON.stringify(args),
+    }
+
+    // Execute the fast finalize transfer
+    const tx = await this.wallet.signAndSendTransaction({
+      receiverId: args.token_id,
+      actions: [
+        actionCreators.functionCall(
+          "ft_transfer_call",
+          transferArgs,
+          BigInt(GAS.FAST_FIN_TRANSFER),
+          BigInt(DEPOSIT.INIT_TRANSFER),
+        ),
+      ],
+    })
+
+    return tx.transaction.hash
+  }
+
+  /**
+   * Performs a complete fast transfer from EVM to NEAR.
+   * This function orchestrates the entire fast transfer process:
+   * 1. Fetches and parses the InitTransfer event from the EVM transaction
+   * 2. Gets the corresponding NEAR token ID using getBridgedToken
+   * 3. Executes the fast finalize transfer on NEAR
+   *
+   * @param originChain - The EVM chain where the original transfer was initiated
+   * @param evmTxHash - Transaction hash of the InitTransfer on the EVM chain
+   * @param evmClient - EVM bridge client for parsing the transaction
+   * @param storageDepositAmount - Optional storage deposit amount in yoctoNEAR
+   * @returns Promise resolving to the NEAR transaction hash
+   * @throws {Error} If the origin chain is not supported for fast transfers
+   * @throws {Error} If the EVM transaction or event cannot be found/parsed
+   * @throws {Error} If the fast transfer execution fails
+   */
+  async nearFastTransfer(
+    originChain: ChainKind,
+    evmTxHash: string,
+    evmClient: EvmBridgeClient,
+    storageDepositAmount?: string,
+  ): Promise<string> {
+    // Validate supported chains for fast transfer
+    if (!isEvmChain(originChain)) {
+      throw new Error(`Fast transfer is not supported for chain kind: ${ChainKind[originChain]}`)
+    }
+
+    // Step 1: Parse the InitTransfer event from EVM transaction
+    const transferEvent = await evmClient.getInitTransferEvent(evmTxHash)
+
+    // Step 2: Get the NEAR token ID for the EVM token using getBridgedToken
+    const omniTokenAddress = omniAddress(originChain, transferEvent.tokenAddress)
+    const nearTokenAddress = await getBridgedToken(omniTokenAddress, ChainKind.Near)
+
+    if (!nearTokenAddress) {
+      throw new Error(`No bridged token found on NEAR for ${omniTokenAddress}`)
+    }
+
+    const nearTokenId = nearTokenAddress.split(":")[1] // Extract account ID from near:account.near
+
+    // Step 3: Amounts and fees are passed directly - contract handles normalization internally
+
+    // Step 4: Construct the transfer ID
+    const transferId: TransferId = {
+      origin_chain: originChain, // Use numeric enum value
+      origin_nonce: transferEvent.originNonce,
+    }
+
+    // Step 5: Execute the fast finalize transfer - pass amounts directly
+    const fastTransferArgs: FastFinTransferArgs = {
+      token_id: nearTokenId,
+      amount: transferEvent.amount.toString(),
+      transfer_id: transferId,
+      recipient: transferEvent.recipient,
+      fee: {
+        fee: transferEvent.fee.toString(),
+        native_fee: transferEvent.nativeTokenFee.toString(),
+      },
+      msg: transferEvent.message,
+      storage_deposit_amount: storageDepositAmount,
+      relayer: this.wallet.accountId,
+    }
+
+    return await this.fastFinTransfer(fastTransferArgs)
   }
 }
