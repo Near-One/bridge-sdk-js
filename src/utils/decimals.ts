@@ -1,7 +1,8 @@
 import { getProviderByNetwork, view } from "@near-js/client"
 
 import { addresses } from "../config.js"
-import type { OmniAddress } from "../types/index.js"
+import { ChainKind, type OmniAddress } from "../types/index.js"
+import { getChain } from "./chain.js"
 
 export interface TokenDecimals {
   decimals: number
@@ -87,6 +88,22 @@ export async function getTokenDecimals(
   contractId: string,
   tokenAddress: OmniAddress,
 ): Promise<TokenDecimals> {
+  // NEAR tokens don't have decimals stored directly under their NEAR addresses
+  // Instead, decimals are stored under their foreign chain representations
+  //
+  // For example:
+  // - USDC on NEAR → ETH might use 6 decimals
+  // - USDC on NEAR → Solana might use 9 decimals
+  // - USDC on NEAR → BSC might use 18 decimals
+  //
+  // So querying "near:usdc.testnet" will not work
+  const chain = getChain(tokenAddress)
+  if (chain === ChainKind.Near) {
+    throw new Error(
+      "Token decimals cannot be queried using NEAR addresses. Use the token's foreign chain representation (e.g., eth:0x...) to query decimals.",
+    )
+  }
+
   const rpcProvider = getProviderByNetwork(addresses.network)
   return await view<TokenDecimals>({
     account: contractId,

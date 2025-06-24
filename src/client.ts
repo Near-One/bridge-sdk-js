@@ -61,25 +61,63 @@ export async function omniTransfer(
     )
   }
 
+  let originDecimals: number | undefined
+  let destinationDecimals: number | undefined
+
   // Get token decimals
   const contractId = addresses.near // Use NEAR contract for decimal verification
-  const sourceDecimals = await getTokenDecimals(contractId, sourceTokenAddress)
-  const destinationDecimals = await getTokenDecimals(contractId, destTokenAddress)
+
+  // Special handling for NEAR tokens:
+  // Decimals are stored under foreign chain addresses, not under NEAR addresses
+
+  // Case 1: NEAR → Foreign Chain
+  // e.g., USDC on NEAR → ETH
+  // We query the destination address (eth:0x...) to get both decimals:
+  // - origin_decimals: the NEAR token's decimals
+  // - decimals: the decimals on the destination chain
+  if (getChain(sourceTokenAddress) === ChainKind.Near) {
+    const decimals = await getTokenDecimals(contractId, destTokenAddress)
+    originDecimals = decimals.origin_decimals
+    destinationDecimals = decimals.decimals
+  }
+
+  // Case 2: Foreign Chain → NEAR
+  // e.g., USDC on ETH → NEAR
+  // We query the source address (eth:0x...) to get both decimals:
+  // - decimals: the foreign chain's decimals
+  // - origin_decimals: what the token will have on NEAR
+  if (getChain(destTokenAddress) === ChainKind.Near) {
+    const decimals = await getTokenDecimals(contractId, sourceTokenAddress)
+    destinationDecimals = decimals.origin_decimals
+    originDecimals = decimals.decimals
+  }
+
+  // We're dealing with foreign chain → foreign chain transfer
+  if (
+    getChain(sourceTokenAddress) !== ChainKind.Near &&
+    getChain(destTokenAddress) !== ChainKind.Near
+  ) {
+    const source = await getTokenDecimals(contractId, sourceTokenAddress)
+    const dest = await getTokenDecimals(contractId, destTokenAddress)
+    originDecimals = source.decimals
+    destinationDecimals = dest.decimals
+  }
+
+  if (originDecimals === undefined || destinationDecimals === undefined) {
+    throw new Error("Failed to get token decimals")
+  }
 
   // Verify transfer amount will be valid after normalization
   const isValid = verifyTransferAmount(
     transfer.amount,
     transfer.fee,
-    sourceDecimals.decimals,
-    destinationDecimals.decimals,
+    originDecimals,
+    destinationDecimals,
   )
 
   if (!isValid) {
     // Get minimum amount
-    const minAmount = getMinimumTransferableAmount(
-      sourceDecimals.decimals,
-      destinationDecimals.decimals,
-    )
+    const minAmount = getMinimumTransferableAmount(originDecimals, destinationDecimals)
     throw new Error(
       `Transfer amount too small - would result in 0 after decimal normalization. Minimum transferable amount is ${minAmount}`,
     )
