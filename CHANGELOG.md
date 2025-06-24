@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.11.1
+
+### Patch Changes
+
+- ce231f3: fix: CI release
+
 ## 0.11.0
 
 ### Minor Changes
