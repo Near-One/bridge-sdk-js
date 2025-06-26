@@ -1,5 +1,12 @@
 # omni-bridge-sdk
 
+## 0.12.1
+
+### Patch Changes
+
+- 6eb945e: fix: ETH address on mainnet
+- 709a86a: fix: ETH ABI
+
 ## 0.12.0
 
 ### Minor Changes
