@@ -21,7 +21,7 @@ describe("Config", () => {
   it("should return the correct addresses for mainnet", () => {
     expect(addresses.arb).toBe("0xd025b38762B4A4E36F0Cde483b86CB13ea00D989")
     expect(addresses.base).toBe("0xd025b38762B4A4E36F0Cde483b86CB13ea00D989")
-    expect(addresses.eth).toBe("0x3701B9859Dbb9a4333A3dd933ab18e9011ddf2C8")
+    expect(addresses.eth).toBe("0xe00c629afaccb0510995a2b95560e446a24c85b9")
     expect(addresses.near).toBe("omni.bridge.near")
     expect(addresses.sol.locker).toBe("dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe")
   })
