@@ -647,7 +647,7 @@ describe("NearBridgeClient", () => {
             functionCall: expect.objectContaining({
               methodName: "storage_deposit",
               args: expect.any(Object),
-              gas: BigInt(1e14),
+              gas: BigInt(1e12),
               deposit: BigInt("1000000000000000000000000"), // totalRequiredBalance (1125000000000000000000000) - existingBalance (125000000000000000000000)
             }),
             enum: "functionCall",
@@ -688,7 +688,7 @@ describe("NearBridgeClient", () => {
             functionCall: expect.objectContaining({
               methodName: "storage_deposit",
               args: expect.any(Object),
-              gas: BigInt(1e14),
+              gas: BigInt(1e12),
               deposit: BigInt("875000000000000000000000"), // required balance - existing balance
             }),
             enum: "functionCall",
@@ -734,7 +734,7 @@ describe("NearBridgeClient", () => {
             functionCall: expect.objectContaining({
               methodName: "storage_deposit",
               args: expect.any(Object),
-              gas: BigInt(1e14),
+              gas: BigInt(1e12),
               deposit: BigInt("1125000000000000000000000"), // full required balance + storage deposit
             }),
             enum: "functionCall",
