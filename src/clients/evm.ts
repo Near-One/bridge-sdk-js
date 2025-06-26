@@ -14,9 +14,9 @@ import { type EVMChainKind, getChain } from "../utils/index.js"
 
 // Contract ABI for the bridge token factory
 const BRIDGE_TOKEN_FACTORY_ABI = [
-  "function deployToken(bytes signatureData, tuple(string token, string name, string symbol, uint8 decimals) metadata) external returns (address)",
-  "function finTransfer(bytes signature, tuple(uint64 destinationNonce, uint8 originChain, uint64 originNonce, address tokenAddress, uint128 amount, address recipient, string feeRecipient) transferPayload) external",
-  "function initTransfer(address tokenAddress, uint128 amount, uint128 fee, uint128 nativeFee, string recipient, string message) external",
+  "function deployToken(bytes signatureData, tuple(string token, string name, string symbol, uint8 decimals) metadata) payable external returns (address)",
+  "function finTransfer(bytes signature, tuple(uint64 destinationNonce, uint8 originChain, uint64 originNonce, address tokenAddress, uint128 amount, address recipient, string feeRecipient) transferPayload) payable external",
+  "function initTransfer(address tokenAddress, uint128 amount, uint128 fee, uint128 nativeFee, string recipient, string message) payable external",
   "function nearToEthToken(string nearTokenId) external view returns (address)",
   "function logMetadata(address tokenAddress) external returns (string)",
 ] as const
