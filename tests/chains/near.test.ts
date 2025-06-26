@@ -112,7 +112,7 @@ describe("NearBridgeClient", () => {
           expect.objectContaining({
             functionCall: expect.objectContaining({
               methodName: "log_metadata",
-              gas: BigInt(3e14),
+              gas: BigInt(3e12),
               deposit: BigInt(1),
             }),
           }),
@@ -171,7 +171,7 @@ describe("NearBridgeClient", () => {
           expect.objectContaining({
             functionCall: expect.objectContaining({
               methodName: "deploy_token",
-              gas: BigInt(1.2e14),
+              gas: BigInt(1.2e12),
               deposit: BigInt(mockDeployDeposit),
             }),
           }),
@@ -228,7 +228,7 @@ describe("NearBridgeClient", () => {
           expect.objectContaining({
             functionCall: expect.objectContaining({
               methodName: "bind_token",
-              gas: BigInt(3e14),
+              gas: BigInt(3e12),
             }),
           }),
         ],
@@ -253,7 +253,7 @@ describe("NearBridgeClient", () => {
           expect.objectContaining({
             functionCall: expect.objectContaining({
               methodName: "bind_token",
-              gas: BigInt(3e14),
+              gas: BigInt(3e12),
             }),
           }),
         ],
@@ -343,7 +343,7 @@ describe("NearBridgeClient", () => {
           expect.objectContaining({
             functionCall: expect.objectContaining({
               methodName: "ft_transfer_call",
-              gas: BigInt(3e14),
+              gas: BigInt(3e12),
               deposit: BigInt(1),
             }),
           }),
@@ -434,7 +434,7 @@ describe("NearBridgeClient", () => {
           expect.objectContaining({
             functionCall: expect.objectContaining({
               methodName: "sign_transfer",
-              gas: BigInt(3e14),
+              gas: BigInt(3e12),
               deposit: BigInt(1),
             }),
           }),
@@ -523,7 +523,7 @@ describe("NearBridgeClient", () => {
           expect.objectContaining({
             functionCall: expect.objectContaining({
               methodName: "fin_transfer",
-              gas: BigInt(3e14),
+              gas: BigInt(3e12),
             }),
           }),
         ],
@@ -554,7 +554,7 @@ describe("NearBridgeClient", () => {
           expect.objectContaining({
             functionCall: expect.objectContaining({
               methodName: "fin_transfer",
-              gas: BigInt(3e14),
+              gas: BigInt(3e12),
             }),
           }),
         ],
@@ -647,7 +647,7 @@ describe("NearBridgeClient", () => {
             functionCall: expect.objectContaining({
               methodName: "storage_deposit",
               args: expect.any(Object),
-              gas: BigInt(1e14),
+              gas: BigInt(1e12),
               deposit: BigInt("1000000000000000000000000"), // totalRequiredBalance (1125000000000000000000000) - existingBalance (125000000000000000000000)
             }),
             enum: "functionCall",
@@ -688,7 +688,7 @@ describe("NearBridgeClient", () => {
             functionCall: expect.objectContaining({
               methodName: "storage_deposit",
               args: expect.any(Object),
-              gas: BigInt(1e14),
+              gas: BigInt(1e12),
               deposit: BigInt("875000000000000000000000"), // required balance - existing balance
             }),
             enum: "functionCall",
@@ -734,7 +734,7 @@ describe("NearBridgeClient", () => {
             functionCall: expect.objectContaining({
               methodName: "storage_deposit",
               args: expect.any(Object),
-              gas: BigInt(1e14),
+              gas: BigInt(1e12),
               deposit: BigInt("1125000000000000000000000"), // full required balance + storage deposit
             }),
             enum: "functionCall",
