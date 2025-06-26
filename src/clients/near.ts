@@ -90,21 +90,21 @@ const BITCOIN_SIGNING_WAIT = {
  * Represents the storage deposit balance for a NEAR account
  */
 type StorageDeposit = {
-	total: bigint;
-	available: bigint;
-} | null;
+	total: bigint
+	available: bigint
+} | null
 
 interface InitTransferMessageArgs {
-	receiver_id: AccountId;
-	memo: string | null;
-	amount: string;
-	msg: string | null;
+	receiver_id: AccountId
+	memo: string | null
+	amount: string
+	msg: string | null
 }
 
 interface InitTransferMessage {
-	recipient: OmniAddress;
-	fee: string;
-	native_token_fee: string;
+	recipient: OmniAddress
+	fee: string
+	native_token_fee: string
 }
 
 /**
@@ -116,11 +116,11 @@ interface InitTransferMessage {
  * @property storage - Current storage deposit balance information
  */
 interface BalanceResults {
-	regBalance: bigint;
-	initBalance: bigint;
-	finBalance: bigint;
-	bindBalance: bigint;
-	storage: StorageDeposit;
+	regBalance: bigint
+	initBalance: bigint
+	finBalance: bigint
+	bindBalance: bigint
+	storage: StorageDeposit
 }
 
 /**
@@ -172,11 +172,11 @@ export class NearBridgeClient {
 	 */
 	async logMetadata(tokenAddress: OmniAddress): Promise<LogMetadataEvent> {
 		if (getChain(tokenAddress) !== ChainKind.Near) {
-			throw new Error("Token address must be on NEAR");
+			throw new Error("Token address must be on NEAR")
 		}
 
-		const [_, tokenAccountId] = tokenAddress.split(":");
-		const args: LogMetadataArgs = { token_id: tokenAccountId };
+		const [_, tokenAccountId] = tokenAddress.split(":")
+		const args: LogMetadataArgs = { token_id: tokenAccountId }
 
 		const outcome = await this.wallet.signAndSendTransaction({
 			receiverId: this.lockerAddress,
@@ -189,18 +189,18 @@ export class NearBridgeClient {
 				),
 			],
 			waitUntil: "FINAL",
-		});
+		})
 
 		// Parse event from transaction logs
 		const event = outcome.receipts_outcome
 			.flatMap((receipt) => receipt.outcome.logs)
-			.find((log) => log.includes("LogMetadataEvent"));
+			.find((log) => log.includes("LogMetadataEvent"))
 
 		if (!event) {
-			throw new Error("LogMetadataEvent not found in transaction logs");
+			throw new Error("LogMetadataEvent not found in transaction logs")
 		}
 
-		return JSON.parse(event).LogMetadataEvent;
+		return JSON.parse(event).LogMetadataEvent
 	}
 
 	/**
@@ -233,15 +233,15 @@ export class NearBridgeClient {
 		const args: DeployTokenArgs = {
 			chain_kind: destinationChain,
 			prover_args: proverArgsSerialized,
-		};
-		const serializedArgs = DeployTokenArgsSchema.serialize(args);
+		}
+		const serializedArgs = DeployTokenArgsSchema.serialize(args)
 
 		// Retrieve required deposit dynamically for deploy_token
 		const deployDepositStr = (await this.wallet.provider.callFunction(
 			this.lockerAddress,
 			"required_balance_for_deploy_token",
 			{},
-		)) as string;
+		)) as string
 
 		const tx = await this.wallet.signAndSendTransaction({
 			receiverId: this.lockerAddress,
@@ -253,8 +253,8 @@ export class NearBridgeClient {
 					BigInt(deployDepositStr),
 				),
 			],
-		});
-		return tx.transaction.hash;
+		})
+		return tx.transaction.hash
 	}
 
 	/**
@@ -272,7 +272,7 @@ export class NearBridgeClient {
 		evmProof?: EvmVerifyProofArgs,
 	): Promise<string> {
 		if (!vaa && !evmProof) {
-			throw new Error("Must provide either VAA or EVM proof");
+			throw new Error("Must provide either VAA or EVM proof")
 		}
 
 		if (evmProof) {
@@ -281,35 +281,34 @@ export class NearBridgeClient {
 			}
 		}
 
-		let proverArgsSerialized: Uint8Array = new Uint8Array(0);
+		let proverArgsSerialized: Uint8Array = new Uint8Array(0)
 		if (vaa) {
 			const proverArgs: WormholeVerifyProofArgs = {
 				proof_kind: ProofKind.DeployToken,
 				vaa: vaa,
-			};
-			proverArgsSerialized =
-				WormholeVerifyProofArgsSchema.serialize(proverArgs);
+			}
+			proverArgsSerialized = WormholeVerifyProofArgsSchema.serialize(proverArgs)
 		} else if (evmProof) {
 			const proverArgs: EvmVerifyProofArgs = {
 				proof_kind: ProofKind.DeployToken,
 				proof: evmProof.proof,
-			};
-			proverArgsSerialized = EvmVerifyProofArgsSchema.serialize(proverArgs);
+			}
+			proverArgsSerialized = EvmVerifyProofArgsSchema.serialize(proverArgs)
 		}
 
 		// Construct bind token arguments
 		const args: BindTokenArgs = {
 			chain_kind: sourceChain,
 			prover_args: proverArgsSerialized,
-		};
-		const serializedArgs = BindTokenArgsSchema.serialize(args);
+		}
+		const serializedArgs = BindTokenArgsSchema.serialize(args)
 
 		// Retrieve required deposit dynamically for bind_token
 		const bindDepositStr = (await this.wallet.provider.callFunction(
 			this.lockerAddress,
 			"required_balance_for_bind_token",
 			{},
-		)) as string;
+		)) as string
 
 		const tx = await this.wallet.signAndSendTransaction({
 			receiverId: this.lockerAddress,
@@ -321,9 +320,9 @@ export class NearBridgeClient {
 					BigInt(bindDepositStr),
 				),
 			],
-		});
+		})
 
-		return tx.transaction.hash;
+		return tx.transaction.hash
 	}
 
 	/**
@@ -338,22 +337,20 @@ export class NearBridgeClient {
 	 * @returns Promise resolving to InitTransferEvent
 	 */
 
-	async initTransfer(
-		transfer: OmniTransferMessage,
-	): Promise<InitTransferEvent> {
+	async initTransfer(transfer: OmniTransferMessage): Promise<InitTransferEvent> {
 		if (getChain(transfer.tokenAddress) !== ChainKind.Near) {
-			throw new Error("Token address must be on NEAR");
+			throw new Error("Token address must be on NEAR")
 		}
-		const tokenAddress = transfer.tokenAddress.split(":")[1];
+		const tokenAddress = transfer.tokenAddress.split(":")[1]
 
 		// First, check if the FT has the token locker contract registered for storage
-		await this.storageDepositForToken(tokenAddress);
+		await this.storageDepositForToken(tokenAddress)
 
 		// Now do the storage deposit dance for the locker itself
-		const { regBalance, initBalance, storage } = await this.getBalances();
-		const requiredBalance = regBalance + initBalance;
-		const existingBalance = storage?.available ?? BigInt(0);
-		const neededAmount = requiredBalance - existingBalance + transfer.nativeFee;
+		const { regBalance, initBalance, storage } = await this.getBalances()
+		const requiredBalance = regBalance + initBalance
+		const existingBalance = storage?.available ?? BigInt(0)
+		const neededAmount = requiredBalance - existingBalance + transfer.nativeFee
 
 		if (neededAmount > 0) {
 			await this.wallet.functionCall({
@@ -362,20 +359,20 @@ export class NearBridgeClient {
 				args: {},
 				gas: GAS.STORAGE_DEPOSIT,
 				attachedDeposit: neededAmount,
-			});
+			})
 		}
 
 		const initTransferMessage: InitTransferMessage = {
 			recipient: transfer.recipient,
 			fee: transfer.fee.toString(),
 			native_token_fee: transfer.nativeFee.toString(),
-		};
+		}
 		const args: InitTransferMessageArgs = {
 			receiver_id: this.lockerAddress,
 			amount: transfer.amount.toString(),
 			memo: null,
 			msg: JSON.stringify(initTransferMessage),
-		};
+		}
 		const tx = await this.wallet.signAndSendTransaction({
 			receiverId: tokenAddress,
 			actions: [
@@ -386,17 +383,17 @@ export class NearBridgeClient {
 					BigInt(DEPOSIT.INIT_TRANSFER),
 				),
 			],
-		});
+		})
 
 		// Parse event from transaction logs
 		const event = tx.receipts_outcome
 			.flatMap((receipt) => receipt.outcome.logs)
-			.find((log) => log.includes("InitTransferEvent"));
+			.find((log) => log.includes("InitTransferEvent"))
 
 		if (!event) {
-			throw new Error("InitTransferEvent not found in transaction logs");
+			throw new Error("InitTransferEvent not found in transaction logs")
 		}
-		return JSON.parse(event).InitTransferEvent;
+		return JSON.parse(event).InitTransferEvent
 	}
 
 	parseSignTransferEvent(json: string): SignTransferEvent {
@@ -460,18 +457,18 @@ export class NearBridgeClient {
 				),
 			],
 			waitUntil: "FINAL",
-		});
+		})
 
 		// Parse event from transaction logs
 		const event = outcome.receipts_outcome
 			.flatMap((receipt) => receipt.outcome.logs)
-			.find((log) => log.includes("SignTransferEvent"));
+			.find((log) => log.includes("SignTransferEvent"))
 
 		if (!event) {
-			throw new Error("SignTransferEvent not found in transaction logs");
+			throw new Error("SignTransferEvent not found in transaction logs")
 		}
 
-		return this.parseSignTransferEvent(event);
+		return this.parseSignTransferEvent(event)
 	}
 
 	/**
@@ -533,8 +530,8 @@ export class NearBridgeClient {
 				},
 			],
 			prover_args: proverArgsSerialized,
-		};
-		const serializedArgs = FinTransferArgsSchema.serialize(args);
+		}
+		const serializedArgs = FinTransferArgsSchema.serialize(args)
 
 		// Retrieve required deposit dynamically for fin_transfer
 		const finDepositStr = await this.wallet.provider.callFunction(
@@ -567,57 +564,40 @@ export class NearBridgeClient {
 	 */
 	private async getBalances(): Promise<BalanceResults> {
 		try {
-			const [
-				regBalanceStr,
-				initBalanceStr,
-				finBalanceStr,
-				bindBalanceStr,
-				storage,
-			] = await Promise.all([
-				this.wallet.provider.callFunction(
-					this.lockerAddress,
-					"required_balance_for_account",
-					{},
-				),
-				this.wallet.provider.callFunction(
-					this.lockerAddress,
-					"required_balance_for_init_transfer",
-					{},
-				),
-				this.wallet.provider.callFunction(
-					this.lockerAddress,
-					"required_balance_for_fin_transfer",
-					{},
-				),
-				this.wallet.provider.callFunction(
-					this.lockerAddress,
-					"required_balance_for_bind_token",
-					{},
-				),
-				this.wallet.provider.callFunction(
-					this.lockerAddress,
-					"storage_balance_of",
-					{
+			const [regBalanceStr, initBalanceStr, finBalanceStr, bindBalanceStr, storage] =
+				await Promise.all([
+					this.wallet.provider.callFunction(this.lockerAddress, "required_balance_for_account", {}),
+					this.wallet.provider.callFunction(
+						this.lockerAddress,
+						"required_balance_for_init_transfer",
+						{},
+					),
+					this.wallet.provider.callFunction(
+						this.lockerAddress,
+						"required_balance_for_fin_transfer",
+						{},
+					),
+					this.wallet.provider.callFunction(
+						this.lockerAddress,
+						"required_balance_for_bind_token",
+						{},
+					),
+					this.wallet.provider.callFunction(this.lockerAddress, "storage_balance_of", {
 						account_id: this.wallet.accountId,
-					},
-				),
-				this.wallet.provider.callFunction(
-					this.lockerAddress,
-					"storage_balance_of",
-					{
+					}),
+					this.wallet.provider.callFunction(this.lockerAddress, "storage_balance_of", {
 						account_id: this.wallet.accountId,
-					},
-				),
-			]);
+					}),
+				])
 
 			// Convert storage balance to bigint
-			let convertedStorage = null;
+			let convertedStorage = null
 			if (storage) {
-				const storageBalance = storage as { total: string; available: string };
+				const storageBalance = storage as { total: string; available: string }
 				convertedStorage = {
 					total: BigInt(storageBalance.total),
 					available: BigInt(storageBalance.available),
-				};
+				}
 			}
 
 			return {
@@ -997,13 +977,9 @@ export class NearBridgeClient {
 
 	/// Performs a storage deposit on behalf of the token_locker so that the tokens can be transferred to the locker. To be called once for each NEP-141
 	private async storageDepositForToken(tokenAddress: string): Promise<string> {
-		const storage = (await this.wallet.provider.callFunction(
-			tokenAddress,
-			"storage_balance_of",
-			{
-				account_id: this.lockerAddress,
-			},
-		)) as string;
+		const storage = (await this.wallet.provider.callFunction(tokenAddress, "storage_balance_of", {
+			account_id: this.lockerAddress,
+		})) as string
 		if (storage === null) {
 			// Check how much is required
 			const bounds = (await this.wallet.provider.callFunction(
@@ -1012,8 +988,8 @@ export class NearBridgeClient {
 				{
 					account_id: this.lockerAddress,
 				},
-			)) as { min: string; max: string };
-			const requiredAmount = BigInt(bounds.min);
+			)) as { min: string; max: string }
+			const requiredAmount = BigInt(bounds.min)
 
 			const tx = await this.wallet.signAndSendTransaction({
 				receiverId: tokenAddress,
@@ -1027,10 +1003,10 @@ export class NearBridgeClient {
 						BigInt(requiredAmount),
 					),
 				],
-			});
-			return tx.transaction.hash;
+			})
+			return tx.transaction.hash
 		}
-		return storage;
+		return storage
 	}
 
 	/**
@@ -1042,8 +1018,8 @@ export class NearBridgeClient {
 		const balanceStr = await this.wallet.viewFunction({
 			contractId: this.lockerAddress,
 			methodName: "required_balance_for_fast_transfer",
-		});
-		return BigInt(balanceStr);
+		})
+		return BigInt(balanceStr)
 	}
 
 	/**
@@ -1066,9 +1042,9 @@ export class NearBridgeClient {
 	 */
 	async fastFinTransfer(args: FastFinTransferArgs): Promise<string> {
 		// Get required balance for fast transfer
-		const requiredBalance = await this.getRequiredBalanceForFastTransfer();
-		const storageDepositAmount = BigInt(args.storage_deposit_amount ?? 0);
-		const totalRequiredBalance = requiredBalance + storageDepositAmount;
+		const requiredBalance = await this.getRequiredBalanceForFastTransfer()
+		const storageDepositAmount = BigInt(args.storage_deposit_amount ?? 0)
+		const totalRequiredBalance = requiredBalance + storageDepositAmount
 
 		// Check current storage balance and deposit if needed
 		const storage = (await this.wallet.provider.callFunction(
@@ -1077,12 +1053,10 @@ export class NearBridgeClient {
 			{
 				account_id: this.wallet.accountId,
 			},
-		)) as { total: string; available: string };
+		)) as { total: string; available: string }
 
-		const existingBalance = storage?.available
-			? BigInt(storage.available)
-			: BigInt(0);
-		const neededAmount = totalRequiredBalance - existingBalance;
+		const existingBalance = storage?.available ? BigInt(storage.available) : BigInt(0)
+		const neededAmount = totalRequiredBalance - existingBalance
 
 		if (neededAmount > 0) {
 			await this.wallet.signAndSendTransaction({
@@ -1095,14 +1069,14 @@ export class NearBridgeClient {
 						BigInt(neededAmount),
 					),
 				],
-			});
+			})
 		}
 
 		const transferArgs = {
 			receiver_id: this.lockerAddress,
 			amount: args.amount,
 			msg: JSON.stringify(args),
-		};
+		}
 
 		// Execute the fast finalize transfer
 		const tx = await this.wallet.signAndSendTransaction({
@@ -1115,9 +1089,9 @@ export class NearBridgeClient {
 					BigInt(DEPOSIT.INIT_TRANSFER),
 				),
 			],
-		});
+		})
 
-		return tx.transaction.hash;
+		return tx.transaction.hash
 	}
 
 	/**
@@ -1144,29 +1118,21 @@ export class NearBridgeClient {
 	): Promise<string> {
 		// Validate supported chains for fast transfer
 		if (!isEvmChain(originChain)) {
-			throw new Error(
-				`Fast transfer is not supported for chain kind: ${ChainKind[originChain]}`,
-			);
+			throw new Error(`Fast transfer is not supported for chain kind: ${ChainKind[originChain]}`)
 		}
 
 		// Step 1: Parse the InitTransfer event from EVM transaction
-		const transferEvent = await evmClient.getInitTransferEvent(evmTxHash);
+		const transferEvent = await evmClient.getInitTransferEvent(evmTxHash)
 
 		// Step 2: Get the NEAR token ID for the EVM token using getBridgedToken
-		const omniTokenAddress = omniAddress(
-			originChain,
-			transferEvent.tokenAddress,
-		);
-		const nearTokenAddress = await getBridgedToken(
-			omniTokenAddress,
-			ChainKind.Near,
-		);
+		const omniTokenAddress = omniAddress(originChain, transferEvent.tokenAddress)
+		const nearTokenAddress = await getBridgedToken(omniTokenAddress, ChainKind.Near)
 
 		if (!nearTokenAddress) {
-			throw new Error(`No bridged token found on NEAR for ${omniTokenAddress}`);
+			throw new Error(`No bridged token found on NEAR for ${omniTokenAddress}`)
 		}
 
-		const nearTokenId = nearTokenAddress.split(":")[1]; // Extract account ID from near:account.near
+		const nearTokenId = nearTokenAddress.split(":")[1] // Extract account ID from near:account.near
 
 		// Step 3: Amounts and fees are passed directly - contract handles normalization internally
 
@@ -1174,7 +1140,7 @@ export class NearBridgeClient {
 		const transferId: TransferId = {
 			origin_chain: originChain, // Use numeric enum value
 			origin_nonce: transferEvent.originNonce,
-		};
+		}
 
 		// Step 5: Execute the fast finalize transfer - pass amounts directly
 		const fastTransferArgs: FastFinTransferArgs = {
@@ -1189,8 +1155,8 @@ export class NearBridgeClient {
 			msg: transferEvent.message,
 			storage_deposit_amount: storageDepositAmount,
 			relayer: this.wallet.accountId,
-		};
+		}
 
-		return await this.fastFinTransfer(fastTransferArgs);
+		return await this.fastFinTransfer(fastTransferArgs)
 	}
 }
