@@ -51,7 +51,7 @@ const GAS = {
   INIT_TRANSFER: gas.tgas(3),
   FIN_TRANSFER: gas.tgas(3),
   SIGN_TRANSFER: gas.tgas(3),
-  STORAGE_DEPOSIT: gas.tgas(100),
+  STORAGE_DEPOSIT: gas.tgas(1),
   // Bitcoin-specific gas constants
   GET_DEPOSIT_ADDRESS: gas.tgas(3),
   VERIFY_DEPOSIT: gas.tgas(300),

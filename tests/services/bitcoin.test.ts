@@ -120,6 +120,10 @@ const server = setupServer(
     return new HttpResponse(null, { status: 404 })
   }),
 
+  http.get("https://blockstream.info/testnet/api/tx/invalid_hash", () => {
+    return new HttpResponse(null, { status: 404 })
+  }),
+
   http.get("https://api-testnet.nearblocks.io/v1/account/nonexistent.testnet/receipts", () => {
     return new HttpResponse(null, { status: 404 })
   }),
