@@ -23,7 +23,6 @@ export function normalizeAmount(amount: bigint, fromDecimals: number, toDecimals
     // Scale down: Divide by power of 10
     const scale = 10n ** BigInt(fromDecimals - toDecimals)
     return amount / scale
-    // biome-ignore lint/style/noUselessElse: Adds clarity
   } else {
     // Scale up: Multiply by power of 10
     const scale = 10n ** BigInt(toDecimals - fromDecimals)
