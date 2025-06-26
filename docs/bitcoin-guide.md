@@ -205,5 +205,5 @@ async function testBridge() {
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/Near-One/bridge-sdk-js/issues)
-- **Discord**: [NEAR Community](https://discord.gg/near)
+- **Discord**: [NEAR Community](https://discord.gg/nearprotocol)
 - **Examples**: See `examples/bitcoin-deposit.ts` and `examples/bitcoin-withdraw.ts`
