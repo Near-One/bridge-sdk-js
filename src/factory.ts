@@ -1,10 +1,10 @@
 import type { Provider } from "@coral-xyz/anchor"
+import type { Account } from "@near-js/accounts"
 import type { WalletSelector } from "@near-wallet-selector/core"
 import type { ethers } from "ethers"
-import type { Account } from "near-api-js"
 import { EvmBridgeClient } from "./clients/evm.js"
-import { NearWalletSelectorBridgeClient } from "./clients/near-wallet-selector.js"
 import { NearBridgeClient } from "./clients/near.js"
+import { NearWalletSelectorBridgeClient } from "./clients/near-wallet-selector.js"
 import { SolanaBridgeClient } from "./clients/solana.js"
 import { ChainKind } from "./types/index.js"
 
@@ -98,11 +98,14 @@ export function getClient(chain: ChainKind.Arb, wallet: ethers.Signer): EvmBridg
 export function getClient(chain: ChainKind.Sol, wallet: Provider): SolanaBridgeClient
 
 // Generic implementation
-export function getClient<T extends ChainKind>(chain: T, wallet: WalletTypes[T]): ClientTypes[T] {
+export function getClient<T extends Exclude<ChainKind, ChainKind.Btc>>(
+  chain: T,
+  wallet: WalletTypes[T],
+): ClientTypes[T] {
   switch (chain) {
     case ChainKind.Near:
-      if ("accountId" in wallet) {
-        return new NearBridgeClient(wallet) as ClientTypes[T]
+      if (wallet && typeof wallet === "object" && "accountId" in wallet) {
+        return new NearBridgeClient(wallet as Account) as ClientTypes[T]
       }
       return new NearWalletSelectorBridgeClient(wallet as WalletSelector) as ClientTypes[T]
     case ChainKind.Eth:
