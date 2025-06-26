@@ -1,5 +1,23 @@
 # omni-bridge-sdk
 
+## 0.12.0
+
+### Minor Changes
+
+- 2073ec4: Add fast transfer functionality for EVM to NEAR cross-chain transfers
+
+  - Add `fastFinTransfer` method to NearBridgeClient for relayer-based instant transfers
+  - Add `nearFastTransfer` orchestration method for end-to-end fast transfer processing
+  - Add `getInitTransferEvent` method to EvmBridgeClient for EVM transaction parsing
+  - Add `EvmInitTransferEvent` and `FastFinTransferArgs` types
+  - Add `isEvmChain` and `EVMChainKind` utilities for EVM chain validation
+
+  Fast transfers enable relayers to provide tokens to users immediately upon detecting EVM InitTransfer events, without waiting for full cryptographic finality. The relayer is later reimbursed when the slow proof process completes.
+
+### Patch Changes
+
+- edca992: feat: support NEAR decimal lookup based on foreign chain context
+
 ## 0.11.1
 
 ### Patch Changes
