@@ -15,8 +15,8 @@ const ADDRESSES = {
       apiUrl: "https://blockstream.info/api",
       mempoolUrl: "https://mempool.space/api",
       btcConnector: "btc-connector.bridge.near",
-      btcToken: "btc-client.bridge.near",
-      satoshiRelayer: "satoshi_optwo.near",
+      btcToken: "nbtc.bridge.near",
+      bitcoinRelayer: "satoshi_optwo.near",
     },
   },
   testnet: {
@@ -34,7 +34,7 @@ const ADDRESSES = {
       mempoolUrl: "https://mempool.space/testnet/api",
       btcConnector: "brg-dev.testnet",
       btcToken: "nbtc-dev.testnet",
-      satoshiRelayer: "cosmosfirst.testnet",
+      bitcoinRelayer: "cosmosfirst.testnet",
     },
   },
 } as const
