@@ -64,9 +64,9 @@ export const gasSchema = z
 
       switch (unit.toLowerCase()) {
         case "tgas":
-          return BigInt(Math.floor(numAmount * Number(GAS_UNITS.TGAS))) as ValidatedGas
+          return BigInt(Math.floor(numAmount * 1e12)) as ValidatedGas
         case "ggas":
-          return BigInt(Math.floor(numAmount * Number(GAS_UNITS.GGAS))) as ValidatedGas
+          return BigInt(Math.floor(numAmount * 1e9)) as ValidatedGas
         case "gas":
           return BigInt(Math.floor(numAmount)) as ValidatedGas
         default:
@@ -110,13 +110,13 @@ export const nearSchema = z
 
       switch (unit.toLowerCase()) {
         case "near":
-          return BigInt(Math.floor(numAmount * Number(NEAR_UNITS.NEAR))) as ValidatedNear
+          return BigInt(Math.floor(numAmount * 1e24)) as ValidatedNear
         case "mnear":
         case "millinear":
-          return BigInt(Math.floor(numAmount * Number(NEAR_UNITS.MILLI_NEAR))) as ValidatedNear
+          return BigInt(Math.floor(numAmount * 1e21)) as ValidatedNear
         case "μnear":
         case "micronear":
-          return BigInt(Math.floor(numAmount * Number(NEAR_UNITS.MICRO_NEAR))) as ValidatedNear
+          return BigInt(Math.floor(numAmount * 1e18)) as ValidatedNear
         case "yoctonear":
         case "yocto":
           return BigInt(Math.floor(numAmount)) as ValidatedNear
@@ -148,52 +148,52 @@ export const callFunctionSchema = z.object({
 // Type-safe helper constructors
 export const gas = {
   tgas: (amount: number): ValidatedGas =>
-    BigInt(Math.floor(amount * Number(GAS_UNITS.TGAS))) as ValidatedGas,
+    BigInt(Math.floor(amount * 1e12)) as ValidatedGas,
   ggas: (amount: number): ValidatedGas =>
-    BigInt(Math.floor(amount * Number(GAS_UNITS.GGAS))) as ValidatedGas,
+    BigInt(Math.floor(amount * 1e9)) as ValidatedGas,
   raw: (amount: bigint): ValidatedGas => amount as ValidatedGas,
 }
 
 export const near = {
   near: (amount: number): ValidatedNear =>
-    BigInt(Math.floor(amount * Number(NEAR_UNITS.NEAR))) as ValidatedNear,
+    BigInt(Math.floor(amount * 1e24)) as ValidatedNear,
   milli: (amount: number): ValidatedNear =>
-    BigInt(Math.floor(amount * Number(NEAR_UNITS.MILLI_NEAR))) as ValidatedNear,
+    BigInt(Math.floor(amount * 1e21)) as ValidatedNear,
   micro: (amount: number): ValidatedNear =>
-    BigInt(Math.floor(amount * Number(NEAR_UNITS.MICRO_NEAR))) as ValidatedNear,
+    BigInt(Math.floor(amount * 1e18)) as ValidatedNear,
   yocto: (amount: bigint): ValidatedNear => amount as ValidatedNear,
 }
 
 // Utility functions
 export const gasUtils = {
-  toTGas: (gasAmount: ValidatedGas): number => Number(gasAmount) / Number(GAS_UNITS.TGAS),
-  toGGas: (gasAmount: ValidatedGas): number => Number(gasAmount) / Number(GAS_UNITS.GGAS),
+  toTGas: (gasAmount: ValidatedGas): number => Number(gasAmount) / 1e12,
+  toGGas: (gasAmount: ValidatedGas): number => Number(gasAmount) / 1e9,
   fromTGas: (amount: number): ValidatedGas => gas.tgas(amount),
   fromGGas: (amount: number): ValidatedGas => gas.ggas(amount),
   format: (gasAmount: ValidatedGas): string => {
-    const tgas = Number(gasAmount) / Number(GAS_UNITS.TGAS)
+    const tgas = Number(gasAmount) / 1e12
     if (tgas >= 1) return `${tgas} TGas`
-    const ggas = Number(gasAmount) / Number(GAS_UNITS.GGAS)
+    const ggas = Number(gasAmount) / 1e9
     if (ggas >= 1) return `${ggas} GGas`
     return `${gasAmount} Gas`
   },
 }
 
 export const nearUtils = {
-  toNEAR: (yoctoAmount: ValidatedNear): number => Number(yoctoAmount) / Number(NEAR_UNITS.NEAR),
+  toNEAR: (yoctoAmount: ValidatedNear): number => Number(yoctoAmount) / 1e24,
   toMilliNEAR: (yoctoAmount: ValidatedNear): number =>
-    Number(yoctoAmount) / Number(NEAR_UNITS.MILLI_NEAR),
+    Number(yoctoAmount) / 1e21,
   toMicroNEAR: (yoctoAmount: ValidatedNear): number =>
-    Number(yoctoAmount) / Number(NEAR_UNITS.MICRO_NEAR),
+    Number(yoctoAmount) / 1e18,
   fromNEAR: (amount: number): ValidatedNear => near.near(amount),
   fromMilliNEAR: (amount: number): ValidatedNear => near.milli(amount),
   fromMicroNEAR: (amount: number): ValidatedNear => near.micro(amount),
   format: (yoctoAmount: ValidatedNear): string => {
-    const nearVal = Number(yoctoAmount) / Number(NEAR_UNITS.NEAR)
+    const nearVal = Number(yoctoAmount) / 1e24
     if (nearVal >= 1) return `${nearVal} NEAR`
-    const milli = Number(yoctoAmount) / Number(NEAR_UNITS.MILLI_NEAR)
+    const milli = Number(yoctoAmount) / 1e21
     if (milli >= 1) return `${milli} mNEAR`
-    const micro = Number(yoctoAmount) / Number(NEAR_UNITS.MICRO_NEAR)
+    const micro = Number(yoctoAmount) / 1e18
     if (micro >= 1) return `${micro} μNEAR`
     return `${yoctoAmount} yocto`
   },
