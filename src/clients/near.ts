@@ -619,6 +619,14 @@ export class NearBridgeClient {
     amount?: bigint,
     fee?: bigint,
   ): Promise<{ depositAddress: string; btcDepositArgs: BtcDepositArgs }> {
+    // Validate minimum amount if provided
+    if (amount) {
+      const bitcoinConfig = await this.getBitcoinBridgeConfig()
+      if (amount < BigInt(bitcoinConfig.min_deposit_amount)) {
+        throw new Error(`Amount ${amount} is below minimum deposit amount ${bitcoinConfig.min_deposit_amount}`)
+      }
+    }
+    
     // Deposit msg depends on if the receiver is an Omni Address or not
     let depositMsg: DepositMsg
     if (recipientId.includes(":")) {
@@ -673,6 +681,13 @@ export class NearBridgeClient {
       throw new Error("Bitcoin: Transaction not confirmed")
     }
 
+    // Validate minimum deposit amount
+    const depositAmount = BigInt(bitcoinTx.vout[vout].value)
+    const bitcoinConfig = await this.getBitcoinBridgeConfig()
+    if (depositAmount < BigInt(bitcoinConfig.min_deposit_amount)) {
+      throw new Error(`Deposit amount ${depositAmount} is below minimum deposit amount ${bitcoinConfig.min_deposit_amount}`)
+    }
+
     const args: FinBtcTransferArgs = {
       deposit_msg: depositArgs.deposit_msg,
       tx_bytes: Array.from(rawBitcoinTx),
@@ -699,6 +714,13 @@ export class NearBridgeClient {
     // Get bridge-controlled UTXOs from NEAR contract (not Bitcoin network)
     const utxos = await this.getAvailableUTXOs()
     const bitcoinConfig = await this.getBitcoinBridgeConfig()
+    
+    // Validate minimum amount
+    if (amount < BigInt(bitcoinConfig.min_withdraw_amount)) {
+      throw new Error(`Amount ${amount} is below minimum withdrawal amount ${bitcoinConfig.min_withdraw_amount}`)
+    }
+    
+    // Change address is configured by the bridge (users don't determine this)
     const changeAddress = bitcoinConfig.change_address
 
     // Use Bitcoin service for UTXO selection
@@ -828,7 +850,7 @@ export class NearBridgeClient {
     delayMs: number = BITCOIN_SIGNING_WAIT.DEFAULT_DELAY_MS,
   ): Promise<string> {
     // Use default relayer account from config if not specified
-    const defaultSignerAccount = addresses.btc.satoshiRelayer
+    const defaultSignerAccount = addresses.btc.bitcoinRelayer
     const signerAccount = signerAccountId || defaultSignerAccount
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
