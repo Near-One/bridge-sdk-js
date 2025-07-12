@@ -251,7 +251,17 @@ describe("Bitcoin Integration Tests", () => {
       // Step 1: Get deposit address (mock the NEAR contract response)
       const mockDepositResponse = "tb1qreal_deposit_address_from_bridge_contract"
       
-      mockWallet.provider.callFunction = vi.fn().mockResolvedValue(mockDepositResponse)
+      // Mock both getBitcoinDepositAddress and getBitcoinBridgeConfig calls
+      mockWallet.provider.callFunction = vi.fn()
+        .mockImplementation((contractId: string, methodName: string) => {
+          if (methodName === "get_user_deposit_address") {
+            return Promise.resolve(mockDepositResponse)
+          }
+          if (methodName === "get_config") {
+            return Promise.resolve(mockRealBtcConfig)
+          }
+          return Promise.resolve({})
+        })
 
       const depositAddressResult = await client.getBitcoinDepositAddress(
         REAL_WITHDRAWAL_DATA.testAccount
@@ -520,9 +530,20 @@ describe("Bitcoin Integration Tests", () => {
 
       const config = await client.getBitcoinBridgeConfig()
       
-      // Test with amount below minimum
+      // Test that validation works correctly - amount below minimum should throw
       const belowMinimum = BigInt(config.min_withdraw_amount) - 1n
 
+      // Expect the validation to throw an error for amount below minimum
+      await expect(
+        client.initBitcoinWithdrawal(
+          REAL_WITHDRAWAL_DATA.realWithdrawAddress,
+          belowMinimum
+        )
+      ).rejects.toThrow(/Amount \d+ is below minimum withdrawal amount/)
+
+      // Test with valid amount at the minimum
+      const validAmount = BigInt(config.min_withdraw_amount)
+      
       const mockInitResult = {
         transaction: { hash: "test_tx" },
         receipts_outcome: [
@@ -532,11 +553,9 @@ describe("Bitcoin Integration Tests", () => {
       
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue(mockInitResult)
 
-      // The SDK should still allow this (validation happens on NEAR contract side)
-      // but we can test that the amount is passed correctly
       const pendingId = await client.initBitcoinWithdrawal(
         REAL_WITHDRAWAL_DATA.realWithdrawAddress,
-        belowMinimum
+        validAmount
       )
 
       expect(pendingId).toBe("test_pending")
