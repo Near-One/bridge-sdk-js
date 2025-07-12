@@ -19,7 +19,7 @@ await bridgeClient.finalizeBitcoinDeposit(txHash, vout, depositArgs)
 // Withdraw: NEAR → Bitcoin (1 step)
 const btcTxHash = await bridgeClient.executeBitcoinWithdrawal(
   "bc1qyour-bitcoin-address...", 
-  BigInt(100000) // satoshis
+  BigInt(100000) // Amount in satoshis
 )
 ```
 
@@ -60,6 +60,8 @@ console.log(`Success! NEAR TX: ${nearTxHash}`)
 
 ## Withdrawal Flow: NEAR → Bitcoin
 
+**Note**: Change addresses for Bitcoin transactions are automatically configured by the bridge. Users only specify the target withdrawal address.
+
 ### Simple Method (Recommended)
 
 ```typescript
@@ -78,7 +80,7 @@ console.log(`Bitcoin TX: ${bitcoinTxHash}`)
 // Step 1: Initialize
 const pendingId = await bridgeClient.initBitcoinWithdrawal(
   "bc1qyour-bitcoin-address...",
-  BigInt(50000)
+  BigInt(50000) // Amount in satoshis
 )
 
 // Step 2: Wait for MPC signing
