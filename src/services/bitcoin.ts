@@ -140,8 +140,6 @@ export class BitcoinService {
 
     // Convert UTXOs to scure-btc-signer format efficiently
     const inputs = utxos.map(this.toInput)
-
-    // Pre-calculate network to avoid repeated calls
     const network = this.getNetwork()
 
     // Use scure-btc-signer's optimized selectUTXO algorithm
