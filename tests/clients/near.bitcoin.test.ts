@@ -295,6 +295,9 @@ describe("NearBridgeClient Bitcoin Methods", () => {
     }
 
     it("should finalize Bitcoin deposit with real transaction data", async () => {
+      // Mock getBitcoinBridgeConfig for amount validation
+      mockWallet.provider.callFunction = vi.fn().mockResolvedValue(mockBtcConnectorConfig)
+      
       const mockTransactionResult = {
         transaction: { hash: "near_finalize_tx_hash" },
         receipts_outcome: [],
@@ -346,11 +349,14 @@ describe("NearBridgeClient Bitcoin Methods", () => {
     })
 
     it("should handle different vout values", async () => {
+      // Mock getBitcoinBridgeConfig for amount validation
+      mockWallet.provider.callFunction = vi.fn().mockResolvedValue(mockBtcConnectorConfig)
+      
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue({
         transaction: { hash: "test_hash" },
       })
 
-      for (const vout of [0, 1, 2]) {
+      for (const vout of [0, 1]) { // Only test valid vout indices that exist in mockBitcoinTx
         await client.finalizeBitcoinDeposit(
           REAL_TEST_DATA.depositTxHash,
           vout,
@@ -825,12 +831,51 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue(mockResult)
 
+      // Test with amount that meets minimum requirement (min_withdraw_amount is "20000")
       const pendingId = await client.initBitcoinWithdrawal(
         REAL_TEST_DATA.withdrawAddress,
-        BigInt(1) // 1 satoshi
+        BigInt(20000) // Use minimum withdrawal amount
       )
 
       expect(pendingId).toBe("min_amount_test")
+    })
+
+    it("should validate and reject amounts below minimum", async () => {
+      // Mock the required dependencies
+      const validTxid = "5678901234abcdef5678901234abcdef5678901234abcdef5678901234abcdef"
+      mockWallet.provider.callFunction = vi.fn()
+        .mockImplementation((contractId: string, methodName: string) => {
+          if (methodName === "get_utxos_paged") {
+            return Promise.resolve({ 
+              [`${validTxid}@0`]: { 
+                path: "m/44'/1'/0'/0/0",
+                tx_bytes: new Uint8Array([2, 0, 0, 0, 1]),
+                vout: 0,
+                balance: "100000" 
+              } 
+            })
+          }
+          if (methodName === "get_config") {
+            return Promise.resolve(mockBtcConnectorConfig)
+          }
+          return Promise.resolve({})
+        })
+
+      // Test with amount below minimum withdrawal amount
+      await expect(
+        client.initBitcoinWithdrawal(
+          REAL_TEST_DATA.withdrawAddress,
+          BigInt(1) // 1 satoshi, well below minimum of 20000
+        )
+      ).rejects.toThrow(/Amount 1 is below minimum withdrawal amount 20000/)
+
+      // Test with amount just below minimum
+      await expect(
+        client.initBitcoinWithdrawal(
+          REAL_TEST_DATA.withdrawAddress,
+          BigInt(19999) // Just below minimum of 20000
+        )
+      ).rejects.toThrow(/Amount 19999 is below minimum withdrawal amount 20000/)
     })
   })
 
