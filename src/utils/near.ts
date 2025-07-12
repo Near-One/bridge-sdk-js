@@ -1,12 +1,12 @@
 import { z } from "zod"
 
-// Constants
-const GAS_UNITS = {
+// Constants (kept for reference, values used directly to avoid BigInt conversion precision issues)
+const _GAS_UNITS = {
   TGAS: BigInt(10 ** 12),
   GGAS: BigInt(10 ** 9),
 } as const
 
-const NEAR_UNITS = {
+const _NEAR_UNITS = {
   NEAR: BigInt(10 ** 24),
   MILLI_NEAR: BigInt(10 ** 21),
   MICRO_NEAR: BigInt(10 ** 18),
@@ -147,20 +147,15 @@ export const callFunctionSchema = z.object({
 
 // Type-safe helper constructors
 export const gas = {
-  tgas: (amount: number): ValidatedGas =>
-    BigInt(Math.floor(amount * 1e12)) as ValidatedGas,
-  ggas: (amount: number): ValidatedGas =>
-    BigInt(Math.floor(amount * 1e9)) as ValidatedGas,
+  tgas: (amount: number): ValidatedGas => BigInt(Math.floor(amount * 1e12)) as ValidatedGas,
+  ggas: (amount: number): ValidatedGas => BigInt(Math.floor(amount * 1e9)) as ValidatedGas,
   raw: (amount: bigint): ValidatedGas => amount as ValidatedGas,
 }
 
 export const near = {
-  near: (amount: number): ValidatedNear =>
-    BigInt(Math.floor(amount * 1e24)) as ValidatedNear,
-  milli: (amount: number): ValidatedNear =>
-    BigInt(Math.floor(amount * 1e21)) as ValidatedNear,
-  micro: (amount: number): ValidatedNear =>
-    BigInt(Math.floor(amount * 1e18)) as ValidatedNear,
+  near: (amount: number): ValidatedNear => BigInt(Math.floor(amount * 1e24)) as ValidatedNear,
+  milli: (amount: number): ValidatedNear => BigInt(Math.floor(amount * 1e21)) as ValidatedNear,
+  micro: (amount: number): ValidatedNear => BigInt(Math.floor(amount * 1e18)) as ValidatedNear,
   yocto: (amount: bigint): ValidatedNear => amount as ValidatedNear,
 }
 
@@ -181,10 +176,8 @@ export const gasUtils = {
 
 export const nearUtils = {
   toNEAR: (yoctoAmount: ValidatedNear): number => Number(yoctoAmount) / 1e24,
-  toMilliNEAR: (yoctoAmount: ValidatedNear): number =>
-    Number(yoctoAmount) / 1e21,
-  toMicroNEAR: (yoctoAmount: ValidatedNear): number =>
-    Number(yoctoAmount) / 1e18,
+  toMilliNEAR: (yoctoAmount: ValidatedNear): number => Number(yoctoAmount) / 1e21,
+  toMicroNEAR: (yoctoAmount: ValidatedNear): number => Number(yoctoAmount) / 1e18,
   fromNEAR: (amount: number): ValidatedNear => near.near(amount),
   fromMilliNEAR: (amount: number): ValidatedNear => near.milli(amount),
   fromMicroNEAR: (amount: number): ValidatedNear => near.micro(amount),
