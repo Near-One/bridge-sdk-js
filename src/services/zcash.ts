@@ -28,25 +28,20 @@ export class ZcashService {
     }
 
     async getDepositProof(txHash: string): Promise<ContractDepositProof> {
-        const txInfo = await this.rpc("getrawtransaction", [txHash, 1])
+        const txInfo = await this.rpc("getrawtransaction", [txHash, 1]) as { blockhash: string, hex: string }
         if (!txInfo.blockhash) throw new Error("Transaction not confirmed")
 
-        const block = await this.rpc("getblock", [txInfo.blockhash, 2])
-        const txIds = block.tx.map((tx: string | { txid: string }) => (typeof tx === "string" ? tx : tx.txid))
+        const block = await this.rpc("getblock", [txInfo.blockhash, 1]) as { tx: string[] }
 
-        const hash256 = (data: Buffer) => Buffer.from(sha256(sha256(data)))
-        const leaves = txIds.map((id: string) => Buffer.from(hex.decode(id).reverse()))
+        const leaves = block.tx.map((id: string) => Buffer.from(hex.decode(id)))
 
-        const tree = new MerkleTree(leaves, hash256, {
-            sortPairs: false,
-            duplicateOdd: true,
-        })
+        const tree = new MerkleTree(leaves, sha256, { isBitcoinTree: true })
 
-        const targetIndex = txIds.indexOf(txHash)
+        const targetIndex = block.tx.indexOf(txHash)
         const proof = tree.getProof(leaves[targetIndex], targetIndex)
 
         return {
-            merkle_proof: proof.map((p) => hex.encode(p.data.reverse())),
+            merkle_proof: proof.map((p) => hex.encode(p.data)),
             tx_block_blockhash: txInfo.blockhash,
             tx_bytes: Array.from(hex.decode(txInfo.hex)),
         }
