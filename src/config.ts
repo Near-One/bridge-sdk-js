@@ -21,6 +21,13 @@ const ADDRESSES = {
       btcToken: "nbtc.bridge.near",
       bitcoinRelayer: "satoshi_optwo.near",
     },
+    zcash: {
+      network: "mainnet" as const,
+      apiUrl: "https://zcash-mainnet.gateway.tatum.io/",
+      zcashConnector: "",
+      zcashToken: "",
+      zcashRelayer: "",
+    },
   },
   testnet: {
     arb: "0x0C981337fFe39a555d3A40dbb32f21aD0eF33FFA",
@@ -41,6 +48,13 @@ const ADDRESSES = {
       btcConnector: "brg-dev.testnet",
       btcToken: "nbtc-dev.testnet",
       bitcoinRelayer: "cosmosfirst.testnet",
+    },
+    zcash: {
+      network: "testnet" as const,
+      apiUrl: "https://zcash-testnet.gateway.tatum.io/",
+      zcashConnector: "",
+      zcashToken: "",
+      zcashRelayer: "",
     },
   },
 } as const
@@ -76,6 +90,9 @@ export const addresses = {
   },
   get btc() {
     return ADDRESSES[selectedNetwork].btc
+  },
+  get zcash() {
+    return ADDRESSES[selectedNetwork].zcash
   },
   get network() {
     return selectedNetwork
