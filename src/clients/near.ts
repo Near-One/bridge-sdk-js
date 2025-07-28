@@ -3,6 +3,7 @@ import { actionCreators } from "@near-js/transactions"
 import type { Output } from "@scure/btc-signer/utxo"
 import { addresses } from "../config.js"
 import { BitcoinService } from "../services/bitcoin.js"
+import { ZcashService } from "../services/zcash.js"
 import {
   type AccountId,
   type BindTokenArgs,
@@ -19,6 +20,7 @@ import {
   type FinBtcTransferArgs,
   type FinTransferArgs,
   FinTransferArgsSchema,
+  type FinZcashTransferArgs,
   type InitBtcTransferMsg,
   type InitTransferEvent,
   type LogMetadataArgs,
@@ -33,6 +35,7 @@ import {
   type UTXO,
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
+  type ZcashDepositArgs,
 } from "../types/index.js"
 import { getChain, isEvmChain, omniAddress } from "../utils/index.js"
 import { getBridgedToken } from "../utils/tokens.js"
@@ -126,6 +129,7 @@ interface BalanceResults {
  */
 export class NearBridgeClient {
   public bitcoinService: BitcoinService
+  public zcashService: ZcashService
 
   /**
    * Creates a new NEAR bridge client instance
@@ -143,6 +147,10 @@ export class NearBridgeClient {
 
     // Initialize Bitcoin service
     this.bitcoinService = new BitcoinService(addresses.btc.apiUrl, addresses.btc.network)
+    this.zcashService = new ZcashService(
+      "https://zcash-testnet.gateway.tatum.io/",
+      "t-68791d6ec83ac2946ed7f015-e99607b7e0774df8a541f594",
+    )
   }
 
   /**
@@ -420,7 +428,7 @@ export class NearBridgeClient {
   ): Promise<SignTransferEvent> {
     // biome-ignore lint/suspicious/noExplicitAny: TS will complain that `toJSON()` does not exist on BigInt
     // biome-ignore lint/complexity/useLiteralKeys: TS will complain that `toJSON()` does not exist on BigInt
-    ;(BigInt.prototype as any)["toJSON"] = function () {
+    ; (BigInt.prototype as any)["toJSON"] = function () {
       return this.toString()
     }
     const args: SignTransferArgs = {
@@ -665,6 +673,58 @@ export class NearBridgeClient {
     }
   }
 
+  async getZcashDepositAddress(
+    recipientId: string,
+    amount?: bigint,
+    fee?: bigint,
+  ): Promise<{ depositAddress: string; zcashDepositArgs: ZcashDepositArgs }> {
+    // Validate minimum amount if provided
+    if (amount) {
+      const zcashConfig = await this.getZcashBridgeConfig()
+      if (amount < BigInt(zcashConfig.min_deposit_amount)) {
+        throw new Error(
+          `Amount ${amount} is below minimum deposit amount ${zcashConfig.min_deposit_amount}`,
+        )
+      }
+    }
+
+    // Deposit msg depends on if the receiver is an Omni Address or not
+    let depositMsg: DepositMsg
+    if (recipientId.includes(":")) {
+      if (!amount) {
+        throw new Error("Amount is required for Omni Address deposit")
+      }
+      depositMsg = {
+        recipient_id: this.wallet.accountId,
+        post_actions: [
+          {
+            receiver_id: this.lockerAddress,
+            amount: amount,
+            msg: JSON.stringify({
+              recipient: recipientId,
+              fee: fee?.toString(),
+              native_token_fee: "0",
+            }),
+          },
+        ],
+      }
+    } else {
+      depositMsg = {
+        recipient_id: recipientId,
+      }
+    }
+    console.log("Zcash Connector", addresses.zcash.zcashConnector)
+    const result = await this.wallet.provider.callFunction(
+      addresses.zcash.zcashConnector,
+      "get_user_deposit_address",
+      { deposit_msg: depositMsg },
+    )
+    return {
+      depositAddress: result as string,
+      zcashDepositArgs: { deposit_msg: depositMsg },
+    }
+  }
+
   /**
    * Finalize Bitcoin deposit (BTC -> NEAR flow completion)
    * Mirrors near_fin_transfer_btc() from Rust SDK
@@ -702,6 +762,30 @@ export class NearBridgeClient {
 
     const tx = await this.wallet.signAndSendTransaction({
       receiverId: addresses.btc.btcConnector,
+      actions: [actionCreators.functionCall("verify_deposit", args, BigInt(GAS.VERIFY_DEPOSIT))],
+      waitUntil: "FINAL",
+    })
+
+    return tx.transaction.hash
+  }
+
+  async finalizeZcashDeposit(
+    zcashTxHash: string,
+    vout: number,
+    depositArgs: ZcashDepositArgs,
+  ): Promise<string> {
+    const proof = await this.zcashService.getDepositProof(zcashTxHash)
+    const args: FinZcashTransferArgs = {
+      deposit_msg: depositArgs.deposit_msg,
+      tx_bytes: Array.from(proof.tx_bytes),
+      vout,
+      tx_block_blockhash: proof.tx_block_blockhash,
+      tx_index: proof.tx_index,
+      merkle_proof: proof.merkle_proof,
+    }
+
+    const tx = await this.wallet.signAndSendTransaction({
+      receiverId: addresses.zcash.zcashConnector,
       actions: [actionCreators.functionCall("verify_deposit", args, BigInt(GAS.VERIFY_DEPOSIT))],
       waitUntil: "FINAL",
     })
@@ -869,7 +953,7 @@ export class NearBridgeClient {
         if (attempt === maxAttempts) {
           throw new Error(
             `Bitcoin: Transaction signing not found after ${maxAttempts} attempts (${(maxAttempts * delayMs) / 1000}s). ` +
-              `Pending ID: ${btcPendingId}, Signer: ${signerAccount}`,
+            `Pending ID: ${btcPendingId}, Signer: ${signerAccount}`,
           )
         }
         // Wait before next attempt
@@ -965,6 +1049,16 @@ export class NearBridgeClient {
   public async getBitcoinBridgeConfig(): Promise<BtcConnectorConfig> {
     const config = (await this.wallet.provider.callFunction(
       addresses.btc.btcConnector,
+      "get_config",
+      {},
+    )) as BtcConnectorConfig
+    return config
+  }
+
+  public async getZcashBridgeConfig(): Promise<BtcConnectorConfig> {
+    console.log("Zcash Connector", addresses.zcash.zcashConnector)
+    const config = (await this.wallet.provider.callFunction(
+      addresses.zcash.zcashConnector,
       "get_config",
       {},
     )) as BtcConnectorConfig
