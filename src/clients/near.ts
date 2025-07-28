@@ -5,6 +5,7 @@ import type { Output } from "@scure/btc-signer/utxo"
 import { OmniBridgeAPI } from "../api.js"
 import { addresses } from "../config.js"
 import { BitcoinService } from "../services/bitcoin.js"
+import { ZcashService } from "../services/zcash.js"
 import {
 	type AccountId,
 	type BindTokenArgs,

@@ -6,6 +6,7 @@ interface ContractDepositProof {
     merkle_proof: string[]
     tx_block_blockhash: string,
     tx_bytes: number[],
+    tx_index: number
 }
 
 export class ZcashService {
@@ -27,6 +28,8 @@ export class ZcashService {
         return result.result
     }
 
+
+
     async getDepositProof(txHash: string): Promise<ContractDepositProof> {
         const txInfo = await this.rpc("getrawtransaction", [txHash, 1]) as { blockhash: string, hex: string }
         if (!txInfo.blockhash) throw new Error("Transaction not confirmed")
@@ -44,6 +47,7 @@ export class ZcashService {
             merkle_proof: proof.map((p) => hex.encode(p.data)),
             tx_block_blockhash: txInfo.blockhash,
             tx_bytes: Array.from(hex.decode(txInfo.hex)),
+            tx_index: targetIndex,
         }
     }
 }
@@ -66,4 +70,4 @@ async function example() {
     }
 }
 
-example()
+// example()
