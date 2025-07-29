@@ -1,13 +1,15 @@
 import { sha256 } from "@noble/hashes/sha2"
 import { hex } from "@scure/base"
 import { MerkleTree } from "merkletreejs"
+import type { UTXO } from "../types/bitcoin.js"
 
 interface ContractDepositProof {
     merkle_proof: string[]
-    tx_block_blockhash: string,
-    tx_bytes: number[],
+    tx_block_blockhash: string
+    tx_bytes: number[]
     tx_index: number
 }
+
 
 export class ZcashService {
     constructor(
@@ -28,13 +30,19 @@ export class ZcashService {
         return result.result
     }
 
-
+    async decodeTransaction(txHex: string) {
+        const tx = await this.rpc("decoderawtransaction", [txHex])
+        return tx
+    }
 
     async getDepositProof(txHash: string): Promise<ContractDepositProof> {
-        const txInfo = await this.rpc("getrawtransaction", [txHash, 1]) as { blockhash: string, hex: string }
+        const txInfo = (await this.rpc("getrawtransaction", [txHash, 1])) as {
+            blockhash: string
+            hex: string
+        }
         if (!txInfo.blockhash) throw new Error("Transaction not confirmed")
 
-        const block = await this.rpc("getblock", [txInfo.blockhash, 1]) as { tx: string[] }
+        const block = (await this.rpc("getblock", [txInfo.blockhash, 1])) as { tx: string[] }
 
         const leaves = block.tx.map((id: string) => Buffer.from(hex.decode(id)))
 
@@ -50,12 +58,58 @@ export class ZcashService {
             tx_index: targetIndex,
         }
     }
+
+    async broadcastTransaction(txHex: string): Promise<string> {
+        return await this.rpc("sendrawtransaction", [txHex])
+    }
+
+    calculateZcashFee(inputs: number, outputs: number): bigint {
+        const marginalFee = 5000; // zatoshis per logical action
+        const graceActions = 2;
+
+        // Simplified calculation for transparent transactions
+        // Real implementation would need to account for Sapling/Orchard actions too
+        const logicalActions = Math.max(inputs, outputs);
+
+        const fee = Math.max(
+            marginalFee * Math.max(graceActions, logicalActions),
+            marginalFee * graceActions
+        );
+
+        return BigInt(fee);
+    }
+
+
+    selectUTXOs(utxos: UTXO[], amount: bigint) {
+        // Sort biggest first
+        const sorted = [...utxos].sort((a, b) => Number(BigInt(b.balance) - BigInt(a.balance)))
+
+        const selected = []
+        let total = 0n
+
+        for (const utxo of sorted) {
+            selected.push(utxo)
+            total += BigInt(utxo.balance)
+
+            // Fee calculation: 12 + inputs*68 + outputs*31
+            const fee = this.calculateZcashFee(selected.length, 2)
+
+            if (total >= amount + fee) {
+                return { selected, total, fee }
+            }
+        }
+
+        throw new Error("Insufficient funds")
+    }
+
+
+
 }
 
 // Usage
 const service = new ZcashService(
     "https://zcash-testnet.gateway.tatum.io/",
-    "",
+    "t-68791d6ec83ac2946ed7f015-e99607b7e0774df8a541f594",
 )
 
 // Example
