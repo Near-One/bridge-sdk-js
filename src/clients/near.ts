@@ -40,6 +40,7 @@ import {
 } from "../types/index.js"
 import { getChain, isEvmChain, omniAddress } from "../utils/index.js"
 import { getBridgedToken } from "../utils/tokens.js"
+import { getZcashScript } from "../utils/zcash.js"
 import type { EvmBridgeClient } from "./evm.js"
 
 /**

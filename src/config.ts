@@ -53,7 +53,7 @@ const ADDRESSES = {
       network: "testnet" as const,
       apiUrl: "https://zcash-testnet.gateway.tatum.io/",
       zcashConnector: "zcash_connector-20250714-143829.testnet",
-      zcashToken: "",
+      zcashToken: "zcash-20250714-144725.testnet",
       zcashRelayer: "",
     },
   },
