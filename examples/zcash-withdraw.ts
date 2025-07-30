@@ -47,7 +47,7 @@ async function main() {
   const config = await bridgeClient.getZcashBridgeConfig()
   const withdrawalAmount = BigInt(config.min_withdraw_amount)
 
-  console.log(`Amount: ${withdrawalAmount} satoshis`)
+  console.log(`Amount: ${withdrawalAmount} zatoshis`)
 
   const pendingId = await bridgeClient.initZcashWithdrawal(ZCASH_ADDRESS, withdrawalAmount)
   console.log(`Pending ID: ${pendingId}`)
