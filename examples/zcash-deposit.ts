@@ -29,7 +29,7 @@ const NEAR_ACCOUNT = "bridge-sdk-test.testnet"
 const NETWORK = "testnet" as "testnet" | "mainnet"
 
 // Step 2 configuration - Add these after sending Zcash
-const TX_HASH = "31001efb16541644cc20cab19420087d7a70afcfc401a74f57c192e04922c94d" // Your Zcash transaction hash
+const TX_HASH = "cef976d783ac338d5d7bca47cd054f372deb5dc53dc70960321c12b8048292f4" // Your Zcash transaction hash
 const VOUT = 0 // Output index (usually 0 or 1)
 
 setNetwork(NETWORK)
@@ -49,7 +49,7 @@ async function main() {
 
   // Get minimum deposit amount
   const config = await bridgeClient.getZcashBridgeConfig()
-  console.log(`Minimum deposit: ${config.min_deposit_amount} satoshis`)
+  console.log(`Minimum deposit: ${config.min_deposit_amount} zatoshis`)
 
   // Step 1: Generate Zcash deposit address
   console.log("\n📍 Step 1: Generate deposit address")
