@@ -95,7 +95,9 @@ describe("OmniBridgeAPI Integration Tests", () => {
           initialized: expect.any(Object),
           claimed: expect.toBeOneOf([expect.anything(), undefined, null]), // null or transaction object
           signed: expect.toBeOneOf([expect.anything(), undefined, null]), // null or transaction object
+          fast_finalised_on_near: expect.toBeOneOf([expect.anything(), undefined, null]), // null or transaction object
           finalised_on_near: expect.toBeOneOf([expect.anything(), undefined, null]), // null or transaction object
+          fast_finalised: expect.toBeOneOf([expect.anything(), undefined, null]), // null or transaction object
           finalised: expect.toBeOneOf([expect.anything(), undefined, null]), // null or transaction object
           transfer_message: {
             token: expect.any(String),

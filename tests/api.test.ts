@@ -22,7 +22,9 @@ const mockTransfer = {
     },
   },
   signed: null,
+  fast_finalised_on_near: null,
   finalised_on_near: null,
+  fast_finalised: null,
   finalised: null,
   claimed: null,
   transfer_message: {

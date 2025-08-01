@@ -4,6 +4,8 @@ exports[`OmniBridgeAPI Integration Tests > findOmniTransfers > should fetch tran
 [
   {
     "claimed": null,
+    "fast_finalised": null,
+    "fast_finalised_on_near": null,
     "finalised": null,
     "finalised_on_near": null,
     "id": {
@@ -37,6 +39,8 @@ exports[`OmniBridgeAPI Integration Tests > findOmniTransfers > should fetch tran
 exports[`OmniBridgeAPI Integration Tests > getTransfer > should fetch transfer details for a known transfer 1`] = `
 {
   "claimed": null,
+  "fast_finalised": null,
+  "fast_finalised_on_near": null,
   "finalised": {
     "EVMLog": {
       "block_height": 26239591,

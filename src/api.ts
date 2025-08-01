@@ -112,7 +112,9 @@ const TransferSchema = z.object({
   }),
   initialized: z.union([z.null(), TransactionSchema]),
   signed: z.union([z.null(), TransactionSchema]),
+  fast_finalised_on_near: z.union([z.null(), TransactionSchema]),
   finalised_on_near: z.union([z.null(), TransactionSchema]),
+  fast_finalised: z.union([z.null(), TransactionSchema]),
   finalised: z.union([z.null(), TransactionSchema]),
   claimed: z.union([z.null(), TransactionSchema]),
   transfer_message: TransferMessageSchema,
@@ -128,7 +130,9 @@ const ApiFeeResponseSchema = z.object({
 const TransferStatusSchema = z.enum([
   "Initialized",
   "Signed",
+  "FastFinalisedOnNear",
   "FinalisedOnNear",
+  "FastFinalised",
   "Finalised",
   "Claimed",
 ])
