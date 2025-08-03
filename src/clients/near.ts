@@ -162,7 +162,7 @@ export class NearBridgeClient {
    */
   async deployToken(destinationChain: ChainKind, vaa: string): Promise<string> {
     const proverArgs: WormholeVerifyProofArgs = {
-      proof_kind: ProofKind.DeployToken,
+      proof_kind: ProofKind.LogMetadata,
       vaa: vaa,
     }
     const proverArgsSerialized = WormholeVerifyProofArgsSchema.serialize(proverArgs)
