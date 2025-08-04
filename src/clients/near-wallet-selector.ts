@@ -167,14 +167,28 @@ export class NearWalletSelectorBridgeClient {
    * Deploys a token to the specified destination chain
    * @param destinationChain - Target chain where the token will be deployed
    * @param vaa - Verified Action Approval containing deployment information
+   * @param evmProof - EVM proof for Ethereum or EVM chain verification
    * @returns Promise resolving to the transaction hash
    */
-  async deployToken(destinationChain: ChainKind, vaa: string): Promise<string> {
-    const proverArgs: WormholeVerifyProofArgs = {
-      proof_kind: ProofKind.DeployToken,
-      vaa: vaa,
+  async deployToken(
+    destinationChain: ChainKind,
+    vaa?: string,
+    evmProof?: EvmVerifyProofArgs,
+  ): Promise<string> {
+    if (!vaa && !evmProof) {
+      throw new Error("Must provide either VAA or EVM proof")
     }
-    const proverArgsSerialized = WormholeVerifyProofArgsSchema.serialize(proverArgs)
+
+    let proverArgsSerialized: Uint8Array = new Uint8Array(0)
+    if (vaa) {
+      const proverArgs: WormholeVerifyProofArgs = {
+        proof_kind: ProofKind.DeployToken,
+        vaa: vaa,
+      }
+      proverArgsSerialized = WormholeVerifyProofArgsSchema.serialize(proverArgs)
+    } else if (evmProof) {
+      proverArgsSerialized = EvmVerifyProofArgsSchema.serialize(evmProof)
+    }
 
     // Construct deploy token arguments
     const args: DeployTokenArgs = {
@@ -519,6 +533,7 @@ export class NearWalletSelectorBridgeClient {
     sourceChain: ChainKind,
     vaa?: string,
     evmProof?: EvmVerifyProofArgs,
+    proofKind: ProofKind = ProofKind.InitTransfer,
   ): Promise<string> {
     if (!vaa && !evmProof) {
       throw new Error("Must provide either VAA or EVM proof")
@@ -535,13 +550,13 @@ export class NearWalletSelectorBridgeClient {
     let proverArgsSerialized: Uint8Array = new Uint8Array(0)
     if (vaa) {
       const proverArgs: WormholeVerifyProofArgs = {
-        proof_kind: ProofKind.DeployToken,
+        proof_kind: proofKind,
         vaa: vaa,
       }
       proverArgsSerialized = WormholeVerifyProofArgsSchema.serialize(proverArgs)
     } else if (evmProof) {
       const proverArgs: EvmVerifyProofArgs = {
-        proof_kind: ProofKind.DeployToken,
+        proof_kind: proofKind,
         proof: evmProof.proof,
       }
       proverArgsSerialized = EvmVerifyProofArgsSchema.serialize(proverArgs)
