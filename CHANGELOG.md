@@ -1,5 +1,13 @@
 # omni-bridge-sdk
 
+## 0.12.2
+
+### Patch Changes
+
+- 0383cff: 🐛 Fix isSolWallet check logic
+- 8d074c0: fix: invalid proof kind
+- 1122a8b: feat: added `fast-finalised` variants
+
 ## 0.12.1
 
 ### Patch Changes
