@@ -79,7 +79,7 @@ interface StorageDepositOptions {
   additionalTransactions?: Array<Optional<Transaction, "signerId">>
 }
 
-interface InitTransferOptions extends StorageDepositOptions { }
+interface InitTransferOptions extends StorageDepositOptions {}
 
 /**
  * Interface representing the results of various balance queries
