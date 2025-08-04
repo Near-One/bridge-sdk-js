@@ -172,7 +172,7 @@ export class NearBridgeClient {
     let proverArgsSerialized: Uint8Array = new Uint8Array(0)
     if (vaa) {
       const proverArgs: WormholeVerifyProofArgs = {
-        proof_kind: ProofKind.DeployToken,
+        proof_kind: ProofKind.LogMetadata,
         vaa: vaa,
       }
       proverArgsSerialized = WormholeVerifyProofArgsSchema.serialize(proverArgs)
@@ -374,7 +374,7 @@ export class NearBridgeClient {
   ): Promise<SignTransferEvent> {
     // biome-ignore lint/suspicious/noExplicitAny: TS will complain that `toJSON()` does not exist on BigInt
     // biome-ignore lint/complexity/useLiteralKeys: TS will complain that `toJSON()` does not exist on BigInt
-    ;(BigInt.prototype as any)["toJSON"] = function () {
+    ; (BigInt.prototype as any)["toJSON"] = function () {
       return this.toString()
     }
     const args: SignTransferArgs = {

@@ -79,7 +79,7 @@ interface StorageDepositOptions {
   additionalTransactions?: Array<Optional<Transaction, "signerId">>
 }
 
-interface InitTransferOptions extends StorageDepositOptions {}
+interface InitTransferOptions extends StorageDepositOptions { }
 
 /**
  * Interface representing the results of various balance queries
@@ -182,7 +182,7 @@ export class NearWalletSelectorBridgeClient {
     let proverArgsSerialized: Uint8Array = new Uint8Array(0)
     if (vaa) {
       const proverArgs: WormholeVerifyProofArgs = {
-        proof_kind: ProofKind.DeployToken,
+        proof_kind: ProofKind.LogMetadata,
         vaa: vaa,
       }
       proverArgsSerialized = WormholeVerifyProofArgsSchema.serialize(proverArgs)
