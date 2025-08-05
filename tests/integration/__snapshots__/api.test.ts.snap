@@ -77,3 +77,81 @@ exports[`OmniBridgeAPI Integration Tests > getTransfer > should fetch transfer d
 `;
 
 exports[`OmniBridgeAPI Integration Tests > getTransferStatus > should fetch status for a known transfer 1`] = `"Initialized"`;
+
+exports[`OmniBridgeAPI Integration Tests findOmniTransfers should fetch transfers for a specific transaction 1`] = `
+[
+  {
+    "claimed": null,
+    "fast_finalised": null,
+    "fast_finalised_on_near": null,
+    "finalised": null,
+    "finalised_on_near": null,
+    "id": {
+      "origin_chain": "Near",
+      "origin_nonce": 1,
+    },
+    "initialized": {
+      "NearReceipt": {
+        "block_height": 137141103,
+        "block_timestamp_seconds": 1736635744,
+        "transaction_hash": "DQM4d3B6Jxr4qnvGay4bpZ7aTQQogpUgQxVLAVWk5doF",
+      },
+    },
+    "signed": null,
+    "transfer_message": {
+      "amount": 10000n,
+      "fee": {
+        "fee": 20n,
+        "native_fee": 10n,
+      },
+      "msg": "",
+      "recipient": "base:0xcf6462b9fce5af3e6c660c83453eca18ff468773",
+      "sender": "near:frolik.near",
+      "token": "near:wrap.near",
+    },
+    "updated_fee": [],
+  },
+]
+`;
+
+exports[`OmniBridgeAPI Integration Tests getTransfer should fetch transfer details for a known transfer 1`] = `
+{
+  "claimed": null,
+  "fast_finalised": null,
+  "fast_finalised_on_near": null,
+  "finalised": {
+    "EVMLog": {
+      "block_height": 26239591,
+      "block_timestamp_seconds": 1739268529,
+      "transaction_hash": "0xf802fcc209d7d3bbb6b90393c06f3c821b34a9d1c3b2beb42cd1e7468ea1cfce",
+    },
+  },
+  "finalised_on_near": null,
+  "id": {
+    "origin_chain": "Near",
+    "origin_nonce": 22,
+  },
+  "initialized": {
+    "NearReceipt": {
+      "block_height": 139475752,
+      "block_timestamp_seconds": 1739268494,
+      "transaction_hash": "7wLmrkv9K85aWT8KKEn7roAyFwTT4FS3ZrdUMvxLkym8",
+    },
+  },
+  "signed": null,
+  "transfer_message": {
+    "amount": 1000000000000000000000n,
+    "fee": {
+      "fee": 0n,
+      "native_fee": 3483371056966369000000n,
+    },
+    "msg": "",
+    "recipient": "base:0xd51c5283b8727206bf9be2b2db4e5673efaf519c",
+    "sender": "near:marior.near",
+    "token": "near:burn-1411.meme-cooking.near",
+  },
+  "updated_fee": [],
+}
+`;
+
+exports[`OmniBridgeAPI Integration Tests getTransferStatus should fetch status for a known transfer 1`] = `"Initialized"`;
