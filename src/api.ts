@@ -173,11 +173,13 @@ export class OmniBridgeAPI {
     const response = await fetch(url)
 
     if (response.status === 404) {
-      throw new ApiError("Resource not found", response.status, response.statusText)
+      const responseText = await response.text()
+      throw new ApiError(responseText || "Resource not found", response.status, response.statusText)
     }
 
     if (!response.ok) {
-      throw new ApiError("API request failed", response.status, response.statusText)
+      const responseText = await response.text()
+      throw new ApiError(responseText || "API request failed", response.status, response.statusText)
     }
 
     const data = await response.json()

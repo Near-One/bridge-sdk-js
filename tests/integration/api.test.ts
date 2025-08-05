@@ -47,6 +47,27 @@ describe("OmniBridgeAPI Integration Tests", () => {
 
       await expect(api.getFee(sender, recipient, tokenAddress)).rejects.toThrow()
     })
+
+    it("should return proper APIError message for invalid sender", async () => {
+      const invalidSender: OmniAddress = "eth:sender.address"
+      const recipient: OmniAddress = omniAddress(
+        ChainKind.Eth,
+        "0x000000F8637F1731D906643027c789EFA60BfE11",
+      )
+      const tokenAddress: OmniAddress = "near:warp.near"
+
+      try {
+        await api.getFee(invalidSender, recipient, tokenAddress)
+        expect.fail("Expected API call to throw an error")
+      } catch (error: unknown) {
+        expect(error).toBeInstanceOf(Error)
+        const apiError = error as Error & { name: string; status?: number; statusText?: string }
+        expect(apiError.name).toBe("ApiError")
+        expect(apiError.message).toBe("Invalid argument: Invalid sender omni address")
+        expect(apiError.status).toBe(400)
+        expect(apiError.statusText).toBe("Bad Request")
+      }
+    })
   })
   describe("getTransferStatus", () => {
     it("should fetch status for a known transfer", async () => {
@@ -55,7 +76,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
     })
 
     it("should handle non-existent transfer", async () => {
-      await expect(api.getTransferStatus("Eth", 999999999)).rejects.toThrow("Resource not found")
+      await expect(api.getTransferStatus("Eth", 999999999)).rejects.toThrow("Not found")
     })
   })
   describe("getTransfer", () => {
@@ -65,7 +86,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
     })
 
     it("should handle non-existent transfer", async () => {
-      await expect(api.getTransfer("Eth", 999999999)).rejects.toThrow("Resource not found")
+      await expect(api.getTransfer("Eth", 999999999)).rejects.toThrow("Not found")
     })
   })
   describe("findOmniTransfers", () => {
@@ -113,6 +134,11 @@ describe("OmniBridgeAPI Integration Tests", () => {
           updated_fee: expect.any(Array),
         })
       }
+    })
+
+    it("should handle invalid sender address", async () => {
+      const invalidSender = "invalid:sender.address"
+      await expect(api.findOmniTransfers({ sender: invalidSender })).rejects.toThrow()
     })
   })
 })
