@@ -1,5 +1,12 @@
 # omni-bridge-sdk
 
+## 0.12.3
+
+### Patch Changes
+
+- 9cb5d81: feat: add EVM proof support to NEAR deployToken method
+- f4104d1: improve: return actual API response text in error messages
+
 ## 0.12.2
 
 ### Patch Changes
