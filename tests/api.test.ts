@@ -64,6 +64,16 @@ const normalizedFee = {
   usd_fee: 1.5,
 }
 
+const mockAllowlistedTokens = {
+  allowlisted_tokens: {
+    "eth.sepolia.testnet": "eth:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+    "nbtc-dev.testnet": "near:wrap.near",
+    "wrap.testnet": "near:wrap.near",
+    "milam-ft.dev-1670602093214-42636269062771": "near:wrap.near",
+    "oats.testnet": "near:wrap.near",
+  },
+}
+
 const restHandlers = [
   http.get(`${BASE_URL}/api/v1/transfers/transfer/status`, () => {
     return HttpResponse.json("Initialized")
@@ -76,6 +86,9 @@ const restHandlers = [
   }),
   http.get(`${BASE_URL}/api/v1/transfers`, () => {
     return HttpResponse.json([mockTransfer])
+  }),
+  http.get(`${BASE_URL}/api/v1/transfer-fee/allowlisted-tokens`, () => {
+    return HttpResponse.json(mockAllowlistedTokens)
   }),
 ]
 
@@ -141,6 +154,29 @@ describe("OmniBridgeAPI", () => {
         offset: 5,
       })
       expect(transfers).toEqual([normalizedTransfer])
+    })
+  })
+
+  describe("getAllowlistedTokens", () => {
+    it("should fetch allowlisted tokens successfully", async () => {
+      const tokens = await api.getAllowlistedTokens()
+      expect(tokens).toEqual({
+        "eth.sepolia.testnet": "eth:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "nbtc-dev.testnet": "near:wrap.near",
+        "wrap.testnet": "near:wrap.near",
+        "milam-ft.dev-1670602093214-42636269062771": "near:wrap.near",
+        "oats.testnet": "near:wrap.near",
+      })
+    })
+
+    it("should handle API errors", async () => {
+      server.use(
+        http.get(`${BASE_URL}/api/v1/transfer-fee/allowlisted-tokens`, () => {
+          return new HttpResponse(null, { status: 500 })
+        }),
+      )
+
+      await expect(api.getAllowlistedTokens()).rejects.toThrow("API request failed")
     })
   })
 })

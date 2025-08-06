@@ -127,6 +127,10 @@ const ApiFeeResponseSchema = z.object({
   usd_fee: z.number(),
 })
 
+const AllowlistedTokensResponseSchema = z.object({
+  allowlisted_tokens: z.record(z.string(), z.string()),
+})
+
 const TransferStatusSchema = z.enum([
   "Initialized",
   "Signed",
@@ -237,5 +241,11 @@ export class OmniBridgeAPI {
 
     const url = this.buildUrl("/api/v1/transfers", urlParams)
     return this.fetchWithValidation(url, z.array(TransferSchema))
+  }
+
+  async getAllowlistedTokens(): Promise<Record<string, OmniAddress>> {
+    const url = this.buildUrl("/api/v1/transfer-fee/allowlisted-tokens")
+    const response = await this.fetchWithValidation(url, AllowlistedTokensResponseSchema)
+    return response.allowlisted_tokens as Record<string, OmniAddress>
   }
 }
