@@ -15,6 +15,7 @@ type ClientTypes = {
   [ChainKind.Base]: EvmBridgeClient
   [ChainKind.Arb]: EvmBridgeClient
   [ChainKind.Sol]: SolanaBridgeClient
+  [ChainKind.Btc]: never // Bitcoin client not implemented yet
 }
 
 // Define wallet types for each chain
@@ -24,6 +25,7 @@ type WalletTypes = {
   [ChainKind.Base]: ethers.Signer
   [ChainKind.Arb]: ethers.Signer
   [ChainKind.Sol]: Provider
+  [ChainKind.Btc]: never // Bitcoin wallet not implemented yet
 }
 
 /**
@@ -109,6 +111,8 @@ export function getClient<T extends ChainKind>(chain: T, wallet: WalletTypes[T])
       return new EvmBridgeClient(wallet as ethers.Signer, chain) as ClientTypes[T]
     case ChainKind.Sol:
       return new SolanaBridgeClient(wallet as Provider) as ClientTypes[T]
+    case ChainKind.Btc:
+      throw new Error("Bitcoin client not implemented yet")
     default:
       throw new Error(`No client implementation for chain: ${chain}`)
   }

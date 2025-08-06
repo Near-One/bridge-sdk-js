@@ -2,6 +2,40 @@ import { getProviderByNetwork, view } from "@near-js/client"
 import { addresses } from "../config.js"
 import { ChainKind, type OmniAddress } from "../types/index.js"
 
+const CHAIN_PATTERNS: Record<string, ChainKind> = {
+  "nbtc.bridge.near": ChainKind.Btc,
+  "eth.bridge.near": ChainKind.Eth,
+  "sol.omdep.near": ChainKind.Sol,
+  "base.omdep.near": ChainKind.Base,
+  "arb.omdep.near": ChainKind.Arb,
+  "nbtc-dev.testnet": ChainKind.Btc,
+  "eth.sepolia.testnet": ChainKind.Eth,
+  "sol.omnidep.testnet": ChainKind.Sol,
+  "base.omnidep.testnet": ChainKind.Base,
+  "arb.omnidep.testnet": ChainKind.Arb,
+}
+
+/**
+ * Parses the origin chain from a NEAR token address format (offline parsing)
+ *
+ * @param nearAddress - The NEAR token address (e.g., "sol-3ZLekZYq2qkZiSpnSvabjit34tUkjSwD1JFuW9as9wBG.omdep.near")
+ * @returns The origin chain kind, or null if pattern is not recognized
+ */
+export function parseOriginChain(nearAddress: string): ChainKind | null {
+  // Check exact matches
+  if (nearAddress in CHAIN_PATTERNS) return CHAIN_PATTERNS[nearAddress]
+
+  // Check prefixed patterns
+  if (/\.(omdep\.near|omnidep\.testnet|factory\.bridge\.(near|testnet))$/.test(nearAddress)) {
+    if (nearAddress.startsWith("sol-")) return ChainKind.Sol
+    if (nearAddress.startsWith("base-")) return ChainKind.Base
+    if (nearAddress.startsWith("arb-")) return ChainKind.Arb
+    if (nearAddress.includes("factory.bridge")) return ChainKind.Eth
+  }
+
+  return null
+}
+
 /**
  * Converts a token address from one chain to its equivalent on another chain.
  * For non-NEAR to non-NEAR conversions, the process goes through NEAR as an intermediary.
