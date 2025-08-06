@@ -36,6 +36,22 @@ exports[`OmniBridgeAPI Integration Tests > findOmniTransfers > should fetch tran
 ]
 `;
 
+exports[`OmniBridgeAPI Integration Tests > getAllowlistedTokens > should return consistent data structure 1`] = `
+{
+  "1f9840a85d5af5bf1d1762f925bdaddc4201f984.factory.bridge.near": "eth:0x1f9840a85d5af5bf1d1762f925bdaddc4201f984",
+  "2260fac5e5542a773aa44fbcfedf7c193bc2c599.factory.bridge.near": "eth:0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+  "6b175474e89094c44da98b954eedeac495271d0f.factory.bridge.near": "eth:0x6b175474e89094c44da98b954eedeac495271d0f",
+  "a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near": "eth:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+  "aaaaaa20d9e0e2461697782ef11675f668207961.factory.bridge.near": "eth:0xaaaaaa20d9e0e2461697782ef11675f668207961",
+  "arb.omdep.near": "eth:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+  "base.omdep.near": "eth:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+  "eth.bridge.near": "eth:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+  "sol.omdep.near": "sol:So11111111111111111111111111111111111111112",
+  "token.sweat": "near:token.sweat",
+  "wrap.near": "near:wrap.near",
+}
+`;
+
 exports[`OmniBridgeAPI Integration Tests > getTransfer > should fetch transfer details for a known transfer 1`] = `
 {
   "claimed": null,
@@ -112,6 +128,22 @@ exports[`OmniBridgeAPI Integration Tests findOmniTransfers should fetch transfer
     "updated_fee": [],
   },
 ]
+`;
+
+exports[`OmniBridgeAPI Integration Tests getAllowlistedTokens should return consistent data structure 1`] = `
+{
+  "1f9840a85d5af5bf1d1762f925bdaddc4201f984.factory.bridge.near": "eth:0x1f9840a85d5af5bf1d1762f925bdaddc4201f984",
+  "2260fac5e5542a773aa44fbcfedf7c193bc2c599.factory.bridge.near": "eth:0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+  "6b175474e89094c44da98b954eedeac495271d0f.factory.bridge.near": "eth:0x6b175474e89094c44da98b954eedeac495271d0f",
+  "a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near": "eth:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+  "aaaaaa20d9e0e2461697782ef11675f668207961.factory.bridge.near": "eth:0xaaaaaa20d9e0e2461697782ef11675f668207961",
+  "arb.omdep.near": "eth:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+  "base.omdep.near": "eth:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+  "eth.bridge.near": "eth:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+  "sol.omdep.near": "sol:So11111111111111111111111111111111111111112",
+  "token.sweat": "near:token.sweat",
+  "wrap.near": "near:wrap.near",
+}
 `;
 
 exports[`OmniBridgeAPI Integration Tests getTransfer should fetch transfer details for a known transfer 1`] = `

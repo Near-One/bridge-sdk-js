@@ -141,4 +141,27 @@ describe("OmniBridgeAPI Integration Tests", () => {
       await expect(api.findOmniTransfers({ sender: invalidSender })).rejects.toThrow()
     })
   })
+
+  describe("getAllowlistedTokens", () => {
+    it("should fetch real allowlisted tokens", async () => {
+      const tokens = await api.getAllowlistedTokens()
+
+      // Should be an object with string keys and OmniAddress values
+      expect(tokens).toBeInstanceOf(Object)
+      expect(Object.keys(tokens).length).toBeGreaterThan(0)
+
+      // Check structure of each token entry
+      for (const [nearAccountId, omniAddress] of Object.entries(tokens)) {
+        expect(typeof nearAccountId).toBe("string")
+        expect(typeof omniAddress).toBe("string")
+        // OmniAddress should have chain prefix format
+        expect(omniAddress).toMatch(/^(eth|near|sol):.+/)
+      }
+    })
+
+    it("should return consistent data structure", async () => {
+      const tokens = await api.getAllowlistedTokens()
+      expect(tokens).toMatchSnapshot()
+    })
+  })
 })
