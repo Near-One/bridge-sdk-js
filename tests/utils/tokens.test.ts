@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ChainKind, type OmniAddress } from "../../src/types/index.js"
 import { getBridgedToken } from "../../src/utils/index.js"
+import { parseOriginChain } from "../../src/utils/tokens.js"
 
 // Mock @near-js/client
 vi.mock("@near-js/client", () => ({
@@ -104,6 +105,67 @@ describe("Token Resolution", () => {
       const solToken = "sol:FUfkKBMpZ74vdWmPjjLpmuekqVkBMjbHqHedVGdSv929"
       const result = await getBridgedToken(solToken, ChainKind.Base)
       expect(result).toBeNull()
+    })
+  })
+
+  describe("parseOriginChain", () => {
+    it("returns correct chain for exact matches", () => {
+      expect(parseOriginChain("nbtc.bridge.near")).toBe(ChainKind.Btc)
+      expect(parseOriginChain("eth.bridge.near")).toBe(ChainKind.Eth)
+      expect(parseOriginChain("sol.omdep.near")).toBe(ChainKind.Sol)
+      expect(parseOriginChain("base.omdep.near")).toBe(ChainKind.Base)
+      expect(parseOriginChain("arb.omdep.near")).toBe(ChainKind.Arb)
+    })
+
+    it("returns correct chain for testnet exact matches", () => {
+      expect(parseOriginChain("nbtc-dev.testnet")).toBe(ChainKind.Btc)
+      expect(parseOriginChain("eth.sepolia.testnet")).toBe(ChainKind.Eth)
+      expect(parseOriginChain("sol.omnidep.testnet")).toBe(ChainKind.Sol)
+      expect(parseOriginChain("base.omnidep.testnet")).toBe(ChainKind.Base)
+      expect(parseOriginChain("arb.omnidep.testnet")).toBe(ChainKind.Arb)
+    })
+
+    it("returns correct chain for prefixed omdep.near tokens", () => {
+      expect(parseOriginChain("sol-3ZLekZYq2qkZiSpnSvabjit34tUkjSwD1JFuW9as9wBG.omdep.near")).toBe(
+        ChainKind.Sol,
+      )
+      expect(parseOriginChain("base-0x123456789abcdef.omdep.near")).toBe(ChainKind.Base)
+      expect(parseOriginChain("arb-0xabcdef123456789.omdep.near")).toBe(ChainKind.Arb)
+    })
+
+    it("returns correct chain for prefixed omnidep.testnet tokens", () => {
+      expect(
+        parseOriginChain("sol-FUfkKBMpZ74vdWmPjjLpmuekqVkBMjbHqHedVGdSv929.omnidep.testnet"),
+      ).toBe(ChainKind.Sol)
+      expect(
+        parseOriginChain("base-0xa2e932310e7294451d8417aa9b2e647e67df3288.omnidep.testnet"),
+      ).toBe(ChainKind.Base)
+      expect(
+        parseOriginChain("arb-0x02eea354d135d1a912967c2d2a6147deb01ef92e.omnidep.testnet"),
+      ).toBe(ChainKind.Arb)
+    })
+
+    it("returns Eth chain for factory.bridge patterns", () => {
+      expect(parseOriginChain("some-token.factory.bridge.near")).toBe(ChainKind.Eth)
+      expect(parseOriginChain("another-token.factory.bridge.testnet")).toBe(ChainKind.Eth)
+    })
+
+    it("returns null for unrecognized patterns", () => {
+      expect(parseOriginChain("unknown.token")).toBeNull()
+      expect(parseOriginChain("invalid.address.format")).toBeNull()
+      expect(parseOriginChain("")).toBeNull()
+      expect(parseOriginChain("random-string")).toBeNull()
+    })
+
+    it("returns null for valid suffixes but no valid prefixes", () => {
+      expect(parseOriginChain("unknown-prefix.omdep.near")).toBeNull()
+      expect(parseOriginChain("invalid-prefix.omnidep.testnet")).toBeNull()
+    })
+
+    it("handles edge cases correctly", () => {
+      expect(parseOriginChain("sol-.omdep.near")).toBe(ChainKind.Sol)
+      expect(parseOriginChain("base-.omnidep.testnet")).toBe(ChainKind.Base)
+      expect(parseOriginChain("arb-.factory.bridge.near")).toBe(ChainKind.Arb)
     })
   })
 })

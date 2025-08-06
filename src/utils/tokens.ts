@@ -17,13 +17,13 @@ const CHAIN_PATTERNS: Record<string, ChainKind> = {
 
 /**
  * Parses the origin chain from a NEAR token address format (offline parsing)
- * 
+ *
  * @param nearAddress - The NEAR token address (e.g., "sol-3ZLekZYq2qkZiSpnSvabjit34tUkjSwD1JFuW9as9wBG.omdep.near")
  * @returns The origin chain kind, or null if pattern is not recognized
  */
 export function parseOriginChain(nearAddress: string): ChainKind | null {
   // Check exact matches
-  if (CHAIN_PATTERNS[nearAddress]) return CHAIN_PATTERNS[nearAddress]
+  if (nearAddress in CHAIN_PATTERNS) return CHAIN_PATTERNS[nearAddress]
 
   // Check prefixed patterns
   if (/\.(omdep\.near|omnidep\.testnet|factory\.bridge\.(near|testnet))$/.test(nearAddress)) {
