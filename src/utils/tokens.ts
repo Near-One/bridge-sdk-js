@@ -2,12 +2,17 @@ import { getProviderByNetwork, view } from "@near-js/client"
 import { addresses } from "../config.js"
 import { ChainKind, type OmniAddress } from "../types/index.js"
 
-const ORIGIN_CHAIN_PATTERNS: Record<string, ChainKind> = {
+const CHAIN_PATTERNS: Record<string, ChainKind> = {
   "nbtc.bridge.near": ChainKind.Btc,
   "eth.bridge.near": ChainKind.Eth,
   "sol.omdep.near": ChainKind.Sol,
   "base.omdep.near": ChainKind.Base,
   "arb.omdep.near": ChainKind.Arb,
+  "nbtc-dev.testnet": ChainKind.Btc,
+  "eth.sepolia.testnet": ChainKind.Eth,
+  "sol.omnidep.testnet": ChainKind.Sol,
+  "base.omnidep.testnet": ChainKind.Base,
+  "arb.omnidep.testnet": ChainKind.Arb,
 }
 
 /**
@@ -17,21 +22,15 @@ const ORIGIN_CHAIN_PATTERNS: Record<string, ChainKind> = {
  * @returns The origin chain kind, or null if pattern is not recognized
  */
 export function parseOriginChain(nearAddress: string): ChainKind | null {
-  // Check exact matches first
-  if (nearAddress in ORIGIN_CHAIN_PATTERNS) {
-    return ORIGIN_CHAIN_PATTERNS[nearAddress]
-  }
+  // Check exact matches
+  if (CHAIN_PATTERNS[nearAddress]) return CHAIN_PATTERNS[nearAddress]
 
-  // Check prefixed bridged tokens
-  if (nearAddress.endsWith(".omdep.near")) {
+  // Check prefixed patterns
+  if (/\.(omdep\.near|omnidep\.testnet|factory\.bridge\.(near|testnet))$/.test(nearAddress)) {
     if (nearAddress.startsWith("sol-")) return ChainKind.Sol
     if (nearAddress.startsWith("base-")) return ChainKind.Base
     if (nearAddress.startsWith("arb-")) return ChainKind.Arb
-  }
-
-  // Check Ethereum legacy pattern
-  if (nearAddress.endsWith(".factory.bridge.near")) {
-    return ChainKind.Eth
+    if (nearAddress.includes("factory.bridge")) return ChainKind.Eth
   }
 
   return null
