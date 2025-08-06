@@ -1,5 +1,15 @@
 # omni-bridge-sdk
 
+## 0.13.0
+
+### Minor Changes
+
+- 18ab405: Add getAllowlistedTokens endpoint to fetch mapping of NEAR token contract IDs to OmniAddresses
+
+### Patch Changes
+
+- 9f18f2c: feat: add parseOriginChain function for offline NEAR token address parsing
+
 ## 0.12.3
 
 ### Patch Changes
