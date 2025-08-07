@@ -1,10 +1,10 @@
 import type { Provider } from "@coral-xyz/anchor"
+import type { Account } from "@near-js/accounts"
 import type { WalletSelector } from "@near-wallet-selector/core"
 import type { ethers } from "ethers"
-import type { Account } from "near-api-js"
 import { EvmBridgeClient } from "./clients/evm.js"
-import { NearWalletSelectorBridgeClient } from "./clients/near-wallet-selector.js"
 import { NearBridgeClient } from "./clients/near.js"
+import { NearWalletSelectorBridgeClient } from "./clients/near-wallet-selector.js"
 import { SolanaBridgeClient } from "./clients/solana.js"
 import { ChainKind } from "./types/index.js"
 

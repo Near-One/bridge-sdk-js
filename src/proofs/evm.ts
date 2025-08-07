@@ -1,6 +1,6 @@
-import { createMPT, createMerkleProof } from "@ethereumjs/mpt"
+import { createMerkleProof, createMPT } from "@ethereumjs/mpt"
 import { RLP } from "@ethereumjs/rlp"
-import { MapDB, bigIntToHex } from "@ethereumjs/util"
+import { bigIntToHex, MapDB } from "@ethereumjs/util"
 import type { BlockTag, Log, TransactionReceipt, TransactionReceiptParams } from "ethers"
 import { ethers } from "ethers"
 import { ChainKind, type EvmProof } from "../types/index.js"
