@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.13.1
+
+### Patch Changes
+
+- 0ac839a: fix: import BN directly from bn.js instead of @coral-xyz/anchor
+
 ## 0.13.0
 
 ### Minor Changes
