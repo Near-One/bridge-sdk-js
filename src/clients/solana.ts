@@ -1,4 +1,4 @@
-import { BN, Program, type Provider } from "@coral-xyz/anchor"
+import { Program, type Provider } from "@coral-xyz/anchor"
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
@@ -12,6 +12,7 @@ import {
   SYSVAR_RENT_PUBKEY,
   SystemProgram,
 } from "@solana/web3.js"
+import { BN } from "bn.js"
 import { addresses } from "../config.js"
 import {
   ChainKind,
