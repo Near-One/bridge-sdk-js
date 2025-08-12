@@ -37,7 +37,6 @@ describe("SOL to NEAR E2E Transfer Tests (Manual Flow)", () => {
         tokenAddress: route.token.address,
         amount: BigInt(route.token.testAmount),
         recipient: omniAddress(ChainKind.Near, route.recipient),
-        message: "E2E manual test transfer",
         fee: BigInt(0), // No relayer fee
         nativeFee: BigInt(0), // No relayer fee
       }
