@@ -1,5 +1,6 @@
 import type { Account } from "@near-js/accounts"
 import { actionCreators } from "@near-js/transactions"
+import type { FinalExecutionOutcome } from "@near-js/types"
 import { addresses } from "../config.js"
 import {
   type AccountId,
@@ -445,7 +446,7 @@ export class NearBridgeClient {
     vaa?: string,
     evmProof?: EvmVerifyProofArgs,
     proofKind: ProofKind = ProofKind.InitTransfer,
-  ): Promise<string> {
+  ): Promise<FinalExecutionOutcome> {
     if (!vaa && !evmProof) {
       throw new Error("Must provide either VAA or EVM proof")
     }
@@ -506,7 +507,7 @@ export class NearBridgeClient {
       ],
       waitUntil: "FINAL",
     })
-    return tx.transaction.hash
+    return tx
   }
 
   /**

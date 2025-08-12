@@ -64,6 +64,14 @@ export const TEST_TOKENS = {
     symbol: "wNEAR",
     testAmount: "1000000000000000000",
   } satisfies TestTokenConfig,
+
+  // wNEAR token on Solana (for SOL → NEAR)
+  WNEAR_ON_SOL: {
+    address: omniAddress(ChainKind.Sol, "3wQct2e43J1Z99h2RWrhPAhf6E32ZpuzEt6tgwfEAKAy"),
+    decimals: 24,
+    symbol: "wNEAR",
+    testAmount: "10", // 1 wNEAR in smallest units
+  } satisfies TestTokenConfig,
 }
 
 // Transfer route configuration
@@ -98,6 +106,15 @@ export const NEAR_TO_SOL_ROUTES: TransferRoute[] = [
     token: TEST_TOKENS.NEAR_TO_SOL,
     sender: TEST_ADDRESSES.near.testAccount,
     recipient: TEST_ADDRESSES.solana.testAccount,
+  },
+]
+
+export const SOL_TO_NEAR_ROUTES: TransferRoute[] = [
+  {
+    name: "SOL → NEAR (wNEAR)",
+    token: TEST_TOKENS.WNEAR_ON_SOL,
+    sender: TEST_ADDRESSES.solana.testAccount,
+    recipient: TEST_ADDRESSES.near.testAccount,
   },
 ]
 
