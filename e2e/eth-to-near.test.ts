@@ -38,7 +38,6 @@ describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
         tokenAddress: route.token.address,
         amount: BigInt(route.token.testAmount),
         recipient: omniAddress(ChainKind.Near, route.recipient),
-        message: "E2E manual test transfer",
         fee: BigInt(0), // No relayer fee
         nativeFee: BigInt(0), // No relayer fee
       }
@@ -50,8 +49,8 @@ describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
       console.log(`  To: ${transferMessage.recipient}`)
       console.log("  Fee: 0 (manual flow)")
 
-      // Step 1: Initiate transfer on Ethereum
-      const transactionHash = await ethClient.initTransfer(transferMessage)
+      // Step 1: Initiate transfer on Ethereum (with permanent approval)
+      const transactionHash = await ethClient.initTransfer(transferMessage, true)
 
       console.log("✓ Transfer initiated on Ethereum!")
       console.log(`  Transaction Hash: ${transactionHash}`)
@@ -95,24 +94,21 @@ describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
       expect(proof.proof.length).toBeGreaterThan(0)
 
       // Step 4: Wait for transaction to be finalized
-      console.log("\n⏳ Step 4: Waiting for transaction finalization...")
-      await new Promise((resolve) => setTimeout(resolve, 30000)) // Wait 30s for finalization
+      console.log("\n⏳ Step 4: Waiting for light client (30 mins)...")
+      await new Promise((resolve) => setTimeout(resolve, 30000)) // Wait 30 minutes for light client
 
       // Step 5: Finalize transfer on NEAR
       console.log("\n🏁 Step 5: Finalizing transfer on NEAR...")
 
       // Extract the NEAR token address (remove "eth:" prefix and use equivalent NEAR token)
       const nearTokenId = "wrap.testnet" // The equivalent NEAR token
-      const storageDepositAmount = "1000000000000000000000000" // 1 NEAR in yoctoNEAR for storage
-
       const finalizeResult = await nearClient.finalizeTransfer(
         nearTokenId,
-        route.recipient.split(":")[1], // Remove "near:" prefix
-        BigInt(storageDepositAmount),
+        route.recipient,
+        BigInt(0),
         ChainKind.Eth,
         undefined, // No VAA needed for EVM
-        proof, // EVM proof required
-        ProofKind.InitTransfer,
+        { proof_kind: ProofKind.InitTransfer, proof }, // EVM proof required
       )
 
       console.log("✓ Transfer finalized on NEAR!")

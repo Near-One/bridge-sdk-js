@@ -461,13 +461,13 @@ export class NearBridgeClient {
     let proverArgsSerialized: Uint8Array = new Uint8Array(0)
     if (vaa) {
       const proverArgs: WormholeVerifyProofArgs = {
-        proof_kind: proofKind,
+        proof_kind: evmProof?.proof_kind ?? proofKind,
         vaa: vaa,
       }
       proverArgsSerialized = WormholeVerifyProofArgsSchema.serialize(proverArgs)
     } else if (evmProof) {
       const proverArgs: EvmVerifyProofArgs = {
-        proof_kind: proofKind,
+        proof_kind: evmProof.proof_kind ?? proofKind,
         proof: evmProof.proof,
       }
       proverArgsSerialized = EvmVerifyProofArgsSchema.serialize(proverArgs)
@@ -492,7 +492,7 @@ export class NearBridgeClient {
       "required_balance_for_fin_transfer",
       {},
     )
-    const finDeposit = BigInt(finDepositStr as string)
+    const finDeposit = BigInt(finDepositStr as string) + storageDepositAmount
 
     const tx = await this.wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
@@ -504,6 +504,7 @@ export class NearBridgeClient {
           BigInt(finDeposit),
         ),
       ],
+      waitUntil: "FINAL",
     })
     return tx.transaction.hash
   }
