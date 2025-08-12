@@ -161,6 +161,17 @@ export class EvmBridgeClient {
   }
 
   /**
+   * Approves maximum possible amount (permanent approval) for the bridge factory
+   * @param tokenAddress - The ERC20 token contract address
+   * @returns Promise resolving to transaction hash
+   */
+  async approveTokenMax(tokenAddress: string): Promise<string> {
+    // Use the maximum uint256 value for permanent approval
+    const MAX_UINT256 = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+    return this.approveToken(tokenAddress, MAX_UINT256)
+  }
+
+  /**
    * Checks the current allowance for the bridge factory to spend tokens
    * @param tokenAddress - The ERC20 token contract address
    * @param owner - The token owner address
@@ -193,10 +204,11 @@ export class EvmBridgeClient {
    * corresponding tokens on the destination chain.
    *
    * @param transfer - Transfer message containing token, amount, recipient, etc.
+   * @param usePermanentApproval - If true, approves maximum amount for permanent approval
    * @throws {Error} If token address is not on the correct EVM chain
    * @returns Promise resolving to transaction hash
    */
-  async initTransfer(transfer: OmniTransferMessage): Promise<string> {
+  async initTransfer(transfer: OmniTransferMessage, usePermanentApproval = false): Promise<string> {
     const sourceChain = getChain(transfer.tokenAddress)
 
     // Validate source chain matches the client's chain
@@ -215,9 +227,19 @@ export class EvmBridgeClient {
       const requiredAmount = transfer.amount + transfer.fee
 
       if (currentAllowance < requiredAmount) {
-        console.log(`Insufficient allowance (${currentAllowance}). Approving ${requiredAmount}...`)
-        await this.approveToken(tokenAccountId, requiredAmount)
-        console.log("✓ Token approval successful")
+        if (usePermanentApproval) {
+          console.log(
+            `Insufficient allowance (${currentAllowance}). Approving maximum amount for permanent approval...`,
+          )
+          await this.approveTokenMax(tokenAccountId)
+          console.log("✓ Permanent token approval successful")
+        } else {
+          console.log(
+            `Insufficient allowance (${currentAllowance}). Approving ${requiredAmount}...`,
+          )
+          await this.approveToken(tokenAccountId, requiredAmount)
+          console.log("✓ Token approval successful")
+        }
       } else {
         console.log(`✓ Sufficient allowance available (${currentAllowance})`)
       }
@@ -237,7 +259,8 @@ export class EvmBridgeClient {
             : transfer.nativeFee,
         },
       )
-      return tx.hash
+      const receipt = await tx.wait()
+      return receipt.hash
     } catch (error) {
       throw new Error(
         `Failed to init transfer: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -290,9 +313,38 @@ export class EvmBridgeClient {
       throw new Error("Provider not available on wallet")
     }
 
-    const receipt = await provider.getTransactionReceipt(txHash)
+    // Retry mechanism for RPC indexing delays
+    let receipt = null
+    const maxRetries = 10
+    const baseDelay = 2000 // Start with 2 seconds
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        receipt = await provider.getTransactionReceipt(txHash)
+        if (receipt) {
+          console.log(`✓ Transaction receipt found on attempt ${attempt}`)
+          break
+        }
+      } catch (error) {
+        console.log(
+          `Attempt ${attempt} failed:`,
+          error instanceof Error ? error.message : "Unknown error",
+        )
+      }
+
+      if (attempt < maxRetries) {
+        const delay = baseDelay * 1.5 ** (attempt - 1) // Exponential backoff
+        console.log(
+          `⏳ Transaction not indexed yet, retrying in ${Math.round(delay / 1000)}s... (attempt ${attempt}/${maxRetries})`,
+        )
+        await new Promise((resolve) => setTimeout(resolve, delay))
+      }
+    }
+
     if (!receipt) {
-      throw new Error(`Transaction receipt not found for hash: ${txHash}`)
+      throw new Error(
+        `Transaction receipt not found for hash: ${txHash} after ${maxRetries} attempts`,
+      )
     }
 
     // ABI for InitTransfer event
