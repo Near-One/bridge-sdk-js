@@ -51,19 +51,18 @@ describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
       console.log("  Fee: 0 (manual flow)")
 
       // Step 1: Initiate transfer on Ethereum
-      const initResult = await ethClient.initTransfer(transferMessage)
+      const transactionHash = await ethClient.initTransfer(transferMessage)
 
       console.log("✓ Transfer initiated on Ethereum!")
-      console.log(`  Transaction Hash: ${initResult.transactionHash}`)
+      console.log(`  Transaction Hash: ${transactionHash}`)
 
       // Validate initiation
-      expect(initResult).toHaveProperty("transactionHash")
-      expect(typeof initResult.transactionHash).toBe("string")
-      expect(initResult.transactionHash.length).toBeGreaterThan(0)
+      expect(typeof transactionHash).toBe("string")
+      expect(transactionHash.length).toBeGreaterThan(0)
 
       // Step 2: Get the InitTransfer event from the transaction
       console.log("\n🔍 Step 2: Extracting transfer event from transaction...")
-      const transferEvent = await ethClient.getInitTransferEvent(initResult.transactionHash)
+      const transferEvent = await ethClient.getInitTransferEvent(transactionHash)
 
       console.log("✓ Transfer event extracted!")
       console.log(`  Origin Nonce: ${transferEvent.originNonce}`)
@@ -86,11 +85,7 @@ describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
         "InitTransfer(address,address,uint64,uint128,uint128,uint128,string,string)"
       const INIT_TRANSFER_TOPIC = ethers.id(initTransferSignature)
 
-      const proof = await getEvmProof(
-        initResult.transactionHash,
-        INIT_TRANSFER_TOPIC,
-        ChainKind.Eth,
-      )
+      const proof = await getEvmProof(transactionHash, INIT_TRANSFER_TOPIC, ChainKind.Eth)
 
       console.log("✓ EVM proof generated!")
       console.log("  Proof length:", proof.proof.length)
