@@ -46,7 +46,7 @@ export const TEST_TOKENS = {
     address: omniAddress(ChainKind.Eth, "0x1f89e263159f541182f875ac05d773657d24eb92"),
     decimals: 24,
     symbol: "NEAR",
-    testAmount: "1000000",
+    testAmount: "10",
   } satisfies TestTokenConfig,
 }
 
