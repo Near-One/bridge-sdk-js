@@ -1,9 +1,11 @@
 import os from "node:os"
 import path from "node:path"
+import { AnchorProvider, Wallet, setProvider } from "@coral-xyz/anchor"
 import { Account } from "@near-js/accounts"
 import { getSignerFromKeystore } from "@near-js/client"
 import { UnencryptedFileSystemKeyStore } from "@near-js/keystores-node"
 import { JsonRpcProvider } from "@near-js/providers"
+import { Connection, Keypair } from "@solana/web3.js"
 import { ethers } from "ethers"
 
 export interface TestConfig {
@@ -19,6 +21,11 @@ export interface TestConfig {
     ethereum: {
       rpcUrl: string
       chainId: number
+      privateKey?: string
+    }
+    solana: {
+      rpcUrl: string
+      commitment: "confirmed" | "finalized"
       privateKey?: string
     }
   }
@@ -38,6 +45,11 @@ export const TEST_CONFIG: TestConfig = {
       rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
       chainId: 11155111, // Sepolia
       privateKey: process.env.ETH_PRIVATE_KEY,
+    },
+    solana: {
+      rpcUrl: "https://api.devnet.solana.com",
+      commitment: "confirmed",
+      privateKey: process.env.SOL_PRIVATE_KEY,
     },
   },
 }
@@ -78,14 +90,38 @@ export async function createEthereumWallet(): Promise<ethers.Wallet> {
   return new ethers.Wallet(ethereum.privateKey, provider)
 }
 
+export async function createSolanaProvider(): Promise<AnchorProvider> {
+  const { solana } = TEST_CONFIG.networks
+
+  if (!solana.privateKey) {
+    throw new Error("SOL_PRIVATE_KEY environment variable required for Solana tests")
+  }
+
+  // Convert private key from base58 string to Keypair
+  const privateKeyBytes = Uint8Array.from(Buffer.from(solana.privateKey, "base64"))
+  const keypair = Keypair.fromSecretKey(privateKeyBytes)
+
+  const connection = new Connection(solana.rpcUrl, solana.commitment)
+  const wallet = new Wallet(keypair)
+
+  const provider = new AnchorProvider(connection, wallet, {
+    commitment: solana.commitment,
+  })
+
+  setProvider(provider)
+  return provider
+}
+
 export interface TestAccountsSetup {
   nearAccount: Account
   ethWallet: ethers.Wallet
+  solanaProvider: AnchorProvider
 }
 
 export async function setupTestAccounts(): Promise<TestAccountsSetup> {
   return {
     nearAccount: await createNearAccount(),
     ethWallet: await createEthereumWallet(),
+    solanaProvider: await createSolanaProvider(),
   }
 }
