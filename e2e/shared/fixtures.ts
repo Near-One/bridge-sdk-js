@@ -17,9 +17,13 @@ export interface TestAddresses {
     testAccount: string
     recipient: string
   }
+  solana: {
+    testAccount: string
+    recipient: string
+  }
 }
 
-// Test addresses for NEAR to ETH transfers
+// Test addresses for cross-chain transfers
 export const TEST_ADDRESSES: TestAddresses = {
   near: {
     testAccount: "omni-sdk-test.testnet",
@@ -28,6 +32,10 @@ export const TEST_ADDRESSES: TestAddresses = {
   ethereum: {
     testAccount: "0xA7C29dA7599817edA0f829E7B8d0FFE23D81c4d3", // Your Sepolia address
     recipient: "0x000000F8637F1731D906643027c789EFA60BfE11", // Test recipient
+  },
+  solana: {
+    testAccount: "2sUFgertVaZHxzyMM5z5DajkyU1TnPCMr1yDnTiEsVit", // Your SOL wallet address
+    recipient: "2sUFgertVaZHxzyMM5z5DajkyU1TnPCMr1yDnTiEsVit", // Same as test account for self-transfer
   },
 }
 
@@ -47,6 +55,14 @@ export const TEST_TOKENS = {
     decimals: 24,
     symbol: "NEAR",
     testAmount: "10",
+  } satisfies TestTokenConfig,
+
+  // NEAR token for NEAR → SOL transfers
+  NEAR_TO_SOL: {
+    address: omniAddress(ChainKind.Near, "wrap.testnet"),
+    decimals: 24,
+    symbol: "wNEAR",
+    testAmount: "1000000000000000000",
   } satisfies TestTokenConfig,
 }
 
@@ -73,6 +89,15 @@ export const ETH_TO_NEAR_ROUTES: TransferRoute[] = [
     token: TEST_TOKENS.NEAR_ON_ETH,
     sender: TEST_ADDRESSES.ethereum.testAccount,
     recipient: TEST_ADDRESSES.near.testAccount,
+  },
+]
+
+export const NEAR_TO_SOL_ROUTES: TransferRoute[] = [
+  {
+    name: "NEAR → SOL (wNEAR)",
+    token: TEST_TOKENS.NEAR_TO_SOL,
+    sender: TEST_ADDRESSES.near.testAccount,
+    recipient: TEST_ADDRESSES.solana.testAccount,
   },
 ]
 
