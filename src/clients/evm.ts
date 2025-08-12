@@ -185,14 +185,15 @@ export class EvmBridgeClient {
   ): Promise<string> {
     // Convert the transfer message to EVM-compatible format
     const bridgeDeposit: BridgeDeposit = {
-      destination_nonce: BigInt(transferMessage.destination_nonce),
-      origin_chain: Number(transferMessage.transfer_id.origin_chain),
-      origin_nonce: BigInt(transferMessage.transfer_id.origin_nonce),
-      token_address: transferMessage.token_address.split(":")[1],
+      destinationNonce: BigInt(transferMessage.destination_nonce),
+      originChain: Number(ChainKind[Number(transferMessage.transfer_id.origin_chain)]),
+      originNonce: BigInt(transferMessage.transfer_id.origin_nonce),
+      tokenAddress: transferMessage.token_address.split(":")[1],
       amount: BigInt(transferMessage.amount),
       recipient: transferMessage.recipient.split(":")[1],
-      fee_recipient: transferMessage.fee_recipient ?? "",
+      feeRecipient: transferMessage.fee_recipient ?? "",
     }
+    console.log("Bridge Deposit", bridgeDeposit)
 
     try {
       const tx = await this.factory.finTransfer(signature.toBytes(true), bridgeDeposit)

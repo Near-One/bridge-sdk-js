@@ -16,6 +16,7 @@ import {
   type InitTransferEvent,
   type LogMetadataArgs,
   type LogMetadataEvent,
+  MPCSignature,
   type OmniAddress,
   type OmniTransferMessage,
   ProofKind,
@@ -359,8 +360,13 @@ export class NearBridgeClient {
       }
       return value
     })
-
-    return parsed.SignTransferEvent as SignTransferEvent
+    const signedEvent = parsed.SignTransferEvent as SignTransferEvent
+    signedEvent.signature = new MPCSignature(
+      parsed.SignTransferEvent.signature.big_r,
+      parsed.SignTransferEvent.signature.s,
+      parsed.SignTransferEvent.signature.recovery_id,
+    )
+    return signedEvent
   }
   /**
    * Signs transfer using the token locker
@@ -375,11 +381,11 @@ export class NearBridgeClient {
     // biome-ignore lint/suspicious/noExplicitAny: TS will complain that `toJSON()` does not exist on BigInt
     // biome-ignore lint/complexity/useLiteralKeys: TS will complain that `toJSON()` does not exist on BigInt
     ;(BigInt.prototype as any)["toJSON"] = function () {
-      return this.toString()
+      return Number(this)
     }
     const args: SignTransferArgs = {
       transfer_id: {
-        origin_chain: getChain(initTransferEvent.transfer_message.sender),
+        origin_chain: ChainKind[getChain(initTransferEvent.transfer_message.sender)],
         origin_nonce: BigInt(initTransferEvent.transfer_message.origin_nonce),
       },
       fee_recipient: feeRecipient,
