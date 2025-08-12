@@ -31,18 +31,26 @@ export const TEST_ADDRESSES: TestAddresses = {
   },
 }
 
-// Test tokens for NEAR to ETH transfers
+// Test tokens for bidirectional transfers
 export const TEST_TOKENS = {
-  // NEAR native token
+  // NEAR native token (for NEAR → ETH)
   NEAR: {
     address: omniAddress(ChainKind.Near, "wrap.testnet"),
     decimals: 24,
     symbol: "wNEAR",
     testAmount: "1000000",
   } satisfies TestTokenConfig,
+
+  // NEAR token on Ethereum (for ETH → NEAR)
+  NEAR_ON_ETH: {
+    address: omniAddress(ChainKind.Eth, "0x1f89e263159f541182f875ac05d773657d24eb92"),
+    decimals: 24,
+    symbol: "NEAR",
+    testAmount: "1000000",
+  } satisfies TestTokenConfig,
 }
 
-// NEAR to ETH transfer configuration
+// Transfer route configuration
 export interface TransferRoute {
   name: string
   token: TestTokenConfig
@@ -56,6 +64,15 @@ export const NEAR_TO_ETH_ROUTES: TransferRoute[] = [
     token: TEST_TOKENS.NEAR,
     sender: TEST_ADDRESSES.near.testAccount,
     recipient: TEST_ADDRESSES.ethereum.testAccount,
+  },
+]
+
+export const ETH_TO_NEAR_ROUTES: TransferRoute[] = [
+  {
+    name: "ETH → NEAR (NEAR token)",
+    token: TEST_TOKENS.NEAR_ON_ETH,
+    sender: TEST_ADDRESSES.ethereum.testAccount,
+    recipient: TEST_ADDRESSES.near.testAccount,
   },
 ]
 
