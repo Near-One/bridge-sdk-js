@@ -1,5 +1,5 @@
+import { beforeAll, describe, expect, test } from "bun:test"
 import { ethers } from "ethers"
-import { beforeAll, describe, expect, test } from "vitest"
 import { EvmBridgeClient } from "../src/clients/evm.js"
 import { NearBridgeClient } from "../src/clients/near.js"
 import { setNetwork } from "../src/config.js"
@@ -26,7 +26,7 @@ describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
     console.log("🚀 Test setup complete:")
     console.log(`  ETH Address: ${testAccounts.ethWallet.address}`)
     console.log(`  NEAR Account: ${testAccounts.nearAccount.accountId}`)
-  }, TIMEOUTS.NETWORK_REQUEST)
+  })
 
   test.each(ETH_TO_NEAR_ROUTES)(
     "should complete manual ETH to NEAR transfer: $name",
@@ -94,37 +94,55 @@ describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
       expect(proof.proof.length).toBeGreaterThan(0)
 
       // Step 4: Wait for transaction to be finalized
-      console.log("\n⏳ Step 4: Waiting for light client (30 mins)...")
-      await new Promise((resolve) => setTimeout(resolve, 30000)) // Wait 30 minutes for light client
+      const shouldWaitForLightClient = process.env.FULL_E2E_TEST === "true"
 
-      // Step 5: Finalize transfer on NEAR
-      console.log("\n🏁 Step 5: Finalizing transfer on NEAR...")
+      if (shouldWaitForLightClient) {
+        console.log("\n⏳ Step 4: Waiting for light client (30 mins)...")
+        await new Promise((resolve) => setTimeout(resolve, 1800000)) // Wait 30 minutes for light client
 
-      // Extract the NEAR token address (remove "eth:" prefix and use equivalent NEAR token)
-      const nearTokenId = "wrap.testnet" // The equivalent NEAR token
-      const finalizeResult = await nearClient.finalizeTransfer(
-        nearTokenId,
-        route.recipient,
-        BigInt(0),
-        ChainKind.Eth,
-        undefined, // No VAA needed for EVM
-        { proof_kind: ProofKind.InitTransfer, proof }, // EVM proof required
-      )
+        // Step 5: Finalize transfer on NEAR
+        console.log("\n🏁 Step 5: Finalizing transfer on NEAR...")
 
-      console.log("✓ Transfer finalized on NEAR!")
-      console.log(`  Finalization TX: ${finalizeResult.transaction.hash}`)
+        // Extract the NEAR token address (remove "eth:" prefix and use equivalent NEAR token)
+        const nearTokenId = "wrap.testnet" // The equivalent NEAR token
+        const finalizeResult = await nearClient.finalizeTransfer(
+          nearTokenId,
+          route.recipient,
+          BigInt(0),
+          ChainKind.Eth,
+          undefined, // No VAA needed for EVM
+          { proof_kind: ProofKind.InitTransfer, proof }, // EVM proof required
+        )
 
-      // Validate finalization
-      expect(finalizeResult).toBeDefined()
-      expect(typeof finalizeResult.transaction.hash).toBe("string") // Should be transaction hash
-      expect(finalizeResult.transaction.hash.length).toBeGreaterThan(0)
+        console.log("✓ Transfer finalized on NEAR!")
+        console.log(`  Finalization TX: ${finalizeResult.transaction.hash}`)
 
-      console.log("\n🎉 Manual transfer flow completed successfully!")
-      console.log("  1. ✓ Initiated on ETH")
-      console.log("  2. ✓ Extracted event data")
-      console.log("  3. ✓ Generated EVM proof")
-      console.log("  4. ✓ Finalized on NEAR")
-      console.log(`✅ ${route.name} test completed!`)
+        // Validate finalization
+        expect(finalizeResult).toBeDefined()
+        expect(typeof finalizeResult.transaction.hash).toBe("string") // Should be transaction hash
+        expect(finalizeResult.transaction.hash.length).toBeGreaterThan(0)
+
+        console.log("\n🎉 Full manual transfer flow completed successfully!")
+        console.log("  1. ✓ Initiated on ETH")
+        console.log("  2. ✓ Extracted event data")
+        console.log("  3. ✓ Generated EVM proof")
+        console.log("  4. ✓ Waited for light client")
+        console.log("  5. ✓ Finalized on NEAR")
+        console.log(`✅ ${route.name} test completed!`)
+      } else {
+        console.log("\n⚡ Step 4: Skipping light client wait and finalization")
+        console.log(
+          "   Set FULL_E2E_TEST=true to run complete flow including 30min wait + finalization",
+        )
+
+        console.log("\n🎯 Partial transfer flow completed successfully!")
+        console.log("  1. ✓ Initiated on ETH")
+        console.log("  2. ✓ Extracted event data")
+        console.log("  3. ✓ Generated EVM proof")
+        console.log("  4. ⏭️  Skipped light client wait")
+        console.log("  5. ⏭️  Skipped NEAR finalization")
+        console.log(`✅ ${route.name} proof generation test completed!`)
+      }
     },
     TIMEOUTS.FULL_E2E_FLOW,
   )

@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, test } from "vitest"
+import { beforeAll, describe, expect, test } from "bun:test"
 import { EvmBridgeClient } from "../src/clients/evm.js"
 import { NearBridgeClient } from "../src/clients/near.js"
 import { setNetwork } from "../src/config.js"
@@ -24,7 +24,7 @@ describe("NEAR to ETH E2E Transfer Tests (Manual Flow)", () => {
     console.log("🚀 Test setup complete:")
     console.log(`  NEAR Account: ${testAccounts.nearAccount.accountId}`)
     console.log(`  ETH Address: ${testAccounts.ethWallet.address}`)
-  }, TIMEOUTS.NETWORK_REQUEST)
+  })
 
   test.each(NEAR_TO_ETH_ROUTES)(
     "should complete manual NEAR to ETH transfer: $name",
