@@ -67,7 +67,7 @@ describe("EVM Client Integration Tests", () => {
       const txHash = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 
       await expect(evmClient.getInitTransferEvent(txHash)).rejects.toThrow()
-    })
+    }, 30000)
 
     it("should throw error for non-existent transaction", async () => {
       // Use a completely non-existent transaction hash
@@ -76,6 +76,6 @@ describe("EVM Client Integration Tests", () => {
       await expect(evmClient.getInitTransferEvent(txHash)).rejects.toThrow(
         "Transaction receipt not found for hash",
       )
-    })
+    }, 30000)
   })
 })
