@@ -1,0 +1,40 @@
+name: E2E Tests
+
+on:
+  # Manual trigger with options
+  workflow_dispatch:
+    inputs:
+      full_e2e:
+        description: 'Run full E2E tests (including 30min light client wait)'
+        required: false
+        default: false
+        type: boolean
+  # Nightly at 2 AM UTC (quick tests only)
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.full_e2e && 45 || 15 }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        name: Install bun
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run type checking
+        run: bun run typecheck
+
+      - name: Run E2E tests
+        run: bun test e2e/
+        env:
+          NODE_ENV: test
+          FULL_E2E_TEST: ${{ inputs.full_e2e }}
