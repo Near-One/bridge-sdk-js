@@ -1,5 +1,6 @@
 import type { Account } from "@near-js/accounts"
 import { actionCreators } from "@near-js/transactions"
+import type { FinalExecutionOutcome } from "@near-js/types"
 import { addresses } from "../config.js"
 import {
   type AccountId,
@@ -16,6 +17,7 @@ import {
   type InitTransferEvent,
   type LogMetadataArgs,
   type LogMetadataEvent,
+  MPCSignature,
   type OmniAddress,
   type OmniTransferMessage,
   ProofKind,
@@ -359,8 +361,13 @@ export class NearBridgeClient {
       }
       return value
     })
-
-    return parsed.SignTransferEvent as SignTransferEvent
+    const signedEvent = parsed.SignTransferEvent as SignTransferEvent
+    signedEvent.signature = new MPCSignature(
+      parsed.SignTransferEvent.signature.big_r,
+      parsed.SignTransferEvent.signature.s,
+      parsed.SignTransferEvent.signature.recovery_id,
+    )
+    return signedEvent
   }
   /**
    * Signs transfer using the token locker
@@ -375,11 +382,11 @@ export class NearBridgeClient {
     // biome-ignore lint/suspicious/noExplicitAny: TS will complain that `toJSON()` does not exist on BigInt
     // biome-ignore lint/complexity/useLiteralKeys: TS will complain that `toJSON()` does not exist on BigInt
     ;(BigInt.prototype as any)["toJSON"] = function () {
-      return this.toString()
+      return Number(this)
     }
     const args: SignTransferArgs = {
       transfer_id: {
-        origin_chain: getChain(initTransferEvent.transfer_message.sender),
+        origin_chain: ChainKind[getChain(initTransferEvent.transfer_message.sender)],
         origin_nonce: BigInt(initTransferEvent.transfer_message.origin_nonce),
       },
       fee_recipient: feeRecipient,
@@ -439,7 +446,7 @@ export class NearBridgeClient {
     vaa?: string,
     evmProof?: EvmVerifyProofArgs,
     proofKind: ProofKind = ProofKind.InitTransfer,
-  ): Promise<string> {
+  ): Promise<FinalExecutionOutcome> {
     if (!vaa && !evmProof) {
       throw new Error("Must provide either VAA or EVM proof")
     }
@@ -455,13 +462,13 @@ export class NearBridgeClient {
     let proverArgsSerialized: Uint8Array = new Uint8Array(0)
     if (vaa) {
       const proverArgs: WormholeVerifyProofArgs = {
-        proof_kind: proofKind,
+        proof_kind: evmProof?.proof_kind ?? proofKind,
         vaa: vaa,
       }
       proverArgsSerialized = WormholeVerifyProofArgsSchema.serialize(proverArgs)
     } else if (evmProof) {
       const proverArgs: EvmVerifyProofArgs = {
-        proof_kind: proofKind,
+        proof_kind: evmProof.proof_kind ?? proofKind,
         proof: evmProof.proof,
       }
       proverArgsSerialized = EvmVerifyProofArgsSchema.serialize(proverArgs)
@@ -486,7 +493,7 @@ export class NearBridgeClient {
       "required_balance_for_fin_transfer",
       {},
     )
-    const finDeposit = BigInt(finDepositStr as string)
+    const finDeposit = BigInt(finDepositStr as string) + storageDepositAmount
 
     const tx = await this.wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
@@ -498,8 +505,9 @@ export class NearBridgeClient {
           BigInt(finDeposit),
         ),
       ],
+      waitUntil: "FINAL",
     })
-    return tx.transaction.hash
+    return tx
   }
 
   /**

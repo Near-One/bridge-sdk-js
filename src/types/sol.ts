@@ -1,11 +1,11 @@
-import type { U128 } from "./common.js"
-import type { TransferId } from "./evm.js"
+import type BN from "bn.js"
 
 export interface DepositPayload {
-  destination_nonce: bigint
-  transfer_id: TransferId
-  token: string
-  amount: U128
-  recipient: string
-  fee_recipient: string | null
+  destinationNonce: BN
+  transferId: {
+    originChain: number
+    originNonce: BN
+  }
+  amount: BN
+  feeRecipient: string | null
 }

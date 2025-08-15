@@ -521,15 +521,17 @@ describe("NearBridgeClient", () => {
         receiverId: mockLockerAddress,
         actions: [
           expect.objectContaining({
+            enum: "functionCall",
             functionCall: expect.objectContaining({
               methodName: "fin_transfer",
               gas: BigInt(3e14),
             }),
           }),
         ],
+        waitUntil: "FINAL",
       })
 
-      expect(txHash).toBe(mockTxHash)
+      expect(txHash.transaction.hash).toBe(mockTxHash)
     })
 
     it("should call finalize_transfer with EVM proof correctly", async () => {
@@ -552,15 +554,17 @@ describe("NearBridgeClient", () => {
         receiverId: mockLockerAddress,
         actions: [
           expect.objectContaining({
+            enum: "functionCall",
             functionCall: expect.objectContaining({
               methodName: "fin_transfer",
               gas: BigInt(3e14),
             }),
           }),
         ],
+        waitUntil: "FINAL",
       })
 
-      expect(txHash).toBe(mockTxHash)
+      expect(txHash.transaction.hash).toBe(mockTxHash)
     })
 
     it("should use custom proof kind when provided", async () => {
@@ -575,7 +579,7 @@ describe("NearBridgeClient", () => {
         customProofKind,
       )
 
-      expect(txHash).toBe(mockTxHash)
+      expect(txHash.transaction.hash).toBe(mockTxHash)
     })
 
     it("should handle errors from signAndSendTransaction", async () => {
