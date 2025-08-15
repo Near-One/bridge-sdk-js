@@ -112,12 +112,12 @@ describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
       )
 
       console.log("✓ Transfer finalized on NEAR!")
-      console.log(`  Finalization TX: ${finalizeResult}`)
+      console.log(`  Finalization TX: ${finalizeResult.transaction.hash}`)
 
       // Validate finalization
       expect(finalizeResult).toBeDefined()
-      expect(typeof finalizeResult).toBe("string") // Should be transaction hash
-      expect(finalizeResult.length).toBeGreaterThan(0)
+      expect(typeof finalizeResult.transaction.hash).toBe("string") // Should be transaction hash
+      expect(finalizeResult.transaction.hash.length).toBeGreaterThan(0)
 
       console.log("\n🎉 Manual transfer flow completed successfully!")
       console.log("  1. ✓ Initiated on ETH")
