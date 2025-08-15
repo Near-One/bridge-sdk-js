@@ -278,10 +278,9 @@ export class EvmBridgeClient {
     transferMessage: TransferMessagePayload,
     signature: MPCSignature,
   ): Promise<string> {
-    // Convert the transfer message to EVM-compatible format
     const bridgeDeposit: BridgeDeposit = {
       destinationNonce: BigInt(transferMessage.destination_nonce),
-      originChain: Number(ChainKind[Number(transferMessage.transfer_id.origin_chain)]),
+      originChain: ChainKind[transferMessage.transfer_id.origin_chain as keyof typeof ChainKind],
       originNonce: BigInt(transferMessage.transfer_id.origin_nonce),
       tokenAddress: transferMessage.token_address.split(":")[1],
       amount: BigInt(transferMessage.amount),
