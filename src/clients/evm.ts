@@ -314,37 +314,10 @@ export class EvmBridgeClient {
     }
 
     // Retry mechanism for RPC indexing delays
-    let receipt = null
-    const maxRetries = 10
-    const baseDelay = 2000 // Start with 2 seconds
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        receipt = await provider.getTransactionReceipt(txHash)
-        if (receipt) {
-          console.log(`✓ Transaction receipt found on attempt ${attempt}`)
-          break
-        }
-      } catch (error) {
-        console.log(
-          `Attempt ${attempt} failed:`,
-          error instanceof Error ? error.message : "Unknown error",
-        )
-      }
-
-      if (attempt < maxRetries) {
-        const delay = baseDelay * 1.5 ** (attempt - 1) // Exponential backoff
-        console.log(
-          `⏳ Transaction not indexed yet, retrying in ${Math.round(delay / 1000)}s... (attempt ${attempt}/${maxRetries})`,
-        )
-        await new Promise((resolve) => setTimeout(resolve, delay))
-      }
-    }
+    const receipt = await provider.getTransactionReceipt(txHash)
 
     if (!receipt) {
-      throw new Error(
-        `Transaction receipt not found for hash: ${txHash} after ${maxRetries} attempts`,
-      )
+      throw new Error(`Transaction receipt not found for hash: ${txHash}`)
     }
 
     // ABI for InitTransfer event
