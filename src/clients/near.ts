@@ -35,7 +35,6 @@ import {
   WormholeVerifyProofArgsSchema,
 } from "../types/index.js"
 import { getChain, isEvmChain, omniAddress } from "../utils/index.js"
-import { gas, near } from "../utils/near.js"
 import { getBridgedToken } from "../utils/tokens.js"
 import type { EvmBridgeClient } from "./evm.js"
 
@@ -45,19 +44,19 @@ import type { EvmBridgeClient } from "./evm.js"
  * @internal
  */
 const GAS = {
-  LOG_METADATA: gas.tgas(3),
-  DEPLOY_TOKEN: gas.tgas(1.2),
-  BIND_TOKEN: gas.tgas(3),
-  INIT_TRANSFER: gas.tgas(3),
-  FIN_TRANSFER: gas.tgas(3),
-  SIGN_TRANSFER: gas.tgas(3),
-  STORAGE_DEPOSIT: gas.tgas(1),
+  LOG_METADATA: BigInt(3e14), // 3 TGas
+  DEPLOY_TOKEN: BigInt(1.2e14), // 1.2 TGas
+  BIND_TOKEN: BigInt(3e14), // 3 TGas
+  INIT_TRANSFER: BigInt(3e14), // 3 TGas
+  FIN_TRANSFER: BigInt(3e14), // 3 TGas
+  SIGN_TRANSFER: BigInt(3e14), // 3 TGas
+  STORAGE_DEPOSIT: BigInt(1e14), // 1 TGas
   // Bitcoin-specific gas constants
-  GET_DEPOSIT_ADDRESS: gas.tgas(3),
-  VERIFY_DEPOSIT: gas.tgas(300),
-  INIT_BTC_TRANSFER: gas.tgas(100),
-  SIGN_BTC_TX: gas.tgas(3),
-  VERIFY_WITHDRAW: gas.tgas(5),
+  GET_DEPOSIT_ADDRESS: BigInt(3e14), // 3 TGas
+  VERIFY_DEPOSIT: BigInt(300e14), // 300 TGas
+  INIT_BTC_TRANSFER: BigInt(100e14), // 100 TGas
+  SIGN_BTC_TX: BigInt(3e14), // 3 TGas
+  VERIFY_WITHDRAW: BigInt(5e14), // 5 TGas
   FAST_FIN_TRANSFER: BigInt(3e14), // 3 TGas
 } as const
 
@@ -67,12 +66,12 @@ const GAS = {
  * @internal
  */
 const DEPOSIT = {
-  LOG_METADATA: near.yocto(1n),
-  SIGN_TRANSFER: near.yocto(1n),
-  INIT_TRANSFER: near.yocto(1n),
+  LOG_METADATA: BigInt(1), // 1 yoctoNEAR
+  SIGN_TRANSFER: BigInt(1), // 1 yoctoNEAR
+  INIT_TRANSFER: BigInt(1), // 1 yoctoNEAR
   // Bitcoin-specific deposit constants
-  SIGN_BTC_TX: near.yocto(1n),
-  VERIFY_WITHDRAW: near.yocto(1n),
+  SIGN_BTC_TX: BigInt(1), // 1 yoctoNEAR
+  VERIFY_WITHDRAW: BigInt(1), // 1 yoctoNEAR
 } as const
 
 /**
