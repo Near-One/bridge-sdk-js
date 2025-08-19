@@ -114,8 +114,6 @@ export function getClient<T extends Exclude<ChainKind, ChainKind.Btc>>(
       return new EvmBridgeClient(wallet as ethers.Signer, chain) as ClientTypes[T]
     case ChainKind.Sol:
       return new SolanaBridgeClient(wallet as Provider) as ClientTypes[T]
-    case ChainKind.Btc:
-      throw new Error("Bitcoin client not implemented yet")
     default:
       throw new Error(`No client implementation for chain: ${chain}`)
   }
