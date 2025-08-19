@@ -16,6 +16,20 @@ const CHAIN_PATTERNS: Record<string, ChainKind> = {
 }
 
 /**
+ * Validates if a NEAR address is a recognized omni bridge token
+ * @param nearAddress - The NEAR address to validate
+ * @returns true if the address follows a known omni bridge pattern
+ *
+ * @example
+ * isValidOmniAddress("foo.omdep.near") // true
+ * isValidOmniAddress("sol-ABC123.omdep.near") // true
+ * isValidOmniAddress("random.near") // false
+ */
+export function isValidOmniAddress(nearAddress: string): boolean {
+  return parseOriginChain(nearAddress) !== null
+}
+
+/**
  * Parses the origin chain from a NEAR token address format (offline parsing)
  *
  * @param nearAddress - The NEAR token address (e.g., "sol-3ZLekZYq2qkZiSpnSvabjit34tUkjSwD1JFuW9as9wBG.omdep.near")
