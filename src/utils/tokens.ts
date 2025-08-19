@@ -21,11 +21,11 @@ const CHAIN_PATTERNS: Record<string, ChainKind> = {
  * @returns true if the address follows a known omni bridge pattern
  *
  * @example
- * isValidOmniAddress("foo.omdep.near") // false
- * isValidOmniAddress("sol-ABC123.omdep.near") // true
- * isValidOmniAddress("random.near") // false
+ * isBridgeToken("foo.omdep.near") // false
+ * isBridgeToken("sol-ABC123.omdep.near") // true
+ * isBridgeToken("random.near") // false
  */
-export function isValidOmniAddress(nearAddress: string): boolean {
+export function isBridgeToken(nearAddress: string): boolean {
   return parseOriginChain(nearAddress) !== null
 }
 
