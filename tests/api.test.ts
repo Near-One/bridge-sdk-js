@@ -95,7 +95,7 @@ const restHandlers = [
   http.get(`${BASE_URL}/api/v2/transfer-fee/allowlisted-tokens`, () => {
     return HttpResponse.json(mockAllowlistedTokens)
   }),
-  http.get(`${BASE_URL}/api/v2/btc/get_user_deposit_address`, () => {
+  http.post(`${BASE_URL}/api/v2/btc/get_user_deposit_address`, () => {
     return HttpResponse.json(mockBtcAddress)
   }),
 ]
@@ -228,7 +228,7 @@ describe("OmniBridgeAPI", () => {
 
     it("should handle API errors", async () => {
       server.use(
-        http.get(`${BASE_URL}/api/v2/btc/get_user_deposit_address`, () => {
+        http.post(`${BASE_URL}/api/v2/btc/get_user_deposit_address`, () => {
           return new HttpResponse(null, { status: 404 })
         }),
       )

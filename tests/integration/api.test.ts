@@ -192,11 +192,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
     })
   })
 
-  describe.skip("getBtcUserDepositAddress", () => {
-    // FIXME: These tests are skipped because the server expects JSON body (web::Json<Query>)
-    // but the endpoint should use query parameters (web::Query<Query>) per OpenAPI spec.
-    // Remove .skip once server is fixed to use web::Query<Query> instead of web::Json<Query>
-
+  describe("getBtcUserDepositAddress", () => {
     it("should fetch real BTC deposit address", async () => {
       const response = await api.getBtcUserDepositAddress("recipient.near")
 

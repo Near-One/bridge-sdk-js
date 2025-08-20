@@ -209,8 +209,12 @@ export class OmniBridgeAPI {
       : "https://mainnet.api.bridge.nearone.org"
   }
 
-  private async fetchWithValidation<T extends z.ZodType>(url: URL, schema: T): Promise<z.infer<T>> {
-    const response = await fetch(url)
+  private async fetchWithValidation<T extends z.ZodType>(
+    url: URL,
+    schema: T,
+    options?: RequestInit,
+  ): Promise<z.infer<T>> {
+    const response = await fetch(url, options)
 
     if (response.status === 404) {
       const responseText = await response.text()
@@ -305,18 +309,24 @@ export class OmniBridgeAPI {
     postActions?: PostAction[] | null,
     extraMsg?: string | null,
   ): Promise<BtcDepositAddressResponse> {
-    const params: Record<string, string> = {
+    const body: Record<string, unknown> = {
       recipient,
     }
 
     if (postActions !== undefined && postActions !== null) {
-      params.post_actions = JSON.stringify(postActions)
+      body.post_actions = postActions
     }
     if (extraMsg !== undefined && extraMsg !== null) {
-      params.extra_msg = extraMsg
+      body.extra_msg = extraMsg
     }
 
-    const url = this.buildUrl("/api/v2/btc/get_user_deposit_address", params)
-    return this.fetchWithValidation(url, BtcDepositAddressResponseSchema)
+    const url = this.buildUrl("/api/v2/btc/get_user_deposit_address")
+    return this.fetchWithValidation(url, BtcDepositAddressResponseSchema, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    })
   }
 }
