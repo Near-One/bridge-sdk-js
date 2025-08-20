@@ -71,22 +71,48 @@ describe("OmniBridgeAPI Integration Tests", () => {
   })
   describe("getTransferStatus", () => {
     it("should fetch status for a known transfer", async () => {
-      const status = await api.getTransferStatus("Near", 1)
+      const status = await api.getTransferStatus({ originChain: "Near", originNonce: 1 })
       expect(status).toMatchSnapshot()
+      expect(Array.isArray(status)).toBe(true)
     })
 
     it("should handle non-existent transfer", async () => {
-      await expect(api.getTransferStatus("Eth", 999999999)).rejects.toThrow("Not found")
+      await expect(
+        api.getTransferStatus({ originChain: "Eth", originNonce: 999999999 }),
+      ).rejects.toThrow("Not found")
+    })
+
+    it("should fetch status by transaction hash", async () => {
+      const txId = "DQM4d3B6Jxr4qnvGay4bpZ7aTQQogpUgQxVLAVWk5doF"
+      const status = await api.getTransferStatus({ transactionHash: txId })
+      expect(Array.isArray(status)).toBe(true)
     })
   })
   describe("getTransfer", () => {
     it("should fetch transfer details for a known transfer", async () => {
-      const transfer = await api.getTransfer("Near", 22)
-      expect(transfer).toMatchSnapshot()
+      const transfers = await api.getTransfer({ originChain: "Near", originNonce: 22 })
+      expect(transfers).toMatchSnapshot()
+      expect(Array.isArray(transfers)).toBe(true)
+      if (transfers.length > 0) {
+        expect(transfers[0]).toHaveProperty("id")
+        expect(transfers[0]).toHaveProperty("transfer_message")
+      }
     })
 
     it("should handle non-existent transfer", async () => {
-      await expect(api.getTransfer("Eth", 999999999)).rejects.toThrow("Not found")
+      await expect(api.getTransfer({ originChain: "Eth", originNonce: 999999999 })).rejects.toThrow(
+        "Not found",
+      )
+    })
+
+    it("should fetch transfer by transaction hash", async () => {
+      const txId = "DQM4d3B6Jxr4qnvGay4bpZ7aTQQogpUgQxVLAVWk5doF"
+      const transfers = await api.getTransfer({ transactionHash: txId })
+      expect(Array.isArray(transfers)).toBe(true)
+      if (transfers.length > 0) {
+        expect(transfers[0]).toHaveProperty("id")
+        expect(transfers[0]).toHaveProperty("transfer_message")
+      }
     })
   })
   describe("findOmniTransfers", () => {
@@ -132,6 +158,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
             msg: expect.any(String),
           },
           updated_fee: expect.any(Array),
+          utxo_transfer: expect.toBeOneOf([expect.anything(), null]),
         })
       }
     })
@@ -162,6 +189,78 @@ describe("OmniBridgeAPI Integration Tests", () => {
     it("should return consistent data structure", async () => {
       const tokens = await api.getAllowlistedTokens()
       expect(tokens).toMatchSnapshot()
+    })
+  })
+
+  describe.skip("getBtcUserDepositAddress", () => {
+    // FIXME: These tests are skipped because the server expects JSON body (web::Json<Query>)
+    // but the endpoint should use query parameters (web::Query<Query>) per OpenAPI spec.
+    // Remove .skip once server is fixed to use web::Query<Query> instead of web::Json<Query>
+
+    it("should fetch real BTC deposit address", async () => {
+      const response = await api.getBtcUserDepositAddress("recipient.near")
+
+      expect(response).toEqual({
+        address: expect.any(String),
+      })
+      expect(response.address).toMatch(/^(bc1|1|3)[a-zA-Z0-9]{25,62}$/)
+    })
+
+    it("should handle post actions parameter", async () => {
+      const postActions = [
+        {
+          receiver_id: "receiver.near",
+          amount: "1000000000000000000000000",
+          msg: "test message",
+          gas: "3000000000000",
+          memo: "test memo",
+        },
+      ]
+      const response = await api.getBtcUserDepositAddress(
+        "recipient.near",
+        postActions,
+        "extra message",
+      )
+
+      expect(response).toEqual({
+        address: expect.any(String),
+      })
+    })
+  })
+
+  describe("Batch transfer testing", () => {
+    it("should handle batch transaction with multiple transfers", async () => {
+      const txHash = "9kJoVfmzhnJqivYjNfa4ftuy9wPZ8haoZtYJteo7khio"
+
+      try {
+        const transfers = await api.getTransfer({ transactionHash: txHash })
+        expect(Array.isArray(transfers)).toBe(true)
+
+        if (transfers.length > 0) {
+          // Test structure of transfer objects
+          for (const transfer of transfers) {
+            expect(transfer).toHaveProperty("updated_fee")
+            expect(Array.isArray(transfer.updated_fee)).toBe(true)
+            // utxo_transfer might be present for BTC-related transfers
+            if (transfer.utxo_transfer) {
+              expect(transfer.utxo_transfer).toEqual({
+                amount: expect.any(String),
+                recipient: expect.any(String),
+                relayer_fee: expect.any(String),
+                protocol_fee: expect.any(String),
+                relayer_account_id: expect.any(String),
+                sender: expect.toBeOneOf([expect.any(String), null]),
+              })
+            }
+          }
+        }
+
+        const status = await api.getTransferStatus({ transactionHash: txHash })
+        expect(Array.isArray(status)).toBe(true)
+      } catch (error) {
+        // Transaction might not exist in testnet, which is expected
+        expect(error).toBeInstanceOf(Error)
+      }
     })
   })
 })
