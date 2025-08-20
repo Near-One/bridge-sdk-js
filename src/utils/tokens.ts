@@ -26,7 +26,10 @@ const CHAIN_PATTERNS: Record<string, ChainKind> = {
  * isBridgeToken("random.near") // false
  */
 export function isBridgeToken(nearAddress: string): boolean {
-  return parseOriginChain(nearAddress) !== null
+  return (
+    nearAddress in CHAIN_PATTERNS ||
+    /\.(omdep\.near|omnidep\.testnet|factory\.bridge\.(near|testnet))$/.test(nearAddress)
+  )
 }
 
 /**
