@@ -2,7 +2,7 @@ import { z } from "zod"
 import { getNetwork } from "./config.js"
 import type { OmniAddress } from "./types/index.js"
 
-const ChainSchema = z.enum(["Eth", "Near", "Sol", "Arb", "Base"])
+const ChainSchema = z.enum(["Eth", "Near", "Sol", "Arb", "Base", "Bnb"])
 export type Chain = z.infer<typeof ChainSchema>
 
 // Custom transformer for safe BigInt coercion that handles scientific notation
@@ -63,17 +63,24 @@ const SolanaTransactionSchema = z.object({
   signature: z.string().optional(),
 })
 
+const UtxoLogTransactionSchema = z.object({
+  transaction_hash: z.string(),
+  block_height: z.number().int().min(0).nullable(),
+  block_time: z.number().int().min(0).nullable(),
+})
+
 // Update to match the Transaction schema in OpenAPI spec - one of these fields will be present
 const TransactionSchema = z
   .object({
     NearReceipt: NearReceiptTransactionSchema.optional(),
     EVMLog: EVMLogTransactionSchema.optional(),
     Solana: SolanaTransactionSchema.optional(),
+    UtxoLog: UtxoLogTransactionSchema.optional(),
   })
   .refine(
     (data) => {
       // Ensure exactly one of the fields is defined
-      const definedFields = [data.NearReceipt, data.EVMLog, data.Solana].filter(
+      const definedFields = [data.NearReceipt, data.EVMLog, data.Solana, data.UtxoLog].filter(
         (field) => field !== undefined,
       )
       return definedFields.length === 1
@@ -105,11 +112,22 @@ const TransfersQuerySchema = z
   })
 export type TransfersQuery = Partial<z.input<typeof TransfersQuerySchema>>
 
+const UtxoTransferSchema = z.object({
+  amount: z.string(),
+  recipient: z.string(),
+  relayer_fee: z.string(),
+  protocol_fee: z.string(),
+  relayer_account_id: z.string(),
+  sender: z.string().nullable(),
+})
+
 const TransferSchema = z.object({
-  id: z.object({
-    origin_chain: ChainSchema,
-    origin_nonce: z.number().int().min(0),
-  }),
+  id: z
+    .object({
+      origin_chain: ChainSchema,
+      origin_nonce: z.number().int().min(0),
+    })
+    .optional(),
   initialized: z.union([z.null(), TransactionSchema]),
   signed: z.union([z.null(), TransactionSchema]),
   fast_finalised_on_near: z.union([z.null(), TransactionSchema]),
@@ -117,8 +135,9 @@ const TransferSchema = z.object({
   fast_finalised: z.union([z.null(), TransactionSchema]),
   finalised: z.union([z.null(), TransactionSchema]),
   claimed: z.union([z.null(), TransactionSchema]),
-  transfer_message: TransferMessageSchema,
+  transfer_message: z.union([z.null(), TransferMessageSchema]),
   updated_fee: z.array(TransactionSchema),
+  utxo_transfer: z.union([z.null(), UtxoTransferSchema]),
 })
 
 const ApiFeeResponseSchema = z.object({
@@ -131,6 +150,18 @@ const AllowlistedTokensResponseSchema = z.object({
   allowlisted_tokens: z.record(z.string(), z.string()),
 })
 
+const PostActionSchema = z.object({
+  receiver_id: z.string(),
+  amount: z.string(),
+  msg: z.string(),
+  gas: z.string().optional(),
+  memo: z.string().nullable().optional(),
+})
+
+const BtcDepositAddressResponseSchema = z.object({
+  address: z.string(),
+})
+
 const TransferStatusSchema = z.enum([
   "Initialized",
   "Signed",
@@ -141,9 +172,14 @@ const TransferStatusSchema = z.enum([
   "Claimed",
 ])
 
+// V2 API returns status information in this format (assuming same as v1 but in array)
+const GetStatusResponseV2Schema = TransferStatusSchema
+
 export type Transfer = z.infer<typeof TransferSchema>
 export type ApiFeeResponse = z.infer<typeof ApiFeeResponseSchema>
 export type TransferStatus = z.infer<typeof TransferStatusSchema>
+export type PostAction = z.infer<typeof PostActionSchema>
+export type BtcDepositAddressResponse = z.infer<typeof BtcDepositAddressResponseSchema>
 
 interface ApiClientConfig {
   baseUrl?: string
@@ -173,8 +209,12 @@ export class OmniBridgeAPI {
       : "https://mainnet.api.bridge.nearone.org"
   }
 
-  private async fetchWithValidation<T extends z.ZodType>(url: URL, schema: T): Promise<z.infer<T>> {
-    const response = await fetch(url)
+  private async fetchWithValidation<T extends z.ZodType>(
+    url: URL,
+    schema: T,
+    options?: RequestInit,
+  ): Promise<z.infer<T>> {
+    const response = await fetch(url, options)
 
     if (response.status === 404) {
       const responseText = await response.text()
@@ -198,12 +238,20 @@ export class OmniBridgeAPI {
     return url
   }
 
-  async getTransferStatus(originChain: Chain, originNonce: number): Promise<TransferStatus> {
-    const url = this.buildUrl("/api/v1/transfers/transfer/status", {
-      origin_chain: originChain,
-      origin_nonce: originNonce.toString(),
-    })
-    return this.fetchWithValidation(url, TransferStatusSchema)
+  async getTransferStatus(
+    options: { originChain: Chain; originNonce: number } | { transactionHash: string },
+  ): Promise<TransferStatus[]> {
+    const params: Record<string, string> = {}
+
+    if ("originChain" in options) {
+      params.origin_chain = options.originChain
+      params.origin_nonce = options.originNonce.toString()
+    } else {
+      params.transaction_hash = options.transactionHash
+    }
+
+    const url = this.buildUrl("/api/v2/transfers/transfer/status", params)
+    return this.fetchWithValidation(url, z.array(GetStatusResponseV2Schema))
   }
 
   async getFee(
@@ -211,7 +259,7 @@ export class OmniBridgeAPI {
     recipient: OmniAddress,
     tokenAddress: OmniAddress,
   ): Promise<ApiFeeResponse> {
-    const url = this.buildUrl("/api/v1/transfer-fee", {
+    const url = this.buildUrl("/api/v2/transfer-fee", {
       sender,
       recipient,
       token: tokenAddress,
@@ -219,13 +267,20 @@ export class OmniBridgeAPI {
     return this.fetchWithValidation(url, ApiFeeResponseSchema)
   }
 
-  async getTransfer(originChain: Chain, originNonce: number): Promise<Transfer> {
-    const url = this.buildUrl("/api/v1/transfers/transfer", {
-      // Removed trailing slash
-      origin_chain: originChain,
-      origin_nonce: originNonce.toString(),
-    })
-    return this.fetchWithValidation(url, TransferSchema)
+  async getTransfer(
+    options: { originChain: Chain; originNonce: number } | { transactionHash: string },
+  ): Promise<Transfer[]> {
+    const params: Record<string, string> = {}
+
+    if ("originChain" in options) {
+      params.origin_chain = options.originChain
+      params.origin_nonce = options.originNonce.toString()
+    } else {
+      params.transaction_hash = options.transactionHash
+    }
+
+    const url = this.buildUrl("/api/v2/transfers/transfer", params)
+    return this.fetchWithValidation(url, z.array(TransferSchema))
   }
 
   async findOmniTransfers(query: TransfersQuery): Promise<Transfer[]> {
@@ -239,13 +294,39 @@ export class OmniBridgeAPI {
     if (params.sender) urlParams.sender = params.sender
     if (params.transaction_id) urlParams.transaction_id = params.transaction_id
 
-    const url = this.buildUrl("/api/v1/transfers", urlParams)
+    const url = this.buildUrl("/api/v2/transfers", urlParams)
     return this.fetchWithValidation(url, z.array(TransferSchema))
   }
 
   async getAllowlistedTokens(): Promise<Record<string, OmniAddress>> {
-    const url = this.buildUrl("/api/v1/transfer-fee/allowlisted-tokens")
+    const url = this.buildUrl("/api/v2/transfer-fee/allowlisted-tokens")
     const response = await this.fetchWithValidation(url, AllowlistedTokensResponseSchema)
     return response.allowlisted_tokens as Record<string, OmniAddress>
+  }
+
+  async getBtcUserDepositAddress(
+    recipient: string,
+    postActions?: PostAction[] | null,
+    extraMsg?: string | null,
+  ): Promise<BtcDepositAddressResponse> {
+    const body: Record<string, unknown> = {
+      recipient,
+    }
+
+    if (postActions !== undefined && postActions !== null) {
+      body.post_actions = postActions
+    }
+    if (extraMsg !== undefined && extraMsg !== null) {
+      body.extra_msg = extraMsg
+    }
+
+    const url = this.buildUrl("/api/v2/btc/get_user_deposit_address")
+    return this.fetchWithValidation(url, BtcDepositAddressResponseSchema, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    })
   }
 }

@@ -2,7 +2,7 @@ import { describe, it } from "vitest"
 import { ChainKind, type EvmProof } from "../types/index.js"
 import { getEvmProof } from "./evm.js"
 
-describe.concurrent("ProofGenerator", () => {
+describe("ProofGenerator", () => {
   const ERC20_TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
 
   const formatProof = (proof: EvmProof) => ({

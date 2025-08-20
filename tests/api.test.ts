@@ -39,6 +39,7 @@ const mockTransfer = {
     msg: "test transfer",
   },
   updated_fee: [],
+  utxo_transfer: null,
 }
 
 const normalizedTransfer = {
@@ -74,21 +75,28 @@ const mockAllowlistedTokens = {
   },
 }
 
+const mockBtcAddress = {
+  address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+}
+
 const restHandlers = [
-  http.get(`${BASE_URL}/api/v1/transfers/transfer/status`, () => {
-    return HttpResponse.json("Initialized")
+  http.get(`${BASE_URL}/api/v2/transfers/transfer/status`, () => {
+    return HttpResponse.json(["Initialized"])
   }),
-  http.get(`${BASE_URL}/api/v1/transfers/transfer`, () => {
-    return HttpResponse.json(mockTransfer)
-  }),
-  http.get(`${BASE_URL}/api/v1/transfer-fee`, () => {
-    return HttpResponse.json(mockFee)
-  }),
-  http.get(`${BASE_URL}/api/v1/transfers`, () => {
+  http.get(`${BASE_URL}/api/v2/transfers/transfer`, () => {
     return HttpResponse.json([mockTransfer])
   }),
-  http.get(`${BASE_URL}/api/v1/transfer-fee/allowlisted-tokens`, () => {
+  http.get(`${BASE_URL}/api/v2/transfer-fee`, () => {
+    return HttpResponse.json(mockFee)
+  }),
+  http.get(`${BASE_URL}/api/v2/transfers`, () => {
+    return HttpResponse.json([mockTransfer])
+  }),
+  http.get(`${BASE_URL}/api/v2/transfer-fee/allowlisted-tokens`, () => {
     return HttpResponse.json(mockAllowlistedTokens)
+  }),
+  http.post(`${BASE_URL}/api/v2/btc/get_user_deposit_address`, () => {
+    return HttpResponse.json(mockBtcAddress)
   }),
 ]
 
@@ -100,18 +108,25 @@ afterEach(() => server.resetHandlers())
 describe("OmniBridgeAPI", () => {
   describe("getTransferStatus", () => {
     it("should fetch transfer status successfully", async () => {
-      const status = await api.getTransferStatus("Eth", 123)
-      expect(status).toBe("Initialized")
+      const status = await api.getTransferStatus({ originChain: "Eth", originNonce: 123 })
+      expect(status).toEqual(["Initialized"])
+    })
+
+    it("should handle transaction hash parameter", async () => {
+      const status = await api.getTransferStatus({ transactionHash: "0x123..." })
+      expect(status).toEqual(["Initialized"])
     })
 
     it("should handle 404 error", async () => {
       server.use(
-        http.get(`${BASE_URL}/api/v1/transfers/transfer/status`, () => {
+        http.get(`${BASE_URL}/api/v2/transfers/transfer/status`, () => {
           return new HttpResponse(null, { status: 404 })
         }),
       )
 
-      await expect(api.getTransferStatus("Eth", 123)).rejects.toThrow("Resource not found")
+      await expect(api.getTransferStatus({ originChain: "Eth", originNonce: 123 })).rejects.toThrow(
+        "Resource not found",
+      )
     })
   })
 
@@ -123,7 +138,7 @@ describe("OmniBridgeAPI", () => {
 
     it("should handle missing parameters", async () => {
       server.use(
-        http.get(`${BASE_URL}/api/v1/transfer-fee`, () => {
+        http.get(`${BASE_URL}/api/v2/transfer-fee`, () => {
           return new HttpResponse(null, { status: 400 })
         }),
       )
@@ -136,8 +151,13 @@ describe("OmniBridgeAPI", () => {
 
   describe("getTransfer", () => {
     it("should fetch single transfer successfully", async () => {
-      const transfer = await api.getTransfer("Eth", 123)
-      expect(transfer).toEqual(normalizedTransfer)
+      const transfers = await api.getTransfer({ originChain: "Eth", originNonce: 123 })
+      expect(transfers).toEqual([normalizedTransfer])
+    })
+
+    it("should fetch transfer by transaction hash", async () => {
+      const transfers = await api.getTransfer({ transactionHash: "0x123..." })
+      expect(transfers).toEqual([normalizedTransfer])
     })
   })
 
@@ -171,12 +191,51 @@ describe("OmniBridgeAPI", () => {
 
     it("should handle API errors", async () => {
       server.use(
-        http.get(`${BASE_URL}/api/v1/transfer-fee/allowlisted-tokens`, () => {
+        http.get(`${BASE_URL}/api/v2/transfer-fee/allowlisted-tokens`, () => {
           return new HttpResponse(null, { status: 500 })
         }),
       )
 
       await expect(api.getAllowlistedTokens()).rejects.toThrow("API request failed")
+    })
+  })
+
+  describe("getBtcUserDepositAddress", () => {
+    it("should fetch BTC deposit address successfully", async () => {
+      const response = await api.getBtcUserDepositAddress("recipient.near")
+      expect(response).toEqual({
+        address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+      })
+    })
+
+    it("should handle post actions parameter", async () => {
+      const postActions = [
+        {
+          receiver_id: "receiver.near",
+          amount: "1000000000000000000000000",
+          msg: "test message",
+        },
+      ]
+      const response = await api.getBtcUserDepositAddress(
+        "recipient.near",
+        postActions,
+        "extra message",
+      )
+      expect(response).toEqual({
+        address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+      })
+    })
+
+    it("should handle API errors", async () => {
+      server.use(
+        http.post(`${BASE_URL}/api/v2/btc/get_user_deposit_address`, () => {
+          return new HttpResponse(null, { status: 404 })
+        }),
+      )
+
+      await expect(api.getBtcUserDepositAddress("recipient.near")).rejects.toThrow(
+        "Resource not found",
+      )
     })
   })
 })
