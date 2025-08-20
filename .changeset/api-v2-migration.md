@@ -1,5 +1,5 @@
 ---
-"@near-one/bridge-sdk": minor
+"omni-bridge-sdk": minor
 ---
 
 Migrate API client to v2 endpoints with enhanced functionality
