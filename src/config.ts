@@ -21,9 +21,8 @@ const ADDRESSES = {
     zcash: {
       network: "mainnet" as const,
       apiUrl: "https://zcash-mainnet.gateway.tatum.io/",
-      zcashConnector: "",
-      zcashToken: "",
-      zcashRelayer: "",
+      zcashConnector: "zcash-connector.bridge.near",
+      zcashToken: "nzec.bridge.near",
     },
   },
   testnet: {
@@ -46,9 +45,8 @@ const ADDRESSES = {
     zcash: {
       network: "testnet" as const,
       apiUrl: "https://zcash-testnet.gateway.tatum.io/",
-      zcashConnector: "zcash_connector-alpha1.testnet",
-      zcashToken: "nzcash-alpha1.testnet",
-      zcashRelayer: "",
+      zcashConnector: "zcash_connector.n-bridge.testnet",
+      zcashToken: "nzcash.n-bridge.testnet",
     },
   },
 } as const
