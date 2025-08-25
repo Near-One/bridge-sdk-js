@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Bitcoin Withdrawal Example
+ * Zcash Withdrawal Example
  *
  * Simple example showing how to withdraw Zcash from NEAR using the Omni Bridge SDK.
  *
