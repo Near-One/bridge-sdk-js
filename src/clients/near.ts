@@ -429,7 +429,7 @@ export class NearBridgeClient {
   ): Promise<SignTransferEvent> {
     // biome-ignore lint/suspicious/noExplicitAny: TS will complain that `toJSON()` does not exist on BigInt
     // biome-ignore lint/complexity/useLiteralKeys: TS will complain that `toJSON()` does not exist on BigInt
-    ; (BigInt.prototype as any)["toJSON"] = function () {
+    ;(BigInt.prototype as any)["toJSON"] = function () {
       return this.toString()
     }
     const args: SignTransferArgs = {
@@ -907,7 +907,7 @@ export class NearBridgeClient {
             amount: totalAmount.toString(),
             msg: JSON.stringify(msg),
           },
-          GAS.INIT_ZCASH_TRANSFER,
+          GAS.INIT_BTC_TRANSFER,
           BigInt(1),
         ),
       ],
@@ -949,7 +949,11 @@ export class NearBridgeClient {
     return tx.transaction.hash
   }
 
-  async signZcashTransaction(zcashPendingId: string, signIndex: number = 0, keyVersion: number = 0): Promise<string> {
+  async signZcashTransaction(
+    zcashPendingId: string,
+    signIndex = 0,
+    keyVersion = 0,
+  ): Promise<string> {
     const tx = await this.wallet.signAndSendTransaction({
       receiverId: addresses.zcash.zcashConnector,
       actions: [
@@ -958,7 +962,7 @@ export class NearBridgeClient {
           {
             btc_pending_sign_id: zcashPendingId,
             sign_index: signIndex,
-            key_version: keyVersion
+            key_version: keyVersion,
           },
           GAS.SIGN_BTC_TX,
           DEPOSIT.SIGN_BTC_TX,
@@ -1055,7 +1059,7 @@ export class NearBridgeClient {
         if (attempt === maxAttempts) {
           throw new Error(
             `Bitcoin: Transaction signing not found after ${maxAttempts} attempts (${(maxAttempts * delayMs) / 1000}s). ` +
-            `Pending ID: ${btcPendingId}, Signer: ${signerAccount}`,
+              `Pending ID: ${btcPendingId}, Signer: ${signerAccount}`,
           )
         }
         // Wait before next attempt
