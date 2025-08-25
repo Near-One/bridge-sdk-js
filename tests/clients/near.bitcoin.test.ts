@@ -8,7 +8,6 @@ import type {
   BitcoinTransaction,
   BtcConnectorConfig,
   BtcDepositArgs,
-  NearBlocksReceiptsResponse,
 } from "../../src/types/bitcoin.js"
 
 // Set network to testnet for consistency
@@ -19,10 +18,10 @@ const REAL_TEST_DATA = {
   // From playground-deposit.ts
   depositTxHash: "1f33f2668594bc29b1b4c3594b141a76f538429e0d2f1406cf135ba711d062d1",
   depositVout: 1,
-  
+
   // From playground-withdraw.ts  
   withdrawAddress: "tb1q7jn2426dwpsf3xlasazzjuwcvayjn6fhlm2vjp",
-  
+
   // Test account from playground
   testAccount: "bridge-sdk-test.testnet",
   bridgeContract: "omni.n-bridge.testnet",
@@ -96,7 +95,7 @@ const mockBtcConnectorConfig: BtcConnectorConfig = {
     protocol_fee_rate: 0.001,
   },
   withdraw_bridge_fee: {
-    fee_min: "2000", 
+    fee_min: "2000",
     fee_rate: 0.003,
     protocol_fee_rate: 0.0015,
   },
@@ -118,24 +117,6 @@ const mockBtcConnectorConfig: BtcConnectorConfig = {
   max_btc_tx_pending_sec: 3600,
 }
 
-const mockNearBlocksResponse: NearBlocksReceiptsResponse = {
-  txns: [
-    {
-      transaction_hash: "near_signing_tx_hash_12345",
-      included_in_block_hash: "near_block_hash_example",
-      block_timestamp: "2024-01-01T10:00:00.000Z",
-      signer_account_id: REAL_TEST_DATA.relayerAccount,
-      receiver_account_id: "v1.signer-dev.testnet",
-      actions: [
-        {
-          action: "FunctionCall",
-          method: "sign_btc_transaction", 
-          args: '{"btc_pending_id":"test_pending_bitcoin_123","sign_index":0}',
-        },
-      ],
-    },
-  ],
-}
 
 // Mock server setup
 const server = setupServer(
@@ -160,15 +141,14 @@ const server = setupServer(
     })
   }),
 
-  // NearBlocks API endpoint
-  http.get("https://api-testnet.nearblocks.io/v1/account/cosmosfirst.testnet/receipts", () => {
-    return HttpResponse.json(mockNearBlocksResponse)
-  }),
+  // OmniBridge API endpoints will be set up per-test basis
 
   // NEAR contract call mocks would go here - for now we'll mock the wallet calls
 )
 
-beforeAll(() => server.listen())
+beforeAll(() => {
+  server.listen({ onUnhandledRequest: 'warn' })
+})
 afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
 
@@ -188,7 +168,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
           txStatus: vi.fn(),
         },
       },
-      
+
       // Mock the wallet methods used by NearBridgeClient
       signAndSendTransaction: vi.fn(),
       viewFunction: vi.fn(),
@@ -200,7 +180,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
     } as any
 
     client = new NearBridgeClient(mockWallet, REAL_TEST_DATA.bridgeContract)
-    
+
     // Mock the Bitcoin service's selectCoins method to avoid complex transaction byte requirements
     client.bitcoinService.selectCoins = vi.fn().mockReturnValue({
       inputs: [{ txid: new Uint8Array(32), index: 0 }], // Simplified input
@@ -211,6 +191,8 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       fee: 5000n,
       vsize: 150
     })
+
+
   })
 
   describe("getBitcoinBridgeConfig", () => {
@@ -251,7 +233,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
 
       expect(result.depositAddress).toBe(mockDepositResponse.deposit_address)
       expect(result.btcDepositArgs.deposit_msg.recipient_id).toBe(REAL_TEST_DATA.testAccount)
-      
+
       expect(mockWallet.provider.callFunction).toHaveBeenCalledWith(
         "brg-dev.testnet",
         "get_user_deposit_address",
@@ -297,12 +279,12 @@ describe("NearBridgeClient Bitcoin Methods", () => {
     it("should finalize Bitcoin deposit with real transaction data", async () => {
       // Mock getBitcoinBridgeConfig for amount validation
       mockWallet.provider.callFunction = vi.fn().mockResolvedValue(mockBtcConnectorConfig)
-      
+
       const mockTransactionResult = {
         transaction: { hash: "near_finalize_tx_hash" },
         receipts_outcome: [],
       }
-      
+
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue(mockTransactionResult)
 
       const result = await client.finalizeBitcoinDeposit(
@@ -312,7 +294,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       )
 
       expect(result).toBe("near_finalize_tx_hash")
-      
+
       // Verify the call was made with correct receiverId
       expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -351,7 +333,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
     it("should handle different vout values", async () => {
       // Mock getBitcoinBridgeConfig for amount validation
       mockWallet.provider.callFunction = vi.fn().mockResolvedValue(mockBtcConnectorConfig)
-      
+
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue({
         transaction: { hash: "test_hash" },
       })
@@ -397,7 +379,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       mockWallet.provider.callFunction = vi.fn()
         .mockImplementation((contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
-            return Promise.resolve({ 
+            return Promise.resolve({
               [`${validTxid}@0`]: {
                 path: mockUTXOs[0].path,
                 tx_bytes: mockUTXOs[0].tx_bytes,
@@ -428,12 +410,13 @@ describe("NearBridgeClient Bitcoin Methods", () => {
 
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue(mockNearTxResult)
 
-      const pendingId = await client.initBitcoinWithdrawal(
+      const result = await client.initBitcoinWithdrawal(
         REAL_TEST_DATA.withdrawAddress,
         BigInt(50000) // 50,000 satoshis
       )
 
-      expect(pendingId).toBe("pending_btc_12345")
+      expect(result.pendingId).toBe("pending_btc_12345")
+      expect(result.nearTxHash).toBe("near_init_tx_hash")
       expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith(
         expect.objectContaining({
           receiverId: "nbtc-dev.testnet", // btcToken contract
@@ -454,13 +437,13 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       mockWallet.provider.callFunction = vi.fn()
         .mockImplementation((contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
-            return Promise.resolve({ 
-              [`${validTxid}@0`]: { 
+            return Promise.resolve({
+              [`${validTxid}@0`]: {
                 path: "m/44'/1'/0'/0/0",
                 tx_bytes: new Uint8Array([2, 0, 0, 0, 1]),
                 vout: 0,
-                balance: "100000" 
-              } 
+                balance: "100000"
+              }
             })
           }
           if (methodName === "get_config") {
@@ -493,13 +476,13 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       mockWallet.provider.callFunction = vi.fn()
         .mockImplementation((contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
-            return Promise.resolve({ 
-              [`${validTxid}@0`]: { 
+            return Promise.resolve({
+              [`${validTxid}@0`]: {
                 path: "m/44'/1'/0'/0/0",
                 tx_bytes: new Uint8Array([2, 0, 0, 0, 1]),
                 vout: 0,
-                balance: "200000" 
-              } 
+                balance: "200000"
+              }
             })
           }
           if (methodName === "get_config") {
@@ -525,20 +508,62 @@ describe("NearBridgeClient Bitcoin Methods", () => {
 
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue(mockNearTxResult)
 
-      const pendingId = await client.initBitcoinWithdrawal(
+      const result = await client.initBitcoinWithdrawal(
         REAL_TEST_DATA.withdrawAddress,
         BigInt(100000) // Larger amount
       )
 
-      expect(pendingId).toBe("test_pending")
+      expect(result.pendingId).toBe("test_pending")
+      expect(result.nearTxHash).toBe("test")
     })
   })
 
   describe("waitForBitcoinTransactionSigning", () => {
+
     it("should wait for and find Bitcoin transaction signing", async () => {
+      // Set up specific mock for this test
+      server.use(
+        http.get("https://testnet.api.bridge.nearone.org/api/v2/transfers/transfer", ({ request }) => {
+          const url = new URL(request.url)
+          const transactionHash = url.searchParams.get("transaction_hash")
+          
+          if (transactionHash === "test_pending_bitcoin_123") {
+            return HttpResponse.json([
+              {
+                id: null,
+                initialized: {
+                  NearReceipt: {
+                    block_height: 123,
+                    block_timestamp_seconds: 123,
+                    transaction_hash: "test_pending_bitcoin_123"
+                  }
+                },
+                signed: {
+                  NearReceipt: {
+                    block_height: 1234,
+                    block_timestamp_seconds: 1234,
+                    transaction_hash: "near_signing_tx_hash_12345"
+                  }
+                },
+                updated_fee: [],
+                fast_finalised_on_near: null,
+                finalised_on_near: null,
+                fast_finalised: null,
+                finalised: null,
+                claimed: null,
+                transfer_message: null,
+                utxo_transfer: null,
+              }
+            ])
+          }
+          
+          // Return empty array for other transaction hashes
+          return HttpResponse.json([])
+        })
+      )
+
       const nearTxHash = await client.waitForBitcoinTransactionSigning(
         "test_pending_bitcoin_123",
-        REAL_TEST_DATA.relayerAccount,
         1, // Only 1 attempt for testing
         100 // Short delay
       )
@@ -546,37 +571,90 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       expect(nearTxHash).toBe("near_signing_tx_hash_12345")
     })
 
-    it("should use default relayer account when not specified", async () => {
+    it("should use default parameters when not specified", async () => {
+      // Set up specific mock for this test
+      server.use(
+        http.get("https://testnet.api.bridge.nearone.org/api/v2/transfers/transfer", ({ request }) => {
+          const url = new URL(request.url)
+          const transactionHash = url.searchParams.get("transaction_hash")
+          
+          if (transactionHash === "test_pending_bitcoin_123") {
+            return HttpResponse.json([
+              {
+                id: null,
+                initialized: {
+                  NearReceipt: {
+                    block_height: 123,
+                    block_timestamp_seconds: 123,
+                    transaction_hash: "test_pending_bitcoin_123"
+                  }
+                },
+                signed: {
+                  NearReceipt: {
+                    block_height: 1234,
+                    block_timestamp_seconds: 1234,
+                    transaction_hash: "near_signing_tx_hash_12345"
+                  }
+                },
+                updated_fee: [],
+                fast_finalised_on_near: null,
+                finalised_on_near: null,
+                fast_finalised: null,
+                finalised: null,
+                claimed: null,
+                transfer_message: null,
+                utxo_transfer: null,
+              }
+            ])
+          }
+          
+          // Return empty array for other transaction hashes
+          return HttpResponse.json([])
+        })
+      )
+
       const nearTxHash = await client.waitForBitcoinTransactionSigning(
-        "test_pending_bitcoin_123",
-        undefined, // Use default
-        1,
-        100
+        "test_pending_bitcoin_123"
       )
 
       expect(nearTxHash).toBe("near_signing_tx_hash_12345")
     })
 
     it("should timeout after max attempts", async () => {
+      // Set up specific mock for this test that returns empty array for the nonexistent pending ID
+      server.use(
+        http.get("https://testnet.api.bridge.nearone.org/api/v2/transfers/transfer", ({ request }) => {
+          const url = new URL(request.url)
+          const transactionHash = url.searchParams.get("transaction_hash")
+          
+          if (transactionHash === "nonexistent_pending_id") {
+            // Return empty array to simulate not found
+            return HttpResponse.json([])
+          }
+          
+          // Return empty array for other transaction hashes too
+          return HttpResponse.json([])
+        })
+      )
+
       await expect(
         client.waitForBitcoinTransactionSigning(
           "nonexistent_pending_id",
-          REAL_TEST_DATA.relayerAccount,
           2, // 2 attempts
           50 // 50ms delay
         )
       ).rejects.toThrow(/Bitcoin: Transaction signing not found after 2 attempts/)
     })
 
-    it("should handle NearBlocks API errors", async () => {
+    it("should handle OmniBridge API errors", async () => {
       server.use(
-        http.get("https://api-testnet.nearblocks.io/v1/account/cosmosfirst.testnet/receipts", () => {
+        http.get("https://testnet.api.bridge.nearone.org/api/v2/transfers/transfer", () => {
           return new HttpResponse("Server Error", { status: 500 })
         })
       )
 
       await expect(
-        client.waitForBitcoinTransactionSigning("test_pending", undefined, 1, 100)
+        client.waitForBitcoinTransactionSigning("test_pending", 1, 100)
       ).rejects.toThrow(/Bitcoin: Transaction signing not found/)
     })
   })
@@ -628,18 +706,59 @@ describe("NearBridgeClient Bitcoin Methods", () => {
 
   describe("executeBitcoinWithdrawal (End-to-End)", () => {
     it("should execute complete Bitcoin withdrawal flow", async () => {
+      // Set up specific mock for this test with correct transaction hash mapping
+      server.use(
+        http.get("https://testnet.api.bridge.nearone.org/api/v2/transfers/transfer", ({ request }) => {
+          const url = new URL(request.url)
+          const transactionHash = url.searchParams.get("transaction_hash")
+          
+          if (transactionHash === "init_tx_hash") {
+            return HttpResponse.json([
+              {
+                id: null,
+                initialized: {
+                  NearReceipt: {
+                    block_height: 123,
+                    block_timestamp_seconds: 123,
+                    transaction_hash: "init_tx_hash"
+                  }
+                },
+                signed: {
+                  NearReceipt: {
+                    block_height: 1234,
+                    block_timestamp_seconds: 1234,
+                    transaction_hash: "e2e_near_signing_hash"
+                  }
+                },
+                updated_fee: [],
+                fast_finalised_on_near: null,
+                finalised_on_near: null,
+                fast_finalised: null,
+                finalised: null,
+                claimed: null,
+                transfer_message: null,
+                utxo_transfer: null,
+              }
+            ])
+          }
+          
+          // Return empty array for other transaction hashes
+          return HttpResponse.json([])
+        })
+      )
+
       // Mock the required dependencies for initBitcoinWithdrawal
       const validTxid = "5678901234abcdef5678901234abcdef5678901234abcdef5678901234abcdef"
       mockWallet.provider.callFunction = vi.fn()
         .mockImplementation((contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
-            return Promise.resolve({ 
-              [`${validTxid}@0`]: { 
+            return Promise.resolve({
+              [`${validTxid}@0`]: {
                 path: "m/44'/1'/0'/0/0",
                 tx_bytes: new Uint8Array([2, 0, 0, 0, 1]),
                 vout: 0,
-                balance: "100000" 
-              } 
+                balance: "100000"
+              }
             })
           }
           if (methodName === "get_config") {
@@ -678,28 +797,9 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue(mockInitResult)
       mockWallet.provider.viewTransactionStatus = vi.fn().mockResolvedValue(mockFinalizeStatus)
 
-      // Mock the NearBlocks response for this specific pending ID
-      server.use(
-        http.get("https://api-testnet.nearblocks.io/v1/account/cosmosfirst.testnet/receipts", () => {
-          return HttpResponse.json({
-            txns: [
-              {
-                transaction_hash: "e2e_near_signing_hash",
-                actions: [
-                  {
-                    args: '{"btc_pending_id":"e2e_pending_123"}',
-                  },
-                ],
-              },
-            ],
-          })
-        })
-      )
-
       const bitcoinTxHash = await client.executeBitcoinWithdrawal(
         REAL_TEST_DATA.withdrawAddress,
         BigInt(75000),
-        undefined, // Use default relayer
         1, // Only 1 attempt for testing
         50 // Short delay
       )
@@ -721,13 +821,13 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       mockWallet.provider.callFunction = vi.fn()
         .mockImplementation((contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
-            return Promise.resolve({ 
-              [`${validTxid}@0`]: { 
+            return Promise.resolve({
+              [`${validTxid}@0`]: {
                 path: "m/44'/1'/0'/0/0",
                 tx_bytes: new Uint8Array([2, 0, 0, 0, 1]),
                 vout: 0,
-                balance: "100000" 
-              } 
+                balance: "100000"
+              }
             })
           }
           if (methodName === "get_config") {
@@ -769,13 +869,13 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       mockWallet.provider.callFunction = vi.fn()
         .mockImplementation((contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
-            return Promise.resolve({ 
-              [`${validTxid}@0`]: { 
+            return Promise.resolve({
+              [`${validTxid}@0`]: {
                 path: "m/44'/1'/0'/0/0",
                 tx_bytes: new Uint8Array([2, 0, 0, 0, 1]),
                 vout: 0,
-                balance: "10000000000" 
-              } 
+                balance: "10000000000"
+              }
             })
           }
           if (methodName === "get_config") {
@@ -790,15 +890,16 @@ describe("NearBridgeClient Bitcoin Methods", () => {
           outcome: { logs: ['EVENT_JSON:{"standard":"nep297","version":"1.0.0","event":"generate_btc_pending_info","data":[{"btc_pending_id":"large_amount_test"}]}'] }
         }],
       }
-      
+
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue(mockResult)
 
-      const pendingId = await client.initBitcoinWithdrawal(
+      const result = await client.initBitcoinWithdrawal(
         REAL_TEST_DATA.withdrawAddress,
         BigInt("2100000000000000") // Close to max Bitcoin supply in sats
       )
 
-      expect(pendingId).toBe("large_amount_test")
+      expect(result.pendingId).toBe("large_amount_test")
+      expect(result.nearTxHash).toBe("test")
     })
 
     it("should handle minimum amounts", async () => {
@@ -807,13 +908,13 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       mockWallet.provider.callFunction = vi.fn()
         .mockImplementation((contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
-            return Promise.resolve({ 
-              [`${validTxid}@0`]: { 
+            return Promise.resolve({
+              [`${validTxid}@0`]: {
                 path: "m/44'/1'/0'/0/0",
                 tx_bytes: new Uint8Array([2, 0, 0, 0, 1]),
                 vout: 0,
-                balance: "100000" 
-              } 
+                balance: "100000"
+              }
             })
           }
           if (methodName === "get_config") {
@@ -828,16 +929,17 @@ describe("NearBridgeClient Bitcoin Methods", () => {
           outcome: { logs: ['EVENT_JSON:{"standard":"nep297","version":"1.0.0","event":"generate_btc_pending_info","data":[{"btc_pending_id":"min_amount_test"}]}'] }
         }],
       }
-      
+
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue(mockResult)
 
       // Test with amount that meets minimum requirement (min_withdraw_amount is "20000")
-      const pendingId = await client.initBitcoinWithdrawal(
+      const result = await client.initBitcoinWithdrawal(
         REAL_TEST_DATA.withdrawAddress,
         BigInt(20000) // Use minimum withdrawal amount
       )
 
-      expect(pendingId).toBe("min_amount_test")
+      expect(result.pendingId).toBe("min_amount_test")
+      expect(result.nearTxHash).toBe("test")
     })
 
     it("should validate and reject amounts below minimum", async () => {
@@ -846,13 +948,13 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       mockWallet.provider.callFunction = vi.fn()
         .mockImplementation((contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
-            return Promise.resolve({ 
-              [`${validTxid}@0`]: { 
+            return Promise.resolve({
+              [`${validTxid}@0`]: {
                 path: "m/44'/1'/0'/0/0",
                 tx_bytes: new Uint8Array([2, 0, 0, 0, 1]),
                 vout: 0,
-                balance: "100000" 
-              } 
+                balance: "100000"
+              }
             })
           }
           if (methodName === "get_config") {

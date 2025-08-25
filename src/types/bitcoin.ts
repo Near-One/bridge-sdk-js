@@ -12,7 +12,7 @@ export interface BitcoinMerkleProofResponse {
 /**
  * DEPOSIT OPERATIONS (BTC -> NEAR)
  */
-export interface PostAction {
+export interface BtcPostAction {
   receiver_id: string
   amount: bigint
   memo?: string
@@ -22,7 +22,7 @@ export interface PostAction {
 
 export interface DepositMsg {
   recipient_id: string // NEAR account to receive tokens
-  post_actions?: PostAction[]
+  post_actions?: BtcPostAction[]
   extra_msg?: string // Optional metadata
 }
 

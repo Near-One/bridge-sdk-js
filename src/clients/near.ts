@@ -861,13 +861,11 @@ export class NearBridgeClient {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const btcTransfer = await api.getTransfer({ transactionHash: nearTxHash })
-        console.log(btcTransfer)
         const signedTxHash = btcTransfer[0].signed?.NearReceipt?.transaction_hash
         if (signedTxHash) {
           return signedTxHash
         }
       } catch (_error) {
-        console.log(_error)
         if (attempt === maxAttempts) {
           throw new Error(
             `Bitcoin: Transaction signing not found after ${maxAttempts} attempts (${(maxAttempts * delayMs) / 1000}s). `,

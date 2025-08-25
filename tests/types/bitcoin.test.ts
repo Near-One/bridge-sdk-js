@@ -7,12 +7,12 @@ import type {
   BridgeFee,
   BtcConnectorConfig,
   BtcDepositArgs,
+  BtcPostAction,
   DepositMsg,
   FinBtcTransferArgs,
   InitBtcTransferMsg,
   NearBlocksReceiptsResponse,
   NearBlocksTransaction,
-  PostAction,
   UTXO,
 } from "../../src/types/bitcoin.js"
 
@@ -356,7 +356,7 @@ describe("Bitcoin Types", () => {
 
   describe("Deposit and Withdrawal Messages", () => {
     it("should structure deposit message correctly", () => {
-      const postAction: PostAction = {
+      const postAction: BtcPostAction = {
         receiver_id: "app.near",
         amount: 1000000n,
         msg: "swap_exact_token_for_near",

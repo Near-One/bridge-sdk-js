@@ -155,24 +155,6 @@ const mockRealBtcConfig: BtcConnectorConfig = {
   max_btc_tx_pending_sec: 3600,
 }
 
-const mockRealNearBlocksResponse: NearBlocksReceiptsResponse = {
-  txns: [
-    {
-      transaction_hash: "real_near_signing_transaction_hash_example",
-      included_in_block_hash: "near_block_hash_from_testnet",
-      block_timestamp: "2024-01-01T12:00:00.000Z",
-      signer_account_id: REAL_WITHDRAWAL_DATA.relayerAccount,
-      receiver_account_id: "v1.signer-dev.testnet",
-      actions: [
-        {
-          action: "FunctionCall",
-          method: "sign_btc_transaction",
-          args: '{"btc_pending_id":"real_pending_btc_withdrawal_123","sign_index":0}',
-        },
-      ],
-    },
-  ],
-}
 
 // Mock server for external APIs
 const server = setupServer(
@@ -199,9 +181,81 @@ const server = setupServer(
     })
   }),
 
-  // NearBlocks API for real relayer monitoring
-  http.get(`https://api-testnet.nearblocks.io/v1/account/${REAL_WITHDRAWAL_DATA.relayerAccount}/receipts`, () => {
-    return HttpResponse.json(mockRealNearBlocksResponse)
+  // OmniBridge API for real relayer monitoring
+  http.get("https://testnet.api.bridge.nearone.org/api/v2/transfers/transfer", ({ request }) => {
+    const url = new URL(request.url)
+    const txHash = url.searchParams.get("transaction_hash")
+    
+    const baseTransfer = {
+      id: {
+        origin_chain: "Near",
+        origin_nonce: 123
+      },
+      initialized: null,
+      fast_finalised_on_near: null,
+      finalised_on_near: null,
+      fast_finalised: null,
+      finalised: null,
+      claimed: null,
+      transfer_message: null,
+      updated_fee: [],
+      utxo_transfer: null
+    }
+    
+    if (txHash === "real_init_withdrawal_tx_hash") {
+      return HttpResponse.json([{
+        ...baseTransfer,
+        signed: {
+          NearReceipt: {
+            block_height: 12345,
+            block_timestamp_seconds: 1640995200,
+            transaction_hash: "real_near_signing_transaction_hash_example"
+          }
+        }
+      }])
+    }
+    
+    if (txHash === "near_init_withdrawal_tx_hash") {
+      return HttpResponse.json([{
+        ...baseTransfer,
+        signed: {
+          NearReceipt: {
+            block_height: 12345,
+            block_timestamp_seconds: 1640995200,
+            transaction_hash: "real_near_signing_transaction_hash_example"
+          }
+        }
+      }])
+    }
+    
+    if (txHash === "automated_init_tx") {
+      return HttpResponse.json([{
+        ...baseTransfer,
+        signed: {
+          NearReceipt: {
+            block_height: 12346,
+            block_timestamp_seconds: 1640995300,
+            transaction_hash: "automated_signing_tx"
+          }
+        }
+      }])
+    }
+    
+    if (txHash === "init_tx_hash") {
+      return HttpResponse.json([{
+        ...baseTransfer,
+        signed: {
+          NearReceipt: {
+            block_height: 12347,
+            block_timestamp_seconds: 1640995400,
+            transaction_hash: "e2e_near_signing_hash"
+          }
+        }
+      }])
+    }
+    
+    // Return empty array for unknown transaction hashes (to simulate timeout scenarios)
+    return HttpResponse.json([])
   }),
 
   // Error scenarios
@@ -369,17 +423,17 @@ describe("Bitcoin Integration Tests", () => {
 
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue(mockInitResult)
 
-      const pendingId = await client.initBitcoinWithdrawal(
+      const result = await client.initBitcoinWithdrawal(
         REAL_WITHDRAWAL_DATA.realWithdrawAddress,
         BigInt(REAL_WITHDRAWAL_DATA.minWithdrawAmount)
       )
 
-      expect(pendingId).toBe("real_pending_btc_withdrawal_123")
+      expect(result.pendingId).toBe("real_pending_btc_withdrawal_123")
+      expect(result.nearTxHash).toBe("near_init_withdrawal_tx_hash")
 
       // Step 2: Wait for relayer to sign (automated via waitForBitcoinTransactionSigning)
       const nearSigningTxHash = await client.waitForBitcoinTransactionSigning(
-        pendingId,
-        REAL_WITHDRAWAL_DATA.relayerAccount,
+        result.nearTxHash,
         1, // Single attempt for testing
         100 // Quick timeout
       )
@@ -487,7 +541,6 @@ describe("Bitcoin Integration Tests", () => {
       const bitcoinTxHash = await client.executeBitcoinWithdrawal(
         REAL_WITHDRAWAL_DATA.realWithdrawAddress,
         BigInt(30000), // 30,000 sats
-        undefined, // Use default relayer
         1, // Single attempt for testing
         50 // Quick timeout
       )
@@ -499,7 +552,6 @@ describe("Bitcoin Integration Tests", () => {
       await expect(
         client.waitForBitcoinTransactionSigning(
           "pending_that_will_timeout",
-          "slow.relayer.testnet", // This relayer returns empty txns
           2, // 2 attempts
           10 // 10ms delay
         )
@@ -553,12 +605,13 @@ describe("Bitcoin Integration Tests", () => {
       
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue(mockInitResult)
 
-      const pendingId = await client.initBitcoinWithdrawal(
+      const result = await client.initBitcoinWithdrawal(
         REAL_WITHDRAWAL_DATA.realWithdrawAddress,
         validAmount
       )
 
-      expect(pendingId).toBe("test_pending")
+      expect(result.pendingId).toBe("test_pending")
+      expect(result.nearTxHash).toBe("test_tx")
     })
   })
 
@@ -768,12 +821,13 @@ describe("Bitcoin Integration Tests", () => {
       
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue(mockInitResult)
 
-      const pendingId = await client.initBitcoinWithdrawal(
+      const result = await client.initBitcoinWithdrawal(
         REAL_WITHDRAWAL_DATA.realWithdrawAddress,
         largeAmount
       )
 
-      expect(pendingId).toBe("large_amount_pending")
+      expect(result.pendingId).toBe("large_amount_pending")
+      expect(result.nearTxHash).toBe("large_amount_tx")
     })
   })
 })
