@@ -49,7 +49,7 @@ async function main() {
 
   // Get minimum deposit amount
   const config = await bridgeClient.getZcashBridgeConfig()
-  console.log(`Minimum deposit: ${config.min_deposit_amount} zatoshis`)
+  console.log(`Minimum deposit: ${BigInt(config.min_deposit_amount) + BigInt(config.deposit_bridge_fee.fee_min)} zatoshis`)
 
   // Step 1: Generate Zcash deposit address
   console.log("\n📍 Step 1: Generate deposit address")
