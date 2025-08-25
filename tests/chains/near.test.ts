@@ -110,6 +110,7 @@ describe("NearBridgeClient", () => {
         receiverId: mockLockerAddress,
         actions: [
           expect.objectContaining({
+            enum: "functionCall",
             functionCall: expect.objectContaining({
               methodName: "log_metadata",
               gas: BigInt(3e14),
@@ -169,6 +170,7 @@ describe("NearBridgeClient", () => {
         receiverId: mockLockerAddress,
         actions: [
           expect.objectContaining({
+            enum: "functionCall",
             functionCall: expect.objectContaining({
               methodName: "deploy_token",
               gas: BigInt(1.2e14),
@@ -226,6 +228,7 @@ describe("NearBridgeClient", () => {
         receiverId: mockLockerAddress,
         actions: [
           expect.objectContaining({
+            enum: "functionCall",
             functionCall: expect.objectContaining({
               methodName: "bind_token",
               gas: BigInt(3e14),
@@ -251,6 +254,7 @@ describe("NearBridgeClient", () => {
         receiverId: mockLockerAddress,
         actions: [
           expect.objectContaining({
+            enum: "functionCall",
             functionCall: expect.objectContaining({
               methodName: "bind_token",
               gas: BigInt(3e14),
@@ -341,6 +345,7 @@ describe("NearBridgeClient", () => {
         receiverId: mockTokenAddress,
         actions: [
           expect.objectContaining({
+            enum: "functionCall",
             functionCall: expect.objectContaining({
               methodName: "ft_transfer_call",
               gas: BigInt(3e14),
@@ -432,6 +437,7 @@ describe("NearBridgeClient", () => {
         receiverId: mockLockerAddress,
         actions: [
           expect.objectContaining({
+            enum: "functionCall",
             functionCall: expect.objectContaining({
               methodName: "sign_transfer",
               gas: BigInt(3e14),
@@ -521,6 +527,7 @@ describe("NearBridgeClient", () => {
         receiverId: mockLockerAddress,
         actions: [
           expect.objectContaining({
+            enum: "functionCall",
             functionCall: expect.objectContaining({
               methodName: "fin_transfer",
               gas: BigInt(3e14),
@@ -552,6 +559,7 @@ describe("NearBridgeClient", () => {
         receiverId: mockLockerAddress,
         actions: [
           expect.objectContaining({
+            enum: "functionCall",
             functionCall: expect.objectContaining({
               methodName: "fin_transfer",
               gas: BigInt(3e14),
@@ -644,13 +652,13 @@ describe("NearBridgeClient", () => {
         receiverId: mockLockerAddress,
         actions: [
           expect.objectContaining({
+            enum: "functionCall",
             functionCall: expect.objectContaining({
               methodName: "storage_deposit",
               args: expect.any(Object),
               gas: BigInt(1e14),
               deposit: BigInt("1000000000000000000000000"), // totalRequiredBalance (1125000000000000000000000) - existingBalance (125000000000000000000000)
             }),
-            enum: "functionCall",
           }),
         ],
       })
@@ -658,13 +666,13 @@ describe("NearBridgeClient", () => {
         receiverId: mockFastFinTransferArgs.token_id,
         actions: [
           expect.objectContaining({
+            enum: "functionCall",
             functionCall: expect.objectContaining({
               methodName: "ft_transfer_call",
               args: expect.any(Object),
               gas: BigInt(3e14),
               deposit: BigInt(1),
             }),
-            enum: "functionCall",
           }),
         ],
       })
@@ -685,13 +693,13 @@ describe("NearBridgeClient", () => {
         receiverId: mockLockerAddress,
         actions: [
           expect.objectContaining({
+            enum: "functionCall",
             functionCall: expect.objectContaining({
               methodName: "storage_deposit",
               args: expect.any(Object),
               gas: BigInt(1e14),
               deposit: BigInt("875000000000000000000000"), // required balance - existing balance
             }),
-            enum: "functionCall",
           }),
         ],
       })
@@ -699,13 +707,13 @@ describe("NearBridgeClient", () => {
         receiverId: argsWithoutStorageDeposit.token_id,
         actions: [
           expect.objectContaining({
+            enum: "functionCall",
             functionCall: expect.objectContaining({
               methodName: "ft_transfer_call",
               args: expect.any(Object),
               gas: BigInt(3e14),
               deposit: BigInt(1),
             }),
-            enum: "functionCall",
           }),
         ],
       })
@@ -731,13 +739,13 @@ describe("NearBridgeClient", () => {
         receiverId: mockLockerAddress,
         actions: [
           expect.objectContaining({
+            enum: "functionCall",
             functionCall: expect.objectContaining({
               methodName: "storage_deposit",
               args: expect.any(Object),
               gas: BigInt(1e14),
               deposit: BigInt("1125000000000000000000000"), // full required balance + storage deposit
             }),
-            enum: "functionCall",
           }),
         ],
       })
@@ -745,13 +753,13 @@ describe("NearBridgeClient", () => {
         receiverId: mockFastFinTransferArgs.token_id,
         actions: [
           expect.objectContaining({
+            enum: "functionCall",
             functionCall: expect.objectContaining({
               methodName: "ft_transfer_call",
               args: expect.any(Object),
               gas: BigInt(3e14),
               deposit: BigInt(1),
             }),
-            enum: "functionCall",
           }),
         ],
       })

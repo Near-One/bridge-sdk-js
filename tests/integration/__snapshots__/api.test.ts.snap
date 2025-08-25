@@ -97,8 +97,4 @@ exports[`OmniBridgeAPI Integration Tests > getTransfer > should fetch transfer d
 ]
 `;
 
-exports[`OmniBridgeAPI Integration Tests > getTransferStatus > should fetch status for a known transfer 1`] = `
-[
-  "Initialized",
-]
-`;
+exports[`OmniBridgeAPI Integration Tests > getTransferStatus > should fetch status for a known transfer 1`] = `"Initialized"`;
