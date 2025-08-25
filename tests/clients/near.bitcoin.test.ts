@@ -339,27 +339,26 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       })
 
       for (const vout of [0, 1]) { // Only test valid vout indices that exist in mockBitcoinTx
-        for (const vout of [0, 1]) { // Only test valid vout indices that exist in mockBitcoinTx
-          await client.finalizeBitcoinDeposit(
-            REAL_TEST_DATA.depositTxHash,
-            vout,
-            mockBtcDepositArgs
-          )
+        await client.finalizeBitcoinDeposit(
+          REAL_TEST_DATA.depositTxHash,
+          vout,
+          mockBtcDepositArgs
+        )
 
-          expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith(
-            expect.objectContaining({
-              receiverId: "brg-dev.testnet",
-              actions: [
-                expect.objectContaining({
-                  functionCall: expect.objectContaining({
-                    methodName: "verify_deposit",
-                  }),
+        expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith(
+          expect.objectContaining({
+            receiverId: "brg-dev.testnet",
+            actions: [
+              expect.objectContaining({
+                functionCall: expect.objectContaining({
+                  methodName: "verify_deposit",
                 }),
-              ],
-            })
-          )
-        }
-      })
+              }),
+            ],
+          })
+        )
+      }
+    })
   })
 
   describe("initBitcoinWithdrawal", () => {
@@ -934,12 +933,13 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue(mockResult)
 
       // Test with amount that meets minimum requirement (min_withdraw_amount is "20000")
-      const pendingId = await client.initBitcoinWithdrawal(
+      const result = await client.initBitcoinWithdrawal(
         REAL_TEST_DATA.withdrawAddress,
         BigInt(20000) // Use minimum withdrawal amount
       )
 
-      expect(pendingId).toBe("min_amount_test")
+      expect(result.pendingId).toBe("min_amount_test")
+      expect(result.nearTxHash).toBe("test")
     })
 
     it("should validate and reject amounts below minimum", async () => {
