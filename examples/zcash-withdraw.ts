@@ -7,7 +7,7 @@
  *
  * Setup:
  * 1. Replace NEAR_ACCOUNT with your testnet account
- * 2. Replace BITCOIN_ADDRESS with your Bitcoin testnet address
+ * 2. Replace ZCASH_ADDRESS with your Zcash testnet address
  * 3. Ensure you have TAZ balance and NEAR credentials in ~/.near-credentials
  *
  * Usage: bun run examples/zcash-withdraw.ts
