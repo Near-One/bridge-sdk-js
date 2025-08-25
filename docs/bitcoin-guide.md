@@ -196,9 +196,9 @@ async function testBridge() {
 
 ### Withdrawal Methods  
 - `executeBitcoinWithdrawal(address, amount)` → `bitcoinTxHash` (recommended)
-- `initBitcoinWithdrawal(address, amount)` → `pendingId`
-- `waitForBitcoinTransactionSigning(pendingId)` → `nearTxHash`
-- `finalizeBitcoinWithdrawal(nearTxHash)` → `bitcoinTxHash`
+- `initBitcoinWithdrawal(address, amount)` → `{ pendingId, nearTxHash }`
+- `waitForBitcoinTransactionSigning(nearTxHash)` → `signedTxHash`
+- `finalizeBitcoinWithdrawal(signedTxHash)` → `bitcoinTxHash`
 
 ### Configuration
 - `getBitcoinBridgeConfig()` → `BtcConnectorConfig`

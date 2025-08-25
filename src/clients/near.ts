@@ -1,6 +1,7 @@
 import type { Account } from "@near-js/accounts"
 import { actionCreators } from "@near-js/transactions"
 import type { Output } from "@scure/btc-signer/utxo"
+import { OmniBridgeAPI } from "../api.js"
 import { addresses } from "../config.js"
 import { BitcoinService } from "../services/bitcoin.js"
 import {
@@ -54,7 +55,7 @@ const GAS = {
   // Bitcoin-specific gas constants
   GET_DEPOSIT_ADDRESS: BigInt(3e14), // 3 TGas
   VERIFY_DEPOSIT: BigInt(300e14), // 300 TGas
-  INIT_BTC_TRANSFER: BigInt(100e14), // 100 TGas
+  INIT_BTC_TRANSFER: BigInt(100e12), // 100 TGas
   SIGN_BTC_TX: BigInt(3e14), // 3 TGas
   VERIFY_WITHDRAW: BigInt(5e14), // 5 TGas
   FAST_FIN_TRANSFER: BigInt(3e14), // 3 TGas
@@ -713,7 +714,10 @@ export class NearBridgeClient {
    * Initialize NEAR -> BTC withdrawal (NEAR -> BTC flow start)
    * Mirrors init_near_to_bitcoin_transfer() from Rust SDK
    */
-  async initBitcoinWithdrawal(targetBtcAddress: string, amount: bigint): Promise<string> {
+  async initBitcoinWithdrawal(
+    targetBtcAddress: string,
+    amount: bigint,
+  ): Promise<{ pendingId: string; nearTxHash: string }> {
     // Get bridge-controlled UTXOs from NEAR contract (not Bitcoin network)
     const utxos = await this.getAvailableUTXOs()
     const bitcoinConfig = await this.getBitcoinBridgeConfig()
@@ -784,7 +788,7 @@ export class NearBridgeClient {
     const btcPendingTxData = JSON.parse(btcPendingTxLog.split("EVENT_JSON:")[1])
     const btcPendingTx = btcPendingTxData.data[0].btc_pending_id
 
-    return btcPendingTx
+    return { pendingId: btcPendingTx, nearTxHash: tx.transaction.hash }
   }
 
   /**
@@ -849,27 +853,24 @@ export class NearBridgeClient {
    * @returns Promise<string> - NEAR transaction hash containing the signing
    */
   async waitForBitcoinTransactionSigning(
-    btcPendingId: string,
-    signerAccountId?: string,
+    nearTxHash: string,
     maxAttempts: number = BITCOIN_SIGNING_WAIT.DEFAULT_MAX_ATTEMPTS,
     delayMs: number = BITCOIN_SIGNING_WAIT.DEFAULT_DELAY_MS,
   ): Promise<string> {
-    // Use default relayer account from config if not specified
-    const defaultSignerAccount = addresses.btc.bitcoinRelayer
-    const signerAccount = signerAccountId || defaultSignerAccount
-
+    const api = new OmniBridgeAPI()
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        const nearTxHash = await this.bitcoinService.findTransactionSigning(
-          signerAccount,
-          btcPendingId,
-        )
-        return nearTxHash
+        const btcTransfer = await api.getTransfer({ transactionHash: nearTxHash })
+        console.log(btcTransfer)
+        const signedTxHash = btcTransfer[0].signed?.NearReceipt?.transaction_hash
+        if (signedTxHash) {
+          return signedTxHash
+        }
       } catch (_error) {
+        console.log(_error)
         if (attempt === maxAttempts) {
           throw new Error(
-            `Bitcoin: Transaction signing not found after ${maxAttempts} attempts (${(maxAttempts * delayMs) / 1000}s). ` +
-              `Pending ID: ${btcPendingId}, Signer: ${signerAccount}`,
+            `Bitcoin: Transaction signing not found after ${maxAttempts} attempts (${(maxAttempts * delayMs) / 1000}s). `,
           )
         }
         // Wait before next attempt
@@ -893,17 +894,15 @@ export class NearBridgeClient {
   async executeBitcoinWithdrawal(
     targetBtcAddress: string,
     amount: bigint,
-    signerAccountId?: string,
     maxWaitAttempts: number = BITCOIN_SIGNING_WAIT.DEFAULT_MAX_ATTEMPTS,
     waitDelayMs: number = BITCOIN_SIGNING_WAIT.DEFAULT_DELAY_MS,
   ): Promise<string> {
     // Step 1: Initialize Bitcoin withdrawal
-    const btcPendingId = await this.initBitcoinWithdrawal(targetBtcAddress, amount)
+    const btcWithdrawal = await this.initBitcoinWithdrawal(targetBtcAddress, amount)
 
     // Step 2: Wait for MPC signing
     const nearTxHash = await this.waitForBitcoinTransactionSigning(
-      btcPendingId,
-      signerAccountId,
+      btcWithdrawal.nearTxHash,
       maxWaitAttempts,
       waitDelayMs,
     )

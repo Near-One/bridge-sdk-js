@@ -65,11 +65,11 @@ async function main() {
     console.log("❌ Automated method failed, trying manual...")
 
     // Method 2: Manual steps
-    const pendingId = await bridgeClient.initBitcoinWithdrawal(BITCOIN_ADDRESS, withdrawalAmount)
-    console.log(`Pending ID: ${pendingId}`)
+    const btcWithdrawal = await bridgeClient.initBitcoinWithdrawal(BITCOIN_ADDRESS, withdrawalAmount)
+    console.log(`Pending ID: ${btcWithdrawal.pendingId}. NEAR TX: ${btcWithdrawal.nearTxHash}`)
 
     console.log("⏳ Waiting for MPC signing...")
-    const nearTxHash = await bridgeClient.waitForBitcoinTransactionSigning(pendingId)
+    const nearTxHash = await bridgeClient.waitForBitcoinTransactionSigning(btcWithdrawal.nearTxHash)
 
     console.log("⏳ Broadcasting to Bitcoin network...")
     const bitcoinTxHash = await bridgeClient.finalizeBitcoinWithdrawal(nearTxHash)
