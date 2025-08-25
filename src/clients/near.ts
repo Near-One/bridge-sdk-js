@@ -4,6 +4,7 @@ import type { Output } from "@scure/btc-signer/utxo"
 import { OmniBridgeAPI } from "../api.js"
 import { addresses } from "../config.js"
 import { BitcoinService } from "../services/bitcoin.js"
+import { ZcashService } from "../services/zcash.js"
 import {
   type AccountId,
   type BindTokenArgs,
@@ -20,6 +21,7 @@ import {
   type FinBtcTransferArgs,
   type FinTransferArgs,
   FinTransferArgsSchema,
+  type FinZcashTransferArgs,
   type InitBtcTransferMsg,
   type InitTransferEvent,
   type LogMetadataArgs,
@@ -34,9 +36,11 @@ import {
   type UTXO,
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
+  type ZcashDepositArgs,
 } from "../types/index.js"
 import { getChain, isEvmChain, omniAddress } from "../utils/index.js"
 import { getBridgedToken } from "../utils/tokens.js"
+import { getZcashScript } from "../utils/zcash.js"
 import type { EvmBridgeClient } from "./evm.js"
 
 /**
@@ -127,6 +131,7 @@ interface BalanceResults {
  */
 export class NearBridgeClient {
   public bitcoinService: BitcoinService
+  public zcashService: ZcashService
 
   /**
    * Creates a new NEAR bridge client instance
@@ -144,6 +149,10 @@ export class NearBridgeClient {
 
     // Initialize Bitcoin service
     this.bitcoinService = new BitcoinService(addresses.btc.apiUrl, addresses.btc.network)
+    this.zcashService = new ZcashService(
+      "https://zcash-testnet.gateway.tatum.io/",
+      "t-68791d6ec83ac2946ed7f015-e99607b7e0774df8a541f594",
+    )
   }
 
   /**
@@ -666,6 +675,58 @@ export class NearBridgeClient {
     }
   }
 
+  async getZcashDepositAddress(
+    recipientId: string,
+    amount?: bigint,
+    fee?: bigint,
+  ): Promise<{ depositAddress: string; zcashDepositArgs: ZcashDepositArgs }> {
+    // Validate minimum amount if provided
+    if (amount) {
+      const zcashConfig = await this.getZcashBridgeConfig()
+      if (amount < BigInt(zcashConfig.min_deposit_amount)) {
+        throw new Error(
+          `Amount ${amount} is below minimum deposit amount ${zcashConfig.min_deposit_amount}`,
+        )
+      }
+    }
+
+    // Deposit msg depends on if the receiver is an Omni Address or not
+    let depositMsg: DepositMsg
+    if (recipientId.includes(":")) {
+      if (!amount) {
+        throw new Error("Amount is required for Omni Address deposit")
+      }
+      depositMsg = {
+        recipient_id: this.wallet.accountId,
+        post_actions: [
+          {
+            receiver_id: this.lockerAddress,
+            amount: amount,
+            msg: JSON.stringify({
+              recipient: recipientId,
+              fee: fee?.toString(),
+              native_token_fee: "0",
+            }),
+          },
+        ],
+      }
+    } else {
+      depositMsg = {
+        recipient_id: recipientId,
+      }
+    }
+    console.log("Zcash Connector", addresses.zcash.zcashConnector)
+    const result = await this.wallet.provider.callFunction(
+      addresses.zcash.zcashConnector,
+      "get_user_deposit_address",
+      { deposit_msg: depositMsg },
+    )
+    return {
+      depositAddress: result as string,
+      zcashDepositArgs: { deposit_msg: depositMsg },
+    }
+  }
+
   /**
    * Finalize Bitcoin deposit (BTC -> NEAR flow completion)
    * Mirrors near_fin_transfer_btc() from Rust SDK
@@ -710,6 +771,30 @@ export class NearBridgeClient {
     return tx.transaction.hash
   }
 
+  async finalizeZcashDeposit(
+    zcashTxHash: string,
+    vout: number,
+    depositArgs: ZcashDepositArgs,
+  ): Promise<string> {
+    const proof = await this.zcashService.getDepositProof(zcashTxHash)
+    const args: FinZcashTransferArgs = {
+      deposit_msg: depositArgs.deposit_msg,
+      tx_bytes: Array.from(proof.tx_bytes),
+      vout,
+      tx_block_blockhash: proof.tx_block_blockhash,
+      tx_index: proof.tx_index,
+      merkle_proof: proof.merkle_proof,
+    }
+
+    const tx = await this.wallet.signAndSendTransaction({
+      receiverId: addresses.zcash.zcashConnector,
+      actions: [actionCreators.functionCall("verify_deposit", args, BigInt(GAS.VERIFY_DEPOSIT))],
+      waitUntil: "FINAL",
+    })
+
+    return tx.transaction.hash
+  }
+
   /**
    * Initialize NEAR -> BTC withdrawal (NEAR -> BTC flow start)
    * Mirrors init_near_to_bitcoin_transfer() from Rust SDK
@@ -719,7 +804,7 @@ export class NearBridgeClient {
     amount: bigint,
   ): Promise<{ pendingId: string; nearTxHash: string }> {
     // Get bridge-controlled UTXOs from NEAR contract (not Bitcoin network)
-    const utxos = await this.getAvailableUTXOs()
+    const utxos = await this.getAvailableBitcoinUTXOs()
     const bitcoinConfig = await this.getBitcoinBridgeConfig()
 
     // Validate minimum amount
@@ -791,6 +876,60 @@ export class NearBridgeClient {
     return { pendingId: btcPendingTx, nearTxHash: tx.transaction.hash }
   }
 
+  async initZcashWithdrawal(targetZcashAddress: string, amount: bigint): Promise<string> {
+    const utxos = await this.getAvailableZcashUTXOs()
+    const zcashConfig = await this.getZcashBridgeConfig()
+
+    // Select UTXOs (3 lines!)
+    const { selected, total, fee } = this.zcashService.selectUTXOs(utxos, amount)
+    console.log("Selected UTXOs:", selected)
+    console.log("Total amount:", total)
+    console.log("Fee:", fee)
+    const change = total - amount - fee
+
+    // Create message (direct construction)
+    const msg = {
+      Withdraw: {
+        target_btc_address: targetZcashAddress,
+        input: selected.map((u) => `${u.txid}:${u.vout}`),
+        output: [
+          { value: Number(amount), script_pubkey: getZcashScript(targetZcashAddress) },
+          { value: Number(change), script_pubkey: getZcashScript(zcashConfig.change_address) },
+        ],
+      },
+    }
+    console.dir(msg, { depth: null })
+
+    const totalAmount = amount + fee + BigInt(zcashConfig.withdraw_bridge_fee.fee_min)
+    const tx = await this.wallet.signAndSendTransaction({
+      receiverId: addresses.zcash.zcashToken,
+      actions: [
+        actionCreators.functionCall(
+          "ft_transfer_call",
+          {
+            receiver_id: addresses.zcash.zcashConnector,
+            amount: totalAmount.toString(),
+            msg: JSON.stringify(msg),
+          },
+          GAS.INIT_BTC_TRANSFER,
+          BigInt(1),
+        ),
+      ],
+      waitUntil: "FINAL",
+    })
+
+    const zcashPendingTxLog = tx.receipts_outcome
+      .flatMap((receipt) => receipt.outcome.logs)
+      .find((log) => log.includes("generate_btc_pending_info"))
+
+    if (!zcashPendingTxLog) {
+      throw new Error("Zcash: Pending transaction not found in NEAR logs")
+    }
+
+    const zcashPendingTxData = JSON.parse(zcashPendingTxLog.split("EVENT_JSON:")[1])
+    return zcashPendingTxData.data[0].btc_pending_id
+  }
+
   /**
    * Sign Bitcoin transaction (NEAR -> BTC flow middle)
    * Mirrors near_sign_btc_transaction() from Rust SDK
@@ -802,8 +941,32 @@ export class NearBridgeClient {
         actionCreators.functionCall(
           "sign_btc_transaction",
           {
-            btc_pending_id: btcPendingId,
+            btc_pending_sign_id: btcPendingId,
             sign_index: signIndex,
+          },
+          GAS.SIGN_BTC_TX,
+          DEPOSIT.SIGN_BTC_TX,
+        ),
+      ],
+    })
+
+    return tx.transaction.hash
+  }
+
+  async signZcashTransaction(
+    zcashPendingId: string,
+    signIndex = 0,
+    keyVersion = 0,
+  ): Promise<string> {
+    const tx = await this.wallet.signAndSendTransaction({
+      receiverId: addresses.zcash.zcashConnector,
+      actions: [
+        actionCreators.functionCall(
+          "sign_btc_transaction",
+          {
+            btc_pending_sign_id: zcashPendingId,
+            sign_index: signIndex,
+            key_version: keyVersion,
           },
           GAS.SIGN_BTC_TX,
           DEPOSIT.SIGN_BTC_TX,
@@ -843,6 +1006,33 @@ export class NearBridgeClient {
     return await this.bitcoinService.broadcastTransaction(txHex)
   }
 
+  async finalizeZcashWithdrawal(nearTxHash: string): Promise<string> {
+    const nearTx = await this.wallet.provider.viewTransactionStatus(
+      nearTxHash,
+      this.wallet.accountId,
+      "FINAL",
+    )
+    const signedTxLog = nearTx.receipts_outcome
+      .flatMap((receipt) => receipt.outcome.logs)
+      .find((log) => log.includes("signed_btc_transaction"))
+
+    if (!signedTxLog) {
+      throw new Error("Zcash: Signed transaction not found in NEAR logs")
+    }
+
+    const signedTxData = JSON.parse(signedTxLog.split("EVENT_JSON:")[1])
+    const txBytes = Uint8Array.from(signedTxData.data[0].tx_bytes)
+    console.log(txBytes)
+
+    // Convert Uint8Array to hex string
+    const txHex = Array.from(txBytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
+    console.log(txHex)
+    const decoded = await this.zcashService.decodeTransaction(txHex)
+    console.dir(decoded, { depth: null })
+    // Broadcast to Zcash network
+    return await this.zcashService.broadcastTransaction(txHex)
+  }
+
   /**
    * Wait for Bitcoin transaction signing by monitoring NearBlocks API
    * Based on playground pattern - eliminates manual block explorer queries
@@ -868,7 +1058,8 @@ export class NearBridgeClient {
       } catch (_error) {
         if (attempt === maxAttempts) {
           throw new Error(
-            `Bitcoin: Transaction signing not found after ${maxAttempts} attempts (${(maxAttempts * delayMs) / 1000}s). `,
+            `Bitcoin: Transaction signing not found after ${maxAttempts} attempts (${(maxAttempts * delayMs) / 1000}s). ` +
+              `Pending ID: ${btcPendingId}, Signer: ${signerAccount}`,
           )
         }
         // Wait before next attempt
@@ -940,10 +1131,26 @@ export class NearBridgeClient {
   /**
    * Get available UTXOs from NEAR btc-connector contract
    */
-  public async getAvailableUTXOs(): Promise<UTXO[]> {
+  public async getAvailableBitcoinUTXOs(): Promise<UTXO[]> {
     // Query NEAR btc-connector contract for bridge-controlled UTXOs (not Bitcoin network)
     const result = await this.wallet.provider.callFunction(
       addresses.btc.btcConnector,
+      "get_utxos_paged",
+      {},
+    )
+    const utxos = result as Record<string, UTXO>
+
+    // Extract txid from key (before '@') and return as array
+    return Object.entries(utxos).map(([key, utxo]) => ({
+      ...utxo,
+      txid: key.split("@")[0],
+    }))
+  }
+
+  public async getAvailableZcashUTXOs(): Promise<UTXO[]> {
+    // Query NEAR zcash-connector contract for bridge-controlled UTXOs (not Zcash network)
+    const result = await this.wallet.provider.callFunction(
+      addresses.zcash.zcashConnector,
       "get_utxos_paged",
       {},
     )
@@ -962,6 +1169,16 @@ export class NearBridgeClient {
   public async getBitcoinBridgeConfig(): Promise<BtcConnectorConfig> {
     const config = (await this.wallet.provider.callFunction(
       addresses.btc.btcConnector,
+      "get_config",
+      {},
+    )) as BtcConnectorConfig
+    return config
+  }
+
+  public async getZcashBridgeConfig(): Promise<BtcConnectorConfig> {
+    console.log("Zcash Connector", addresses.zcash.zcashConnector)
+    const config = (await this.wallet.provider.callFunction(
+      addresses.zcash.zcashConnector,
       "get_config",
       {},
     )) as BtcConnectorConfig
