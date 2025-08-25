@@ -191,7 +191,7 @@ async function testBridge() {
 ## API Reference
 
 ### Deposit Methods
-- `getBitcoinDepositAddress(recipient)` → `{ depositAddress, btcDepositArgs }`
+- `getBtcUserDepositAddress(recipient)` → `{ depositAddress, btcDepositArgs }`
 - `finalizeBitcoinDeposit(txHash, vout, args)` → `nearTxHash`
 
 ### Withdrawal Methods  
