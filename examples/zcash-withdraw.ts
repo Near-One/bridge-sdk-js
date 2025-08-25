@@ -3,7 +3,7 @@
 /**
  * Bitcoin Withdrawal Example
  *
- * Simple example showing how to withdraw Bitcoin from NEAR using the Omni Bridge SDK.
+ * Simple example showing how to withdraw Zcash from NEAR using the Omni Bridge SDK.
  *
  * Setup:
  * 1. Replace NEAR_ACCOUNT with your testnet account
