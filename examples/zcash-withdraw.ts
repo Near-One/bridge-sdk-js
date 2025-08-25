@@ -10,7 +10,7 @@
  * 2. Replace BITCOIN_ADDRESS with your Bitcoin testnet address
  * 3. Ensure you have TAZ balance and NEAR credentials in ~/.near-credentials
  *
- * Usage: bun run examples/bitcoin-withdraw.ts
+ * Usage: bun run examples/zcash-withdraw.ts
  */
 
 import os from "node:os"
