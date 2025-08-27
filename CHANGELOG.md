@@ -1,5 +1,26 @@
 # omni-bridge-sdk
 
+## 0.14.0
+
+### Minor Changes
+
+- 55fb5d9: Migrate API client to v2 endpoints with enhanced functionality
+
+  - All endpoints migrated from /api/v1/ to /api/v2/
+  - Add support for transaction hash lookups in getTransfer() and getTransferStatus()
+  - Methods now return arrays to support batch transfers
+  - Add getBtcUserDepositAddress() method for BTC deposit addresses
+  - Add utxo_transfer field to Transfer schema for Bitcoin support
+  - Add Bnb chain support
+  - Enhanced error handling and validation
+
+- bcc53b6: feat: add wormhole post message shim support
+
+### Patch Changes
+
+- da9e097: feat: loosen restrictions on omni token validation
+- a6c1a9c: feat: add isValidOmniAddress validation function
+
 ## 0.13.1
 
 ### Patch Changes
