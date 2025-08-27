@@ -11,6 +11,8 @@ import {
   SYSVAR_CLOCK_PUBKEY,
   SYSVAR_RENT_PUBKEY,
   SystemProgram,
+  Transaction,
+  type TransactionInstruction,
 } from "@solana/web3.js"
 import { BN } from "bn.js"
 import { addresses } from "../config.js"
@@ -27,13 +29,25 @@ import type { BridgeTokenFactory } from "../types/solana/bridge_token_factory.js
 import BRIDGE_TOKEN_FACTORY_IDL from "../types/solana/bridge_token_factory.json" with {
   type: "json",
 }
+import type { BridgeTokenFactory as BridgeTokenFactoryShim } from "../types/solana/bridge_token_factory_shim.js"
+import BRIDGE_TOKEN_FACTORY_SHIM_IDL from "../types/solana/bridge_token_factory_shim.json" with {
+  type: "json",
+}
 import { getChain } from "../utils/index.js"
 
 const MPL_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
 
+// Version detection constants
+const GET_VERSION_DISCRIMINATOR = new Uint8Array([168, 85, 244, 45, 81, 56, 130, 50])
+const OLD_WORMHOLE_VERSION = "0.2.4"
+
 export class SolanaBridgeClient {
   private readonly wormholeProgramId: PublicKey
+  private readonly shimProgramId: PublicKey
+  private readonly eventAuthorityId: PublicKey
   private readonly program: Program<BridgeTokenFactory>
+  private readonly shimProgram: Program<BridgeTokenFactoryShim>
+  private cachedVersion: string | null = null
 
   private static getConstant(name: string) {
     const value = (BRIDGE_TOKEN_FACTORY_IDL as BridgeTokenFactory).constants.find(
@@ -56,12 +70,22 @@ export class SolanaBridgeClient {
   constructor(
     provider: Provider,
     wormholeProgramId: PublicKey = new PublicKey(addresses.sol.wormhole),
+    shimProgramId: PublicKey = new PublicKey(addresses.sol.shimProgram),
+    eventAuthorityId: PublicKey = new PublicKey(addresses.sol.eventAuthority),
   ) {
     this.wormholeProgramId = wormholeProgramId
+    this.shimProgramId = shimProgramId
+    this.eventAuthorityId = eventAuthorityId
     const bridgeTokenFactory = BRIDGE_TOKEN_FACTORY_IDL as BridgeTokenFactory
     // @ts-ignore We have to override the address for Mainnet/Testnet
     bridgeTokenFactory.address = addresses.sol.locker
     this.program = new Program(bridgeTokenFactory, provider)
+
+    // Initialize shim program
+    const bridgeTokenFactoryShim = BRIDGE_TOKEN_FACTORY_SHIM_IDL as BridgeTokenFactoryShim
+    // @ts-ignore We have to override the address for Mainnet/Testnet
+    bridgeTokenFactoryShim.address = addresses.sol.locker
+    this.shimProgram = new Program(bridgeTokenFactoryShim, provider)
   }
 
   private config(): [PublicKey, number] {
@@ -120,6 +144,312 @@ export class SolanaBridgeClient {
     )
   }
 
+  private shimMessageId(): [PublicKey, number] {
+    return PublicKey.findProgramAddressSync([this.config()[0].toBuffer()], this.shimProgramId)
+  }
+
+  /**
+   * Gets the version of the Solana bridge program
+   * @returns Promise resolving to program version string
+   */
+  async getVersion(): Promise<string> {
+    if (this.cachedVersion) {
+      return this.cachedVersion
+    }
+
+    try {
+      const instruction: TransactionInstruction = {
+        keys: [],
+        programId: this.program.programId,
+        data: Buffer.from(GET_VERSION_DISCRIMINATOR),
+      }
+
+      const transaction = new Transaction().add(instruction)
+      const { blockhash } = await this.program.provider.connection.getLatestBlockhash()
+      transaction.recentBlockhash = blockhash
+      transaction.feePayer = this.program.provider.publicKey
+
+      const simulation = await this.program.provider.connection.simulateTransaction(
+        transaction,
+        undefined,
+        false,
+      )
+
+      if (simulation.value.err) {
+        throw new Error(`Simulation failed: ${JSON.stringify(simulation.value.err)}`)
+      }
+
+      const returnData = simulation.value.returnData
+      if (!returnData) {
+        throw new Error("No return data from get_version")
+      }
+
+      const rawData = Buffer.from(returnData.data[0], "base64")
+      if (rawData.length < 4) {
+        throw new Error("Return data too short")
+      }
+
+      const length = rawData.readUInt32LE(0)
+      if (rawData.length < 4 + length) {
+        throw new Error("Return data length mismatch")
+      }
+
+      const version = rawData.subarray(4, 4 + length).toString("utf-8")
+      this.cachedVersion = version
+      return version
+    } catch (_error) {
+      // If get_version fails, assume it's an old program version
+      this.cachedVersion = OLD_WORMHOLE_VERSION
+      return OLD_WORMHOLE_VERSION
+    }
+  }
+
+  /**
+   * Detects if the bridge program supports the wormhole shim
+   * @returns Promise<boolean> true if shim is supported
+   */
+  private async supportsWormholeShim(): Promise<boolean> {
+    const version = await this.getVersion()
+    return version !== OLD_WORMHOLE_VERSION
+  }
+
+  /**
+   * Determines wormhole message configuration based on program version
+   * @returns Promise with message account and signers array
+   */
+  private async getWormholeMessageConfig(): Promise<{
+    messageAccount: PublicKey
+    additionalSigners: Keypair[]
+  }> {
+    const supportsShim = await this.supportsWormholeShim()
+
+    if (supportsShim) {
+      // New version: use PDA-derived message, no additional signers
+      return {
+        messageAccount: this.shimMessageId()[0],
+        additionalSigners: [],
+      }
+    }
+    // Old version: use generated keypair as message and signer
+    const wormholeMessage = Keypair.generate()
+    return {
+      messageAccount: wormholeMessage.publicKey,
+      additionalSigners: [wormholeMessage],
+    }
+  }
+
+  /**
+   * Logs metadata for a token using the wormhole shim
+   * @param token - The token's public key
+   * @param payer - Optional payer keypair
+   * @returns Promise resolving to transaction signature
+   */
+  async logMetadataWithShim(token: OmniAddress, payer?: Keypair): Promise<string> {
+    const tokenPublicKey = new PublicKey(token.split(":")[1])
+    const tokenProgram = await this.getTokenProgramForMint(tokenPublicKey)
+
+    const [metadata] = PublicKey.findProgramAddressSync(
+      [Buffer.from("metadata", "utf-8"), MPL_PROGRAM_ID.toBuffer(), tokenPublicKey.toBuffer()],
+      MPL_PROGRAM_ID,
+    )
+    const [vault] = this.vaultId(tokenPublicKey)
+
+    try {
+      const tx = await this.shimProgram.methods
+        .logMetadata()
+        .accountsStrict({
+          authority: this.authority()[0],
+          mint: tokenPublicKey,
+          metadata,
+          vault,
+          common: {
+            payer: payer?.publicKey || this.shimProgram.provider.publicKey,
+            config: this.config()[0],
+            bridge: this.wormholeBridgeId()[0],
+            feeCollector: this.wormholeFeeCollectorId()[0],
+            sequence: this.wormholeSequenceId()[0],
+            clock: SYSVAR_CLOCK_PUBKEY,
+            rent: SYSVAR_RENT_PUBKEY,
+            systemProgram: SystemProgram.programId,
+            wormholeProgram: this.wormholeProgramId,
+            message: this.shimMessageId()[0],
+            wormholePostMessageShim: this.shimProgramId,
+            wormholePostMessageShimEa: this.eventAuthorityId,
+          },
+          systemProgram: SystemProgram.programId,
+          tokenProgram: tokenProgram,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        })
+        .signers(payer instanceof Keypair ? [payer] : [])
+        .rpc()
+
+      return tx
+    } catch (e) {
+      throw new Error(`Failed to log metadata with shim: ${e}`)
+    }
+  }
+
+  /**
+   * Deploys a new wrapped token using the wormhole shim
+   * @param signature - MPC signature authorizing the deployment
+   * @param tokenMetadata - Token metadata
+   * @param payer - Optional payer public key
+   * @returns Promise resolving to transaction hash and token address
+   */
+  async deployTokenWithShim(
+    signature: MPCSignature,
+    payload: TokenMetadata,
+    payer?: Keypair,
+  ): Promise<{ txHash: string; tokenAddress: string }> {
+    const [mint] = this.wrappedMintId(payload.token)
+    const [metadata] = PublicKey.findProgramAddressSync(
+      [Buffer.from("metadata", "utf-8"), MPL_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+      MPL_PROGRAM_ID,
+    )
+
+    try {
+      const tx = await this.shimProgram.methods
+        .deployToken({
+          payload,
+          signature: [...signature.toBytes()],
+        })
+        .accountsStrict({
+          authority: this.authority()[0],
+          common: {
+            payer: payer?.publicKey || this.shimProgram.provider.publicKey,
+            config: this.config()[0],
+            bridge: this.wormholeBridgeId()[0],
+            feeCollector: this.wormholeFeeCollectorId()[0],
+            sequence: this.wormholeSequenceId()[0],
+            clock: SYSVAR_CLOCK_PUBKEY,
+            rent: SYSVAR_RENT_PUBKEY,
+            systemProgram: SystemProgram.programId,
+            wormholeProgram: this.wormholeProgramId,
+            message: this.shimMessageId()[0],
+            wormholePostMessageShim: this.shimProgramId,
+            wormholePostMessageShimEa: this.eventAuthorityId,
+          },
+          metadata,
+          systemProgram: SystemProgram.programId,
+          mint,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          tokenMetadataProgram: MPL_PROGRAM_ID,
+        })
+        .signers(payer instanceof Keypair ? [payer] : [])
+        .rpc()
+
+      return {
+        txHash: tx,
+        tokenAddress: mint.toString(),
+      }
+    } catch (e) {
+      throw new Error(`Failed to deploy token with shim: ${e}`)
+    }
+  }
+
+  /**
+   * Transfers SPL tokens to the bridge contract using the wormhole shim
+   * @param transfer - Transfer message details
+   * @param payer - Optional payer keypair
+   * @returns Promise resolving to transaction hash
+   */
+  async initTransferWithShim(transfer: OmniTransferMessage, payer?: Keypair): Promise<string> {
+    if (getChain(transfer.tokenAddress) !== ChainKind.Sol) {
+      throw new Error("Token address must be on Solana")
+    }
+
+    const payerPubKey = payer?.publicKey || this.program.provider.publicKey
+    if (!payerPubKey) {
+      throw new Error("Payer is not configured")
+    }
+    const [solVault] = this.solVaultId()
+
+    if (transfer.tokenAddress === `sol:${PublicKey.default.toBase58()}`) {
+      // SOL transfers
+      const method = this.shimProgram.methods
+        .initTransferSol({
+          amount: new BN(transfer.amount.valueOf().toString()),
+          recipient: transfer.recipient,
+          fee: new BN(transfer.fee.valueOf().toString()),
+          nativeFee: new BN(transfer.nativeFee.valueOf().toString()),
+          message: transfer.message || "",
+        })
+        .accountsStrict({
+          solVault,
+          user: payerPubKey,
+          common: {
+            payer: payerPubKey,
+            config: this.config()[0],
+            bridge: this.wormholeBridgeId()[0],
+            feeCollector: this.wormholeFeeCollectorId()[0],
+            sequence: this.wormholeSequenceId()[0],
+            clock: SYSVAR_CLOCK_PUBKEY,
+            rent: SYSVAR_RENT_PUBKEY,
+            systemProgram: SystemProgram.programId,
+            wormholeProgram: this.wormholeProgramId,
+            message: this.shimMessageId()[0],
+            wormholePostMessageShim: this.shimProgramId,
+            wormholePostMessageShimEa: this.eventAuthorityId,
+          },
+        })
+
+      try {
+        const tx = await method.signers(payer instanceof Keypair ? [payer] : []).rpc()
+        return tx
+      } catch (e) {
+        throw new Error(`Failed to init SOL transfer with shim: ${e}`)
+      }
+    } else {
+      // SPL token transfers
+      const mint = new PublicKey(transfer.tokenAddress.split(":")[1])
+      const tokenProgram = await this.getTokenProgramForMint(mint)
+      const [from] = PublicKey.findProgramAddressSync(
+        [payerPubKey.toBuffer(), tokenProgram.toBuffer(), mint.toBuffer()],
+        ASSOCIATED_TOKEN_PROGRAM_ID,
+      )
+      const vault = (await this.isBridgedToken(mint)) ? null : this.vaultId(mint)[0]
+
+      const method = this.shimProgram.methods
+        .initTransfer({
+          amount: new BN(transfer.amount.valueOf().toString()),
+          recipient: transfer.recipient,
+          fee: new BN(transfer.fee.valueOf().toString()),
+          nativeFee: new BN(transfer.nativeFee.valueOf().toString()),
+          message: transfer.message || "",
+        })
+        .accountsStrict({
+          authority: this.authority()[0],
+          mint,
+          from,
+          vault,
+          solVault,
+          user: payerPubKey,
+          common: {
+            payer: payerPubKey,
+            config: this.config()[0],
+            bridge: this.wormholeBridgeId()[0],
+            feeCollector: this.wormholeFeeCollectorId()[0],
+            sequence: this.wormholeSequenceId()[0],
+            clock: SYSVAR_CLOCK_PUBKEY,
+            rent: SYSVAR_RENT_PUBKEY,
+            systemProgram: SystemProgram.programId,
+            wormholeProgram: this.wormholeProgramId,
+            message: this.shimMessageId()[0],
+            wormholePostMessageShim: this.shimProgramId,
+            wormholePostMessageShimEa: this.eventAuthorityId,
+          },
+          tokenProgram: tokenProgram,
+        })
+
+      try {
+        const tx = await method.signers(payer instanceof Keypair ? [payer] : []).rpc()
+        return tx
+      } catch (e) {
+        throw new Error(`Failed to init token transfer with shim: ${e}`)
+      }
+    }
+  }
+
   /**
    * Logs metadata for a token
    * @param token - The token's public key
@@ -127,6 +457,22 @@ export class SolanaBridgeClient {
    * @returns Promise resolving to transaction signature
    */
   async logMetadata(token: OmniAddress, payer?: Keypair): Promise<string> {
+    const supportsShim = await this.supportsWormholeShim()
+
+    if (supportsShim) {
+      return this.logMetadataWithShim(token, payer)
+    }
+
+    return this.logMetadataLegacy(token, payer)
+  }
+
+  /**
+   * Logs metadata for a token using legacy approach
+   * @param token - The token's public key
+   * @param payer - Optional payer keypair
+   * @returns Promise resolving to transaction signature
+   */
+  private async logMetadataLegacy(token: OmniAddress, payer?: Keypair): Promise<string> {
     const tokenPublicKey = new PublicKey(token.split(":")[1])
     const tokenProgram = await this.getTokenProgramForMint(tokenPublicKey)
 
@@ -178,6 +524,27 @@ export class SolanaBridgeClient {
    * @returns Promise resolving to transaction hash and token address
    */
   async deployToken(
+    signature: MPCSignature,
+    payload: TokenMetadata,
+    payer?: Keypair,
+  ): Promise<{ txHash: string; tokenAddress: string }> {
+    const supportsShim = await this.supportsWormholeShim()
+
+    if (supportsShim) {
+      return this.deployTokenWithShim(signature, payload, payer)
+    }
+
+    return this.deployTokenLegacy(signature, payload, payer)
+  }
+
+  /**
+   * Deploys a new wrapped token using legacy approach
+   * @param signature - MPC signature authorizing the deployment
+   * @param tokenMetadata - Token metadata
+   * @param payer - Optional payer public key
+   * @returns Promise resolving to transaction hash and token address
+   */
+  private async deployTokenLegacy(
     signature: MPCSignature,
     payload: TokenMetadata,
     payer?: Keypair,
@@ -239,6 +606,25 @@ export class SolanaBridgeClient {
    * @returns Promise resolving to transaction hash
    */
   async initTransfer(transfer: OmniTransferMessage, payer?: Keypair): Promise<string> {
+    const supportsShim = await this.supportsWormholeShim()
+
+    if (supportsShim) {
+      return this.initTransferWithShim(transfer, payer)
+    }
+
+    return this.initTransferLegacy(transfer, payer)
+  }
+
+  /**
+   * Transfers SPL tokens to the bridge contract using legacy approach
+   * @param transfer - Transfer message details
+   * @param payer - Optional payer keypair
+   * @returns Promise resolving to transaction hash
+   */
+  private async initTransferLegacy(
+    transfer: OmniTransferMessage,
+    payer?: Keypair,
+  ): Promise<string> {
     if (getChain(transfer.tokenAddress) !== ChainKind.Sol) {
       throw new Error("Token address must be on Solana")
     }
