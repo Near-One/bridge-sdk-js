@@ -127,7 +127,8 @@ const TransferSchema = z.object({
       origin_chain: ChainSchema,
       origin_nonce: z.number().int().min(0),
     })
-    .optional(),
+    .optional()
+    .nullable(),
   initialized: z.union([z.null(), TransactionSchema]),
   signed: z.union([z.null(), TransactionSchema]),
   fast_finalised_on_near: z.union([z.null(), TransactionSchema]),
