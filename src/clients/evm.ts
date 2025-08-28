@@ -287,7 +287,6 @@ export class EvmBridgeClient {
       recipient: transferMessage.recipient.split(":")[1],
       feeRecipient: transferMessage.fee_recipient ?? "",
     }
-    console.log("Bridge Deposit", bridgeDeposit)
 
     try {
       const tx = await this.factory.finTransfer(signature.toBytes(true), bridgeDeposit)
