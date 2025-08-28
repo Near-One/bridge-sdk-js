@@ -451,18 +451,14 @@ export class NearBridgeClient {
       throw new Error("Must provide either VAA or EVM proof")
     }
     if (evmProof) {
-      if (
-        sourceChain !== ChainKind.Eth &&
-        sourceChain !== ChainKind.Arb &&
-        sourceChain !== ChainKind.Base
-      ) {
-        throw new Error("EVM proof is only valid for Ethereum, Arbitrum, or Base")
+      if (sourceChain !== ChainKind.Eth) {
+        throw new Error("EVM proof is only valid for Ethereum")
       }
     }
     let proverArgsSerialized: Uint8Array = new Uint8Array(0)
     if (vaa) {
       const proverArgs: WormholeVerifyProofArgs = {
-        proof_kind: evmProof?.proof_kind ?? proofKind,
+        proof_kind: proofKind,
         vaa: vaa,
       }
       proverArgsSerialized = WormholeVerifyProofArgsSchema.serialize(proverArgs)
