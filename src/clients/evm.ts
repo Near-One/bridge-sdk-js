@@ -167,8 +167,7 @@ export class EvmBridgeClient {
    */
   async approveTokenMax(tokenAddress: string): Promise<string> {
     // Use the maximum uint256 value for permanent approval
-    const MAX_UINT256 = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
-    return this.approveToken(tokenAddress, MAX_UINT256)
+    return this.approveToken(tokenAddress, ethers.MaxUint256)
   }
 
   /**
@@ -180,7 +179,7 @@ export class EvmBridgeClient {
   async checkAllowance(tokenAddress: string, owner: string): Promise<bigint> {
     if (this.isNativeToken(omniAddress(this.chain, tokenAddress))) {
       // Native tokens don't need allowance
-      return BigInt(Number.MAX_SAFE_INTEGER)
+      return ethers.MaxUint256
     }
 
     const erc20Abi = [
