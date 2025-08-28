@@ -577,7 +577,7 @@ export class NearWalletSelectorBridgeClient {
     let proverArgsSerialized: Uint8Array = new Uint8Array(0)
     if (vaa) {
       const proverArgs: WormholeVerifyProofArgs = {
-        proof_kind: evmProof?.proof_kind ?? proofKind,
+        proof_kind: proofKind,
         vaa: vaa,
       }
       proverArgsSerialized = WormholeVerifyProofArgsSchema.serialize(proverArgs)
