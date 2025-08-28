@@ -815,15 +815,6 @@ export class SolanaBridgeClient {
       })
       .signers(payer instanceof Keypair ? [wormholeMessage, payer] : [wormholeMessage])
 
-    const ix = await tx.instruction()
-    console.log(
-      ix.keys.map((k) => ({
-        pubkey: k.pubkey.toBase58(),
-        isWritable: k.isWritable,
-        isSigner: k.isSigner,
-      })),
-    )
-
     return tx.rpc()
   }
 
