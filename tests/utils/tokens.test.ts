@@ -115,6 +115,7 @@ describe("Token Resolution", () => {
       expect(parseOriginChain("sol.omdep.near")).toBe(ChainKind.Sol)
       expect(parseOriginChain("base.omdep.near")).toBe(ChainKind.Base)
       expect(parseOriginChain("arb.omdep.near")).toBe(ChainKind.Arb)
+      expect(parseOriginChain("bnb.omdep.near")).toBe(ChainKind.Bnb)
     })
 
     it("returns correct chain for testnet exact matches", () => {
@@ -123,6 +124,7 @@ describe("Token Resolution", () => {
       expect(parseOriginChain("sol.omnidep.testnet")).toBe(ChainKind.Sol)
       expect(parseOriginChain("base.omnidep.testnet")).toBe(ChainKind.Base)
       expect(parseOriginChain("arb.omnidep.testnet")).toBe(ChainKind.Arb)
+      expect(parseOriginChain("bnb.omnidep.testnet")).toBe(ChainKind.Bnb)
     })
 
     it("returns correct chain for prefixed omdep.near tokens", () => {
@@ -131,6 +133,7 @@ describe("Token Resolution", () => {
       )
       expect(parseOriginChain("base-0x123456789abcdef.omdep.near")).toBe(ChainKind.Base)
       expect(parseOriginChain("arb-0xabcdef123456789.omdep.near")).toBe(ChainKind.Arb)
+      expect(parseOriginChain("bnb-0x123456789abcdef.omdep.near")).toBe(ChainKind.Bnb)
     })
 
     it("returns correct chain for prefixed omnidep.testnet tokens", () => {
@@ -143,6 +146,9 @@ describe("Token Resolution", () => {
       expect(
         parseOriginChain("arb-0x02eea354d135d1a912967c2d2a6147deb01ef92e.omnidep.testnet"),
       ).toBe(ChainKind.Arb)
+      expect(
+        parseOriginChain("bnb-0x123456789abcdef123456789abcdef1234567890.omnidep.testnet"),
+      ).toBe(ChainKind.Bnb)
     })
 
     it("returns Eth chain for factory.bridge patterns", () => {
@@ -166,6 +172,7 @@ describe("Token Resolution", () => {
       expect(parseOriginChain("sol-.omdep.near")).toBe(ChainKind.Sol)
       expect(parseOriginChain("base-.omnidep.testnet")).toBe(ChainKind.Base)
       expect(parseOriginChain("arb-.factory.bridge.near")).toBe(ChainKind.Arb)
+      expect(parseOriginChain("bnb-.omdep.near")).toBe(ChainKind.Bnb)
     })
   })
 })

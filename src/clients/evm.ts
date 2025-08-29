@@ -30,11 +30,13 @@ const GAS_LIMIT = {
     [ChainKind.Eth]: 500000,
     [ChainKind.Base]: 500000,
     [ChainKind.Arb]: 3000000, // Arbitrum typically needs higher gas limits
+    [ChainKind.Bnb]: 500000,
   },
   LOG_METADATA: {
     [ChainKind.Eth]: 100000,
     [ChainKind.Base]: 100000,
     [ChainKind.Arb]: 600000,
+    [ChainKind.Bnb]: 100000,
   },
 } as const
 
@@ -65,6 +67,9 @@ export class EvmBridgeClient {
         break
       case ChainKind.Arb:
         bridgeAddress = addresses.arb
+        break
+      case ChainKind.Bnb:
+        bridgeAddress = addresses.bnb
         break
       default:
         throw new Error(`Factory address not configured for chain ${chain}`)
