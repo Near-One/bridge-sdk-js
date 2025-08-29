@@ -1,5 +1,27 @@
 # omni-bridge-sdk
 
+## 0.15.0
+
+### Minor Changes
+
+- 756e513: Add BNB Chain support as EVM-compatible blockchain
+
+  - Add ChainKind.Bnb enum value and BNB chain configuration
+  - Support bnb: OmniAddress format with mainnet/testnet contract addresses
+  - Enable BNB transfers through existing EvmBridgeClient with proper gas limits
+  - Add BNB token pattern recognition for NEAR bridge tokens
+  - Include comprehensive test coverage for BNB chain utilities and types
+
+- b5bddb6: Add comprehensive E2E test infrastructure with manual cross-chain transfer flows
+
+  - Add end-to-end test suite covering ETH↔NEAR, SOL↔NEAR transfers
+  - Implement manual transfer flow: initiate → sign → finalize
+  - Add automatic ERC20 token approval to EvmBridgeClient
+  - Add separate CI workflow for E2E tests with configurable full/quick modes
+  - Support both proof generation tests (~2min) and full light client tests (~30min)
+  - Add test fixtures, assertions, and shared setup utilities
+  - Include failure scenario testing (SOL→NEAR refund panic)
+
 ## 0.14.0
 
 ### Minor Changes
