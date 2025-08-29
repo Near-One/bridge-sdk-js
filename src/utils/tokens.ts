@@ -8,11 +8,13 @@ const CHAIN_PATTERNS: Record<string, ChainKind> = {
   "sol.omdep.near": ChainKind.Sol,
   "base.omdep.near": ChainKind.Base,
   "arb.omdep.near": ChainKind.Arb,
+  "bnb.omdep.near": ChainKind.Bnb,
   "nbtc-dev.testnet": ChainKind.Btc,
   "eth.sepolia.testnet": ChainKind.Eth,
   "sol.omnidep.testnet": ChainKind.Sol,
   "base.omnidep.testnet": ChainKind.Base,
   "arb.omnidep.testnet": ChainKind.Arb,
+  "bnb.omnidep.testnet": ChainKind.Bnb,
 }
 
 /**
@@ -47,6 +49,7 @@ export function parseOriginChain(nearAddress: string): ChainKind | null {
     if (nearAddress.startsWith("sol-")) return ChainKind.Sol
     if (nearAddress.startsWith("base-")) return ChainKind.Base
     if (nearAddress.startsWith("arb-")) return ChainKind.Arb
+    if (nearAddress.startsWith("bnb-")) return ChainKind.Bnb
     if (nearAddress.includes("factory.bridge")) return ChainKind.Eth
   }
 

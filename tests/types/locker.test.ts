@@ -106,6 +106,7 @@ describe("Chain Kind Types", () => {
         ChainKind.Sol,
         ChainKind.Arb,
         ChainKind.Base,
+        ChainKind.Bnb,
       ]
 
       for (const chainKind of chainKinds) {

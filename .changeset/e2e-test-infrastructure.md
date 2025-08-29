@@ -1,5 +1,5 @@
 ---
-"@near-js/bridge-sdk": minor
+"omni-bridge-sdk": minor
 ---
 
 Add comprehensive E2E test infrastructure with manual cross-chain transfer flows

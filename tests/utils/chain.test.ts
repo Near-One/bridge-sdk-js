@@ -10,6 +10,7 @@ describe("Omni Address Utils", () => {
       expect(omniAddress(ChainKind.Sol, "solana123")).toBe("sol:solana123")
       expect(omniAddress(ChainKind.Arb, "0xarb456")).toBe("arb:0xarb456")
       expect(omniAddress(ChainKind.Base, "0xbase789")).toBe("base:0xbase789")
+      expect(omniAddress(ChainKind.Bnb, "0xbnb123")).toBe("bnb:0xbnb123")
     })
 
     it("should work with empty addresses", () => {
@@ -34,9 +35,17 @@ describe("Omni Address Utils", () => {
         "sol:solana123",
         "arb:0xarb456",
         "base:0xbase789",
+        "bnb:0xbnb123",
       ]
 
-      const expected = [ChainKind.Eth, ChainKind.Near, ChainKind.Sol, ChainKind.Arb, ChainKind.Base]
+      const expected = [
+        ChainKind.Eth,
+        ChainKind.Near,
+        ChainKind.Sol,
+        ChainKind.Arb,
+        ChainKind.Base,
+        ChainKind.Bnb,
+      ]
 
       addresses.forEach((addr, i) => {
         expect(getChain(addr)).toBe(expected[i])
@@ -52,9 +61,10 @@ describe("Omni Address Utils", () => {
         "sol:solana123",
         "arb:0xarb456",
         "base:0xbase789",
+        "bnb:0xbnb123",
       ]
 
-      expect(validAddresses.length).toBe(5) // Just to use the array
+      expect(validAddresses.length).toBe(6) // Just to use the array
     })
 
     it("should allow construction via omniAddress helper", () => {
@@ -88,6 +98,7 @@ describe("Omni Address Utils", () => {
       expect(isEvmChain(ChainKind.Eth)).toBe(true)
       expect(isEvmChain(ChainKind.Arb)).toBe(true)
       expect(isEvmChain(ChainKind.Base)).toBe(true)
+      expect(isEvmChain(ChainKind.Bnb)).toBe(true)
     })
 
     it("should return false for non-EVM chains", () => {
@@ -99,7 +110,7 @@ describe("Omni Address Utils", () => {
       const chain = ChainKind.Eth
       if (isEvmChain(chain)) {
         // TypeScript should infer that chain is EVMChainKind here
-        expect([ChainKind.Eth, ChainKind.Arb, ChainKind.Base]).toContain(chain)
+        expect([ChainKind.Eth, ChainKind.Arb, ChainKind.Base, ChainKind.Bnb]).toContain(chain)
       }
     })
   })
