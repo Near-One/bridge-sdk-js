@@ -250,12 +250,8 @@ export class NearWalletSelectorBridgeClient {
     }
 
     if (evmProof) {
-      if (
-        sourceChain !== ChainKind.Eth &&
-        sourceChain !== ChainKind.Arb &&
-        sourceChain !== ChainKind.Base
-      ) {
-        throw new Error("EVM proof is only valid for Ethereum, Arbitrum, or Base")
+      if (sourceChain !== ChainKind.Eth) {
+        throw new Error("EVM proof is only valid for Ethereum")
       }
     }
 
@@ -573,12 +569,8 @@ export class NearWalletSelectorBridgeClient {
       throw new Error("Must provide either VAA or EVM proof")
     }
     if (evmProof) {
-      if (
-        sourceChain !== ChainKind.Eth &&
-        sourceChain !== ChainKind.Arb &&
-        sourceChain !== ChainKind.Base
-      ) {
-        throw new Error("EVM proof is only valid for Ethereum, Arbitrum, or Base")
+      if (sourceChain !== ChainKind.Eth) {
+        throw new Error("EVM proof is only valid for Ethereum")
       }
     }
     let proverArgsSerialized: Uint8Array = new Uint8Array(0)

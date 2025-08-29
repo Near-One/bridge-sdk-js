@@ -229,12 +229,8 @@ export class NearBridgeClient {
     }
 
     if (evmProof) {
-      if (
-        sourceChain !== ChainKind.Eth &&
-        sourceChain !== ChainKind.Arb &&
-        sourceChain !== ChainKind.Base
-      ) {
-        throw new Error("EVM proof is only valid for Ethereum, Arbitrum, or Base")
+      if (sourceChain !== ChainKind.Eth) {
+        throw new Error("EVM proof is only valid for Ethereum")
       }
     }
 

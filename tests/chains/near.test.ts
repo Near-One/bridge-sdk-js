@@ -499,7 +499,7 @@ describe("NearBridgeClient", () => {
           undefined,
           mockEvmProof,
         ),
-      ).rejects.toThrow("EVM proof is only valid for Ethereum, Arbitrum, or Base")
+      ).rejects.toThrow("EVM proof is only valid for Ethereum")
     })
 
     it("should call finalize_transfer with VAA correctly", async () => {
