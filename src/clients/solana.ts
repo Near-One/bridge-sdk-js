@@ -670,7 +670,9 @@ export class SolanaBridgeClient {
         [payerPubKey.toBuffer(), tokenProgram.toBuffer(), mint.toBuffer()],
         ASSOCIATED_TOKEN_PROGRAM_ID,
       )
-      const vault = (await this.isBridgedToken(mint)) ? null : this.vaultId(mint)[0]
+      const vault = (await this.isBridgedToken(mint))
+        ? this.program.programId
+        : this.vaultId(mint)[0]
 
       method = this.program.methods
         .initTransfer({
@@ -734,32 +736,35 @@ export class SolanaBridgeClient {
   async finalizeTransfer(
     transferMessage: TransferMessagePayload,
     signature: MPCSignature,
+    payer?: Keypair,
   ): Promise<string> {
     // Convert the payload into the expected format
+    const originChain: number = Number(
+      ChainKind[transferMessage.transfer_id.origin_chain.toString() as keyof typeof ChainKind],
+    )
+    const payerPk = payer?.publicKey ?? this.program.provider.publicKey
+
     const payload: DepositPayload = {
-      destination_nonce: BigInt(transferMessage.destination_nonce),
-      transfer_id: {
-        origin_chain: transferMessage.transfer_id.origin_chain,
-        origin_nonce: transferMessage.transfer_id.origin_nonce,
+      destinationNonce: new BN(transferMessage.destination_nonce),
+      transferId: {
+        originChain,
+        originNonce: new BN(transferMessage.transfer_id.origin_nonce),
       },
-      token: this.extractSolanaAddress(transferMessage.token_address),
-      amount: BigInt(transferMessage.amount),
-      recipient: this.extractSolanaAddress(transferMessage.recipient),
-      fee_recipient: transferMessage.fee_recipient ?? "",
+      amount: new BN(transferMessage.amount),
+      feeRecipient: transferMessage.fee_recipient ?? "",
     }
 
     const wormholeMessage = Keypair.generate()
-    const recipientPubkey = new PublicKey(payload.recipient)
-    const tokenPubkey = new PublicKey(payload.token)
+    const recipientPubkey = new PublicKey(this.extractSolanaAddress(transferMessage.recipient))
+    const tokenPubkey = new PublicKey(this.extractSolanaAddress(transferMessage.token_address))
 
     // Calculate all the required PDAs
     const [config] = this.config()
     const [authority] = this.authority()
-    // Removed unused solVault declaration
 
     // Calculate nonce account
     const USED_NONCES_PER_ACCOUNT = 1024
-    const nonceGroup = payload.destination_nonce / BigInt(USED_NONCES_PER_ACCOUNT)
+    const nonceGroup = payload.destinationNonce.div(new BN(USED_NONCES_PER_ACCOUNT))
     const [usedNonces] = PublicKey.findProgramAddressSync(
       [
         Buffer.from("used_nonces", "utf-8"),
@@ -776,52 +781,41 @@ export class SolanaBridgeClient {
     )
 
     // Calculate vault if needed
-    const vault = (await this.isBridgedToken(tokenPubkey)) ? null : this.vaultId(tokenPubkey)[0]
+    const vault = (await this.isBridgedToken(tokenPubkey))
+      ? this.program.programId
+      : this.vaultId(tokenPubkey)[0]
 
-    try {
-      const tx = await this.program.methods
-        .finalizeTransfer({
-          payload: {
-            destinationNonce: new BN(payload.destination_nonce.toString()),
-            transferId: {
-              originChain: payload.transfer_id.origin_chain,
-              originNonce: new BN(payload.transfer_id.origin_nonce.toString()),
-            },
-            amount: new BN(payload.amount.toString()),
-            feeRecipient: payload.fee_recipient,
-          },
-          signature: [...signature.toBytes()],
-        })
-        .accountsStrict({
-          usedNonces,
-          authority,
-          recipient: recipientPubkey,
-          mint: tokenPubkey,
-          vault,
-          tokenAccount: recipientATA,
-          common: {
-            payer: this.program.provider.publicKey,
-            config,
-            bridge: this.wormholeBridgeId()[0],
-            feeCollector: this.wormholeFeeCollectorId()[0],
-            sequence: this.wormholeSequenceId()[0],
-            clock: SYSVAR_CLOCK_PUBKEY,
-            rent: SYSVAR_RENT_PUBKEY,
-            systemProgram: SystemProgram.programId,
-            wormholeProgram: this.wormholeProgramId,
-            message: wormholeMessage.publicKey,
-          },
+    const tx = await this.program.methods
+      .finalizeTransfer({
+        payload: payload,
+        signature: [...signature.toBytes()],
+      })
+      .accountsStrict({
+        usedNonces,
+        authority,
+        recipient: recipientPubkey,
+        mint: tokenPubkey,
+        vault,
+        tokenAccount: recipientATA,
+        common: {
+          payer: payerPk,
+          config,
+          bridge: this.wormholeBridgeId()[0],
+          feeCollector: this.wormholeFeeCollectorId()[0],
+          sequence: this.wormholeSequenceId()[0],
+          clock: SYSVAR_CLOCK_PUBKEY,
+          rent: SYSVAR_RENT_PUBKEY,
           systemProgram: SystemProgram.programId,
-          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-          tokenProgram: tokenProgram,
-        })
-        .signers([wormholeMessage])
-        .rpc()
+          wormholeProgram: this.wormholeProgramId,
+          message: wormholeMessage.publicKey,
+        },
+        systemProgram: SystemProgram.programId,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        tokenProgram: tokenProgram,
+      })
+      .signers(payer instanceof Keypair ? [wormholeMessage, payer] : [wormholeMessage])
 
-      return tx
-    } catch (e) {
-      throw new Error(`Failed to finalize transfer: ${e}`)
-    }
+    return tx.rpc()
   }
 
   private extractSolanaAddress(address: OmniAddress): string {

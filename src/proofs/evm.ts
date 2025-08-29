@@ -3,6 +3,7 @@ import { RLP } from "@ethereumjs/rlp"
 import { MapDB, bigIntToHex } from "@ethereumjs/util"
 import type { BlockTag, Log, TransactionReceipt, TransactionReceiptParams } from "ethers"
 import { ethers } from "ethers"
+import { getNetwork } from "../config.js"
 import { ChainKind, type EvmProof } from "../types/index.js"
 import type { EVMChainKind } from "../utils/chain.js"
 
@@ -30,16 +31,24 @@ interface BlockHeader {
   requestsHash?: string
 }
 
-const RPC_URLS: Record<EVMChainKind, string> = {
-  [ChainKind.Eth]: "https://eth.llamarpc.com",
-  [ChainKind.Base]: "https://mainnet.base.org",
-  [ChainKind.Arb]: "https://arb1.arbitrum.io/rpc",
+const RPC_URLS: Record<"mainnet" | "testnet", Record<EVMChainKind, string>> = {
+  mainnet: {
+    [ChainKind.Eth]: "https://eth.llamarpc.com",
+    [ChainKind.Base]: "https://mainnet.base.org",
+    [ChainKind.Arb]: "https://arb1.arbitrum.io/rpc",
+  },
+  testnet: {
+    [ChainKind.Eth]: "https://ethereum-sepolia.publicnode.com",
+    [ChainKind.Base]: "https://sepolia.base.org",
+    [ChainKind.Arb]: "https://sepolia-rollup.arbitrum.io/rpc",
+  },
 }
 
 function getChainRpcUrl(chain: EVMChainKind): string {
-  const url = RPC_URLS[chain]
+  const network = getNetwork()
+  const url = RPC_URLS[network][chain]
   if (!url) {
-    throw new Error(`No RPC URL configured for chain: ${chain}`)
+    throw new Error(`No RPC URL configured for chain: ${chain} on network: ${network}`)
   }
   return url
 }
@@ -62,8 +71,9 @@ export async function getEvmProof(
   txHash: string,
   topic: string,
   chain: EVMChainKind = ChainKind.Eth,
+  customRpcUrl?: string,
 ): Promise<EvmProof> {
-  const rpcUrl = getChainRpcUrl(chain)
+  const rpcUrl = customRpcUrl || getChainRpcUrl(chain)
 
   const provider = new ExtendedProvider(rpcUrl)
   const receipt = await provider.getTransactionReceipt(txHash)
