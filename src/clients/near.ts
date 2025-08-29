@@ -382,7 +382,14 @@ export class NearBridgeClient {
     // biome-ignore lint/suspicious/noExplicitAny: TS will complain that `toJSON()` does not exist on BigInt
     // biome-ignore lint/complexity/useLiteralKeys: TS will complain that `toJSON()` does not exist on BigInt
     ;(BigInt.prototype as any)["toJSON"] = function () {
-      return Number(this)
+      // The contract can't accept `origin_nonce` as a string, so we have to serialize it as a number.
+      // However, this can cause precision loss if the number is too large. We'll check if it's safe to convert
+      // and if not, we'll serialize it as a string and the contract will have to handle it.
+      const maxSafe = BigInt(Number.MAX_SAFE_INTEGER)
+      if (this <= maxSafe) {
+        return Number(this)
+      }
+      return this.toString()
     }
     const args: SignTransferArgs = {
       transfer_id: {
