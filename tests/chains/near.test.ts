@@ -208,7 +208,7 @@ describe("NearBridgeClient", () => {
 
     it("should throw error if EVM proof is provided for non-EVM chain", async () => {
       await expect(client.bindToken(ChainKind.Near, undefined, mockEvmProof)).rejects.toThrow(
-        "EVM proof is only valid for Ethereum, Arbitrum, or Base",
+        "EVM proof is only valid for Ethereum",
       )
     })
 
