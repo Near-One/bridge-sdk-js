@@ -9,3 +9,4 @@ export type OmniAddress =
   | `arb:${string}`
   | `base:${string}`
   | `btc:${string}`
+  | `bnb:${string}`

@@ -210,7 +210,7 @@ describe("NearBridgeClient", () => {
 
     it("should throw error if EVM proof is provided for non-EVM chain", async () => {
       await expect(client.bindToken(ChainKind.Near, undefined, mockEvmProof)).rejects.toThrow(
-        "EVM proof is only valid for Ethereum, Arbitrum, or Base",
+        "EVM proof is only valid for Ethereum",
       )
     })
 
@@ -505,7 +505,7 @@ describe("NearBridgeClient", () => {
           undefined,
           mockEvmProof,
         ),
-      ).rejects.toThrow("EVM proof is only valid for Ethereum, Arbitrum, or Base")
+      ).rejects.toThrow("EVM proof is only valid for Ethereum")
     })
 
     it("should call finalize_transfer with VAA correctly", async () => {
@@ -534,9 +534,10 @@ describe("NearBridgeClient", () => {
             }),
           }),
         ],
+        waitUntil: "FINAL",
       })
 
-      expect(txHash).toBe(mockTxHash)
+      expect(txHash.transaction.hash).toBe(mockTxHash)
     })
 
     it("should call finalize_transfer with EVM proof correctly", async () => {
@@ -566,9 +567,10 @@ describe("NearBridgeClient", () => {
             }),
           }),
         ],
+        waitUntil: "FINAL",
       })
 
-      expect(txHash).toBe(mockTxHash)
+      expect(txHash.transaction.hash).toBe(mockTxHash)
     })
 
     it("should use custom proof kind when provided", async () => {
@@ -583,7 +585,7 @@ describe("NearBridgeClient", () => {
         customProofKind,
       )
 
-      expect(txHash).toBe(mockTxHash)
+      expect(txHash.transaction.hash).toBe(mockTxHash)
     })
 
     it("should handle errors from signAndSendTransaction", async () => {

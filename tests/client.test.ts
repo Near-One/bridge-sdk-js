@@ -85,14 +85,14 @@ describe("omniTransfer", () => {
     ).rejects.toThrow("Transfer amount too small")
   })
 
-  it("allows valid NEAR to Solana transfer", async () => {
+  it("allows valid Eth to Solana transfer", async () => {
     // Mock getBridgedToken to return a Solana address
     vi.mocked(getBridgedToken).mockResolvedValue("sol:mocked_sol_address")
 
     const result = await omniTransfer(wallet, {
-      tokenAddress: "near:token.near",
-      amount: 2000000000000000000000000n, // 2.0 NEAR
-      fee: 1000000000000000000000000n, // 1.0 NEAR fee
+      tokenAddress: "eth:0x123",
+      amount: 2000000000000000000n, // 2.0 ETH
+      fee: 1000000000000000000n, // 1.0 ETH fee
       nativeFee: 0n,
       recipient: "sol:pubkey",
     })

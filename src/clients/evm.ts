@@ -10,7 +10,7 @@ import {
   type TokenMetadata,
   type TransferMessagePayload,
 } from "../types/index.js"
-import { type EVMChainKind, getChain } from "../utils/index.js"
+import { type EVMChainKind, getChain, omniAddress } from "../utils/index.js"
 
 // Contract ABI for the bridge token factory
 const BRIDGE_TOKEN_FACTORY_ABI = [
@@ -30,11 +30,13 @@ const GAS_LIMIT = {
     [ChainKind.Eth]: 500000,
     [ChainKind.Base]: 500000,
     [ChainKind.Arb]: 3000000, // Arbitrum typically needs higher gas limits
+    [ChainKind.Bnb]: 500000,
   },
   LOG_METADATA: {
     [ChainKind.Eth]: 100000,
     [ChainKind.Base]: 100000,
     [ChainKind.Arb]: 600000,
+    [ChainKind.Bnb]: 100000,
   },
 } as const
 
@@ -65,6 +67,9 @@ export class EvmBridgeClient {
         break
       case ChainKind.Arb:
         bridgeAddress = addresses.arb
+        break
+      case ChainKind.Bnb:
+        bridgeAddress = addresses.bnb
         break
       default:
         throw new Error(`Factory address not configured for chain ${chain}`)
@@ -131,17 +136,83 @@ export class EvmBridgeClient {
   }
 
   /**
+   * Approves the bridge factory to spend ERC20 tokens on behalf of the user
+   * @param tokenAddress - The ERC20 token contract address
+   * @param amount - Amount to approve for spending
+   * @returns Promise resolving to transaction hash
+   */
+  async approveToken(tokenAddress: string, amount: bigint): Promise<string> {
+    if (this.isNativeToken(omniAddress(this.chain, tokenAddress))) {
+      // Native tokens don't need approval
+      return ""
+    }
+
+    const erc20Abi = [
+      "function approve(address spender, uint256 amount) external returns (bool)",
+      "function allowance(address owner, address spender) external view returns (uint256)",
+    ]
+
+    const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, this.wallet)
+
+    try {
+      const tx = await tokenContract.approve(await this.factory.getAddress(), amount)
+      const receipt = await tx.wait()
+      return receipt.hash
+    } catch (error) {
+      throw new Error(
+        `Failed to approve token: ${error instanceof Error ? error.message : "Unknown error"}`,
+      )
+    }
+  }
+
+  /**
+   * Approves maximum possible amount (permanent approval) for the bridge factory
+   * @param tokenAddress - The ERC20 token contract address
+   * @returns Promise resolving to transaction hash
+   */
+  async approveTokenMax(tokenAddress: string): Promise<string> {
+    // Use the maximum uint256 value for permanent approval
+    return this.approveToken(tokenAddress, ethers.MaxUint256)
+  }
+
+  /**
+   * Checks the current allowance for the bridge factory to spend tokens
+   * @param tokenAddress - The ERC20 token contract address
+   * @param owner - The token owner address
+   * @returns Promise resolving to current allowance amount
+   */
+  async checkAllowance(tokenAddress: string, owner: string): Promise<bigint> {
+    if (this.isNativeToken(omniAddress(this.chain, tokenAddress))) {
+      // Native tokens don't need allowance
+      return ethers.MaxUint256
+    }
+
+    const erc20Abi = [
+      "function allowance(address owner, address spender) external view returns (uint256)",
+    ]
+    const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, this.wallet)
+
+    try {
+      const allowance = await tokenContract.allowance(owner, await this.factory.getAddress())
+      return BigInt(allowance.toString())
+    } catch (error) {
+      throw new Error(
+        `Failed to check allowance: ${error instanceof Error ? error.message : "Unknown error"}`,
+      )
+    }
+  }
+
+  /**
    * Transfers ERC-20 tokens to the bridge contract on the EVM chain.
    * This transaction generates a proof that is subsequently used to mint/unlock
    * corresponding tokens on the destination chain.
    *
-   * @param token - Omni address of the ERC20 token to transfer
-   * @param recipient - Recipient's Omni address on the destination chain where tokens will be minted
-   * @param amount - Amount of the tokens to transfer
+   * @param transfer - Transfer message containing token, amount, recipient, etc.
+   * @param usePermanentApproval - If true, approves maximum amount for permanent approval
    * @throws {Error} If token address is not on the correct EVM chain
    * @returns Promise resolving to transaction hash
    */
-  async initTransfer(transfer: OmniTransferMessage): Promise<string> {
+  async initTransfer(transfer: OmniTransferMessage, usePermanentApproval = false): Promise<string> {
     const sourceChain = getChain(transfer.tokenAddress)
 
     // Validate source chain matches the client's chain
@@ -150,6 +221,33 @@ export class EvmBridgeClient {
     }
 
     const [_, tokenAccountId] = transfer.tokenAddress.split(":")
+
+    // Check and approve ERC20 tokens if needed
+    if (!this.isNativeToken(omniAddress(this.chain, tokenAccountId))) {
+      const currentAllowance = await this.checkAllowance(
+        tokenAccountId,
+        await this.wallet.getAddress(),
+      )
+      const requiredAmount = transfer.amount + transfer.fee
+
+      if (currentAllowance < requiredAmount) {
+        if (usePermanentApproval) {
+          console.log(
+            `Insufficient allowance (${currentAllowance}). Approving maximum amount for permanent approval...`,
+          )
+          await this.approveTokenMax(tokenAccountId)
+          console.log("✓ Permanent token approval successful")
+        } else {
+          console.log(
+            `Insufficient allowance (${currentAllowance}). Approving ${requiredAmount}...`,
+          )
+          await this.approveToken(tokenAccountId, requiredAmount)
+          console.log("✓ Token approval successful")
+        }
+      } else {
+        console.log(`✓ Sufficient allowance available (${currentAllowance})`)
+      }
+    }
 
     try {
       const tx = await this.factory.initTransfer(
@@ -165,7 +263,8 @@ export class EvmBridgeClient {
             : transfer.nativeFee,
         },
       )
-      return tx.hash
+      const receipt = await tx.wait()
+      return receipt.hash
     } catch (error) {
       throw new Error(
         `Failed to init transfer: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -183,15 +282,14 @@ export class EvmBridgeClient {
     transferMessage: TransferMessagePayload,
     signature: MPCSignature,
   ): Promise<string> {
-    // Convert the transfer message to EVM-compatible format
     const bridgeDeposit: BridgeDeposit = {
-      destination_nonce: BigInt(transferMessage.destination_nonce),
-      origin_chain: Number(transferMessage.transfer_id.origin_chain),
-      origin_nonce: BigInt(transferMessage.transfer_id.origin_nonce),
-      token_address: transferMessage.token_address.split(":")[1],
+      destinationNonce: BigInt(transferMessage.destination_nonce),
+      originChain: ChainKind[transferMessage.transfer_id.origin_chain as keyof typeof ChainKind],
+      originNonce: BigInt(transferMessage.transfer_id.origin_nonce),
+      tokenAddress: transferMessage.token_address.split(":")[1],
       amount: BigInt(transferMessage.amount),
       recipient: transferMessage.recipient.split(":")[1],
-      fee_recipient: transferMessage.fee_recipient ?? "",
+      feeRecipient: transferMessage.fee_recipient ?? "",
     }
 
     try {
@@ -217,7 +315,9 @@ export class EvmBridgeClient {
       throw new Error("Provider not available on wallet")
     }
 
+    // Retry mechanism for RPC indexing delays
     const receipt = await provider.getTransactionReceipt(txHash)
+
     if (!receipt) {
       throw new Error(`Transaction receipt not found for hash: ${txHash}`)
     }

@@ -4,11 +4,14 @@ const ADDRESSES = {
   mainnet: {
     arb: "0xd025b38762B4A4E36F0Cde483b86CB13ea00D989",
     base: "0xd025b38762B4A4E36F0Cde483b86CB13ea00D989",
+    bnb: "0x073C8a225c8Cf9d3f9157F5C1a1DbE02407f5720",
     eth: "0xe00c629afaccb0510995a2b95560e446a24c85b9",
     near: "omni.bridge.near",
     sol: {
       locker: "dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe",
       wormhole: "worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth",
+      shimProgram: "EtZMZM22ViKMo4r5y4Anovs3wKQ2owUmDpjygnMMcdEX",
+      eventAuthority: "HQS31aApX3DDkuXgSpV9XyDUNtFgQ31pUn5BNWHG2PSp",
     },
     btc: {
       network: "mainnet" as const,
@@ -22,11 +25,14 @@ const ADDRESSES = {
   testnet: {
     arb: "0x0C981337fFe39a555d3A40dbb32f21aD0eF33FFA",
     base: "0xa56b860017152cD296ad723E8409Abd6e5D86d4d",
+    bnb: "0x7Fd1E9F9ed48ebb64476ba9E06e5F1a90e31DA74",
     eth: "0x68a86e0Ea5B1d39F385c1326e4d493526dFe4401",
     near: "omni.n-bridge.testnet",
     sol: {
       locker: "862HdJV59Vp83PbcubUnvuXc4EAXP8CDDs6LTxFpunTe",
       wormhole: "3u8hJUVTA4jH1wYAyUur7FFZVQ8H635K3tSHHF4ssjQ5",
+      shimProgram: "EtZMZM22ViKMo4r5y4Anovs3wKQ2owUmDpjygnMMcdEX",
+      eventAuthority: "HQS31aApX3DDkuXgSpV9XyDUNtFgQ31pUn5BNWHG2PSp",
     },
     btc: {
       network: "testnet" as const,
@@ -55,6 +61,9 @@ export const addresses = {
   },
   get base() {
     return ADDRESSES[selectedNetwork].base
+  },
+  get bnb() {
+    return ADDRESSES[selectedNetwork].bnb
   },
   get eth() {
     return ADDRESSES[selectedNetwork].eth

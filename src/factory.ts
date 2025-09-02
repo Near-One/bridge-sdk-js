@@ -14,6 +14,7 @@ type ClientTypes = {
   [ChainKind.Eth]: EvmBridgeClient
   [ChainKind.Base]: EvmBridgeClient
   [ChainKind.Arb]: EvmBridgeClient
+  [ChainKind.Bnb]: EvmBridgeClient
   [ChainKind.Sol]: SolanaBridgeClient
   [ChainKind.Btc]: never // Bitcoin client not implemented yet
 }
@@ -24,6 +25,7 @@ type WalletTypes = {
   [ChainKind.Eth]: ethers.Signer
   [ChainKind.Base]: ethers.Signer
   [ChainKind.Arb]: ethers.Signer
+  [ChainKind.Bnb]: ethers.Signer
   [ChainKind.Sol]: Provider
   [ChainKind.Btc]: never // Bitcoin wallet not implemented yet
 }
@@ -95,6 +97,7 @@ export function getClient(
 export function getClient(chain: ChainKind.Eth, wallet: ethers.Signer): EvmBridgeClient
 export function getClient(chain: ChainKind.Base, wallet: ethers.Signer): EvmBridgeClient
 export function getClient(chain: ChainKind.Arb, wallet: ethers.Signer): EvmBridgeClient
+export function getClient(chain: ChainKind.Bnb, wallet: ethers.Signer): EvmBridgeClient
 export function getClient(chain: ChainKind.Sol, wallet: Provider): SolanaBridgeClient
 
 // Generic implementation
@@ -111,6 +114,7 @@ export function getClient<T extends Exclude<ChainKind, ChainKind.Btc>>(
     case ChainKind.Eth:
     case ChainKind.Base:
     case ChainKind.Arb:
+    case ChainKind.Bnb:
       return new EvmBridgeClient(wallet as ethers.Signer, chain) as ClientTypes[T]
     case ChainKind.Sol:
       return new SolanaBridgeClient(wallet as Provider) as ClientTypes[T]

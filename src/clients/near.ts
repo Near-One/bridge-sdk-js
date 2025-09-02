@@ -2,6 +2,7 @@ import type { Account } from "@near-js/accounts"
 import { actionCreators } from "@near-js/transactions"
 import type { Output } from "@scure/btc-signer/utxo"
 import { OmniBridgeAPI } from "../api.js"
+import type { FinalExecutionOutcome } from "@near-js/types"
 import { addresses } from "../config.js"
 import { BitcoinService } from "../services/bitcoin.js"
 import {
@@ -24,6 +25,7 @@ import {
   type InitTransferEvent,
   type LogMetadataArgs,
   type LogMetadataEvent,
+  MPCSignature,
   type OmniAddress,
   type OmniTransferMessage,
   ProofKind,
@@ -274,12 +276,8 @@ export class NearBridgeClient {
     }
 
     if (evmProof) {
-      if (
-        sourceChain !== ChainKind.Eth &&
-        sourceChain !== ChainKind.Arb &&
-        sourceChain !== ChainKind.Base
-      ) {
-        throw new Error("EVM proof is only valid for Ethereum, Arbitrum, or Base")
+      if (sourceChain !== ChainKind.Eth) {
+        throw new Error("EVM proof is only valid for Ethereum")
       }
     }
 
@@ -406,8 +404,13 @@ export class NearBridgeClient {
       }
       return value
     })
-
-    return parsed.SignTransferEvent as SignTransferEvent
+    const signedEvent = parsed.SignTransferEvent as SignTransferEvent
+    signedEvent.signature = new MPCSignature(
+      parsed.SignTransferEvent.signature.big_r,
+      parsed.SignTransferEvent.signature.s,
+      parsed.SignTransferEvent.signature.recovery_id,
+    )
+    return signedEvent
   }
   /**
    * Signs transfer using the token locker
@@ -422,11 +425,18 @@ export class NearBridgeClient {
     // biome-ignore lint/suspicious/noExplicitAny: TS will complain that `toJSON()` does not exist on BigInt
     // biome-ignore lint/complexity/useLiteralKeys: TS will complain that `toJSON()` does not exist on BigInt
     ;(BigInt.prototype as any)["toJSON"] = function () {
+      // The contract can't accept `origin_nonce` as a string, so we have to serialize it as a number.
+      // However, this can cause precision loss if the number is too large. We'll check if it's safe to convert
+      // and if not, we'll serialize it as a string and the contract will have to handle it.
+      const maxSafe = BigInt(Number.MAX_SAFE_INTEGER)
+      if (this <= maxSafe) {
+        return Number(this)
+      }
       return this.toString()
     }
     const args: SignTransferArgs = {
       transfer_id: {
-        origin_chain: getChain(initTransferEvent.transfer_message.sender),
+        origin_chain: ChainKind[getChain(initTransferEvent.transfer_message.sender)],
         origin_nonce: BigInt(initTransferEvent.transfer_message.origin_nonce),
       },
       fee_recipient: feeRecipient,
@@ -486,17 +496,13 @@ export class NearBridgeClient {
     vaa?: string,
     evmProof?: EvmVerifyProofArgs,
     proofKind: ProofKind = ProofKind.InitTransfer,
-  ): Promise<string> {
+  ): Promise<FinalExecutionOutcome> {
     if (!vaa && !evmProof) {
       throw new Error("Must provide either VAA or EVM proof")
     }
     if (evmProof) {
-      if (
-        sourceChain !== ChainKind.Eth &&
-        sourceChain !== ChainKind.Arb &&
-        sourceChain !== ChainKind.Base
-      ) {
-        throw new Error("EVM proof is only valid for Ethereum, Arbitrum, or Base")
+      if (sourceChain !== ChainKind.Eth) {
+        throw new Error("EVM proof is only valid for Ethereum")
       }
     }
     let proverArgsSerialized: Uint8Array = new Uint8Array(0)
@@ -508,7 +514,7 @@ export class NearBridgeClient {
       proverArgsSerialized = WormholeVerifyProofArgsSchema.serialize(proverArgs)
     } else if (evmProof) {
       const proverArgs: EvmVerifyProofArgs = {
-        proof_kind: proofKind,
+        proof_kind: evmProof.proof_kind ?? proofKind,
         proof: evmProof.proof,
       }
       proverArgsSerialized = EvmVerifyProofArgsSchema.serialize(proverArgs)
@@ -533,7 +539,7 @@ export class NearBridgeClient {
       "required_balance_for_fin_transfer",
       {},
     )
-    const finDeposit = BigInt(finDepositStr as string)
+    const finDeposit = BigInt(finDepositStr as string) + storageDepositAmount
 
     const tx = await this.wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
@@ -545,8 +551,9 @@ export class NearBridgeClient {
           BigInt(finDeposit),
         ),
       ],
+      waitUntil: "FINAL",
     })
-    return tx.transaction.hash
+    return tx
   }
 
   /**

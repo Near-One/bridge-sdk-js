@@ -13,7 +13,7 @@ import {
   getTokenDecimals,
   verifyTransferAmount,
 } from "./utils/decimals.js"
-import { getBridgedToken, getChain } from "./utils/index.js"
+import { getBridgedToken, getChain, isEvmChain } from "./utils/index.js"
 
 type Client =
   | EvmBridgeClient
@@ -46,10 +46,12 @@ export async function omniTransfer(
   wallet: EthWallet | NearAccount | WalletSelector | SolWallet,
   transfer: OmniTransferMessage,
 ): Promise<string | InitTransferEvent> {
+  const sourceTokenAddress = transfer.tokenAddress
+
   // Get chain information
+  const sourceChain = getChain(sourceTokenAddress)
   const destChain = getChain(transfer.recipient)
 
-  const sourceTokenAddress = transfer.tokenAddress
   const destTokenAddress = await getBridgedToken(transfer.tokenAddress, destChain)
 
   // Check if destination token address is null
@@ -73,7 +75,7 @@ export async function omniTransfer(
   // We query the destination address (eth:0x...) to get both decimals:
   // - origin_decimals: the NEAR token's decimals
   // - decimals: the decimals on the destination chain
-  if (getChain(sourceTokenAddress) === ChainKind.Near) {
+  if (sourceChain === ChainKind.Near) {
     const decimals = await getTokenDecimals(contractId, destTokenAddress)
     originDecimals = decimals.origin_decimals
     destinationDecimals = decimals.decimals
@@ -84,17 +86,14 @@ export async function omniTransfer(
   // We query the source address (eth:0x...) to get both decimals:
   // - decimals: the foreign chain's decimals
   // - origin_decimals: what the token will have on NEAR
-  if (getChain(destTokenAddress) === ChainKind.Near) {
+  if (destChain === ChainKind.Near) {
     const decimals = await getTokenDecimals(contractId, sourceTokenAddress)
     destinationDecimals = decimals.origin_decimals
     originDecimals = decimals.decimals
   }
 
   // We're dealing with foreign chain → foreign chain transfer
-  if (
-    getChain(sourceTokenAddress) !== ChainKind.Near &&
-    getChain(destTokenAddress) !== ChainKind.Near
-  ) {
+  if (sourceChain !== ChainKind.Near && destChain !== ChainKind.Near) {
     const source = await getTokenDecimals(contractId, sourceTokenAddress)
     const dest = await getTokenDecimals(contractId, destTokenAddress)
     originDecimals = source.decimals
@@ -125,7 +124,12 @@ export async function omniTransfer(
   let client: Client | null = null
 
   if (wallet instanceof EthWallet) {
-    client = new EvmBridgeClient(wallet, ChainKind.Eth)
+    if (!isEvmChain(sourceChain)) {
+      throw new Error(
+        `EVM wallet used with non-EVM source chain (${ChainKind[sourceChain]}). Token must be on an EVM chain.`,
+      )
+    }
+    client = new EvmBridgeClient(wallet, sourceChain)
   } else if (wallet instanceof NearAccount) {
     client = new NearBridgeClient(wallet)
   } else if (isSolWallet(wallet)) {
