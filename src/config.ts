@@ -13,6 +13,14 @@ const ADDRESSES = {
       shimProgram: "EtZMZM22ViKMo4r5y4Anovs3wKQ2owUmDpjygnMMcdEX",
       eventAuthority: "HQS31aApX3DDkuXgSpV9XyDUNtFgQ31pUn5BNWHG2PSp",
     },
+    btc: {
+      network: "mainnet" as const,
+      apiUrl: "https://blockstream.info/api",
+      mempoolUrl: "https://mempool.space/api",
+      btcConnector: "btc-connector.bridge.near",
+      btcToken: "nbtc.bridge.near",
+      bitcoinRelayer: "satoshi_optwo.near",
+    },
   },
   testnet: {
     arb: "0x0C981337fFe39a555d3A40dbb32f21aD0eF33FFA",
@@ -25,6 +33,14 @@ const ADDRESSES = {
       wormhole: "3u8hJUVTA4jH1wYAyUur7FFZVQ8H635K3tSHHF4ssjQ5",
       shimProgram: "EtZMZM22ViKMo4r5y4Anovs3wKQ2owUmDpjygnMMcdEX",
       eventAuthority: "HQS31aApX3DDkuXgSpV9XyDUNtFgQ31pUn5BNWHG2PSp",
+    },
+    btc: {
+      network: "testnet" as const,
+      apiUrl: "https://blockstream.info/testnet/api",
+      mempoolUrl: "https://mempool.space/testnet/api",
+      btcConnector: "brg-dev.testnet",
+      btcToken: "nbtc-dev.testnet",
+      bitcoinRelayer: "cosmosfirst.testnet",
     },
   },
 } as const
@@ -57,6 +73,9 @@ export const addresses = {
   },
   get sol() {
     return ADDRESSES[selectedNetwork].sol
+  },
+  get btc() {
+    return ADDRESSES[selectedNetwork].btc
   },
   get network() {
     return selectedNetwork

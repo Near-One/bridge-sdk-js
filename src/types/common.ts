@@ -8,4 +8,5 @@ export type OmniAddress =
   | `sol:${string}`
   | `arb:${string}`
   | `base:${string}`
+  | `btc:${string}`
   | `bnb:${string}`
