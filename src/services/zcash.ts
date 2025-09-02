@@ -10,23 +10,39 @@ interface ContractDepositProof {
   tx_index: number
 }
 
+type JsonRpcSuccess<T> = {
+  jsonrpc: "2.0"
+  id: string | number | null
+  result: T
+}
+
+type JsonRpcError = {
+  jsonrpc: "2.0"
+  id: string | number | null
+  error: { code: number; message: string; data?: unknown }
+}
+
+type JsonRpcResponse<T> = JsonRpcSuccess<T> | JsonRpcError
+
 export class ZcashService {
   constructor(
     private apiUrl: string,
     private apiKey: string,
   ) {}
 
-  // biome-ignore lint/suspicious/noExplicitAny: Generic RPC method
-  private async rpc(method: string, params: any[] = []): Promise<any> {
+  private async rpc<T>(method: string, params: unknown[] = []): Promise<T> {
     const response = await fetch(this.apiUrl, {
       method: "POST",
-      headers: { "x-api-key": this.apiKey },
+      headers: {
+        "x-api-key": this.apiKey,
+        "content-type": "application/json",
+      },
       body: JSON.stringify({ jsonrpc: "2.0", id: "1", method, params }),
     })
 
-    const result = await response.json()
-    if (result.error) throw new Error(result.error.message)
-    return result.result
+    const body = (await response.json()) as JsonRpcResponse<T>
+    if ("error" in body) throw new Error(body.error.message)
+    return body.result
   }
 
   async decodeTransaction(txHex: string) {
