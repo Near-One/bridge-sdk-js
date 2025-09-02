@@ -1,8 +1,8 @@
 import type { Account } from "@near-js/accounts"
 import { actionCreators } from "@near-js/transactions"
+import type { FinalExecutionOutcome } from "@near-js/types"
 import type { Output } from "@scure/btc-signer/utxo"
 import { OmniBridgeAPI } from "../api.js"
-import type { FinalExecutionOutcome } from "@near-js/types"
 import { addresses } from "../config.js"
 import { BitcoinService } from "../services/bitcoin.js"
 import {
