@@ -526,7 +526,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
         http.get("https://testnet.api.bridge.nearone.org/api/v2/transfers/transfer", ({ request }) => {
           const url = new URL(request.url)
           const transactionHash = url.searchParams.get("transaction_hash")
-          
+
           if (transactionHash === "test_pending_bitcoin_123") {
             return HttpResponse.json([
               {
@@ -556,7 +556,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
               }
             ])
           }
-          
+
           // Return empty array for other transaction hashes
           return HttpResponse.json([])
         })
@@ -577,7 +577,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
         http.get("https://testnet.api.bridge.nearone.org/api/v2/transfers/transfer", ({ request }) => {
           const url = new URL(request.url)
           const transactionHash = url.searchParams.get("transaction_hash")
-          
+
           if (transactionHash === "test_pending_bitcoin_123") {
             return HttpResponse.json([
               {
@@ -607,7 +607,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
               }
             ])
           }
-          
+
           // Return empty array for other transaction hashes
           return HttpResponse.json([])
         })
@@ -626,12 +626,12 @@ describe("NearBridgeClient Bitcoin Methods", () => {
         http.get("https://testnet.api.bridge.nearone.org/api/v2/transfers/transfer", ({ request }) => {
           const url = new URL(request.url)
           const transactionHash = url.searchParams.get("transaction_hash")
-          
+
           if (transactionHash === "nonexistent_pending_id") {
             // Return empty array to simulate not found
             return HttpResponse.json([])
           }
-          
+
           // Return empty array for other transaction hashes too
           return HttpResponse.json([])
         })
@@ -711,7 +711,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
         http.get("https://testnet.api.bridge.nearone.org/api/v2/transfers/transfer", ({ request }) => {
           const url = new URL(request.url)
           const transactionHash = url.searchParams.get("transaction_hash")
-          
+
           if (transactionHash === "init_tx_hash") {
             return HttpResponse.json([
               {
@@ -741,7 +741,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
               }
             ])
           }
-          
+
           // Return empty array for other transaction hashes
           return HttpResponse.json([])
         })

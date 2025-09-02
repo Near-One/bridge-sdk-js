@@ -30,6 +30,8 @@ export interface BtcDepositArgs {
   deposit_msg: DepositMsg
 }
 
+export type ZcashDepositArgs = BtcDepositArgs
+
 export interface FinBtcTransferArgs {
   deposit_msg: DepositMsg
   tx_bytes: Array<number>
@@ -38,6 +40,8 @@ export interface FinBtcTransferArgs {
   tx_index: number
   merkle_proof: string[]
 }
+
+export type FinZcashTransferArgs = FinBtcTransferArgs
 
 export interface InitBtcTransferMsg {
   Withdraw: {
