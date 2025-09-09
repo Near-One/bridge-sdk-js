@@ -740,7 +740,7 @@ export class NearBridgeClient {
     const changeAddress = bitcoinConfig.change_address
 
     // Use Bitcoin service for UTXO selection
-    const { inputs, outputs, fee } = this.bitcoinService.selectCoins(
+    const { inputs, outputs, fee } = this.bitcoinService.getTransactionData(
       utxos,
       amount,
       targetBtcAddress,

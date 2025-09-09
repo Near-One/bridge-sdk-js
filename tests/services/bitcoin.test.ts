@@ -282,12 +282,12 @@ describe("BitcoinService", () => {
     })
   })
 
-  describe("selectCoins", () => {
+  describe("getTransactionData", () => {
     const service = new BitcoinService("https://blockstream.info/testnet/api", "testnet")
 
     it("should throw error when no UTXOs provided", () => {
       expect(() =>
-        service.selectCoins(
+        service.getTransactionData(
           [], // Empty UTXO array
           BigInt(75000),
           "tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx",

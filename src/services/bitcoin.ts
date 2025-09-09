@@ -80,84 +80,6 @@ export class BitcoinService extends UtxoService {
   }
 
   /**
-   * Select UTXOs and construct Bitcoin transaction for withdrawal
-   *
-   * Implements optimal UTXO selection using scure-btc-signer's selectUTXO algorithm.
-   * The algorithm considers:
-   * - Available UTXO set and required output amount
-   * - Fee estimation based on transaction size and fee rate
-   * - Change output generation to minimize dust
-   * - BIP69 sorting for privacy (deterministic input/output ordering)
-   *
-   * @param utxos - Available unspent transaction outputs to spend from
-   * @param amount - Target amount to send in satoshis (excluding fees)
-   * @param to - Recipient Bitcoin address (any format: P2PKH, P2SH, P2WPKH, P2WSH)
-   * @param changeAddress - Address to send remaining balance after fees
-   * @param feeRate - Fee rate in satoshis per virtual byte (sat/vB)
-   * @returns Selected inputs, outputs, estimated fee, and transaction size
-   * @throws {Error} When insufficient funds available for amount + fees
-   *
-   * @example
-   * ```typescript
-   * const utxos = [
-   *   { txid: "abc123...", vout: 0, balance: "100000", ... },
-   *   { txid: "def456...", vout: 1, balance: "50000", ... }
-   * ]
-   *
-   * const selection = bitcoinService.selectCoins(
-   *   utxos,
-   *   BigInt(75000), // Send 75,000 sats
-   *   "bc1qrecipient...", // Target address
-   *   "bc1qchange...", // Change address
-   *   10 // 10 sat/vB fee rate
-   * )
-   *
-   * console.log(`Selected ${selection.inputs.length} inputs`)
-   * console.log(`Fee: ${selection.fee} sats`)
-   * console.log(`Transaction size: ${selection.vsize} vBytes`)
-   * ```
-   */
-  selectCoins(
-    utxos: UTXO[],
-    amount: bigint,
-    to: string,
-    changeAddress: string,
-    feeRate: number, // sat/vB
-  ) {
-    // Use the abstract method for common validation and selection
-    const _utxoResult = this.selectUtxos(utxos, amount, to, changeAddress, feeRate)
-
-    // Convert UTXOs to scure-btc-signer format efficiently
-    const inputs = utxos.map(this.toInput)
-    const network = this.getNetwork()
-
-    // Use scure-btc-signer's optimized selectUTXO algorithm
-    const result = btc.selectUTXO(
-      inputs,
-      [{ address: to, amount }], // Target output
-      "default", // Optimal selection strategy
-      {
-        feePerByte: BigInt(feeRate),
-        changeAddress,
-        network,
-        bip69: true, // Privacy: deterministic ordering
-        createTx: true, // Accurate fee estimation
-      },
-    )
-
-    if (!result) {
-      throw new Error("Bitcoin: Insufficient funds for transaction")
-    }
-
-    return {
-      inputs: result.inputs,
-      outputs: result.outputs,
-      fee: result.tx?.fee ?? result.fee,
-      vsize: Math.ceil(result.weight / 4),
-    }
-  }
-
-  /**
    * Implementation of abstract selectUtxos method
    * @param utxos - Available UTXOs
    * @param amount - Target amount
@@ -210,6 +132,52 @@ export class BitcoinService extends UtxoService {
       selected: selectedUtxos,
       total: this.calculateTotalValue(selectedUtxos),
       fee: BigInt(result.tx?.fee ?? result.fee ?? 0),
+    }
+  }
+
+  /**
+   * Get transaction data for withdrawal construction
+   * Returns the raw transaction construction data needed for MPC signing
+   */
+  getTransactionData(
+    utxos: UTXO[],
+    amount: bigint,
+    targetAddress: string,
+    changeAddress: string,
+    feeRate: number,
+  ) {
+    // Early validation
+    if (utxos.length === 0) {
+      throw new Error("Bitcoin: No UTXOs available for transaction")
+    }
+
+    // Convert UTXOs to scure-btc-signer format efficiently
+    const inputs = utxos.map(this.toInput)
+    const network = this.getNetwork()
+
+    // Use scure-btc-signer's optimized selectUTXO algorithm
+    const result = btc.selectUTXO(
+      inputs,
+      [{ address: targetAddress, amount }], // Target output
+      "default", // Optimal selection strategy
+      {
+        feePerByte: BigInt(feeRate),
+        changeAddress,
+        network,
+        bip69: true, // Privacy: deterministic ordering
+        createTx: true, // Accurate fee estimation
+      },
+    )
+
+    if (!result) {
+      throw new Error("Bitcoin: Insufficient funds for transaction")
+    }
+
+    return {
+      inputs: result.inputs,
+      outputs: result.outputs,
+      fee: result.tx?.fee ?? result.fee,
+      vsize: Math.ceil(result.weight / 4),
     }
   }
 

@@ -186,25 +186,4 @@ export class ZcashService extends UtxoService {
       )
     }
   }
-
-  /**
-   * Select UTXOs using Zcash-specific algorithm (legacy method)
-   * @deprecated Use selectUtxos instead
-   */
-  selectUTXOs(utxos: UTXO[], amount: bigint) {
-    try {
-      const result = this.selectUtxos(utxos, amount, "dummy", "dummy")
-      return {
-        selected: result.selected,
-        total: result.total,
-        fee: result.fee,
-      }
-    } catch (error) {
-      // Maintain original error message for backward compatibility
-      if (error instanceof Error && error.message.includes("Insufficient funds")) {
-        throw new Error("Insufficient funds")
-      }
-      throw error
-    }
-  }
 }
