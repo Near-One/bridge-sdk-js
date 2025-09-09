@@ -15,10 +15,6 @@ export interface UtxoSelectionResult {
   fee: bigint
 }
 
-export interface BroadcastResult {
-  txHash: string
-}
-
 /**
  * Abstract base class for UTXO-based blockchain services
  *
@@ -89,18 +85,6 @@ export abstract class UtxoService {
    * @returns Promise resolving to transaction hash if successful
    */
   abstract broadcastTransaction(txHex: string): Promise<string>
-
-  /**
-   * Common validation for UTXO availability
-   * @protected
-   * @param utxos - UTXOs to validate
-   * @throws {Error} When no UTXOs are available
-   */
-  protected validateUtxos(utxos: UTXO[]): void {
-    if (utxos.length === 0) {
-      throw new Error(`${this.constructor.name}: No UTXOs available for transaction`)
-    }
-  }
 
   /**
    * Common validation for transaction amounts

@@ -11,7 +11,10 @@ class TestUtxoService extends UtxoService {
     changeAddress: string,
     feeRate: number,
   ): UtxoSelectionResult {
-    this.validateUtxos(utxos)
+    // Validate UTXOs inline
+    if (utxos.length === 0) {
+      throw new Error(`${this.constructor.name}: No UTXOs available for transaction`)
+    }
     this.validateAmount(amount)
     this.validateAddress(targetAddress)
     this.validateAddress(changeAddress)
