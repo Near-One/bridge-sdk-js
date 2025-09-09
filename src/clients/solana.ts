@@ -77,13 +77,13 @@ export class SolanaBridgeClient {
     this.shimProgramId = shimProgramId
     this.eventAuthorityId = eventAuthorityId
     const bridgeTokenFactory = BRIDGE_TOKEN_FACTORY_IDL as BridgeTokenFactory
-    // @ts-ignore We have to override the address for Mainnet/Testnet
+    // @ts-expect-error We have to override the address for Mainnet/Testnet
     bridgeTokenFactory.address = addresses.sol.locker
     this.program = new Program(bridgeTokenFactory, provider)
 
     // Initialize shim program
     const bridgeTokenFactoryShim = BRIDGE_TOKEN_FACTORY_SHIM_IDL as BridgeTokenFactoryShim
-    // @ts-ignore We have to override the address for Mainnet/Testnet
+    // @ts-expect-error We have to override the address for Mainnet/Testnet
     bridgeTokenFactoryShim.address = addresses.sol.locker
     this.shimProgram = new Program(bridgeTokenFactoryShim, provider)
   }
@@ -211,31 +211,6 @@ export class SolanaBridgeClient {
   private async supportsWormholeShim(): Promise<boolean> {
     const version = await this.getVersion()
     return version !== OLD_WORMHOLE_VERSION
-  }
-
-  /**
-   * Determines wormhole message configuration based on program version
-   * @returns Promise with message account and signers array
-   */
-  private async getWormholeMessageConfig(): Promise<{
-    messageAccount: PublicKey
-    additionalSigners: Keypair[]
-  }> {
-    const supportsShim = await this.supportsWormholeShim()
-
-    if (supportsShim) {
-      // New version: use PDA-derived message, no additional signers
-      return {
-        messageAccount: this.shimMessageId()[0],
-        additionalSigners: [],
-      }
-    }
-    // Old version: use generated keypair as message and signer
-    const wormholeMessage = Keypair.generate()
-    return {
-      messageAccount: wormholeMessage.publicKey,
-      additionalSigners: [wormholeMessage],
-    }
   }
 
   /**
