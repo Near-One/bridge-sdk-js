@@ -1,4 +1,4 @@
-import { sha256 } from "@noble/hashes/sha2"
+import { sha256 } from "@noble/hashes/sha2.js"
 import { hex } from "@scure/base"
 import { b } from "@zorsh/zorsh"
 import type { AccountId } from "../types/common.js"
