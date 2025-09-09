@@ -1,4 +1,4 @@
-import { sha256 } from "@noble/hashes/sha2"
+import { sha256 } from "@noble/hashes/sha2.js"
 import { hex } from "@scure/base"
 import { MerkleTree } from "merkletreejs"
 import type { UTXO } from "../types/bitcoin.js"

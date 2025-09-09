@@ -1,5 +1,5 @@
 import { equalBytes } from "@noble/curves/utils"
-import { sha256 } from "@noble/hashes/sha2"
+import { sha256 } from "@noble/hashes/sha2.js"
 import { createBase58check } from "@scure/base"
 
 const ZCASH_NETWORKS = {
