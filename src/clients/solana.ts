@@ -169,8 +169,10 @@ export class SolanaBridgeClient {
       transaction.recentBlockhash = blockhash
       transaction.feePayer = this.program.provider.publicKey
 
+      // Type assertion needed due to @coral-xyz/anchor using nested @solana/web3.js version
+      // that conflicts with our main dependency version, even though they're compatible
       const simulation = await this.program.provider.connection.simulateTransaction(
-        transaction,
+        transaction as any,
         undefined,
         false,
       )
