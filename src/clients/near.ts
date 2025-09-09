@@ -758,7 +758,7 @@ export class NearBridgeClient {
         ),
         output: outputs.map((o: Output) => ({
           value: Number(o.amount),
-          // @ts-ignore - `Output` is a union type, we'd have to do type-narrowing
+          // @ts-expect-error - `Output` is a union type, we'd have to do type-narrowing
           script_pubkey: Array.from(this.bitcoinService.addressToScriptPubkey(o.address), (byte) =>
             byte.toString(16).padStart(2, "0"),
           ).join(""),

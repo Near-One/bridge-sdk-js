@@ -1,58 +1,61 @@
 import { describe, expect, it } from "vitest"
-import { calculateStorageAccountId, calculateStorageAccountIdFromOmniTransfer, type TransferMessage } from "../../src/index.js"
+import { getStorageAccountId, getStorageAccountIdFromTransfer, type StorageTransferMessage } from "../../src/index.js"
 import type { OmniTransferMessage } from "../../src/index.js"
 
 describe("Storage Account ID - Integration Test", () => {
   it("should be accessible from main package exports", () => {
     // Verify that both functions are exported from the main package
-    expect(typeof calculateStorageAccountId).toBe("function")
-    expect(typeof calculateStorageAccountIdFromOmniTransfer).toBe("function")
+    expect(typeof getStorageAccountId).toBe("function")
+    expect(typeof getStorageAccountIdFromTransfer).toBe("function")
   })
 
   it("should work with the main export API", () => {
-    const transferMessage: TransferMessage = {
-      token: "near:wrap.near",
+    const transferMessage: StorageTransferMessage = {
+      tokenAddress: "near:wrap.near",
       amount: 1000000000000000000000000n, // 1 NEAR
-      recipient: "eth:0x1234567890abcdef1234567890abcdef12345678",
       fee: 10000000000000000000000n, // 0.01 NEAR
+      nativeFee: 0n,
+      recipient: "eth:0x1234567890abcdef1234567890abcdef12345678",
       sender: "near:alice.near",
-      msg: "Cross-chain bridge transfer",
+      message: "Cross-chain bridge transfer",
     }
 
-    const storageAccountId = calculateStorageAccountId(transferMessage)
+    const storageAccountId = getStorageAccountId(transferMessage)
     
     // Should return a valid SHA256 hex string
     expect(storageAccountId).toMatch(/^[a-f0-9]{64}$/)
     expect(storageAccountId).toHaveLength(64)
     
     // Should be deterministic
-    const storageAccountId2 = calculateStorageAccountId(transferMessage)
+    const storageAccountId2 = getStorageAccountId(transferMessage)
     expect(storageAccountId).toBe(storageAccountId2)
   })
 
   it("should handle real-world bridge scenarios", () => {
     // Scenario 1: NEAR to Ethereum bridge
-    const nearToEth: TransferMessage = {
-      token: "near:wrap.near",
+    const nearToEth: StorageTransferMessage = {
+      tokenAddress: "near:wrap.near",
       amount: 5000000000000000000000000n, // 5 NEAR
-      recipient: "eth:0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
       fee: 50000000000000000000000n, // 0.05 NEAR
+      nativeFee: 0n,
+      recipient: "eth:0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
       sender: "near:user.near",
-      msg: "Bridge to Ethereum",
+      message: "Bridge to Ethereum",
     }
 
     // Scenario 2: Ethereum to Solana bridge
-    const ethToSol: TransferMessage = {
-      token: "eth:0xA0b86a33E6441b5a93c5e90D3a7dDbF527E05e5E",
+    const ethToSol: StorageTransferMessage = {
+      tokenAddress: "eth:0xA0b86a33E6441b5a93c5e90D3a7dDbF527E05e5E",
       amount: 1000000000000000000n, // 1 ETH
-      recipient: "sol:9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
       fee: 10000000000000000n, // 0.01 ETH
+      nativeFee: 0n,
+      recipient: "sol:9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
       sender: "eth:0x742d35Cc6634C0532925a3b8D039C79E49906CDB",
-      msg: "Multi-hop bridge transfer",
+      message: "Multi-hop bridge transfer",
     }
 
-    const accountId1 = calculateStorageAccountId(nearToEth)
-    const accountId2 = calculateStorageAccountId(ethToSol)
+    const accountId1 = getStorageAccountId(nearToEth)
+    const accountId2 = getStorageAccountId(ethToSol)
 
     // Should produce different IDs for different transfers
     expect(accountId1).not.toBe(accountId2)
@@ -73,22 +76,23 @@ describe("Storage Account ID - Integration Test", () => {
     }
     const sender = "near:user.near" as const
 
-    const accountId = calculateStorageAccountIdFromOmniTransfer(omniTransfer, sender)
+    const accountId = getStorageAccountIdFromTransfer(omniTransfer, sender)
     
     expect(accountId).toMatch(/^[a-f0-9]{64}$/)
     expect(accountId).toHaveLength(64)
 
     // Should produce same result as manual conversion
-    const manualTransfer: TransferMessage = {
-      token: omniTransfer.tokenAddress,
+    const manualTransfer: StorageTransferMessage = {
+      tokenAddress: omniTransfer.tokenAddress,
       amount: omniTransfer.amount,
-      recipient: omniTransfer.recipient,
       fee: omniTransfer.fee,
+      nativeFee: omniTransfer.nativeFee,
+      recipient: omniTransfer.recipient,
       sender: sender,
-      msg: omniTransfer.message || "",
+      message: omniTransfer.message || "",
     }
 
-    const manualAccountId = calculateStorageAccountId(manualTransfer)
+    const manualAccountId = getStorageAccountId(manualTransfer)
     expect(accountId).toBe(manualAccountId)
   })
 })

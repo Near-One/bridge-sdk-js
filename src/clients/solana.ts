@@ -77,13 +77,13 @@ export class SolanaBridgeClient {
     this.shimProgramId = shimProgramId
     this.eventAuthorityId = eventAuthorityId
     const bridgeTokenFactory = BRIDGE_TOKEN_FACTORY_IDL as BridgeTokenFactory
-    // @ts-ignore We have to override the address for Mainnet/Testnet
+    // @ts-expect-error We have to override the address for Mainnet/Testnet
     bridgeTokenFactory.address = addresses.sol.locker
     this.program = new Program(bridgeTokenFactory, provider)
 
     // Initialize shim program
     const bridgeTokenFactoryShim = BRIDGE_TOKEN_FACTORY_SHIM_IDL as BridgeTokenFactoryShim
-    // @ts-ignore We have to override the address for Mainnet/Testnet
+    // @ts-expect-error We have to override the address for Mainnet/Testnet
     bridgeTokenFactoryShim.address = addresses.sol.locker
     this.shimProgram = new Program(bridgeTokenFactoryShim, provider)
   }
