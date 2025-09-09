@@ -2,6 +2,7 @@ import { sha256 } from "@noble/hashes/sha2.js"
 import { hex } from "@scure/base"
 import { MerkleTree } from "merkletreejs"
 import type { UTXO } from "../types/bitcoin.js"
+import { type UtxoSelectionResult, UtxoService } from "./utxo.js"
 
 interface ContractDepositProof {
   merkle_proof: string[]
@@ -24,11 +25,14 @@ type JsonRpcError = {
 
 type JsonRpcResponse<T> = JsonRpcSuccess<T> | JsonRpcError
 
-export class ZcashService {
+export class ZcashService extends UtxoService {
   constructor(
-    private apiUrl: string,
+    apiUrl: string,
     private apiKey: string,
-  ) {}
+    network: "mainnet" | "testnet" = "mainnet",
+  ) {
+    super(apiUrl, network)
+  }
 
   private async rpc<T>(method: string, params: unknown[] = []): Promise<T> {
     const response = await fetch(this.apiUrl, {
@@ -94,25 +98,113 @@ export class ZcashService {
     return BigInt(fee)
   }
 
-  selectUTXOs(utxos: UTXO[], amount: bigint) {
-    // Sort biggest first
-    const sorted = [...utxos].sort((a, b) => Number(BigInt(b.balance) - BigInt(a.balance)))
+  /**
+   * Implementation of abstract selectUtxos method
+   * @param utxos - Available UTXOs
+   * @param amount - Target amount
+   * @param targetAddress - Recipient address
+   * @param changeAddress - Change address
+   * @param feeRate - Fee rate (not used in Zcash, fee calculated based on logical actions)
+   * @returns UTXO selection result
+   */
+  selectUtxos(
+    utxos: UTXO[],
+    amount: bigint,
+    targetAddress: string,
+    changeAddress: string,
+    _feeRate?: number,
+  ): UtxoSelectionResult {
+    // Zcash-specific validations (maintaining original error messages)
+    if (utxos.length === 0) {
+      throw new Error("Zcash: No UTXOs available for transaction")
+    }
+    this.validateAmount(amount)
+    this.validateAddress(targetAddress)
+    this.validateAddress(changeAddress)
 
-    const selected = []
+    // Sort biggest first
+    const sorted = this.sortUtxosByValue(utxos)
+
+    const selected: UTXO[] = []
     let total = 0n
 
     for (const utxo of sorted) {
       selected.push(utxo)
       total += BigInt(utxo.balance)
 
-      // Fee calculation: 12 + inputs*68 + outputs*31
-      const fee = this.calculateZcashFee(selected.length, 2)
+      // Fee calculation: based on logical actions
+      const fee = this.calculateFee(selected.length, 2)
 
       if (total >= amount + fee) {
         return { selected, total, fee }
       }
     }
 
-    throw new Error("Insufficient funds")
+    throw new Error("Zcash: Insufficient funds for transaction")
+  }
+
+  /**
+   * Implementation of abstract calculateFee method
+   * @param inputs - Number of transaction inputs
+   * @param outputs - Number of transaction outputs
+   * @param feeRate - Not used in Zcash fee calculation
+   * @returns Calculated fee in zatoshis
+   */
+  calculateFee(inputs: number, outputs: number, _feeRate?: number): bigint {
+    return this.calculateZcashFee(inputs, outputs)
+  }
+
+  /**
+   * Implementation of abstract isValidAddress method
+   * @param address - Zcash address to validate
+   * @returns true if address appears to be a valid Zcash address
+   */
+  isValidAddress(address: string): boolean {
+    // Basic Zcash address validation
+    // Mainnet: starts with 't1', 't3', 'zs1', or 'zu1'
+    // Testnet: starts with 'tm', 'tn', 'ztestsapling', etc.
+    if (!address || address.trim().length === 0) {
+      return false
+    }
+
+    const trimmed = address.trim()
+
+    if (this.network === "mainnet") {
+      return (
+        trimmed.startsWith("t1") ||
+        trimmed.startsWith("t3") ||
+        trimmed.startsWith("zs1") ||
+        trimmed.startsWith("zu1")
+      )
+    } else {
+      // Testnet
+      return (
+        trimmed.startsWith("tm") ||
+        trimmed.startsWith("tn") ||
+        trimmed.startsWith("ztestsapling") ||
+        trimmed.startsWith("zregtestsapling")
+      )
+    }
+  }
+
+  /**
+   * Select UTXOs using Zcash-specific algorithm (legacy method)
+   * @deprecated Use selectUtxos instead
+   */
+  selectUTXOs(utxos: UTXO[], amount: bigint) {
+    try {
+      const result = this.selectUtxos(utxos, amount, "dummy", "dummy")
+      return {
+        selected: result.selected,
+        total: result.total,
+        fee: result.fee,
+      }
+    } catch (error) {
+      // Maintain original error message for backward compatibility
+      if (error instanceof Error && error.message.includes("Insufficient funds")) {
+        throw new Error("Insufficient funds")
+      }
+      throw error
+    }
   }
 }
