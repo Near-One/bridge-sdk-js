@@ -1,5 +1,14 @@
 # omni-bridge-sdk
 
+## 0.17.1
+
+### Patch Changes
+
+- fc66918: chore(deps): bump ethers from 6.14.4 to 6.15.0
+- 8880c0d: chore(deps-dev): bump msw from 2.10.2 to 2.11.2
+- 202ac90: chore(deps): bump @near-js/client from 2.1.0 to 2.3.1
+- a8e7157: chore(deps): bump zod from 3.25.67 to 4.1.5
+
 ## 0.17.0
 
 ### Minor Changes
