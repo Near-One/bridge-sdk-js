@@ -718,13 +718,18 @@ export class NearBridgeClient {
   }
 
   /**
-   * Initialize NEAR -> BTC withdrawal (NEAR -> BTC flow start)
-   * Mirrors init_near_to_bitcoin_transfer() from Rust SDK
+   * Creates a Bitcoin withdrawal message without broadcasting the transaction.
+   * This is useful for third-party libraries that need to construct the message
+   * for their own transaction handling.
+   *
+   * @param targetBtcAddress - The Bitcoin address to send to
+   * @param amount - The amount to send in satoshis
+   * @returns The constructed InitBtcTransferMsg and total amount needed
    */
-  async initBitcoinWithdrawal(
+  async createBitcoinWithdrawalMessage(
     targetBtcAddress: string,
     amount: bigint,
-  ): Promise<{ pendingId: string; nearTxHash: string }> {
+  ): Promise<{ msg: InitBtcTransferMsg; totalAmount: bigint }> {
     // Get bridge-controlled UTXOs from NEAR contract (not Bitcoin network)
     const utxos = await this.getAvailableUTXOs()
     const bitcoinConfig = await this.getBitcoinBridgeConfig()
@@ -767,6 +772,20 @@ export class NearBridgeClient {
     }
 
     const totalAmount = amount + (fee ?? 0n) + BigInt(bitcoinConfig.withdraw_bridge_fee.fee_min)
+
+    return { msg, totalAmount }
+  }
+
+  /**
+   * Initialize NEAR -> BTC withdrawal (NEAR -> BTC flow start)
+   * Mirrors init_near_to_bitcoin_transfer() from Rust SDK
+   */
+  async initBitcoinWithdrawal(
+    targetBtcAddress: string,
+    amount: bigint,
+  ): Promise<{ pendingId: string; nearTxHash: string }> {
+    // Create the withdrawal message
+    const { msg, totalAmount } = await this.createBitcoinWithdrawalMessage(targetBtcAddress, amount)
 
     const tx = await this.wallet.signAndSendTransaction({
       receiverId: addresses.btc.btcToken,
