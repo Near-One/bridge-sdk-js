@@ -1,5 +1,13 @@
 # omni-bridge-sdk
 
+## 0.17.2
+
+### Patch Changes
+
+- 6948baa: chore(deps): bump @scure/btc-signer from 1.8.1 to 2.0.1
+- 5f82b42: chore(deps): bump @near-js/types from 2.3.0 to 2.3.1
+- 1e98a86: chore(deps-dev): bump @types/bun from 1.2.17 to 1.2.21
+
 ## 0.17.1
 
 ### Patch Changes
