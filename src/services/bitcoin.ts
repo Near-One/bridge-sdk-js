@@ -6,6 +6,7 @@ import type {
   NearBlocksReceiptsResponse,
   UTXO,
 } from "../types/bitcoin.js"
+import { type UtxoSelectionResult, UtxoService } from "./utxo.js"
 
 /**
  * Bitcoin service for proof generation and network queries
@@ -33,17 +34,7 @@ import type {
  * const selection = bitcoinService.selectCoins(utxos, amount, targetAddress, changeAddress, feeRate)
  * ```
  */
-export class BitcoinService {
-  /**
-   * Create a new BitcoinService instance
-   * @param apiUrl - Bitcoin API endpoint (e.g., "https://blockstream.info/api")
-   * @param network - Bitcoin network type ("mainnet" or "testnet")
-   */
-  constructor(
-    private apiUrl: string,
-    private network: "mainnet" | "testnet",
-  ) {}
-
+export class BitcoinService extends UtxoService {
   /**
    * Fetch merkle proof for Bitcoin transaction verification
    *
@@ -89,51 +80,73 @@ export class BitcoinService {
   }
 
   /**
-   * Select UTXOs and construct Bitcoin transaction for withdrawal
-   *
-   * Implements optimal UTXO selection using scure-btc-signer's selectUTXO algorithm.
-   * The algorithm considers:
-   * - Available UTXO set and required output amount
-   * - Fee estimation based on transaction size and fee rate
-   * - Change output generation to minimize dust
-   * - BIP69 sorting for privacy (deterministic input/output ordering)
-   *
-   * @param utxos - Available unspent transaction outputs to spend from
-   * @param amount - Target amount to send in satoshis (excluding fees)
-   * @param to - Recipient Bitcoin address (any format: P2PKH, P2SH, P2WPKH, P2WSH)
-   * @param changeAddress - Address to send remaining balance after fees
-   * @param feeRate - Fee rate in satoshis per virtual byte (sat/vB)
-   * @returns Selected inputs, outputs, estimated fee, and transaction size
-   * @throws {Error} When insufficient funds available for amount + fees
-   *
-   * @example
-   * ```typescript
-   * const utxos = [
-   *   { txid: "abc123...", vout: 0, balance: "100000", ... },
-   *   { txid: "def456...", vout: 1, balance: "50000", ... }
-   * ]
-   *
-   * const selection = bitcoinService.selectCoins(
-   *   utxos,
-   *   BigInt(75000), // Send 75,000 sats
-   *   "bc1qrecipient...", // Target address
-   *   "bc1qchange...", // Change address
-   *   10 // 10 sat/vB fee rate
-   * )
-   *
-   * console.log(`Selected ${selection.inputs.length} inputs`)
-   * console.log(`Fee: ${selection.fee} sats`)
-   * console.log(`Transaction size: ${selection.vsize} vBytes`)
-   * ```
+   * Implementation of abstract selectUtxos method
+   * @param utxos - Available UTXOs
+   * @param amount - Target amount
+   * @param targetAddress - Recipient address
+   * @param changeAddress - Change address
+   * @param feeRate - Fee rate in sat/vB
+   * @returns UTXO selection result
    */
-  selectCoins(
+  selectUtxos(
     utxos: UTXO[],
     amount: bigint,
-    to: string,
+    targetAddress: string,
     changeAddress: string,
-    feeRate: number, // sat/vB
+    feeRate: number,
+  ): UtxoSelectionResult {
+    // Bitcoin-specific validations (maintaining original error messages)
+    if (utxos.length === 0) {
+      throw new Error("Bitcoin: No UTXOs available for transaction")
+    }
+    this.validateAmount(amount)
+    this.validateAddress(targetAddress)
+    this.validateAddress(changeAddress)
+
+    // Convert UTXOs to scure-btc-signer format efficiently
+    const inputs = utxos.map(this.toInput)
+    const network = this.getNetwork()
+
+    // Use scure-btc-signer's optimized selectUTXO algorithm
+    const result = btc.selectUTXO(
+      inputs,
+      [{ address: targetAddress, amount }], // Target output
+      "default", // Optimal selection strategy
+      {
+        feePerByte: BigInt(feeRate),
+        changeAddress,
+        network,
+        bip69: true, // Privacy: deterministic ordering
+        createTx: true, // Accurate fee estimation
+      },
+    )
+
+    if (!result) {
+      throw new Error("Bitcoin: Insufficient funds for transaction")
+    }
+
+    // Map result back to our format
+    const selectedUtxos = result.inputs.map((_input, index) => utxos[index]).filter(Boolean)
+
+    return {
+      selected: selectedUtxos,
+      total: this.calculateTotalValue(selectedUtxos),
+      fee: BigInt(result.tx?.fee ?? result.fee ?? 0),
+    }
+  }
+
+  /**
+   * Get transaction data for withdrawal construction
+   * Returns the raw transaction construction data needed for MPC signing
+   */
+  getTransactionData(
+    utxos: UTXO[],
+    amount: bigint,
+    targetAddress: string,
+    changeAddress: string,
+    feeRate: number,
   ) {
-    // Early validation: check if we have any UTXOs
+    // Early validation
     if (utxos.length === 0) {
       throw new Error("Bitcoin: No UTXOs available for transaction")
     }
@@ -145,7 +158,7 @@ export class BitcoinService {
     // Use scure-btc-signer's optimized selectUTXO algorithm
     const result = btc.selectUTXO(
       inputs,
-      [{ address: to, amount }], // Target output
+      [{ address: targetAddress, amount }], // Target output
       "default", // Optimal selection strategy
       {
         feePerByte: BigInt(feeRate),
@@ -165,6 +178,36 @@ export class BitcoinService {
       outputs: result.outputs,
       fee: result.tx?.fee ?? result.fee,
       vsize: Math.ceil(result.weight / 4),
+    }
+  }
+
+  /**
+   * Implementation of abstract calculateFee method
+   * @param inputs - Number of transaction inputs
+   * @param outputs - Number of transaction outputs
+   * @param feeRate - Fee rate in sat/vB
+   * @returns Calculated fee in satoshis
+   */
+  calculateFee(inputs: number, outputs: number, feeRate: number = 10): bigint {
+    // Bitcoin fee calculation: size-based
+    // Approximate transaction size: 10 + inputs*148 + outputs*34 (for P2WPKH)
+    const estimatedSize = 10 + inputs * 148 + outputs * 34
+    return BigInt(Math.ceil(estimatedSize * feeRate))
+  }
+
+  /**
+   * Implementation of abstract isValidAddress method
+   * @param address - Bitcoin address to validate
+   * @returns true if address is valid for current network
+   */
+  isValidAddress(address: string): boolean {
+    try {
+      const network = this.getNetwork()
+      const addressDecoder = btc.Address(network)
+      addressDecoder.decode(address)
+      return true
+    } catch {
+      return false
     }
   }
 

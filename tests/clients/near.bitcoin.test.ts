@@ -181,8 +181,8 @@ describe("NearBridgeClient Bitcoin Methods", () => {
 
     client = new NearBridgeClient(mockWallet, REAL_TEST_DATA.bridgeContract)
 
-    // Mock the Bitcoin service's selectCoins method to avoid complex transaction byte requirements
-    client.bitcoinService.selectCoins = vi.fn().mockReturnValue({
+    // Mock the Bitcoin service's getTransactionData method to avoid complex transaction byte requirements
+    client.bitcoinService.getTransactionData = vi.fn().mockReturnValue({
       inputs: [{ txid: new Uint8Array(32), index: 0 }], // Simplified input
       outputs: [
         { address: REAL_TEST_DATA.withdrawAddress, amount: 50000n },
