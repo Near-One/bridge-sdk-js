@@ -1,5 +1,14 @@
 # omni-bridge-sdk
 
+## 0.17.3
+
+### Patch Changes
+
+- 6246393: chore(deps): bump @noble/curves from 1.9.2 to 2.0.0
+- 2799d47: chore(deps-dev): bump lefthook from 1.11.14 to 1.13.0
+- 7244225: chore(deps-dev): bump @biomejs/biome from 2.2.3 to 2.2.4
+- f412868: chore(deps-dev): bump @types/node from 24.3.1 to 24.4.0
+
 ## 0.17.2
 
 ### Patch Changes
