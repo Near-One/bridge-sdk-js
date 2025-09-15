@@ -43,7 +43,7 @@
     "@near-js/transactions": "^2.1.0",
     "@near-js/types": "^2.1.0",
     "@near-wallet-selector/core": "^9.0.3",
-    "@noble/curves": "^1.6.0",
+    "@noble/curves": "^2.0.0",
     "@noble/hashes": "^2.0.0",
     "@scure/base": "^1.2.6",
     "@scure/btc-signer": "^2.0.1",
