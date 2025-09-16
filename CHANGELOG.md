@@ -1,5 +1,14 @@
 # omni-bridge-sdk
 
+## 0.17.4
+
+### Patch Changes
+
+- bbc68ca: chore(deps): bump @near-js/transactions from 2.1.0 to 2.3.1
+- 4416853: chore(deps-dev): bump @changesets/cli from 2.29.5 to 2.29.7
+- 7f38e66: chore(deps-dev): bump @types/bun from 1.2.21 to 1.2.22
+- 3fb68ad: chore(deps-dev): bump @types/node from 24.4.0 to 24.5.0
+
 ## 0.17.3
 
 ### Patch Changes
