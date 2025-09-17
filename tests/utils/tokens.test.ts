@@ -106,6 +106,52 @@ describe("Token Resolution", () => {
       const result = await getBridgedToken(solToken, ChainKind.Base)
       expect(result).toBeNull()
     })
+
+    it("returns hardcoded btc:native for mainnet nBTC token to BTC", async () => {
+      const nbtcMainnet = "near:nbtc.bridge.near"
+      const result = await getBridgedToken(nbtcMainnet, ChainKind.Btc)
+      expect(result).toBe("btc:native")
+      // Should not call the contract for hardcoded mappings
+      expect(view).not.toHaveBeenCalled()
+    })
+
+    it("returns hardcoded btc:native for testnet nBTC token to BTC", async () => {
+      const nbtcTestnet = "near:nbtc-dev.testnet"
+      const result = await getBridgedToken(nbtcTestnet, ChainKind.Btc)
+      expect(result).toBe("btc:native")
+      // Should not call the contract for hardcoded mappings
+      expect(view).not.toHaveBeenCalled()
+    })
+
+    it("still calls contract for non-BTC destinations from nBTC tokens", async () => {
+      const nbtcMainnet = "near:nbtc.bridge.near"
+      const result = await getBridgedToken(nbtcMainnet, ChainKind.Eth)
+      // Should proceed with normal contract call
+      expect(view).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: "get_bridged_token",
+          args: {
+            chain: "Eth",
+            address: nbtcMainnet,
+          },
+        }),
+      )
+    })
+
+    it("still calls contract for non-nBTC tokens to BTC destination", async () => {
+      const ethToken = "eth:0xa2e932310e7294451d8417aa9b2e647e67df3288"
+      const result = await getBridgedToken(ethToken, ChainKind.Btc)
+      // Should proceed with normal contract call
+      expect(view).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: "get_bridged_token",
+          args: {
+            chain: "Btc",
+            address: ethToken,
+          },
+        }),
+      )
+    })
   })
 
   describe("parseOriginChain", () => {

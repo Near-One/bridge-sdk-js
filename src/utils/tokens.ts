@@ -76,6 +76,14 @@ export async function getBridgedToken(
   tokenAddress: OmniAddress,
   destinationChain: ChainKind,
 ): Promise<OmniAddress | null> {
+  // Hardcoded BTC transfers: nbtc.bridge.near -> BTC
+  if (destinationChain === ChainKind.Btc) {
+    // Check for mainnet and testnet BTC tokens
+    if (tokenAddress === "near:nbtc.bridge.near" || tokenAddress === "near:nbtc-dev.testnet") {
+      return "btc:native"
+    }
+  }
+
   const rpcProvider = getProviderByNetwork(addresses.network)
   return await view<OmniAddress>({
     account: addresses.near,
