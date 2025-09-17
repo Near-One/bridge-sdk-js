@@ -1,5 +1,14 @@
 # omni-bridge-sdk
 
+## 0.17.5
+
+### Patch Changes
+
+- de1ab17: chore: bump merkletreejs from 0.5.2 to 0.6.0
+- e15e571: chore: bump @near-js/accounts from 2.1.0 to 2.3.1
+- 937fc4d: chore: bump @types/node from 24.5.0 to 24.5.1
+- 6c51fb6: chore: bump zod from 4.1.5 to 4.1.9
+
 ## 0.17.4
 
 ### Patch Changes
