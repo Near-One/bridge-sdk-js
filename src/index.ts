@@ -12,3 +12,4 @@ export * from "./proofs/index.js"
 // Export type definitions
 export * from "./types/index.js"
 export * from "./utils/index.js"
+export * from "./utxo/index.js"
