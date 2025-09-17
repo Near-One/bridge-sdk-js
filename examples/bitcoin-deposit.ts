@@ -22,7 +22,9 @@ import { getSignerFromKeystore } from "@near-js/client"
 import { UnencryptedFileSystemKeyStore } from "@near-js/keystores-node"
 import { JsonRpcProvider } from "@near-js/providers"
 import { NearBridgeClient } from "../src/clients/near.js"
-import { setNetwork } from "../src/config.js"
+import { ChainKind } from "../src/types/chain.js"
+import type { BtcConnectorConfig } from "../src/types/bitcoin.js"
+import { addresses, setNetwork } from "../src/config.js"
 
 // Configuration - Replace with your values
 const NEAR_ACCOUNT = "bridge-sdk-test.testnet"
@@ -45,15 +47,15 @@ async function main() {
   })
   const account = new Account(NEAR_ACCOUNT, provider, signer)
 
-  const bridgeClient = new NearBridgeClient(account, "omni.n-bridge.testnet")
+  const bridgeClient = new NearBridgeClient(account, addresses.near)
 
   // Get minimum deposit amount
-  const config = await bridgeClient.getBitcoinBridgeConfig()
+  const config = (await bridgeClient.getUtxoBridgeConfig(ChainKind.Btc)) as BtcConnectorConfig
   console.log(`Minimum deposit: ${config.min_deposit_amount} satoshis`)
 
   // Step 1: Generate Bitcoin deposit address
   console.log("\n📍 Step 1: Generate deposit address")
-  const depositResult = await bridgeClient.getBitcoinDepositAddress(NEAR_ACCOUNT)
+  const depositResult = await bridgeClient.getUtxoDepositAddress(ChainKind.Btc, NEAR_ACCOUNT)
 
   console.log(`✅ Send Bitcoin to: ${depositResult.depositAddress}`)
 
@@ -72,10 +74,11 @@ async function main() {
   console.log(`Using TX: ${TX_HASH}`)
 
   try {
-    const nearTxHash = await bridgeClient.finalizeBitcoinDeposit(
+    const nearTxHash = await bridgeClient.finalizeUtxoDeposit(
+      ChainKind.Btc,
       TX_HASH,
       VOUT,
-      depositResult.btcDepositArgs,
+      depositResult.depositArgs,
     )
 
     console.log("✅ Deposit complete!")

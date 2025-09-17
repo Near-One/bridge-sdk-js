@@ -1,81 +1,41 @@
-import { sha256 } from "@noble/hashes/sha2.js"
-import { hex } from "@scure/base"
-import { MerkleTree } from "merkletreejs"
-import type { UTXO } from "../types/bitcoin.js"
+import type { BitcoinMerkleProofResponse, UTXO } from "../types/bitcoin.js"
+import { getZcashScript } from "../utils/zcash.js"
+import {
+  type NormalizedUTXO,
+  selectUtxos,
+  type UtxoDepositProof,
+  type UtxoPlanOverrides,
+  type UtxoWithdrawalPlan,
+} from "../utxo/index.js"
+import { UtxoRpcClient } from "../utxo/rpc.js"
 
-interface ContractDepositProof {
-  merkle_proof: string[]
-  tx_block_blockhash: string
-  tx_bytes: number[]
-  tx_index: number
-}
-
-type JsonRpcSuccess<T> = {
-  jsonrpc: "2.0"
-  id: string | number | null
-  result: T
-}
-
-type JsonRpcError = {
-  jsonrpc: "2.0"
-  id: string | number | null
-  error: { code: number; message: string; data?: unknown }
-}
-
-type JsonRpcResponse<T> = JsonRpcSuccess<T> | JsonRpcError
+const ZCASH_DUST_THRESHOLD = 5000n
 
 export class ZcashService {
   constructor(
-    private apiUrl: string,
+    private rpcUrl: string,
     private apiKey: string,
-  ) {}
-
-  private async rpc<T>(method: string, params: unknown[] = []): Promise<T> {
-    const response = await fetch(this.apiUrl, {
-      method: "POST",
-      headers: {
-        "x-api-key": this.apiKey,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ jsonrpc: "2.0", id: "1", method, params }),
-    })
-
-    const body = (await response.json()) as JsonRpcResponse<T>
-    if ("error" in body) throw new Error(body.error.message)
-    return body.result
+  ) {
+    this.rpc = new UtxoRpcClient({ url: this.rpcUrl, headers: { "x-api-key": this.apiKey } })
   }
 
+  private rpc: UtxoRpcClient
+
   async decodeTransaction(txHex: string) {
-    const tx = await this.rpc("decoderawtransaction", [txHex])
+    const tx = await this.rpc.call("decoderawtransaction", [txHex])
     return tx
   }
 
-  async getDepositProof(txHash: string): Promise<ContractDepositProof> {
-    const txInfo = (await this.rpc("getrawtransaction", [txHash, 1])) as {
-      blockhash: string
-      hex: string
-    }
-    if (!txInfo.blockhash) throw new Error("Transaction not confirmed")
+  async getDepositProof(txHash: string, vout: number): Promise<UtxoDepositProof> {
+    return await this.rpc.buildDepositProof(txHash, vout)
+  }
 
-    const block = (await this.rpc("getblock", [txInfo.blockhash, 1])) as { tx: string[] }
-
-    const leaves = block.tx.map((id: string) => Buffer.from(hex.decode(id)))
-
-    const tree = new MerkleTree(leaves, sha256, { isBitcoinTree: true })
-
-    const targetIndex = block.tx.indexOf(txHash)
-    const proof = tree.getProof(leaves[targetIndex], targetIndex)
-
-    return {
-      merkle_proof: proof.map((p) => hex.encode(p.data)),
-      tx_block_blockhash: txInfo.blockhash,
-      tx_bytes: Array.from(hex.decode(txInfo.hex)),
-      tx_index: targetIndex,
-    }
+  async getMerkleProof(txHash: string): Promise<BitcoinMerkleProofResponse> {
+    return await this.rpc.buildMerkleProof(txHash)
   }
 
   async broadcastTransaction(txHex: string): Promise<string> {
-    return await this.rpc("sendrawtransaction", [txHex])
+    return await this.rpc.call("sendrawtransaction", [txHex])
   }
 
   calculateZcashFee(inputs: number, outputs: number): bigint {
@@ -94,25 +54,68 @@ export class ZcashService {
     return BigInt(fee)
   }
 
-  selectUTXOs(utxos: UTXO[], amount: bigint) {
-    // Sort biggest first
-    const sorted = [...utxos].sort((a, b) => Number(BigInt(b.balance) - BigInt(a.balance)))
-
-    const selected = []
-    let total = 0n
-
-    for (const utxo of sorted) {
-      selected.push(utxo)
-      total += BigInt(utxo.balance)
-
-      // Fee calculation: 12 + inputs*68 + outputs*31
-      const fee = this.calculateZcashFee(selected.length, 2)
-
-      if (total >= amount + fee) {
-        return { selected, total, fee }
-      }
+  buildWithdrawalPlan(
+    utxos: UTXO[],
+    amount: bigint,
+    targetAddress: string,
+    changeAddress: string,
+    _feeRate: number = 0,
+    overrides?: UtxoPlanOverrides,
+  ): UtxoWithdrawalPlan {
+    if (!utxos.length) {
+      throw new Error("Zcash: No UTXOs available")
     }
 
-    throw new Error("Insufficient funds")
+    if (!changeAddress) {
+      throw new Error("Zcash: Bridge configuration is missing change address")
+    }
+
+    const normalized = this.normalizeUtxos(utxos)
+
+    const dustThreshold = overrides?.dustThreshold ?? ZCASH_DUST_THRESHOLD
+    const minChange = overrides?.minChange ?? dustThreshold
+
+    const selection = selectUtxos(normalized, amount, {
+      feeCalculator: (inputs, outputs) => this.calculateZcashFee(inputs, outputs),
+      dustThreshold,
+      minChange,
+      maxInputs: overrides?.maxInputs,
+      sort: overrides?.sort ?? "largest-first",
+    })
+
+    const outputs = [{ value: Number(amount), script_pubkey: getZcashScript(targetAddress) }]
+
+    if (selection.change > 0n) {
+      outputs.push({
+        value: Number(selection.change),
+        script_pubkey: getZcashScript(changeAddress),
+      })
+    }
+
+    return {
+      inputs: selection.inputs.map((input) => `${input.txid}:${input.vout}`),
+      outputs,
+      fee: selection.fee,
+    }
+  }
+
+  private normalizeUtxos(utxos: UTXO[]): NormalizedUTXO[] {
+    return utxos.map((utxo) => {
+      const bytes = utxo.tx_bytes
+      let rawTx: Uint8Array
+      if (bytes instanceof Uint8Array) {
+        rawTx = bytes
+      } else {
+        rawTx = Uint8Array.from(bytes)
+      }
+
+      return {
+        txid: utxo.txid,
+        vout: utxo.vout,
+        amount: BigInt(utxo.balance),
+        path: utxo.path,
+        rawTx,
+      }
+    })
   }
 }

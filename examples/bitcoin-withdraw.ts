@@ -20,7 +20,8 @@ import { getSignerFromKeystore } from "@near-js/client"
 import { UnencryptedFileSystemKeyStore } from "@near-js/keystores-node"
 import { JsonRpcProvider } from "@near-js/providers"
 import { NearBridgeClient } from "../src/clients/near.js"
-import { setNetwork } from "../src/config.js"
+import { addresses, setNetwork } from "../src/config.js"
+import { ChainKind } from "../src/types/chain.js"
 
 // Configuration - Replace with your values
 const NEAR_ACCOUNT = "bridge-sdk-test.testnet"
@@ -41,10 +42,10 @@ async function main() {
   })
   const account = new Account(NEAR_ACCOUNT, provider, signer)
 
-  const bridgeClient = new NearBridgeClient(account, "omni.n-bridge.testnet")
+  const bridgeClient = new NearBridgeClient(account, addresses.near)
 
   // Get minimum withdrawal amount
-  const config = await bridgeClient.getBitcoinBridgeConfig()
+  const config = await bridgeClient.getUtxoBridgeConfig(ChainKind.Btc)
   const withdrawalAmount = BigInt(config.min_withdraw_amount)
 
   console.log(`Amount: ${withdrawalAmount} satoshis`)
@@ -53,7 +54,8 @@ async function main() {
     // Method 1: Automated (recommended)
     console.log("\n⏳ Starting automated withdrawal...")
 
-    const bitcoinTxHash = await bridgeClient.executeBitcoinWithdrawal(
+    const bitcoinTxHash = await bridgeClient.executeUtxoWithdrawal(
+      ChainKind.Btc,
       BITCOIN_ADDRESS,
       withdrawalAmount,
     )
@@ -65,14 +67,21 @@ async function main() {
     console.log("❌ Automated method failed, trying manual...")
 
     // Method 2: Manual steps
-    const btcWithdrawal = await bridgeClient.initBitcoinWithdrawal(BITCOIN_ADDRESS, withdrawalAmount)
+    const btcWithdrawal = await bridgeClient.initUtxoWithdrawal(
+      ChainKind.Btc,
+      BITCOIN_ADDRESS,
+      withdrawalAmount,
+    )
     console.log(`Pending ID: ${btcWithdrawal.pendingId}. NEAR TX: ${btcWithdrawal.nearTxHash}`)
 
     console.log("⏳ Waiting for MPC signing...")
-    const nearTxHash = await bridgeClient.waitForBitcoinTransactionSigning(btcWithdrawal.nearTxHash)
+    const nearTxHash = await bridgeClient.waitForUtxoTransactionSigning(
+      ChainKind.Btc,
+      btcWithdrawal.nearTxHash,
+    )
 
     console.log("⏳ Broadcasting to Bitcoin network...")
-    const bitcoinTxHash = await bridgeClient.finalizeBitcoinWithdrawal(nearTxHash)
+    const bitcoinTxHash = await bridgeClient.finalizeUtxoWithdrawal(ChainKind.Btc, nearTxHash)
 
     console.log("✅ Manual method succeeded!")
     console.log(`Bitcoin TX: ${bitcoinTxHash}`)
