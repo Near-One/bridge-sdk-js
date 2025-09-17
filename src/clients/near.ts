@@ -1,20 +1,20 @@
 import type { Account } from "@near-js/accounts"
 import { actionCreators } from "@near-js/transactions"
 import type { FinalExecutionOutcome } from "@near-js/types"
-import type { Output } from "@scure/btc-signer/utxo.js"
 import { OmniBridgeAPI } from "../api.js"
 import { addresses } from "../config.js"
 import { BitcoinService } from "../services/bitcoin.js"
+import { ZcashService } from "../services/zcash.js"
 import {
   type AccountId,
   type BindTokenArgs,
   BindTokenArgsSchema,
+  type BitcoinMerkleProofResponse,
   type BtcConnectorConfig,
   type BtcDepositArgs,
   ChainKind,
   type DeployTokenArgs,
   DeployTokenArgsSchema,
-  type DepositMsg,
   type EvmVerifyProofArgs,
   EvmVerifyProofArgsSchema,
   type FastFinTransferArgs,
@@ -39,6 +39,12 @@ import {
 } from "../types/index.js"
 import { getChain, isEvmChain, omniAddress } from "../utils/index.js"
 import { getBridgedToken } from "../utils/tokens.js"
+import type {
+  UtxoChainService,
+  UtxoDepositProof,
+  UtxoPlanOverrides,
+  UtxoWithdrawalPlan,
+} from "../utxo/index.js"
 import type { EvmBridgeClient } from "./evm.js"
 
 /**
@@ -123,12 +129,21 @@ interface BalanceResults {
   storage: StorageDeposit
 }
 
+type UtxoChain = ChainKind.Btc | ChainKind.Zcash
+
+const UTXO_CHAIN_LABELS: Record<UtxoChain, string> = {
+  [ChainKind.Btc]: "Bitcoin",
+  [ChainKind.Zcash]: "Zcash",
+}
+
 /**
  * NEAR blockchain implementation of the bridge client.
  * Handles token deployment, binding, and transfer operations on the NEAR blockchain.
  */
 export class NearBridgeClient {
   public bitcoinService: BitcoinService
+  public zcashService?: ZcashService
+  private readonly utxoServices: Partial<Record<UtxoChain, UtxoChainService>> = {}
 
   /**
    * Creates a new NEAR bridge client instance
@@ -139,13 +154,24 @@ export class NearBridgeClient {
   constructor(
     private wallet: Account,
     private lockerAddress: string = addresses.near,
+    private readonly options: { zcashApiKey?: string } = {},
   ) {
     if (lockerAddress) {
       this.lockerAddress = lockerAddress
     }
 
     // Initialize Bitcoin service
-    this.bitcoinService = new BitcoinService(addresses.btc.apiUrl, addresses.btc.network)
+    this.bitcoinService = new BitcoinService(addresses.btc.apiUrl, addresses.btc.network, {
+      url: addresses.btc.rpcUrl,
+    })
+    this.utxoServices[ChainKind.Btc] = this.bitcoinService
+
+    // Initialize Zcash service if API key configured via options or environment
+    const zcashApiKey = this.options.zcashApiKey || process.env.ZCASH_API_KEY
+    if (zcashApiKey) {
+      this.zcashService = new ZcashService(addresses.zcash.rpcUrl, zcashApiKey)
+      this.utxoServices[ChainKind.Zcash] = this.zcashService
+    }
   }
 
   /**
@@ -614,40 +640,71 @@ export class NearBridgeClient {
   }
 
   // =====================================================================
-  // BITCOIN BRIDGE METHODS (mirrors Rust SDK NearBridgeClient + BtcConnector)
+  // UTXO OPERATIONS (BTC & ZCASH)
   // =====================================================================
 
-  /**
-   * Get Bitcoin deposit address from Satoshi Bridge (BTC -> NEAR flow start)
-   * Mirrors get_btc_address() from Rust SDK
-   */
-  async getBitcoinDepositAddress(
+  private assertUtxoChain(chain: ChainKind): asserts chain is UtxoChain {
+    if (chain !== ChainKind.Btc && chain !== ChainKind.Zcash) {
+      throw new Error(`Unsupported UTXO chain: ${ChainKind[chain] ?? chain}`)
+    }
+  }
+
+  private getUtxoService(chain: UtxoChain): UtxoChainService {
+    const service = this.utxoServices[chain]
+    if (service) {
+      return service
+    }
+
+    if (chain === ChainKind.Zcash) {
+      throw new Error("Zcash support requires initializing NearBridgeClient with a zcashApiKey")
+    }
+
+    throw new Error(`Unsupported UTXO chain: ${ChainKind[chain] ?? chain}`)
+  }
+
+  private getUtxoChainLabel(chain: UtxoChain): string {
+    return UTXO_CHAIN_LABELS[chain] ?? ChainKind[chain] ?? String(chain)
+  }
+
+  private getUtxoConnector(chain: UtxoChain) {
+    switch (chain) {
+      case ChainKind.Btc:
+        return {
+          connector: addresses.btc.btcConnector,
+          token: addresses.btc.btcToken,
+        }
+      case ChainKind.Zcash:
+        this.getUtxoService(chain)
+        return {
+          connector: addresses.zcash.zcashConnector,
+          token: addresses.zcash.zcashToken,
+        }
+      default:
+        throw new Error(`Unsupported UTXO chain: ${ChainKind[chain] ?? chain}`)
+    }
+  }
+
+  async getUtxoDepositAddress(
+    chain: ChainKind,
     recipientId: string,
     amount?: bigint,
     fee?: bigint,
-  ): Promise<{ depositAddress: string; btcDepositArgs: BtcDepositArgs }> {
-    // Validate minimum amount if provided
-    if (amount) {
-      const bitcoinConfig = await this.getBitcoinBridgeConfig()
-      if (amount < BigInt(bitcoinConfig.min_deposit_amount)) {
-        throw new Error(
-          `Amount ${amount} is below minimum deposit amount ${bitcoinConfig.min_deposit_amount}`,
-        )
-      }
-    }
+  ): Promise<{ depositAddress: string; depositArgs: BtcDepositArgs }> {
+    this.assertUtxoChain(chain)
 
-    // Deposit msg depends on if the receiver is an Omni Address or not
-    let depositMsg: DepositMsg
+    const { connector } = this.getUtxoConnector(chain)
+
+    let depositMsg: BtcDepositArgs["deposit_msg"]
     if (recipientId.includes(":")) {
       if (!amount) {
-        throw new Error("Amount is required for Omni Address deposit")
+        throw new Error("Amount is required for Omni address deposits")
       }
       depositMsg = {
         recipient_id: this.wallet.accountId,
         post_actions: [
           {
             receiver_id: this.lockerAddress,
-            amount: amount,
+            amount,
             msg: JSON.stringify({
               recipient: recipientId,
               fee: fee?.toString(),
@@ -662,54 +719,50 @@ export class NearBridgeClient {
       }
     }
 
-    const result = await this.wallet.provider.callFunction(
-      addresses.btc.btcConnector,
+    const depositAddress = (await this.wallet.provider.callFunction(
+      connector,
       "get_user_deposit_address",
-      { deposit_msg: depositMsg },
-    )
+      {
+        deposit_msg: depositMsg,
+      },
+    )) as string
+
     return {
-      depositAddress: result as string,
-      btcDepositArgs: { deposit_msg: depositMsg },
+      depositAddress,
+      depositArgs: { deposit_msg: depositMsg },
     }
   }
 
-  /**
-   * Finalize Bitcoin deposit (BTC -> NEAR flow completion)
-   * Mirrors near_fin_transfer_btc() from Rust SDK
-   */
-  async finalizeBitcoinDeposit(
-    btcTxHash: string,
+  async finalizeUtxoDeposit(
+    chain: ChainKind,
+    txHash: string,
     vout: number,
     depositArgs: BtcDepositArgs,
   ): Promise<string> {
-    // Use BitcoinService to generate proof
-    const merkleProof = await this.bitcoinService.fetchMerkleProof(btcTxHash)
-    const bitcoinTx = await this.bitcoinService.getTransaction(btcTxHash)
-    const rawBitcoinTx = await this.bitcoinService.getTransactionBytes(btcTxHash)
-    if (!bitcoinTx.status?.block_hash) {
-      throw new Error("Bitcoin: Transaction not confirmed")
-    }
+    this.assertUtxoChain(chain)
 
-    // Validate minimum deposit amount
-    const depositAmount = BigInt(bitcoinTx.vout[vout].value)
-    const bitcoinConfig = await this.getBitcoinBridgeConfig()
-    if (depositAmount < BigInt(bitcoinConfig.min_deposit_amount)) {
+    const { connector } = this.getUtxoConnector(chain)
+    const config = (await this.getUtxoBridgeConfig(chain)) as BtcConnectorConfig
+    const service = this.getUtxoService(chain)
+    const proof: UtxoDepositProof = await service.getDepositProof(txHash, vout)
+
+    if (proof.amount < BigInt(config.min_deposit_amount)) {
       throw new Error(
-        `Deposit amount ${depositAmount} is below minimum deposit amount ${bitcoinConfig.min_deposit_amount}`,
+        `Deposit amount ${proof.amount} is below minimum deposit amount ${config.min_deposit_amount}`,
       )
     }
 
     const args: FinBtcTransferArgs = {
       deposit_msg: depositArgs.deposit_msg,
-      tx_bytes: Array.from(rawBitcoinTx),
+      tx_bytes: proof.tx_bytes,
       vout,
-      tx_block_blockhash: bitcoinTx.status?.block_hash,
-      tx_index: merkleProof.pos,
-      merkle_proof: merkleProof.merkle,
+      tx_block_blockhash: proof.tx_block_blockhash,
+      tx_index: proof.tx_index,
+      merkle_proof: proof.merkle_proof,
     }
 
     const tx = await this.wallet.signAndSendTransaction({
-      receiverId: addresses.btc.btcConnector,
+      receiverId: connector,
       actions: [actionCreators.functionCall("verify_deposit", args, BigInt(GAS.VERIFY_DEPOSIT))],
       waitUntil: "FINAL",
     })
@@ -717,216 +770,198 @@ export class NearBridgeClient {
     return tx.transaction.hash
   }
 
-  /**
-   * Initialize NEAR -> BTC withdrawal (NEAR -> BTC flow start)
-   * Mirrors init_near_to_bitcoin_transfer() from Rust SDK
-   */
-  async initBitcoinWithdrawal(
-    targetBtcAddress: string,
+  async initUtxoWithdrawal(
+    chain: ChainKind,
+    targetAddress: string,
     amount: bigint,
   ): Promise<{ pendingId: string; nearTxHash: string }> {
-    // Get bridge-controlled UTXOs from NEAR contract (not Bitcoin network)
-    const utxos = await this.getAvailableUTXOs()
-    const bitcoinConfig = await this.getBitcoinBridgeConfig()
+    this.assertUtxoChain(chain)
 
-    // Validate minimum amount
-    if (amount < BigInt(bitcoinConfig.min_withdraw_amount)) {
+    const chainLabel = this.getUtxoChainLabel(chain)
+
+    const { connector, token } = this.getUtxoConnector(chain)
+
+    const config = await this.getUtxoBridgeConfig(chain)
+    if (amount < BigInt(config.min_withdraw_amount)) {
       throw new Error(
-        `Amount ${amount} is below minimum withdrawal amount ${bitcoinConfig.min_withdraw_amount}`,
+        `Amount ${amount} is below minimum withdrawal amount ${config.min_withdraw_amount}`,
       )
     }
 
-    // Change address is configured by the bridge (users don't determine this)
-    const changeAddress = bitcoinConfig.change_address
+    const utxos = await this.getUtxoAvailableOutputs(chain)
+    if (!utxos.length) {
+      throw new Error(`${chainLabel}: No UTXOs available for transaction`)
+    }
 
-    // Use Bitcoin service for UTXO selection
-    const { inputs, outputs, fee } = this.bitcoinService.selectCoins(
+    const plan: UtxoWithdrawalPlan = this.buildUtxoWithdrawalPlan(
+      chain,
       utxos,
       amount,
-      targetBtcAddress,
-      changeAddress,
-      2,
+      targetAddress,
+      config,
     )
 
-    // Construct transaction message
     const msg: InitBtcTransferMsg = {
       Withdraw: {
-        target_btc_address: targetBtcAddress,
-        input: inputs.map(
-          ({ txid, index }) =>
-            `${txid ? Array.from(txid, (byte) => byte.toString(16).padStart(2, "0")).join("") : ""}:${index}`,
-        ),
-        output: outputs.map((o: Output) => ({
-          value: Number(o.amount),
-          // @ts-expect-error - `Output` is a union type, we'd have to do type-narrowing
-          script_pubkey: Array.from(this.bitcoinService.addressToScriptPubkey(o.address), (byte) =>
-            byte.toString(16).padStart(2, "0"),
-          ).join(""),
-        })),
+        target_btc_address: targetAddress,
+        input: plan.inputs,
+        output: plan.outputs,
       },
     }
 
-    const totalAmount = amount + (fee ?? 0n) + BigInt(bitcoinConfig.withdraw_bridge_fee.fee_min)
+    const bridgeFeeMin = BigInt(config.withdraw_bridge_fee.fee_min)
+    const totalAmount = amount + plan.fee + bridgeFeeMin
 
     const tx = await this.wallet.signAndSendTransaction({
-      receiverId: addresses.btc.btcToken,
+      receiverId: token,
       actions: [
         actionCreators.functionCall(
           "ft_transfer_call",
           {
-            receiver_id: addresses.btc.btcConnector,
+            receiver_id: connector,
             amount: totalAmount.toString(),
             msg: JSON.stringify(msg),
           },
           GAS.INIT_BTC_TRANSFER,
-          BigInt(1), // 1 yoctoNEAR
+          BigInt(1),
         ),
       ],
       waitUntil: "FINAL",
     })
-    const btcPendingTxLog = tx.receipts_outcome
-      .flatMap((receipt) => receipt.outcome.logs)
-      .find((log) => log.includes("generate_btc_pending_info"))
 
-    if (!btcPendingTxLog) {
-      throw new Error("Bitcoin: Pending transaction not found in NEAR logs")
+    const pendingLogKey = "generate_btc_pending_info"
+    const pendingLog = tx.receipts_outcome
+      .flatMap((receipt) => receipt.outcome.logs)
+      .find((log) => log.includes(pendingLogKey))
+
+    if (!pendingLog) {
+      throw new Error(`${chainLabel}: Pending transaction not found in NEAR logs`)
     }
 
-    const btcPendingTxData = JSON.parse(btcPendingTxLog.split("EVENT_JSON:")[1])
-    const btcPendingTx = btcPendingTxData.data[0].btc_pending_id
+    const pendingData = JSON.parse(pendingLog.split("EVENT_JSON:")[1])
+    const pendingId = pendingData.data[0].btc_pending_id
+    if (!pendingId) {
+      throw new Error(`${chainLabel}: Pending transaction identifier missing in NEAR logs`)
+    }
 
-    return { pendingId: btcPendingTx, nearTxHash: tx.transaction.hash }
+    return { pendingId, nearTxHash: tx.transaction.hash }
   }
 
-  /**
-   * Sign Bitcoin transaction (NEAR -> BTC flow middle)
-   * Mirrors near_sign_btc_transaction() from Rust SDK
-   */
-  async signBitcoinTransaction(btcPendingId: string, signIndex: number): Promise<string> {
+  async signUtxoTransaction(
+    chain: ChainKind,
+    pendingId: string,
+    signIndex: number,
+  ): Promise<string> {
+    this.assertUtxoChain(chain)
+
+    const methodName = "sign_btc_transaction"
+    const args = {
+      btc_pending_id: pendingId,
+      sign_index: signIndex,
+    }
+
+    const { connector } = this.getUtxoConnector(chain)
+
     const tx = await this.wallet.signAndSendTransaction({
-      receiverId: addresses.btc.btcConnector,
+      receiverId: connector,
       actions: [
-        actionCreators.functionCall(
-          "sign_btc_transaction",
-          {
-            btc_pending_id: btcPendingId,
-            sign_index: signIndex,
-          },
-          GAS.SIGN_BTC_TX,
-          DEPOSIT.SIGN_BTC_TX,
-        ),
+        actionCreators.functionCall(methodName, args, GAS.SIGN_BTC_TX, DEPOSIT.SIGN_BTC_TX),
       ],
     })
 
     return tx.transaction.hash
   }
 
-  /**
-   * Finalize Bitcoin withdrawal (NEAR -> BTC flow completion)
-   * Mirrors btc_fin_transfer() from Rust SDK
-   */
-  async finalizeBitcoinWithdrawal(nearTxHash: string): Promise<string> {
-    // Extract signed Bitcoin transaction from NEAR logs (inline the helper)
+  async finalizeUtxoWithdrawal(chain: ChainKind, nearTxHash: string): Promise<string> {
+    this.assertUtxoChain(chain)
+
     const nearTx = await this.wallet.provider.viewTransactionStatus(
       nearTxHash,
       this.wallet.accountId,
       "FINAL",
     )
-    const signedTxLog = nearTx.receipts_outcome
-      .flatMap((receipt) => receipt.outcome.logs)
-      .find((log) => log.includes("signed_btc_transaction"))
 
-    if (!signedTxLog) {
-      throw new Error("Bitcoin: Signed transaction not found in NEAR logs")
+    const chainLabel = this.getUtxoChainLabel(chain)
+    const signedLogKey = "signed_btc_transaction"
+    const signedLog = nearTx.receipts_outcome
+      .flatMap((receipt) => receipt.outcome.logs)
+      .find((log) => log.includes(signedLogKey))
+
+    if (!signedLog) {
+      throw new Error(`${chainLabel}: Signed transaction not found in NEAR logs`)
     }
 
-    const signedTxData = JSON.parse(signedTxLog.split("EVENT_JSON:")[1])
-    const txBytes = Uint8Array.from(signedTxData.data[0].tx_bytes)
+    const signedData = JSON.parse(signedLog.split("EVENT_JSON:")[1])
+    const txBytes = signedData.data?.[0]?.tx_bytes
+    if (!Array.isArray(txBytes)) {
+      throw new Error("Signed transaction bytes missing in logs")
+    }
 
-    // Convert Uint8Array to hex string
-    const txHex = Array.from(txBytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
+    const txHex = txBytes.map((byte: number) => byte.toString(16).padStart(2, "0")).join("")
 
-    // Broadcast to Bitcoin network
-    return await this.bitcoinService.broadcastTransaction(txHex)
+    return await this.getUtxoService(chain).broadcastTransaction(txHex)
   }
 
-  /**
-   * Wait for Bitcoin transaction signing by monitoring NearBlocks API
-   * Based on playground pattern - eliminates manual block explorer queries
-   * @param btcPendingId - The pending Bitcoin transaction ID
-   * @param signerAccountId - Account that signs Bitcoin transactions (default: cosmosfirst.testnet for testnet)
-   * @param maxAttempts - Maximum polling attempts
-   * @param delayMs - Delay between polling attempts in milliseconds
-   * @returns Promise<string> - NEAR transaction hash containing the signing
-   */
-  async waitForBitcoinTransactionSigning(
+  async waitForUtxoTransactionSigning(
+    chain: ChainKind,
     nearTxHash: string,
     maxAttempts: number = BITCOIN_SIGNING_WAIT.DEFAULT_MAX_ATTEMPTS,
     delayMs: number = BITCOIN_SIGNING_WAIT.DEFAULT_DELAY_MS,
   ): Promise<string> {
+    this.assertUtxoChain(chain)
+
+    const chainLabel = this.getUtxoChainLabel(chain)
+
     const api = new OmniBridgeAPI()
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        const btcTransfer = await api.getTransfer({ transactionHash: nearTxHash })
-        const signedTxHash = btcTransfer[0].signed?.NearReceipt?.transaction_hash
+        const transfer = await api.getTransfer({ transactionHash: nearTxHash })
+        const signedTxHash = transfer[0].signed?.NearReceipt?.transaction_hash
         if (signedTxHash) {
           return signedTxHash
         }
-      } catch (_error) {
+      } catch (error) {
         if (attempt === maxAttempts) {
+          const seconds = (maxAttempts * delayMs) / 1000
           throw new Error(
-            `Bitcoin: Transaction signing not found after ${maxAttempts} attempts (${(maxAttempts * delayMs) / 1000}s). `,
+            `${chainLabel}: Transaction signing not found after ${maxAttempts} attempts (${seconds}s). ${String(
+              error,
+            )}`,
           )
         }
-        // Wait before next attempt
-        await new Promise((resolve) => setTimeout(resolve, delayMs))
       }
+
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
     }
 
-    throw new Error("Bitcoin: Unexpected end of waitForBitcoinTransactionSigning")
+    throw new Error(`${chainLabel}: Unexpected end of waitForSigning loop`)
   }
 
-  /**
-   * Execute complete Bitcoin withdrawal flow automatically
-   * Combines initBitcoinWithdrawal -> waitForBitcoinTransactionSigning -> finalizeBitcoinWithdrawal
-   * @param targetBtcAddress - Bitcoin address to withdraw to
-   * @param amount - Amount to withdraw in satoshis
-   * @param signerAccountId - Optional signer account ID (defaults to network relayer)
-   * @param maxWaitAttempts - Maximum attempts to wait for signing
-   * @param waitDelayMs - Delay between signing checks in milliseconds
-   * @returns Promise<string> - Bitcoin transaction hash after successful broadcast
-   */
-  async executeBitcoinWithdrawal(
-    targetBtcAddress: string,
+  async executeUtxoWithdrawal(
+    chain: ChainKind,
+    targetAddress: string,
     amount: bigint,
     maxWaitAttempts: number = BITCOIN_SIGNING_WAIT.DEFAULT_MAX_ATTEMPTS,
     waitDelayMs: number = BITCOIN_SIGNING_WAIT.DEFAULT_DELAY_MS,
   ): Promise<string> {
-    // Step 1: Initialize Bitcoin withdrawal
-    const btcWithdrawal = await this.initBitcoinWithdrawal(targetBtcAddress, amount)
-
-    // Step 2: Wait for MPC signing
-    const nearTxHash = await this.waitForBitcoinTransactionSigning(
-      btcWithdrawal.nearTxHash,
+    const withdrawal = await this.initUtxoWithdrawal(chain, targetAddress, amount)
+    const nearTxHash = await this.waitForUtxoTransactionSigning(
+      chain,
+      withdrawal.nearTxHash,
       maxWaitAttempts,
       waitDelayMs,
     )
-
-    // Step 3: Finalize withdrawal (extract and broadcast)
-    const bitcoinTxHash = await this.finalizeBitcoinWithdrawal(nearTxHash)
-
-    return bitcoinTxHash
+    return await this.finalizeUtxoWithdrawal(chain, nearTxHash)
   }
 
-  /**
-   * Verify Bitcoin withdrawal completion (Complete NEAR -> BTC cycle)
-   * Mirrors near_btc_verify_withdraw() from Rust SDK
-   */
-  async verifyBitcoinWithdrawal(btcTxHash: string): Promise<string> {
-    const proof = await this.bitcoinService.fetchMerkleProof(btcTxHash)
+  async verifyUtxoWithdrawal(chain: ChainKind, txHash: string): Promise<string> {
+    this.assertUtxoChain(chain)
+    const { connector } = this.getUtxoConnector(chain)
+    const service = this.getUtxoService(chain)
+    const proof: BitcoinMerkleProofResponse = await service.getMerkleProof(txHash)
 
     const tx = await this.wallet.signAndSendTransaction({
-      receiverId: addresses.btc.btcConnector,
+      receiverId: connector,
       actions: [
         actionCreators.functionCall(
           "btc_verify_withdraw",
@@ -940,39 +975,80 @@ export class NearBridgeClient {
     return tx.transaction.hash
   }
 
-  // =====================================================================
-  // HELPER METHODS FOR BITCOIN OPERATIONS
-  // =====================================================================
-
-  /**
-   * Get available UTXOs from NEAR btc-connector contract
-   */
-  public async getAvailableUTXOs(): Promise<UTXO[]> {
-    // Query NEAR btc-connector contract for bridge-controlled UTXOs (not Bitcoin network)
-    const result = await this.wallet.provider.callFunction(
-      addresses.btc.btcConnector,
-      "get_utxos_paged",
-      {},
-    )
+  async getUtxoAvailableOutputs(chain: ChainKind): Promise<UTXO[]> {
+    this.assertUtxoChain(chain)
+    const { connector } = this.getUtxoConnector(chain)
+    const result = await this.wallet.provider.callFunction(connector, "get_utxos_paged", {})
     const utxos = result as Record<string, UTXO>
-
-    // Extract txid from key (before '@') and return as array
     return Object.entries(utxos).map(([key, utxo]) => ({
       ...utxo,
       txid: key.split("@")[0],
     }))
   }
 
-  /**
-   * Get MPC-controlled change address from bridge contract config
-   */
-  public async getBitcoinBridgeConfig(): Promise<BtcConnectorConfig> {
-    const config = (await this.wallet.provider.callFunction(
-      addresses.btc.btcConnector,
+  async getUtxoBridgeConfig(chain: ChainKind): Promise<BtcConnectorConfig> {
+    this.assertUtxoChain(chain)
+    const { connector } = this.getUtxoConnector(chain)
+    return (await this.wallet.provider.callFunction(
+      connector,
       "get_config",
       {},
     )) as BtcConnectorConfig
-    return config
+  }
+
+  private buildUtxoWithdrawalPlan(
+    chain: ChainKind,
+    utxos: UTXO[],
+    amount: bigint,
+    targetAddress: string,
+    config: BtcConnectorConfig,
+  ): UtxoWithdrawalPlan {
+    this.assertUtxoChain(chain)
+
+    const changeAddress = config.change_address
+    if (!changeAddress) {
+      const label = this.getUtxoChainLabel(chain as UtxoChain)
+      throw new Error(`${label}: Bridge configuration is missing change address`)
+    }
+
+    const overrides: UtxoPlanOverrides = {}
+    const minChange = this.parseConfigBigInt(config.min_change_amount)
+    if (minChange !== undefined) {
+      overrides.dustThreshold = minChange
+      overrides.minChange = minChange
+    }
+
+    if (typeof config.max_withdrawal_input_number === "number") {
+      overrides.maxInputs = config.max_withdrawal_input_number
+    }
+
+    const service = this.getUtxoService(chain)
+
+    if (chain === ChainKind.Btc) {
+      return service.buildWithdrawalPlan(utxos, amount, targetAddress, changeAddress, 2, overrides)
+    }
+
+    return service.buildWithdrawalPlan(
+      utxos,
+      amount,
+      targetAddress,
+      changeAddress,
+      undefined,
+      overrides,
+    )
+  }
+
+  private parseConfigBigInt(value?: string): bigint | undefined {
+    if (!value) {
+      return undefined
+    }
+
+    try {
+      return BigInt(value)
+    } catch (error) {
+      console.warn(`Failed to parse config value to BigInt: ${value}`, error)
+      return undefined
+    }
   }
 
   /// Performs a storage deposit on behalf of the token_locker so that the tokens can be transferred to the locker. To be called once for each NEP-141
