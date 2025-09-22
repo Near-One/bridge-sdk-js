@@ -77,6 +77,9 @@ export async function omniTransfer(
   // - decimals: the decimals on the destination chain
   if (sourceChain === ChainKind.Near) {
     const decimals = await getTokenDecimals(contractId, destTokenAddress)
+    if (!decimals) {
+      throw new Error(`Token decimals not found for destination token ${destTokenAddress}`)
+    }
     originDecimals = decimals.origin_decimals
     destinationDecimals = decimals.decimals
   }
@@ -88,6 +91,9 @@ export async function omniTransfer(
   // - origin_decimals: what the token will have on NEAR
   if (destChain === ChainKind.Near) {
     const decimals = await getTokenDecimals(contractId, sourceTokenAddress)
+    if (!decimals) {
+      throw new Error(`Token decimals not found for source token ${sourceTokenAddress}`)
+    }
     destinationDecimals = decimals.origin_decimals
     originDecimals = decimals.decimals
   }
@@ -96,6 +102,12 @@ export async function omniTransfer(
   if (sourceChain !== ChainKind.Near && destChain !== ChainKind.Near) {
     const source = await getTokenDecimals(contractId, sourceTokenAddress)
     const dest = await getTokenDecimals(contractId, destTokenAddress)
+    if (!source) {
+      throw new Error(`Token decimals not found for source token ${sourceTokenAddress}`)
+    }
+    if (!dest) {
+      throw new Error(`Token decimals not found for destination token ${destTokenAddress}`)
+    }
     originDecimals = source.decimals
     destinationDecimals = dest.decimals
   }

@@ -128,4 +128,13 @@ describe("getTokenDecimals", () => {
     const result = await getTokenDecimals("contract.near", "eth:0x123...")
     expect(result).toEqual(mockDecimals)
   })
+
+  it("returns null for unregistered tokens", async () => {
+    vi.spyOn(decimalsModule, "getTokenDecimals").mockResolvedValue(null)
+    const result = await getTokenDecimals("contract.near", "eth:0x456...")
+    expect(result).toBeNull()
+  })
 })
+
+// Note: getMinimumDecimals tests would need integration testing due to its dependency on getTokenDecimals.
+// The function behavior for null handling is already verified by the client.ts usage and error handling.

@@ -65,6 +65,7 @@ export function verifyTransferAmount(
  * @param sourceToken The source token address
  * @param destinationToken The destination token address
  * @returns The minimum number of decimals
+ * @throws Error if either token is not registered (returns null from getTokenDecimals)
  */
 export async function getMinimumDecimals(
   contractId: string,
@@ -74,6 +75,13 @@ export async function getMinimumDecimals(
   const sourceDecimals = await getTokenDecimals(contractId, sourceToken)
   const destDecimals = await getTokenDecimals(contractId, destinationToken)
 
+  if (!sourceDecimals) {
+    throw new Error(`Source token ${sourceToken} is not registered`)
+  }
+  if (!destDecimals) {
+    throw new Error(`Destination token ${destinationToken} is not registered`)
+  }
+
   return Math.min(sourceDecimals.decimals, destDecimals.decimals)
 }
 
@@ -81,12 +89,12 @@ export async function getMinimumDecimals(
  * Gets token decimals from the NEAR contract
  * @param contractId The NEAR contract ID to query
  * @param tokenAddress The Omni token address to check
- * @returns Promise resolving to the token's decimal information
+ * @returns Promise resolving to the token's decimal information, or null if token is not registered
  */
 export async function getTokenDecimals(
   contractId: string,
   tokenAddress: OmniAddress,
-): Promise<TokenDecimals> {
+): Promise<TokenDecimals | null> {
   // NEAR tokens don't have decimals stored directly under their NEAR addresses
   // Instead, decimals are stored under their foreign chain representations
   //
@@ -104,7 +112,7 @@ export async function getTokenDecimals(
   }
 
   const rpcProvider = getProviderByNetwork(addresses.network)
-  return await view<TokenDecimals>({
+  const result = await view<TokenDecimals>({
     account: contractId,
     method: "get_token_decimals",
     args: {
@@ -112,6 +120,8 @@ export async function getTokenDecimals(
     },
     deps: { rpcProvider },
   })
+  // The view function can return null when the token is not registered
+  return result as TokenDecimals | null
 }
 
 /**
