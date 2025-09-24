@@ -61,6 +61,7 @@ const GAS = {
   SIGN_BTC_TX: BigInt(3e14), // 3 TGas
   VERIFY_WITHDRAW: BigInt(5e14), // 5 TGas
   FAST_FIN_TRANSFER: BigInt(3e14), // 3 TGas
+  SUBMIT_BTC_TRANSFER: BigInt(3e14), // 3 TGas
 } as const
 
 /**
@@ -105,6 +106,7 @@ interface InitTransferMessage {
   recipient: OmniAddress
   fee: string
   native_token_fee: string
+  msg?: string
 }
 
 /**
@@ -366,6 +368,7 @@ export class NearBridgeClient {
       recipient: transfer.recipient,
       fee: transfer.fee.toString(),
       native_token_fee: transfer.nativeFee.toString(),
+      msg: transfer.message,
     }
     const args: InitTransferMessageArgs = {
       receiver_id: this.lockerAddress,
@@ -752,17 +755,8 @@ export class NearBridgeClient {
     const msg: InitBtcTransferMsg = {
       Withdraw: {
         target_btc_address: targetBtcAddress,
-        input: inputs.map(
-          ({ txid, index }) =>
-            `${txid ? Array.from(txid, (byte) => byte.toString(16).padStart(2, "0")).join("") : ""}:${index}`,
-        ),
-        output: outputs.map((o: Output) => ({
-          value: Number(o.amount),
-          // @ts-expect-error - `Output` is a union type, we'd have to do type-narrowing
-          script_pubkey: Array.from(this.bitcoinService.addressToScriptPubkey(o.address), (byte) =>
-            byte.toString(16).padStart(2, "0"),
-          ).join(""),
-        })),
+        input: this.convertToContractInputs(inputs),
+        output: this.convertToContractOutputs(outputs),
       },
     }
 
@@ -796,6 +790,83 @@ export class NearBridgeClient {
     const btcPendingTx = btcPendingTxData.data[0].btc_pending_id
 
     return { pendingId: btcPendingTx, nearTxHash: tx.transaction.hash }
+  }
+
+  /**
+   * Creates NEAR -> BTC transfer (NEAR -> BTC flow start, option #2)
+   * To be called after initTransfer() that sends BTC to bitcoin receiver address
+   */
+  async submitBitcoinTransfer(initTransferEvent: InitTransferEvent): Promise<string> {
+    // biome-ignore lint/suspicious/noExplicitAny: TS will complain that `toJSON()` does not exist on BigInt
+    // biome-ignore lint/complexity/useLiteralKeys: TS will complain that `toJSON()` does not exist on BigInt
+    ;(BigInt.prototype as any)["toJSON"] = function () {
+      // The contract can't accept `origin_nonce` as a string, so we have to serialize it as a number.
+      // However, this can cause precision loss if the number is too large. We'll check if it's safe to convert
+      // and if not, we'll serialize it as a string and the contract will have to handle it.
+      const maxSafe = BigInt(Number.MAX_SAFE_INTEGER)
+      if (this <= maxSafe) {
+        return Number(this)
+      }
+      return this.toString()
+    }
+
+    const recipientAddress = initTransferEvent.transfer_message.recipient.split(":")[1]
+    const amount = BigInt(initTransferEvent.transfer_message.amount)
+    const maxGasFee =
+      BigInt(
+        initTransferEvent.transfer_message.msg &&
+          JSON.parse(initTransferEvent.transfer_message.msg).V0.max_fee,
+      ) || 0n
+
+    const utxos = await this.getAvailableUTXOs()
+    const bitcoinConfig = await this.getBitcoinBridgeConfig()
+
+    const withdrawFee = BigInt(bitcoinConfig.withdraw_bridge_fee.fee_min)
+
+    // TODO: configure fee rate
+
+    // Use Bitcoin service for UTXO selection
+    const { inputs, outputs, fee } = this.bitcoinService.selectCoins(
+      utxos,
+      amount - withdrawFee,
+      recipientAddress,
+      bitcoinConfig.change_address,
+      1,
+    )
+
+    // Selection algorithm doesn't reduce output amount for fee. We have to reduce it manually and add to change output
+    outputs[0].amount -= fee ?? 0n
+    outputs[1].amount += fee ?? 0n
+
+    const msg: InitBtcTransferMsg = {
+      Withdraw: {
+        target_btc_address: recipientAddress,
+        input: this.convertToContractInputs(inputs),
+        output: this.convertToContractOutputs(outputs),
+        max_gas_fee: maxGasFee,
+      },
+    }
+
+    const tx = await this.wallet.signAndSendTransaction({
+      receiverId: addresses.near,
+      actions: [
+        actionCreators.functionCall(
+          "submit_transfer_to_utxo_chain_connector",
+          {
+            transfer_id: {
+              origin_chain: ChainKind[getChain(initTransferEvent.transfer_message.sender)],
+              origin_nonce: BigInt(initTransferEvent.transfer_message.origin_nonce),
+            },
+            msg: JSON.stringify(msg),
+          },
+          GAS.SUBMIT_BTC_TRANSFER,
+          BigInt(0),
+        ),
+      ],
+      waitUntil: "FINAL",
+    })
+
+    return tx.transaction.hash
   }
 
   /**
@@ -1022,6 +1093,23 @@ export class NearBridgeClient {
     return BigInt(balanceStr)
   }
 
+  // biome-ignore lint/suspicious/noExplicitAny: type from scure not easily available
+  convertToContractInputs(inputs: any[]): string[] {
+    return inputs.map(
+      ({ txid, index }) =>
+        `${txid ? Array.from(txid, (byte: number) => byte.toString(16).padStart(2, "0")).join("") : ""}:${index}`,
+    )
+  }
+
+  convertToContractOutputs(outputs: Output[]): { value: number; script_pubkey: string }[] {
+    return outputs.map((o: Output) => ({
+      value: Number(o.amount),
+      // @ts-expect-error - `Output` is a union type, we'd have to do type-narrowing
+      script_pubkey: Array.from(this.bitcoinService.addressToScriptPubkey(o.address), (byte) =>
+        byte.toString(16).padStart(2, "0"),
+      ).join(""),
+    }))
+  }
   /**
    * Performs a fast finalize transfer on NEAR chain.
    *

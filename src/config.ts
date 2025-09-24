@@ -44,7 +44,7 @@ const ADDRESSES = {
       network: "testnet" as const,
       apiUrl: "https://blockstream.info/testnet/api",
       mempoolUrl: "https://mempool.space/testnet/api",
-      btcConnector: "brg-dev.testnet",
+      btcConnector: "btc-connector.n-bridge.testnet",
       btcToken: "nbtc-dev.testnet",
       bitcoinRelayer: "cosmosfirst.testnet",
     },
