@@ -5,6 +5,7 @@ type ChainPrefix = "eth" | "near" | "sol" | "arb" | "base" | "bnb"
 
 // Type helpers for EVM chains
 export type EVMChainKind = ChainKind.Eth | ChainKind.Base | ChainKind.Arb | ChainKind.Bnb
+export type UTXOChainKind = ChainKind.Btc | ChainKind.Zcash
 
 /**
  * Checks if a given chain is an EVM-compatible chain
@@ -18,6 +19,15 @@ export function isEvmChain(chain: ChainKind): chain is EVMChainKind {
     chain === ChainKind.Arb ||
     chain === ChainKind.Bnb
   )
+}
+
+/**
+ * Checks if a given chain is a UTXO chain
+ * @param chain - The chain to check
+ * @returns true if the chain is a UTXO chain, false otherwise
+ */
+export function isUtxoChain(chain: ChainKind): chain is UTXOChainKind {
+  return chain === ChainKind.Btc || chain === ChainKind.Zcash
 }
 
 // Helper function to construct OmniAddress

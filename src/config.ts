@@ -45,7 +45,7 @@ const ADDRESSES = {
       apiUrl: "https://blockstream.info/testnet/api",
       mempoolUrl: "https://mempool.space/testnet/api",
       btcConnector: "btc-connector.n-bridge.testnet",
-      btcToken: "nbtc-dev.testnet",
+      btcToken: "nbtc.n-bridge.testnet",
       bitcoinRelayer: "cosmosfirst.testnet",
     },
     zcash: {
