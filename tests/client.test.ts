@@ -174,6 +174,6 @@ describe("omniTransfer", () => {
         nativeFee: 0n,
         recipient: "sol:pubkey",
       }),
-    ).rejects.toThrow("Token decimals not found for destination token sol:unregistered_token")
+    ).rejects.toThrow("Destination token sol:unregistered_token is not registered properly")
   })
 })

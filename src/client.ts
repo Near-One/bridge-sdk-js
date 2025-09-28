@@ -78,7 +78,7 @@ export async function omniTransfer(
   if (sourceChain === ChainKind.Near) {
     const decimals = await getTokenDecimals(contractId, destTokenAddress)
     if (!decimals) {
-      throw new Error(`Token decimals not found for destination token ${destTokenAddress}`)
+      throw new Error(`Destination token ${destTokenAddress} is not registered properly`)
     }
     originDecimals = decimals.origin_decimals
     destinationDecimals = decimals.decimals
@@ -92,7 +92,7 @@ export async function omniTransfer(
   if (destChain === ChainKind.Near) {
     const decimals = await getTokenDecimals(contractId, sourceTokenAddress)
     if (!decimals) {
-      throw new Error(`Token decimals not found for source token ${sourceTokenAddress}`)
+      throw new Error(`Source token ${sourceTokenAddress} is not registered properly`)
     }
     destinationDecimals = decimals.origin_decimals
     originDecimals = decimals.decimals
@@ -103,10 +103,10 @@ export async function omniTransfer(
     const source = await getTokenDecimals(contractId, sourceTokenAddress)
     const dest = await getTokenDecimals(contractId, destTokenAddress)
     if (!source) {
-      throw new Error(`Token decimals not found for source token ${sourceTokenAddress}`)
+      throw new Error(`Source token ${sourceTokenAddress} is not registered properly`)
     }
     if (!dest) {
-      throw new Error(`Token decimals not found for destination token ${destTokenAddress}`)
+      throw new Error(`Destination token ${destTokenAddress} is not registered properly`)
     }
     originDecimals = source.decimals
     destinationDecimals = dest.decimals

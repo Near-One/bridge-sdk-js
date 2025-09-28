@@ -76,10 +76,10 @@ export async function getMinimumDecimals(
   const destDecimals = await getTokenDecimals(contractId, destinationToken)
 
   if (!sourceDecimals) {
-    throw new Error(`Source token ${sourceToken} is not registered`)
+    throw new Error(`Source token ${sourceToken} is not registered properly`)
   }
   if (!destDecimals) {
-    throw new Error(`Destination token ${destinationToken} is not registered`)
+    throw new Error(`Destination token ${destinationToken} is not registered properly`)
   }
 
   return Math.min(sourceDecimals.decimals, destDecimals.decimals)
