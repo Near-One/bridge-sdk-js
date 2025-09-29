@@ -53,20 +53,20 @@ import type { EvmBridgeClient } from "./evm.js"
  * @internal
  */
 const GAS = {
-  LOG_METADATA: BigInt(3e14), // 3 TGas
-  DEPLOY_TOKEN: BigInt(1.2e14), // 1.2 TGas
-  BIND_TOKEN: BigInt(3e14), // 3 TGas
-  INIT_TRANSFER: BigInt(3e14), // 3 TGas
-  FIN_TRANSFER: BigInt(3e14), // 3 TGas
-  SIGN_TRANSFER: BigInt(3e14), // 3 TGas
-  STORAGE_DEPOSIT: BigInt(1e14), // 1 TGas
+  LOG_METADATA: BigInt(3e14), // 300 TGas
+  DEPLOY_TOKEN: BigInt(1.2e14), // 120 TGas
+  BIND_TOKEN: BigInt(3e14), // 300 TGas
+  INIT_TRANSFER: BigInt(3e14), // 300 TGas
+  FIN_TRANSFER: BigInt(3e14), // 300 TGas
+  SIGN_TRANSFER: BigInt(3e14), // 300 TGas
+  STORAGE_DEPOSIT: BigInt(1e13), // 10 TGas
   // Bitcoin-specific gas constants
-  GET_DEPOSIT_ADDRESS: BigInt(3e14), // 3 TGas
-  VERIFY_DEPOSIT: BigInt(300e14), // 300 TGas
-  INIT_BTC_TRANSFER: BigInt(100e12), // 100 TGas
-  SIGN_BTC_TX: BigInt(3e14), // 3 TGas
-  VERIFY_WITHDRAW: BigInt(5e14), // 5 TGas
-  FAST_FIN_TRANSFER: BigInt(3e14), // 3 TGas
+  GET_DEPOSIT_ADDRESS: BigInt(3e12), // 3 TGas
+  VERIFY_DEPOSIT: BigInt(3e14), // 300 TGas
+  INIT_BTC_TRANSFER: BigInt(1e14), // 100 TGas
+  SIGN_BTC_TX: BigInt(3e14), // 300 TGas
+  VERIFY_WITHDRAW: BigInt(5e12), // 5 TGas
+  FAST_FIN_TRANSFER: BigInt(3e14), // 300 TGas
 } as const
 
 /**
@@ -111,6 +111,7 @@ interface InitTransferMessage {
   recipient: OmniAddress
   fee: string
   native_token_fee: string
+  msg?: string
 }
 
 /**
@@ -207,12 +208,7 @@ export class NearBridgeClient {
     const outcome = await this.wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
       actions: [
-        actionCreators.functionCall(
-          "log_metadata",
-          args,
-          BigInt(GAS.LOG_METADATA),
-          BigInt(DEPOSIT.LOG_METADATA),
-        ),
+        actionCreators.functionCall("log_metadata", args, GAS.LOG_METADATA, DEPOSIT.LOG_METADATA),
       ],
       waitUntil: "FINAL",
     })
@@ -275,7 +271,7 @@ export class NearBridgeClient {
         actionCreators.functionCall(
           "deploy_token",
           serializedArgs,
-          BigInt(GAS.DEPLOY_TOKEN),
+          GAS.DEPLOY_TOKEN,
           BigInt(deployDepositStr),
         ),
       ],
@@ -342,7 +338,7 @@ export class NearBridgeClient {
         actionCreators.functionCall(
           "bind_token",
           serializedArgs,
-          BigInt(GAS.BIND_TOKEN),
+          GAS.BIND_TOKEN,
           BigInt(bindDepositStr),
         ),
       ],
@@ -392,6 +388,7 @@ export class NearBridgeClient {
       recipient: transfer.recipient,
       fee: transfer.fee.toString(),
       native_token_fee: transfer.nativeFee.toString(),
+      msg: transfer.message,
     }
     const args: InitTransferMessageArgs = {
       receiver_id: this.lockerAddress,
@@ -399,14 +396,16 @@ export class NearBridgeClient {
       memo: null,
       msg: JSON.stringify(initTransferMessage),
     }
+
+    console.log("Calling ft_transfer_call with args:", args)
     const tx = await this.wallet.signAndSendTransaction({
       receiverId: tokenAddress,
       actions: [
         actionCreators.functionCall(
           "ft_transfer_call",
           args,
-          BigInt(GAS.INIT_TRANSFER),
-          BigInt(DEPOSIT.INIT_TRANSFER),
+          GAS.INIT_TRANSFER,
+          DEPOSIT.INIT_TRANSFER,
         ),
       ],
     })
@@ -478,8 +477,8 @@ export class NearBridgeClient {
         actionCreators.functionCall(
           "sign_transfer",
           args,
-          BigInt(GAS.SIGN_TRANSFER),
-          BigInt(DEPOSIT.SIGN_TRANSFER),
+          GAS.SIGN_TRANSFER,
+          DEPOSIT.SIGN_TRANSFER,
         ),
       ],
       waitUntil: "FINAL",
@@ -570,12 +569,7 @@ export class NearBridgeClient {
     const tx = await this.wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
       actions: [
-        actionCreators.functionCall(
-          "fin_transfer",
-          serializedArgs,
-          BigInt(GAS.FIN_TRANSFER),
-          BigInt(finDeposit),
-        ),
+        actionCreators.functionCall("fin_transfer", serializedArgs, GAS.FIN_TRANSFER, finDeposit),
       ],
       waitUntil: "FINAL",
     })
@@ -763,7 +757,7 @@ export class NearBridgeClient {
 
     const tx = await this.wallet.signAndSendTransaction({
       receiverId: connector,
-      actions: [actionCreators.functionCall("verify_deposit", args, BigInt(GAS.VERIFY_DEPOSIT))],
+      actions: [actionCreators.functionCall("verify_deposit", args, GAS.VERIFY_DEPOSIT)],
       waitUntil: "FINAL",
     })
 
@@ -1075,8 +1069,8 @@ export class NearBridgeClient {
             {
               account_id: this.lockerAddress,
             },
-            BigInt(GAS.STORAGE_DEPOSIT),
-            BigInt(requiredAmount),
+            GAS.STORAGE_DEPOSIT,
+            requiredAmount,
           ),
         ],
       })
@@ -1138,12 +1132,7 @@ export class NearBridgeClient {
       await this.wallet.signAndSendTransaction({
         receiverId: this.lockerAddress,
         actions: [
-          actionCreators.functionCall(
-            "storage_deposit",
-            {},
-            BigInt(GAS.STORAGE_DEPOSIT),
-            BigInt(neededAmount),
-          ),
+          actionCreators.functionCall("storage_deposit", {}, GAS.STORAGE_DEPOSIT, neededAmount),
         ],
       })
     }
@@ -1161,8 +1150,8 @@ export class NearBridgeClient {
         actionCreators.functionCall(
           "ft_transfer_call",
           transferArgs,
-          BigInt(GAS.FAST_FIN_TRANSFER),
-          BigInt(DEPOSIT.INIT_TRANSFER),
+          GAS.FAST_FIN_TRANSFER,
+          DEPOSIT.INIT_TRANSFER,
         ),
       ],
     })
