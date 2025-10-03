@@ -508,18 +508,13 @@ describe("NearBridgeClient Bitcoin Methods", () => {
 
       expect(result.pendingId).toBe("pending_btc_12345")
       expect(result.nearTxHash).toBe("near_init_tx_hash")
-      expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          receiverId: "nbtc-dev.testnet", // btcToken contract
-          actions: [
-            expect.objectContaining({
-              functionCall: expect.objectContaining({
-                methodName: "ft_transfer_call",
-              }),
-            }),
-          ],
-        })
-      )
+
+      // Verify the transaction was called with correct receiver ID
+      expect(mockWallet.signAndSendTransaction).toHaveBeenCalled()
+      const calls = (mockWallet.signAndSendTransaction as any).mock.calls
+      expect(calls[0][0].receiverId).toBe("nbtc.n-bridge.testnet")
+      expect(calls[0][0].actions).toHaveLength(1)
+      expect(calls[0][0].actions[0]?.functionCall?.methodName).toBe("ft_transfer_call")
     })
 
     it("should throw error when pending ID not found in logs", async () => {

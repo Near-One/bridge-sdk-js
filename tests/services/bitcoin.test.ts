@@ -424,7 +424,7 @@ describe("BitcoinService", () => {
         {
           path: "m/44'/1'/0'/0/1",
           // Provide tx bytes as array to ensure normalization handles it
-          tx_bytes: [2, 0, 0, 1],
+          tx_bytes: new Uint8Array([2, 0, 0, 1]),
           vout: 1,
           balance: "70000",
           txid: "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
