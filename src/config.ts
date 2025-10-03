@@ -48,7 +48,7 @@ const ADDRESSES = {
       mempoolUrl: "https://mempool.space/testnet/api",
       rpcUrl: "https://bitcoin-testnet-rpc.publicnode.com",
       btcConnector: "brg-dev.testnet",
-      btcToken: "nbtc-dev.testnet",
+      btcToken: "nbtc.n-bridge.testnet",
       bitcoinRelayer: "cosmosfirst.testnet",
     },
     zcash: {

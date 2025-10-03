@@ -130,7 +130,7 @@ interface BalanceResults {
   storage: StorageDeposit
 }
 
-type UtxoChain = ChainKind.Btc | ChainKind.Zcash
+export type UtxoChain = ChainKind.Btc | ChainKind.Zcash
 
 const UTXO_CHAIN_LABELS: Record<UtxoChain, string> = {
   [ChainKind.Btc]: "Bitcoin",
@@ -637,12 +637,6 @@ export class NearBridgeClient {
   // UTXO OPERATIONS (BTC & ZCASH)
   // =====================================================================
 
-  private assertUtxoChain(chain: ChainKind): asserts chain is UtxoChain {
-    if (chain !== ChainKind.Btc && chain !== ChainKind.Zcash) {
-      throw new Error(`Unsupported UTXO chain: ${ChainKind[chain] ?? chain}`)
-    }
-  }
-
   private getUtxoService(chain: UtxoChain): UtxoChainService {
     const service = this.utxoServices[chain]
     if (service) {
@@ -679,13 +673,11 @@ export class NearBridgeClient {
   }
 
   async getUtxoDepositAddress(
-    chain: ChainKind,
+    chain: UtxoChain,
     recipientId: string,
     amount?: bigint,
     fee?: bigint,
   ): Promise<{ depositAddress: string; depositArgs: BtcDepositArgs }> {
-    this.assertUtxoChain(chain)
-
     const { connector } = this.getUtxoConnector(chain)
 
     let depositMsg: BtcDepositArgs["deposit_msg"]
@@ -728,13 +720,11 @@ export class NearBridgeClient {
   }
 
   async finalizeUtxoDeposit(
-    chain: ChainKind,
+    chain: UtxoChain,
     txHash: string,
     vout: number,
     depositArgs: BtcDepositArgs,
   ): Promise<string> {
-    this.assertUtxoChain(chain)
-
     const { connector } = this.getUtxoConnector(chain)
     const config = (await this.getUtxoBridgeConfig(chain)) as BtcConnectorConfig
     const service = this.getUtxoService(chain)
@@ -765,12 +755,10 @@ export class NearBridgeClient {
   }
 
   async initUtxoWithdrawal(
-    chain: ChainKind,
+    chain: UtxoChain,
     targetAddress: string,
     amount: bigint,
   ): Promise<{ pendingId: string; nearTxHash: string }> {
-    this.assertUtxoChain(chain)
-
     const chainLabel = this.getUtxoChainLabel(chain)
 
     const { connector, token } = this.getUtxoConnector(chain)
@@ -842,12 +830,10 @@ export class NearBridgeClient {
   }
 
   async signUtxoTransaction(
-    chain: ChainKind,
+    chain: UtxoChain,
     pendingId: string,
     signIndex: number,
   ): Promise<string> {
-    this.assertUtxoChain(chain)
-
     const methodName = "sign_btc_transaction"
     const args = {
       btc_pending_id: pendingId,
@@ -866,9 +852,7 @@ export class NearBridgeClient {
     return tx.transaction.hash
   }
 
-  async finalizeUtxoWithdrawal(chain: ChainKind, nearTxHash: string): Promise<string> {
-    this.assertUtxoChain(chain)
-
+  async finalizeUtxoWithdrawal(chain: UtxoChain, nearTxHash: string): Promise<string> {
     const nearTx = await this.wallet.provider.viewTransactionStatus(
       nearTxHash,
       this.wallet.accountId,
@@ -897,13 +881,11 @@ export class NearBridgeClient {
   }
 
   async waitForUtxoTransactionSigning(
-    chain: ChainKind,
+    chain: UtxoChain,
     nearTxHash: string,
     maxAttempts: number = BITCOIN_SIGNING_WAIT.DEFAULT_MAX_ATTEMPTS,
     delayMs: number = BITCOIN_SIGNING_WAIT.DEFAULT_DELAY_MS,
   ): Promise<string> {
-    this.assertUtxoChain(chain)
-
     const chainLabel = this.getUtxoChainLabel(chain)
 
     const api = new OmniBridgeAPI()
@@ -932,7 +914,7 @@ export class NearBridgeClient {
   }
 
   async executeUtxoWithdrawal(
-    chain: ChainKind,
+    chain: UtxoChain,
     targetAddress: string,
     amount: bigint,
     maxWaitAttempts: number = BITCOIN_SIGNING_WAIT.DEFAULT_MAX_ATTEMPTS,
@@ -948,8 +930,7 @@ export class NearBridgeClient {
     return await this.finalizeUtxoWithdrawal(chain, nearTxHash)
   }
 
-  async verifyUtxoWithdrawal(chain: ChainKind, txHash: string): Promise<string> {
-    this.assertUtxoChain(chain)
+  async verifyUtxoWithdrawal(chain: UtxoChain, txHash: string): Promise<string> {
     const { connector } = this.getUtxoConnector(chain)
     const service = this.getUtxoService(chain)
     const proof: BitcoinMerkleProofResponse = await service.getMerkleProof(txHash)
@@ -969,8 +950,7 @@ export class NearBridgeClient {
     return tx.transaction.hash
   }
 
-  async getUtxoAvailableOutputs(chain: ChainKind): Promise<UTXO[]> {
-    this.assertUtxoChain(chain)
+  async getUtxoAvailableOutputs(chain: UtxoChain): Promise<UTXO[]> {
     const { connector } = this.getUtxoConnector(chain)
     const result = await this.wallet.provider.callFunction(connector, "get_utxos_paged", {})
     const utxos = result as Record<string, UTXO>
@@ -980,8 +960,7 @@ export class NearBridgeClient {
     }))
   }
 
-  async getUtxoBridgeConfig(chain: ChainKind): Promise<BtcConnectorConfig> {
-    this.assertUtxoChain(chain)
+  async getUtxoBridgeConfig(chain: UtxoChain): Promise<BtcConnectorConfig> {
     const { connector } = this.getUtxoConnector(chain)
     return (await this.wallet.provider.callFunction(
       connector,
@@ -991,17 +970,15 @@ export class NearBridgeClient {
   }
 
   private buildUtxoWithdrawalPlan(
-    chain: ChainKind,
+    chain: UtxoChain,
     utxos: UTXO[],
     amount: bigint,
     targetAddress: string,
     config: BtcConnectorConfig,
   ): UtxoWithdrawalPlan {
-    this.assertUtxoChain(chain)
-
     const changeAddress = config.change_address
     if (!changeAddress) {
-      const label = this.getUtxoChainLabel(chain as UtxoChain)
+      const label = this.getUtxoChainLabel(chain)
       throw new Error(`${label}: Bridge configuration is missing change address`)
     }
 

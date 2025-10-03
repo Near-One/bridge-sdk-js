@@ -54,7 +54,7 @@ export class UtxoRpcClient {
   }
 
   async getTransaction(txHash: string): Promise<RawTransactionResult> {
-    return await this.call<RawTransactionResult>("getrawtransaction", [txHash, true])
+    return await this.call<RawTransactionResult>("getrawtransaction", [txHash, 1])
   }
 
   async getBlock(blockHash: string): Promise<BlockResult> {
