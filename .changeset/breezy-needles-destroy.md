@@ -1,5 +1,5 @@
 ---
-"omni-bridge-sdk": patch
+"omni-bridge-sdk": minor
 ---
 
-fix: update API tests
+feat: update API tests
