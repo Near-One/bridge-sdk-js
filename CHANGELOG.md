@@ -1,5 +1,16 @@
 # omni-bridge-sdk
 
+## 0.18.0
+
+### Minor Changes
+
+- f09278d: feat: update API tests
+
+### Patch Changes
+
+- ab46689: fix: change `calculateStorageAccountId` function to use borsh
+- 2f7ea99: docs: clarify token deployment proof steps
+
 ## 0.17.5
 
 ### Patch Changes
