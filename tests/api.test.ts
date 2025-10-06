@@ -76,7 +76,7 @@ const mockAllowlistedTokens = {
 }
 
 const mockBtcAddress = {
-  address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+  address: "tb1qssh0ejglq0v53pwrsxlhxpxw29gfu6c4ls9eyy",
 }
 
 const restHandlers = [
@@ -95,7 +95,7 @@ const restHandlers = [
   http.get(`${BASE_URL}/api/v2/transfer-fee/allowlisted-tokens`, () => {
     return HttpResponse.json(mockAllowlistedTokens)
   }),
-  http.post(`${BASE_URL}/api/v2/btc/get_user_deposit_address`, () => {
+  http.post(`${BASE_URL}/api/v2/utxo/get_user_deposit_address`, () => {
     return HttpResponse.json(mockBtcAddress)
   }),
 ]
@@ -200,11 +200,11 @@ describe("OmniBridgeAPI", () => {
     })
   })
 
-  describe("getBtcUserDepositAddress", () => {
+  describe("getUtxoUserDepositAddress", () => {
     it("should fetch BTC deposit address successfully", async () => {
-      const response = await api.getBtcUserDepositAddress("recipient.near")
+      const response = await api.getUtxoUserDepositAddress("btc", "recipient.near")
       expect(response).toEqual({
-        address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+        address: "tb1qssh0ejglq0v53pwrsxlhxpxw29gfu6c4ls9eyy",
       })
     })
 
@@ -216,24 +216,25 @@ describe("OmniBridgeAPI", () => {
           msg: "test message",
         },
       ]
-      const response = await api.getBtcUserDepositAddress(
+      const response = await api.getUtxoUserDepositAddress(
+        "btc",
         "recipient.near",
         postActions,
         "extra message",
       )
       expect(response).toEqual({
-        address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+        address: "tb1qssh0ejglq0v53pwrsxlhxpxw29gfu6c4ls9eyy",
       })
     })
 
     it("should handle API errors", async () => {
       server.use(
-        http.post(`${BASE_URL}/api/v2/btc/get_user_deposit_address`, () => {
+        http.post(`${BASE_URL}/api/v2/utxo/get_user_deposit_address`, () => {
           return new HttpResponse(null, { status: 404 })
         }),
       )
 
-      await expect(api.getBtcUserDepositAddress("recipient.near")).rejects.toThrow(
+      await expect(api.getUtxoUserDepositAddress("btc", "recipient.near")).rejects.toThrow(
         "Resource not found",
       )
     })

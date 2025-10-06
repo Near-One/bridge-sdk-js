@@ -192,9 +192,9 @@ describe("OmniBridgeAPI Integration Tests", () => {
     })
   })
 
-  describe("getBtcUserDepositAddress", () => {
+  describe("getUtxoUserDepositAddress", () => {
     it("should fetch real BTC deposit address", async () => {
-      const response = await api.getBtcUserDepositAddress("recipient.near")
+      const response = await api.getUtxoUserDepositAddress("btc", "recipient.near")
 
       expect(response).toEqual({
         address: expect.any(String),
@@ -212,7 +212,8 @@ describe("OmniBridgeAPI Integration Tests", () => {
           memo: "test memo",
         },
       ]
-      const response = await api.getBtcUserDepositAddress(
+      const response = await api.getUtxoUserDepositAddress(
+        "btc",
         "recipient.near",
         postActions,
         "extra message",
