@@ -315,24 +315,91 @@ await nearClient.finalizeTransfer(
 
 #### Deploying Tokens
 
+Token deployments always start by logging metadata on the origin chain. After the destination chain deploys the wrapped token, prove that deployment back to NEAR with either an EVM Merkle proof or a Wormhole VAA.
+
+**NEAR → EVM (Ethereum/Base/Arbitrum/Bnb)**
+
 ```typescript
-import { getClient } from "omni-bridge-sdk";
+import { ChainKind, ProofKind, getClient } from "omni-bridge-sdk";
+import { getEvmProof } from "omni-bridge-sdk/proofs/evm.js";
 
-// Initialize clients
-const nearClient = getClient(ChainKind.Near, wallet);
-const ethClient = getClient(ChainKind.Eth, wallet);
+const nearClient = getClient(ChainKind.Near, nearAccount);
+const { signature, metadata_payload } = await nearClient.logMetadata("near:token.near");
 
-// Example: Deploy NEAR token to Ethereum
-const { signature } = await nearClient.logMetadata("near:token.near");
-
-// Deploy token with signed MPC payload
-const result = await ethClient.deployToken(signature, {
-  token: "token.near",
-  name: "Token Name",
-  symbol: "TKN",
-  decimals: 18,
+const evmClient = getClient(ChainKind.Eth, evmSigner);
+const { txHash } = await evmClient.deployToken(signature, {
+  token: metadata_payload.token,
+  name: metadata_payload.name,
+  symbol: metadata_payload.symbol,
+  decimals: metadata_payload.decimals,
 });
+
+const receipt = await evmSigner.provider!.getTransactionReceipt(txHash);
+const deployTopic = receipt.logs[0]?.topics[0];
+if (!deployTopic) throw new Error("Token deployment log missing");
+
+const proof = await getEvmProof(txHash, deployTopic, ChainKind.Eth);
+
+await nearClient.bindToken(
+  ChainKind.Eth,
+  undefined,
+  { proof_kind: ProofKind.DeployToken, proof },
+);
 ```
+
+**EVM → NEAR**
+
+```typescript
+import { ChainKind, ProofKind, getClient } from "omni-bridge-sdk";
+import { getEvmProof } from "omni-bridge-sdk/proofs/evm.js";
+
+const evmClient = getClient(ChainKind.Eth, evmSigner);
+const logTx = await evmClient.logMetadata("eth:0x123...");
+
+const receipt = await evmSigner.provider!.getTransactionReceipt(logTx);
+const logTopic = receipt.logs[0]?.topics[0];
+if (!logTopic) throw new Error("LogMetadata event missing");
+
+const proof = await getEvmProof(logTx, logTopic, ChainKind.Eth);
+
+const nearClient = getClient(ChainKind.Near, nearAccount);
+await nearClient.deployToken(
+  ChainKind.Eth,
+  undefined,
+  { proof_kind: ProofKind.LogMetadata, proof },
+);
+```
+
+**Solana ↔ NEAR (Wormhole)**
+
+```typescript
+import { ChainKind, getClient } from "omni-bridge-sdk";
+import { getVaa } from "omni-bridge-sdk/proofs/wormhole.js";
+
+const nearClient = getClient(ChainKind.Near, nearAccount);
+const solanaClient = getClient(ChainKind.Sol, anchorProvider);
+
+// NEAR → Solana
+const { signature, metadata_payload } = await nearClient.logMetadata("near:token.near");
+const { txHash } = await solanaClient.deployToken(signature, {
+  token: metadata_payload.token,
+  name: metadata_payload.name,
+  symbol: metadata_payload.symbol,
+  decimals: metadata_payload.decimals,
+});
+const deploymentVaa = await getVaa(txHash, "Testnet");
+await nearClient.bindToken(ChainKind.Sol, deploymentVaa);
+
+// Solana → NEAR
+const logTx = await solanaClient.logMetadata("sol:MINT_ADDRESS");
+const metadataVaa = await getVaa(logTx, "Testnet");
+await nearClient.deployToken(ChainKind.Sol, metadataVaa);
+```
+
+For additional chain combinations and proof polling patterns, see `docs/token-deployment.md`.
+
+> [!NOTE]
+> `anchorProvider` refers to an Anchor-compatible provider instance (for example `new AnchorProvider(connection, wallet, AnchorProvider.defaultOptions())`).
 
 ### Error Handling
 
