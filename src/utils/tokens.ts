@@ -9,7 +9,7 @@ const CHAIN_PATTERNS: Record<string, ChainKind> = {
   "base.omdep.near": ChainKind.Base,
   "arb.omdep.near": ChainKind.Arb,
   "bnb.omdep.near": ChainKind.Bnb,
-  "nbtc-dev.testnet": ChainKind.Btc,
+  "nbtc.n-bridge.testnet": ChainKind.Btc,
   "eth.sepolia.testnet": ChainKind.Eth,
   "sol.omnidep.testnet": ChainKind.Sol,
   "base.omnidep.testnet": ChainKind.Base,

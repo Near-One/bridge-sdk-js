@@ -68,7 +68,7 @@ const normalizedFee = {
 const mockAllowlistedTokens = {
   allowlisted_tokens: {
     "eth.sepolia.testnet": "eth:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-    "nbtc-dev.testnet": "near:wrap.near",
+    "nbtc.n-bridge.testnet": "near:wrap.near",
     "wrap.testnet": "near:wrap.near",
     "milam-ft.dev-1670602093214-42636269062771": "near:wrap.near",
     "oats.testnet": "near:wrap.near",
@@ -182,7 +182,7 @@ describe("OmniBridgeAPI", () => {
       const tokens = await api.getAllowlistedTokens()
       expect(tokens).toEqual({
         "eth.sepolia.testnet": "eth:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-        "nbtc-dev.testnet": "near:wrap.near",
+        "nbtc.n-bridge.testnet": "near:wrap.near",
         "wrap.testnet": "near:wrap.near",
         "milam-ft.dev-1670602093214-42636269062771": "near:wrap.near",
         "oats.testnet": "near:wrap.near",

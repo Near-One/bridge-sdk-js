@@ -125,7 +125,7 @@ const UNCONFIRMED_TX_ID = "1".repeat(64)
 
 const mockRealBtcConfig: BtcConnectorConfig = {
   btc_light_client_account_id: "btc-light-client.testnet",
-  nbtc_account_id: "nbtc-dev.testnet",
+  nbtc_account_id: "nbtc.n-bridge.testnet",
   chain_signatures_account_id: "v1.signer-dev.testnet",
   chain_signatures_root_public_key: "secp256k1:3tFRbMqmoa6AAALMrEFAYCEYJCPT3FwyeAkMuLz6fwcmWfJL5FMAwOJpRAasRSXhZRp9LJ6e9U7xhNgwGaVFgtfVXj",
   change_address: "tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx",
