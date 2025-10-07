@@ -1,6 +1,7 @@
 import { hex } from "@scure/base"
 import * as btc from "@scure/btc-signer"
 import type { BitcoinMerkleProofResponse, BitcoinTransaction, UTXO } from "../types/bitcoin.js"
+import { ChainKind } from "../types/chain.js"
 import {
   linearFeeCalculator,
   type NormalizedUTXO,
@@ -57,6 +58,7 @@ export class BitcoinService {
     this.rpc = new UtxoRpcClient({
       url: rpcConfig?.url ?? defaultRpcUrl,
       headers: rpcConfig?.headers,
+      chain: ChainKind.Btc,
     })
   }
 

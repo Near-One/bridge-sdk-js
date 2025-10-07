@@ -1,10 +1,12 @@
 import { hex } from "@scure/base"
 import type { BitcoinMerkleProofResponse } from "../types/bitcoin.js"
+import { ChainKind, type UtxoChain } from "../types/chain.js"
 import { buildBitcoinMerkleProof, type UtxoDepositProof } from "./index.js"
 
 export interface UtxoRpcConfig {
   url: string
   headers?: Record<string, string>
+  chain: UtxoChain
 }
 
 type JsonRpcResponse<T> = {
@@ -54,11 +56,13 @@ export class UtxoRpcClient {
   }
 
   async getTransaction(txHash: string): Promise<RawTransactionResult> {
-    return await this.call<RawTransactionResult>("getrawtransaction", [txHash, 1])
+    const verbosity = this.config.chain === ChainKind.Btc ? true : 1
+    return await this.call<RawTransactionResult>("getrawtransaction", [txHash, verbosity])
   }
 
   async getBlock(blockHash: string): Promise<BlockResult> {
-    return await this.call<BlockResult>("getblock", [blockHash, 1])
+    const verbosity = this.config.chain === ChainKind.Btc ? true : 1
+    return await this.call<BlockResult>("getblock", [blockHash, verbosity])
   }
 
   async buildDepositProof(txHash: string, vout: number): Promise<UtxoDepositProof> {

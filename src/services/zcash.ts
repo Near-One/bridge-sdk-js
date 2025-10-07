@@ -1,4 +1,5 @@
 import type { BitcoinMerkleProofResponse, UTXO } from "../types/bitcoin.js"
+import { ChainKind } from "../types/chain.js"
 import { getZcashScript } from "../utils/zcash.js"
 import {
   type NormalizedUTXO,
@@ -16,7 +17,11 @@ export class ZcashService {
     private rpcUrl: string,
     private apiKey: string,
   ) {
-    this.rpc = new UtxoRpcClient({ url: this.rpcUrl, headers: { "x-api-key": this.apiKey } })
+    this.rpc = new UtxoRpcClient({
+      url: this.rpcUrl,
+      headers: { "x-api-key": this.apiKey },
+      chain: ChainKind.Zcash,
+    })
   }
 
   private rpc: UtxoRpcClient
