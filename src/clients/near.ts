@@ -1,7 +1,7 @@
 import type { Account } from "@near-js/accounts"
 import { actionCreators } from "@near-js/transactions"
 import type { FinalExecutionOutcome } from "@near-js/types"
-import { OmniBridgeAPI } from "../api.js"
+import { OmniBridgeAPI, type UtxoChain } from "../api.js"
 import { addresses } from "../config.js"
 import { BitcoinService } from "../services/bitcoin.js"
 import { ZcashService } from "../services/zcash.js"
@@ -34,6 +34,7 @@ import {
   type TransferId,
   type U128,
   type UTXO,
+  UTXO_CHAIN_LABELS,
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
 } from "../types/index.js"
@@ -128,13 +129,6 @@ interface BalanceResults {
   finBalance: bigint
   bindBalance: bigint
   storage: StorageDeposit
-}
-
-export type UtxoChain = ChainKind.Btc | ChainKind.Zcash
-
-const UTXO_CHAIN_LABELS: Record<UtxoChain, string> = {
-  [ChainKind.Btc]: "Bitcoin",
-  [ChainKind.Zcash]: "Zcash",
 }
 
 /**
