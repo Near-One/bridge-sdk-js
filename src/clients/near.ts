@@ -1,7 +1,7 @@
 import type { Account } from "@near-js/accounts"
 import { actionCreators } from "@near-js/transactions"
 import type { FinalExecutionOutcome } from "@near-js/types"
-import { OmniBridgeAPI, type UtxoChain } from "../api.js"
+import { OmniBridgeAPI } from "../api.js"
 import { addresses } from "../config.js"
 import { BitcoinService } from "../services/bitcoin.js"
 import { ZcashService } from "../services/zcash.js"
@@ -35,6 +35,7 @@ import {
   type U128,
   type UTXO,
   UTXO_CHAIN_LABELS,
+  type UtxoChain,
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
 } from "../types/index.js"
