@@ -179,245 +179,93 @@ console.log(`Token fee: ${fee.transferred_token_fee}`);
 console.log(`USD fee: ${fee.usd_fee}`);
 ```
 
+## Understanding Wormhole VAAs
+
+### What are VAAs?
+
+Verified Action Approvals (VAAs) are cryptographic proofs used by the Wormhole protocol to verify cross-chain messages. When tokens are transferred from Solana to other chains, Wormhole Guardians observe the transaction and collectively sign a VAA that proves the transfer occurred.
+
+### When VAAs are Required
+
+- **Solana → NEAR**: VAA required for transfer finalization
+- **Solana → Any Chain**: VAA needed for token deployments  
+- **EVM → NEAR**: EVM proof required instead of VAA
+- **NEAR → Any Chain**: MPC signature used instead of VAA
+
+### Working with VAAs
+
+```typescript
+import { getVaa } from "omni-bridge-sdk";
+
+// Get VAA after Solana transaction (may take 30-60 seconds)
+const vaa = await getVaa(txHash, "Testnet");
+
+// Use VAA for finalization on NEAR
+await nearClient.finalizeTransfer(tokenId, recipient, storageDeposit, 
+  ChainKind.Sol, vaa, undefined, ProofKind.InitTransfer);
+```
+
+> **Note**: VAAs may take 30-60 seconds to become available after transaction confirmation. Implement retry logic for production applications.
+
 ## Advanced Usage
 
 ### Manual Transfer Flows
 
-For cases where manual control over the transfer process is needed, the SDK provides complete access to the underlying bridge functions. Here are the flows for different chains:
-
-#### NEAR to Foreign Chain
+For applications requiring manual control over the transfer process, the SDK provides complete access to underlying bridge functions. Each chain requires specific handling:
 
 ```typescript
-// Using near-api-js
-const near = await connect({
-  networkId: "testnet",
-  nodeUrl: "https://rpc.testnet.near.org",
-});
-const account = await near.account("sender.near");
-const nearClient = getClient(ChainKind.Near, account);
-
-// OR using NEAR Wallet Selector
-const selector = await setupWalletSelector({
-  network: "testnet",
-  modules: [
-    /* your wallet modules */
-  ],
-});
-const nearClient = getClient(ChainKind.Near, selector);
-
-// Create transfer
-const transfer = {
-  tokenAddress: omniAddress(ChainKind.Near, "usdc.near"),
-  amount: BigInt("1000000"),
-  fee: BigInt(feeEstimate.transferred_token_fee),
-  nativeFee: BigInt(feeEstimate.native_token_fee),
-  recipient: omniAddress(ChainKind.Eth, await ethWallet.getAddress()),
-};
-
-// Initiate on NEAR
-const result = await omniTransfer(account, transfer);
-
-// Sign transfer on NEAR
-const { signature } = await nearClient.signTransfer(result, "sender.near");
-
-// Finalize on destination (e.g., Ethereum)
-const ethClient = getClient(ChainKind.Eth, ethWallet);
-await ethClient.finalizeTransfer(transferMessage, signature);
+// Basic manual flow pattern
+const txHash = await sourceClient.initTransfer(transferMessage);
+const proof = await getProof(txHash); // VAA for Solana, EVM proof for Ethereum 
+await destinationClient.finalizeTransfer(tokenId, recipient, proof);
 ```
+
+> **Complete Examples**: See the `e2e/` directory for working end-to-end transfer examples, including Solana→NEAR, Ethereum→NEAR, and NEAR→Ethereum flows with full error handling.
 
 > [!WARNING]
-> When using browser-based NEAR wallets through Wallet Selector, transactions involve page redirects. The current SDK doesn't fully support this flow - applications need to handle redirect returns and transaction hash parsing separately.
-
-#### Solana to NEAR
-
-Solana transfers use Wormhole VAAs (Verified Action Approvals):
-
-```typescript
-// Setup Solana
-const connection = new Connection("https://api.testnet.solana.com");
-const wallet = new Keypair();
-const provider = new AnchorProvider(
-  connection,
-  wallet,
-  AnchorProvider.defaultOptions()
-);
-
-// Create transfer
-const transfer = {
-  tokenAddress: omniAddress(ChainKind.Sol, "EPjFWdd..."),
-  amount: BigInt("1000000"),
-  fee: BigInt(feeEstimate.transferred_token_fee),
-  nativeFee: BigInt(feeEstimate.native_token_fee),
-  recipient: omniAddress(ChainKind.Near, "recipient.near"),
-};
-
-// Initiate on Solana
-const result = await omniTransfer(provider, transfer);
-
-// Get Wormhole VAA (returns hex-encoded string)
-const vaa = await getVaa(result.txHash, "Testnet");
-
-// Finalize on NEAR
-const nearClient = getClient(ChainKind.Near, nearAccount);
-await nearClient.finalizeTransfer(
-  token,
-  "recipient.near",
-  storageDeposit,
-  ChainKind.Sol,
-  vaa, // Wormhole VAA required for Solana->NEAR
-  undefined, // No EVM proof needed
-  ProofKind.InitTransfer
-);
-```
-
-#### EVM to NEAR
-
-EVM chain transfers to NEAR require proof verification:
-
-```typescript
-// Setup EVM wallet
-const provider = new ethers.providers.Web3Provider(window.ethereum);
-const wallet = provider.getSigner();
-
-// Create transfer
-const transfer = {
-  tokenAddress: omniAddress(ChainKind.Eth, "0x123..."), // Ethereum USDC
-  amount: BigInt("1000000"),
-  fee: BigInt(feeEstimate.transferred_token_fee),
-  nativeFee: BigInt(feeEstimate.native_token_fee),
-  recipient: omniAddress(ChainKind.Near, "recipient.near"),
-};
-
-// Initiate on EVM
-const result = await omniTransfer(wallet, transfer);
-
-// Get EVM proof
-const proof = await getEvmProof(
-  result.txHash,
-  ERC20_TRANSFER_TOPIC,
-  ChainKind.Eth
-);
-
-// Finalize on NEAR
-const nearClient = getClient(ChainKind.Near, nearAccount);
-await nearClient.finalizeTransfer(
-  token,
-  "recipient.near",
-  storageDeposit,
-  ChainKind.Eth,
-  undefined, // No VAA needed
-  proof, // EVM proof required
-  ProofKind.InitTransfer
-);
-```
+> **NEAR Wallet Integration Notes**: When using browser-based NEAR wallets through Wallet Selector, transactions involve page redirects. The current SDK doesn't fully support this flow - applications need to handle redirect returns and transaction hash parsing separately. For production applications, consider using [near-api-js](https://github.com/near/near-api-js) with a direct key approach or implement custom redirect handling.
 
 ### Token Operations
 
 #### Deploying Tokens
 
-Token deployments always start by logging metadata on the origin chain. After the destination chain deploys the wrapped token, prove that deployment back to NEAR with either an EVM Merkle proof or a Wormhole VAA.
-
-**NEAR → EVM (Ethereum/Base/Arbitrum/Bnb)**
+Token deployment follows a multi-step process depending on source and destination chains:
 
 ```typescript
-import { ChainKind, ProofKind, getClient } from "omni-bridge-sdk";
-import { getEvmProof } from "omni-bridge-sdk/proofs/evm.js";
-
-const nearClient = getClient(ChainKind.Near, nearAccount);
-const { signature, metadata_payload } = await nearClient.logMetadata("near:token.near");
-
-const evmClient = getClient(ChainKind.Eth, evmSigner);
-const { txHash } = await evmClient.deployToken(signature, {
-  token: metadata_payload.token,
-  name: metadata_payload.name,
-  symbol: metadata_payload.symbol,
-  decimals: metadata_payload.decimals,
-});
-
-const receipt = await evmSigner.provider!.getTransactionReceipt(txHash);
-const deployTopic = receipt.logs[0]?.topics[0];
-if (!deployTopic) throw new Error("Token deployment log missing");
-
-const proof = await getEvmProof(txHash, deployTopic, ChainKind.Eth);
-
-await nearClient.bindToken(
-  ChainKind.Eth,
-  undefined,
-  { proof_kind: ProofKind.DeployToken, proof },
-);
+// Basic token deployment pattern
+await sourceClient.logMetadata(tokenAddress);
+// ... wait for proof/signature generation ...
+const { tokenAddress } = await destinationClient.deployToken(proof, metadata);
+// ... binding step if deploying FROM NEAR ...
 ```
 
-**EVM → NEAR**
+**Key Requirements:**
+- **NEAR→Foreign**: 4 steps (logMetadata → wait → deployToken → bindToken)
+- **Foreign→NEAR**: 3 steps (logMetadata → wait → deployToken)
+- All cross-chain deployments require the token to first exist on NEAR
 
-```typescript
-import { ChainKind, ProofKind, getClient } from "omni-bridge-sdk";
-import { getEvmProof } from "omni-bridge-sdk/proofs/evm.js";
-
-const evmClient = getClient(ChainKind.Eth, evmSigner);
-const logTx = await evmClient.logMetadata("eth:0x123...");
-
-const receipt = await evmSigner.provider!.getTransactionReceipt(logTx);
-const logTopic = receipt.logs[0]?.topics[0];
-if (!logTopic) throw new Error("LogMetadata event missing");
-
-const proof = await getEvmProof(logTx, logTopic, ChainKind.Eth);
-
-const nearClient = getClient(ChainKind.Near, nearAccount);
-await nearClient.deployToken(
-  ChainKind.Eth,
-  undefined,
-  { proof_kind: ProofKind.LogMetadata, proof },
-);
-```
-
-**Solana ↔ NEAR (Wormhole)**
-
-```typescript
-import { ChainKind, getClient } from "omni-bridge-sdk";
-import { getVaa } from "omni-bridge-sdk/proofs/wormhole.js";
-
-const nearClient = getClient(ChainKind.Near, nearAccount);
-const solanaClient = getClient(ChainKind.Sol, anchorProvider);
-
-// NEAR → Solana
-const { signature, metadata_payload } = await nearClient.logMetadata("near:token.near");
-const { txHash } = await solanaClient.deployToken(signature, {
-  token: metadata_payload.token,
-  name: metadata_payload.name,
-  symbol: metadata_payload.symbol,
-  decimals: metadata_payload.decimals,
-});
-const deploymentVaa = await getVaa(txHash, "Testnet");
-await nearClient.bindToken(ChainKind.Sol, deploymentVaa);
-
-// Solana → NEAR
-const logTx = await solanaClient.logMetadata("sol:MINT_ADDRESS");
-const metadataVaa = await getVaa(logTx, "Testnet");
-await nearClient.deployToken(ChainKind.Sol, metadataVaa);
-```
-
-For additional chain combinations and proof polling patterns, see `docs/token-deployment.md`.
-
-> [!NOTE]
-> `anchorProvider` refers to an Anchor-compatible provider instance (for example `new AnchorProvider(connection, wallet, AnchorProvider.defaultOptions())`).
+> **Complete Guide**: See [`docs/token-deployment.md`](docs/token-deployment.md) for detailed deployment instructions with full code examples for all supported chain combinations.
 
 ### Error Handling
 
+The SDK provides detailed error messages for common failure scenarios:
+
 ```typescript
 try {
-  await omniTransfer(wallet, transfer);
+  const result = await omniTransfer(wallet, transferMessage);
 } catch (error) {
   if (error.message.includes("Insufficient balance")) {
-    // Handle insufficient funds
-  } else if (error.message.includes("Invalid token")) {
-    // Handle invalid token
-  } else if (error.message.includes("Transfer failed")) {
-    // Handle failed transfer
-  } else if (error.message.includes("Signature verification failed")) {
-    // Handle signature issues
+    // Handle balance errors
+  } else if (error.message.includes("No VAA found")) {
+    // VAA not ready yet - implement retry logic
+  } else if (error.message.includes("Token already exists")) {
+    // Token deployment conflicts
   }
+  // ... handle other error types
 }
 ```
+
+> **Note**: For VAA operations, implement retry logic as VAAs may take 30-60 seconds to become available. For comprehensive error handling patterns, see the examples in `e2e/` test files.
 
 ## Chain Support
 
