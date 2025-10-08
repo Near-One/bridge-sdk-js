@@ -1,4 +1,4 @@
-import { Program, type Provider } from "@coral-xyz/anchor"
+import { Program, type Provider, web3 } from "@coral-xyz/anchor"
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
@@ -11,8 +11,6 @@ import {
   SYSVAR_CLOCK_PUBKEY,
   SYSVAR_RENT_PUBKEY,
   SystemProgram,
-  Transaction,
-  type TransactionInstruction,
 } from "@solana/web3.js"
 import { BN } from "bn.js"
 import { addresses } from "../config.js"
@@ -158,13 +156,13 @@ export class SolanaBridgeClient {
     }
 
     try {
-      const instruction: TransactionInstruction = {
+      const instruction = new web3.TransactionInstruction({
         keys: [],
         programId: this.program.programId,
         data: Buffer.from(GET_VERSION_DISCRIMINATOR),
-      }
+      })
 
-      const transaction = new Transaction().add(instruction)
+      const transaction = new web3.Transaction().add(instruction)
       const { blockhash } = await this.program.provider.connection.getLatestBlockhash()
       transaction.recentBlockhash = blockhash
       transaction.feePayer = this.program.provider.publicKey
