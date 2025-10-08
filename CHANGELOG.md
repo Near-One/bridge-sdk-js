@@ -1,5 +1,39 @@
 # omni-bridge-sdk
 
+## 0.19.0
+
+### Minor Changes
+
+- 2898e59: Refactor UTXO chain handling to support both Bitcoin and Zcash through unified interface using ChainKind enum differentiation. This introduces breaking changes to method names and signatures for Bitcoin operations.
+
+  **Breaking Changes:**
+
+  - Renamed Bitcoin-specific methods to generic UTXO equivalents:
+    - `getBitcoinDepositAddress` → `getUtxoDepositAddress(chain, ...)`
+    - `finalizeBitcoinDeposit` → `finalizeUtxoDeposit(chain, ...)`
+    - `executeBitcoinWithdrawal` → `executeUtxoWithdrawal(chain, ...)`
+    - `initBitcoinWithdrawal` → `initUtxoWithdrawal(chain, ...)`
+    - `waitForBitcoinTransactionSigning` → `waitForUtxoTransactionSigning(chain, ...)`
+    - `finalizeBitcoinWithdrawal` → `finalizeUtxoWithdrawal(chain, ...)`
+    - `getBitcoinBridgeConfig` → `getUtxoBridgeConfig(chain)`
+  - All UTXO methods now require `chain: UtxoChain` as first parameter (e.g., `ChainKind.Btc` or `ChainKind.Zcash`)
+  - Zcash support requires passing `zcashApiKey` option to `NearBridgeClient` constructor
+
+  **New Features:**
+
+  - Added Zcash support through unified UTXO interface
+  - Introduced `UtxoChainService` abstraction with `BitcoinService` and `ZcashService` implementations
+  - Added `UTXO_CHAIN_LABELS` for user-facing chain names
+
+### Patch Changes
+
+- 6bd2184: chore(deps): bump @solana/spl-token from 0.4.13 to 0.4.14
+- f46831c: chore(deps): bump @wormhole-foundation/sdk from 3.4.6 to 3.8.5
+- e2a27bf: chore(deps-dev): bump lefthook from 1.13.0 to 1.13.6
+- c6c293d: chore(deps-dev): bump knip from 5.63.1 to 5.64.2
+- 08bd9b4: chore(deps-dev): bump @types/node from 24.5.1 to 24.7.0
+- 6a992c9: chore(deps): bump @near-wallet-selector/core from 9.0.3 to 9.5.4
+
 ## 0.18.0
 
 ### Minor Changes
