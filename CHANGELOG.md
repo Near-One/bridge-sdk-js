@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.19.1
+
+### Patch Changes
+
+- dd7cb45: chore(deps): bump @solana/web3.js from 1.98.2 to 1.98.4
+
 ## 0.19.0
 
 ### Minor Changes
