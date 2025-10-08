@@ -39,7 +39,7 @@ describe.concurrent("getTokenDecimals integration", () => {
   })
 
   it("returns null for unregistered token addresses", async ({ expect }) => {
-    const unregisteredAddress = "sol:unregistered1234567890"
+    const unregisteredAddress = "sol:jKfAvRcA21vioDDqG5UGM7QQ5dMY7DuBdvAmvQNXrUJ"
     const result = await getTokenDecimals("omni-locker.testnet", unregisteredAddress)
     // This might return null for unregistered tokens
     if (result === null) {
