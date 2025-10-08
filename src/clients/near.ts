@@ -845,11 +845,15 @@ export class NearBridgeClient {
 
     const recipientAddress = initTransferEvent.transfer_message.recipient.split(":")[1]
     const amount = BigInt(initTransferEvent.transfer_message.amount)
-    const maxGasFee =
-      BigInt(
-        initTransferEvent.transfer_message.msg &&
-          JSON.parse(initTransferEvent.transfer_message.msg).V0.max_fee,
-      ) || 0n
+    let maxGasFee = 0n
+    const transferMsg = initTransferEvent.transfer_message.msg
+    if (transferMsg) {
+      const parsedMsg = JSON.parse(transferMsg)
+      const parsedMaxFee = parsedMsg?.V0?.max_fee
+      if (parsedMaxFee !== undefined && parsedMaxFee !== null) {
+        maxGasFee = BigInt(parsedMaxFee)
+      }
+    }
 
     const utxos = await this.getUtxoAvailableOutputs(ChainKind.Btc)
     const bitcoinConfig = await this.getUtxoBridgeConfig(ChainKind.Btc)
