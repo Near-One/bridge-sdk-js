@@ -282,7 +282,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       expect(config.min_withdraw_amount).toBe("20000")
       expect(config.deposit_bridge_fee.fee_rate).toBe(0.002)
       expect(mockWallet.provider.callFunction).toHaveBeenCalledWith(
-        "brg-dev.testnet", // from config.addresses.btc.btcConnector
+        "btc-connector.n-bridge.testnet", // from config.addresses.btc.btcConnector
         "get_config",
         {},
       )
@@ -310,7 +310,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       expect(result.depositArgs.deposit_msg.recipient_id).toBe(REAL_TEST_DATA.testAccount)
 
       expect(mockWallet.provider.callFunction).toHaveBeenCalledWith(
-        "brg-dev.testnet",
+        "btc-connector.n-bridge.testnet",
         "get_user_deposit_address",
         {
           deposit_msg: {
@@ -392,7 +392,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       // Verify the call was made with correct receiverId
       expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith(
         expect.objectContaining({
-          receiverId: "brg-dev.testnet",
+          receiverId: "btc-connector.n-bridge.testnet",
           actions: expect.arrayContaining([
             expect.objectContaining({
               functionCall: expect.objectContaining({
@@ -438,7 +438,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
 
         expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith(
           expect.objectContaining({
-            receiverId: "brg-dev.testnet",
+            receiverId: "btc-connector.n-bridge.testnet",
             actions: [
               expect.objectContaining({
                 functionCall: expect.objectContaining({

@@ -424,7 +424,7 @@ describe("Bitcoin Integration Tests", () => {
       // Verify the correct parameters were passed to NEAR contract
       expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith(
         expect.objectContaining({
-          receiverId: "brg-dev.testnet",
+          receiverId: "btc-connector.n-bridge.testnet",
           actions: [
             expect.objectContaining({
               functionCall: expect.objectContaining({
@@ -799,12 +799,12 @@ describe("Bitcoin Integration Tests", () => {
       // Verify both calls were made correctly
       expect(mockWallet.provider.callFunction).toHaveBeenCalledTimes(2)
       expect(mockWallet.provider.callFunction).toHaveBeenNthCalledWith(1, 
-        "brg-dev.testnet",
+        "btc-connector.n-bridge.testnet",
         "get_config",
         {}
       )
       expect(mockWallet.provider.callFunction).toHaveBeenNthCalledWith(2,
-        "brg-dev.testnet",
+        "btc-connector.n-bridge.testnet",
         "get_user_deposit_address",
         { deposit_msg: { recipient_id: "test.near" } }
       )
