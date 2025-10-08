@@ -69,6 +69,7 @@ const GAS = {
   SIGN_BTC_TX: BigInt(3e14), // 300 TGas
   VERIFY_WITHDRAW: BigInt(5e12), // 5 TGas
   FAST_FIN_TRANSFER: BigInt(3e14), // 300 TGas
+  SUBMIT_BTC_TRANSFER: BigInt(3e14), // 300 TGas
 } as const
 
 /**
@@ -822,6 +823,76 @@ export class NearBridgeClient {
     }
 
     return { pendingId, nearTxHash: tx.transaction.hash }
+  }
+
+  /**
+   * Creates NEAR -> BTC transfer (NEAR -> BTC flow start, option #2)
+   * To be called after initTransfer() that sends BTC to bitcoin receiver address
+   */
+  async submitBitcoinTransfer(initTransferEvent: InitTransferEvent): Promise<string> {
+    // biome-ignore lint/suspicious/noExplicitAny: TS will complain that `toJSON()` does not exist on BigInt
+    // biome-ignore lint/complexity/useLiteralKeys: TS will complain that `toJSON()` does not exist on BigInt
+    ;(BigInt.prototype as any)["toJSON"] = function () {
+      // The contract can't accept `origin_nonce` as a string, so we have to serialize it as a number.
+      // However, this can cause precision loss if the number is too large. We'll check if it's safe to convert
+      // and if not, we'll serialize it as a string and the contract will have to handle it.
+      const maxSafe = BigInt(Number.MAX_SAFE_INTEGER)
+      if (this <= maxSafe) {
+        return Number(this)
+      }
+      return this.toString()
+    }
+
+    const recipientAddress = initTransferEvent.transfer_message.recipient.split(":")[1]
+    const amount = BigInt(initTransferEvent.transfer_message.amount)
+    const maxGasFee =
+      BigInt(
+        initTransferEvent.transfer_message.msg &&
+          JSON.parse(initTransferEvent.transfer_message.msg).V0.max_fee,
+      ) || 0n
+
+    const utxos = await this.getUtxoAvailableOutputs(ChainKind.Btc)
+    const bitcoinConfig = await this.getUtxoBridgeConfig(ChainKind.Btc)
+
+    const withdrawFee = BigInt(bitcoinConfig.withdraw_bridge_fee.fee_min)
+
+    const plan = this.buildUtxoWithdrawalPlan(
+      ChainKind.Btc,
+      utxos,
+      amount - withdrawFee,
+      recipientAddress,
+      bitcoinConfig,
+    )
+
+    const msg: InitBtcTransferMsg = {
+      Withdraw: {
+        target_btc_address: recipientAddress,
+        input: plan.inputs,
+        output: plan.outputs,
+        max_gas_fee: maxGasFee,
+      },
+    }
+
+    const tx = await this.wallet.signAndSendTransaction({
+      receiverId: addresses.near,
+      actions: [
+        actionCreators.functionCall(
+          "submit_transfer_to_utxo_chain_connector",
+          {
+            transfer_id: {
+              origin_chain: ChainKind[getChain(initTransferEvent.transfer_message.sender)],
+              origin_nonce: BigInt(initTransferEvent.transfer_message.origin_nonce),
+            },
+            msg: JSON.stringify(msg),
+          },
+          GAS.SUBMIT_BTC_TRANSFER,
+          BigInt(0),
+        ),
+      ],
+      waitUntil: "FINAL",
+    })
+
+    return tx.transaction.hash
   }
 
   async signUtxoTransaction(
