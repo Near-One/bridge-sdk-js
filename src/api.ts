@@ -5,8 +5,8 @@ import type { OmniAddress } from "./types/index.js"
 const ChainSchema = z.enum(["Eth", "Near", "Sol", "Arb", "Base", "Bnb"])
 export type Chain = z.infer<typeof ChainSchema>
 
-const UtxoChainSchema = z.enum(["btc"])
-export type UtxoChain = z.infer<typeof UtxoChainSchema>
+const UtxoChainParamSchema = z.enum(["btc", "zcash"])
+export type UtxoChainParam = z.infer<typeof UtxoChainParamSchema>
 
 // Custom transformer for safe BigInt coercion that handles scientific notation
 const safeBigInt = (nullable = false) => {
@@ -309,7 +309,7 @@ export class OmniBridgeAPI {
   }
 
   async getUtxoUserDepositAddress(
-    chain: UtxoChain,
+    chain: UtxoChainParam,
     recipient: string,
     postActions?: PostAction[] | null,
     extraMsg?: string | null,

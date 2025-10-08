@@ -8,6 +8,14 @@ export enum ChainKind {
   Base = 4,
   Bnb = 5,
   Btc = 6,
+  Zcash = 7,
 }
 
 export const ChainKindSchema = b.nativeEnum(ChainKind)
+
+export type UtxoChain = ChainKind.Btc | ChainKind.Zcash
+
+export const UTXO_CHAIN_LABELS: Record<UtxoChain, string> = {
+  [ChainKind.Btc]: "Bitcoin",
+  [ChainKind.Zcash]: "Zcash",
+}

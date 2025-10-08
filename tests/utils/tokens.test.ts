@@ -119,7 +119,7 @@ describe("Token Resolution", () => {
     })
 
     it("returns correct chain for testnet exact matches", () => {
-      expect(parseOriginChain("nbtc-dev.testnet")).toBe(ChainKind.Btc)
+      expect(parseOriginChain("nbtc.n-bridge.testnet")).toBe(ChainKind.Btc)
       expect(parseOriginChain("eth.sepolia.testnet")).toBe(ChainKind.Eth)
       expect(parseOriginChain("sol.omnidep.testnet")).toBe(ChainKind.Sol)
       expect(parseOriginChain("base.omnidep.testnet")).toBe(ChainKind.Base)

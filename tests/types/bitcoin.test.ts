@@ -344,7 +344,7 @@ describe("Bitcoin Types", () => {
 
       const testnetConfig: Partial<BtcConnectorConfig> = {
         btc_light_client_account_id: "btc-light-client.testnet",
-        nbtc_account_id: "nbtc-dev.testnet",
+        nbtc_account_id: "nbtc.n-bridge.testnet",
         change_address: "tb1qtestnet_change_address",
         confirmations_strategy: { "100": 1, "1000": 2 },
       }

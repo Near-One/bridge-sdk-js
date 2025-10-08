@@ -1,11 +1,18 @@
 import { hex } from "@scure/base"
 import * as btc from "@scure/btc-signer"
-import type {
-  BitcoinMerkleProofResponse,
-  BitcoinTransaction,
-  NearBlocksReceiptsResponse,
-  UTXO,
-} from "../types/bitcoin.js"
+import type { BitcoinMerkleProofResponse, BitcoinTransaction, UTXO } from "../types/bitcoin.js"
+import { ChainKind } from "../types/chain.js"
+import {
+  linearFeeCalculator,
+  type NormalizedUTXO,
+  SIMPLE_UTXO_DEFAULTS,
+  selectUtxos,
+  type UtxoDepositProof,
+  type UtxoPlanOverrides,
+  type UtxoSelectionResult,
+  type UtxoWithdrawalPlan,
+} from "../utxo/index.js"
+import { UtxoRpcClient } from "../utxo/rpc.js"
 
 /**
  * Bitcoin service for proof generation and network queries
@@ -14,7 +21,6 @@ import type {
  * - Merkle proof generation for deposit verification
  * - UTXO selection and transaction construction
  * - Network communication with Blockstream API
- * - Block explorer integration via NearBlocks API
  * - Address validation and script generation
  *
  * Mirrors the functionality from the Rust SDK's btc-utils
@@ -30,7 +36,7 @@ import type {
  * const proof = await bitcoinService.fetchMerkleProof(txHash)
  *
  * // Select UTXOs for withdrawal transaction
- * const selection = bitcoinService.selectCoins(utxos, amount, targetAddress, changeAddress, feeRate)
+ * const plan = bitcoinService.buildWithdrawalPlan(utxos, amount, targetAddress, changeAddress, feeRate)
  * ```
  */
 export class BitcoinService {
@@ -42,7 +48,21 @@ export class BitcoinService {
   constructor(
     private apiUrl: string,
     private network: "mainnet" | "testnet",
-  ) {}
+    rpcConfig?: { url: string; headers?: Record<string, string> },
+  ) {
+    let defaultRpcUrl = "https://bitcoin-testnet-rpc.publicnode.com"
+    if (network === "mainnet") {
+      defaultRpcUrl = "https://bitcoin-rpc.publicnode.com"
+    }
+
+    this.rpc = new UtxoRpcClient({
+      url: rpcConfig?.url ?? defaultRpcUrl,
+      headers: rpcConfig?.headers,
+      chain: ChainKind.Btc,
+    })
+  }
+
+  private rpc: UtxoRpcClient
 
   /**
    * Fetch merkle proof for Bitcoin transaction verification
@@ -66,105 +86,116 @@ export class BitcoinService {
    * ```
    */
   async fetchMerkleProof(txHash: string): Promise<BitcoinMerkleProofResponse> {
-    const response = await fetch(`${this.apiUrl}/tx/${txHash}/merkle-proof`)
-    if (!response.ok) {
-      throw new Error(`Bitcoin: Failed to fetch merkle proof: ${response.statusText}`)
-    }
-    return (await response.json()) as BitcoinMerkleProofResponse
+    return await this.rpc.buildMerkleProof(txHash)
+  }
+
+  async getMerkleProof(txHash: string): Promise<BitcoinMerkleProofResponse> {
+    return await this.fetchMerkleProof(txHash)
+  }
+
+  async getDepositProof(txHash: string, vout: number): Promise<UtxoDepositProof> {
+    return await this.rpc.buildDepositProof(txHash, vout)
   }
 
   /**
-   * Convert UTXO to scure-btc-signer input format
-   * @private
-   * @param utxo - UTXO to convert
-   * @returns Input object compatible with scure-btc-signer
+   * Plan a simple Bitcoin transaction using manual UTXO selection.
+   *
+   * The planner applies largest-first selection with configurable fee logic.
+   * It produces the exact inputs that should be consumed, along with the
+   * canonical outputs (recipient + optional change) that must be encoded on
+   * chain when the NEAR connector constructs the unsigned transaction.
    */
-  private toInput(utxo: UTXO) {
-    return {
-      path: utxo.path,
-      txid: hex.decode(utxo.txid),
-      index: utxo.vout,
-      nonWitnessUtxo: Uint8Array.from(utxo.tx_bytes),
-    }
-  }
-
-  /**
-   * Select UTXOs and construct Bitcoin transaction for withdrawal
-   *
-   * Implements optimal UTXO selection using scure-btc-signer's selectUTXO algorithm.
-   * The algorithm considers:
-   * - Available UTXO set and required output amount
-   * - Fee estimation based on transaction size and fee rate
-   * - Change output generation to minimize dust
-   * - BIP69 sorting for privacy (deterministic input/output ordering)
-   *
-   * @param utxos - Available unspent transaction outputs to spend from
-   * @param amount - Target amount to send in satoshis (excluding fees)
-   * @param to - Recipient Bitcoin address (any format: P2PKH, P2SH, P2WPKH, P2WSH)
-   * @param changeAddress - Address to send remaining balance after fees
-   * @param feeRate - Fee rate in satoshis per virtual byte (sat/vB)
-   * @returns Selected inputs, outputs, estimated fee, and transaction size
-   * @throws {Error} When insufficient funds available for amount + fees
-   *
-   * @example
-   * ```typescript
-   * const utxos = [
-   *   { txid: "abc123...", vout: 0, balance: "100000", ... },
-   *   { txid: "def456...", vout: 1, balance: "50000", ... }
-   * ]
-   *
-   * const selection = bitcoinService.selectCoins(
-   *   utxos,
-   *   BigInt(75000), // Send 75,000 sats
-   *   "bc1qrecipient...", // Target address
-   *   "bc1qchange...", // Change address
-   *   10 // 10 sat/vB fee rate
-   * )
-   *
-   * console.log(`Selected ${selection.inputs.length} inputs`)
-   * console.log(`Fee: ${selection.fee} sats`)
-   * console.log(`Transaction size: ${selection.vsize} vBytes`)
-   * ```
-   */
-  selectCoins(
+  buildWithdrawalPlan(
     utxos: UTXO[],
     amount: bigint,
-    to: string,
+    targetAddress: string,
     changeAddress: string,
-    feeRate: number, // sat/vB
-  ) {
-    // Early validation: check if we have any UTXOs
-    if (utxos.length === 0) {
+    feeRate: number = 1,
+    overrides?: UtxoPlanOverrides,
+  ): UtxoWithdrawalPlan {
+    if (!utxos.length) {
       throw new Error("Bitcoin: No UTXOs available for transaction")
     }
 
-    // Convert UTXOs to scure-btc-signer format efficiently
-    const inputs = utxos.map(this.toInput)
-    const network = this.getNetwork()
+    const normalized = this.normalizeUtxos(utxos)
+    const feeCalculator = this.createFeeCalculator(feeRate)
 
-    // Use scure-btc-signer's optimized selectUTXO algorithm
-    const result = btc.selectUTXO(
-      inputs,
-      [{ address: to, amount }], // Target output
-      "default", // Optimal selection strategy
-      {
-        feePerByte: BigInt(feeRate),
-        changeAddress,
-        network,
-        bip69: true, // Privacy: deterministic ordering
-        createTx: true, // Accurate fee estimation
-      },
-    )
+    const dustThreshold = overrides?.dustThreshold ?? SIMPLE_UTXO_DEFAULTS.dustThreshold
+    const minChange = overrides?.minChange ?? SIMPLE_UTXO_DEFAULTS.minChange ?? dustThreshold
+    const selection = selectUtxos(normalized, amount, {
+      feeCalculator,
+      dustThreshold,
+      minChange,
+      maxInputs: overrides?.maxInputs ?? SIMPLE_UTXO_DEFAULTS.maxInputs,
+      sort: overrides?.sort ?? SIMPLE_UTXO_DEFAULTS.sort,
+    })
 
-    if (!result) {
-      throw new Error("Bitcoin: Insufficient funds for transaction")
-    }
+    const outputs = this.buildOutputs(selection, amount, targetAddress, changeAddress)
 
     return {
-      inputs: result.inputs,
-      outputs: result.outputs,
-      fee: result.tx?.fee ?? result.fee,
-      vsize: Math.ceil(result.weight / 4),
+      inputs: selection.inputs.map((input) => `${input.txid}:${input.vout}`),
+      outputs,
+      fee: selection.fee,
+    }
+  }
+
+  private normalizeUtxos(utxos: UTXO[]): NormalizedUTXO[] {
+    return utxos.map((utxo) => {
+      const bytes = utxo.tx_bytes
+      let rawTx: Uint8Array
+      if (bytes instanceof Uint8Array) {
+        rawTx = bytes
+      } else {
+        rawTx = Uint8Array.from(bytes)
+      }
+
+      return {
+        txid: utxo.txid,
+        vout: utxo.vout,
+        amount: BigInt(utxo.balance),
+        path: utxo.path,
+        rawTx,
+      }
+    })
+  }
+
+  private createFeeCalculator(feeRate: number) {
+    let effectiveRate = feeRate
+    if (effectiveRate <= 0) {
+      effectiveRate = 1
+    }
+    return linearFeeCalculator({
+      base: 10,
+      input: 68,
+      output: 31,
+      rate: effectiveRate,
+    })
+  }
+
+  private buildOutputs(
+    selection: UtxoSelectionResult,
+    amount: bigint,
+    to: string,
+    changeAddress: string,
+  ) {
+    const outputs = [this.createOutput(to, amount)]
+
+    if (selection.change > 0n) {
+      outputs.push(this.createOutput(changeAddress, selection.change))
+    }
+
+    return outputs
+  }
+
+  private createOutput(address: string, value: bigint) {
+    if (value <= 0n) {
+      throw new Error("Bitcoin: Output value must be positive")
+    }
+
+    const scriptHex = this.addressToScriptPubkey(address)
+    return {
+      value: Number(value),
+      script_pubkey: scriptHex,
     }
   }
 
@@ -263,59 +294,25 @@ export class BitcoinService {
    * @returns Network configuration object (btc.NETWORK for mainnet, btc.TEST_NETWORK for testnet)
    */
   getNetwork(): typeof btc.NETWORK | typeof btc.TEST_NETWORK {
-    return this.network === "mainnet" ? btc.NETWORK : btc.TEST_NETWORK
+    if (this.network === "mainnet") {
+      return btc.NETWORK
+    }
+    return btc.TEST_NETWORK
   }
 
   /**
    * Converts a Bitcoin address to its corresponding script_pubkey
    * @param address - Bitcoin address string
-   * @param network - Network configuration (defaults to mainnet)
-   * @returns Uint8Array representing the script_pubkey
+   * @returns script_pubkey encoded as a hex string
    */
-  public addressToScriptPubkey(address: string): Uint8Array {
+  public addressToScriptPubkey(address: string): string {
     try {
-      // Use the built-in Address decoder to parse the address
-      const network = this.getNetwork()
-      const addressDecoder = btc.Address(network)
-      const outScriptType = addressDecoder.decode(address)
-
-      // Use OutScript encoder to convert to script bytes
-      return btc.OutScript.encode(outScriptType)
+      const decoder = btc.Address(this.getNetwork())
+      const outScript = btc.OutScript.encode(decoder.decode(address))
+      return hex.encode(outScript)
     } catch (error) {
-      throw new Error(`Bitcoin: Failed to convert address to script_pubkey: ${error}`)
+      const reason = error instanceof Error ? `: ${error.message}` : ""
+      throw new Error(`Bitcoin: Failed to convert address to script_pubkey${reason}`)
     }
-  }
-
-  /**
-   * Find NEAR transaction hash for Bitcoin transaction signing using NearBlocks API
-   * @param signerAccountId - Account that signed the Bitcoin transaction (usually relayer)
-   * @param btcPendingId - The pending Bitcoin transaction ID to search for
-   * @returns Promise<string> - NEAR transaction hash containing the signing
-   */
-  async findTransactionSigning(signerAccountId: string, btcPendingId: string): Promise<string> {
-    const baseUrl =
-      this.network === "mainnet"
-        ? "https://api.nearblocks.io/v1"
-        : "https://api-testnet.nearblocks.io/v1"
-
-    const response = await fetch(
-      `${baseUrl}/account/${signerAccountId}/receipts?method=sign_btc_transaction`,
-    )
-
-    if (!response.ok) {
-      throw new Error(`Bitcoin: Failed to fetch transaction receipts: ${response.statusText}`)
-    }
-
-    const data = (await response.json()) as NearBlocksReceiptsResponse
-
-    for (const tx of data.txns) {
-      for (const action of tx.actions) {
-        if (action.args.includes(btcPendingId)) {
-          return tx.transaction_hash
-        }
-      }
-    }
-
-    throw new Error(`Bitcoin: Transaction signing not found for pending ID: ${btcPendingId}`)
   }
 }

@@ -3,13 +3,14 @@ import { http, HttpResponse } from "msw"
 import { setupServer } from "msw/node"
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { NearBridgeClient } from "../../src/clients/near.js"
-import { setNetwork } from "../../src/config.js"
+import { addresses, setNetwork } from "../../src/config.js"
 import type {
   BitcoinTransaction,
   BtcConnectorConfig,
   BtcDepositArgs,
   NearBlocksReceiptsResponse,
 } from "../../src/types/bitcoin.js"
+import { ChainKind } from "../../src/types/chain.js"
 
 /**
  * Bitcoin Integration Tests
@@ -119,9 +120,12 @@ const mockRealMerkleProof = {
   pos: 15, // Position in block
 }
 
+const UNKNOWN_TX_ID = "0".repeat(64)
+const UNCONFIRMED_TX_ID = "1".repeat(64)
+
 const mockRealBtcConfig: BtcConnectorConfig = {
   btc_light_client_account_id: "btc-light-client.testnet",
-  nbtc_account_id: "nbtc-dev.testnet",
+  nbtc_account_id: "nbtc.n-bridge.testnet",
   chain_signatures_account_id: "v1.signer-dev.testnet",
   chain_signatures_root_public_key: "secp256k1:3tFRbMqmoa6AAALMrEFAYCEYJCPT3FwyeAkMuLz6fwcmWfJL5FMAwOJpRAasRSXhZRp9LJ6e9U7xhNgwGaVFgtfVXj",
   change_address: "tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx",
@@ -157,17 +161,75 @@ const mockRealBtcConfig: BtcConnectorConfig = {
 
 
 // Mock server for external APIs
+const BITCOIN_RPC_URL = "https://rpc.testnet.example.com"
+const BITCOIN_API_URL = "https://btc.example.com/testnet/api"
+
 const server = setupServer(
+  http.post(BITCOIN_RPC_URL, async ({ request }) => {
+    const body = (await request.json()) as {
+      method: string
+      params?: unknown[]
+    }
+
+    if (body.method === "getrawtransaction") {
+      const [txid] = (body.params ?? []) as [string]
+      if (txid === REAL_WITHDRAWAL_DATA.realDepositTx) {
+        return HttpResponse.json({
+          jsonrpc: "2.0",
+          id: "1",
+            result: {
+              blockhash: mockRealBitcoinTx.status?.block_hash,
+              height: mockRealBitcoinTx.status?.block_height,
+              hex: "0200000001f1e2d3c4b5a6978869504132210fedcba9876543210fedcba987654321abcdef00000000",
+              vout: [
+              { n: 0, value: 0.005 },
+              { n: 1, value: 0.0005 },
+              ],
+            },
+          })
+      }
+      if (txid === UNCONFIRMED_TX_ID) {
+        return HttpResponse.json({
+          jsonrpc: "2.0",
+          id: "1",
+          result: {
+            hex: "0200000001abcdef",
+            vout: [{ n: 0, value: 0.001 }],
+          },
+        })
+      }
+
+      return HttpResponse.json({
+        jsonrpc: "2.0",
+        id: "1",
+        error: { code: -5, message: "No such mempool or blockchain transaction" },
+      })
+    }
+
+    if (body.method === "getblock") {
+      return HttpResponse.json({
+        jsonrpc: "2.0",
+        id: "1",
+        result: {
+          tx: [REAL_WITHDRAWAL_DATA.realDepositTx, "b".repeat(64)],
+          height: mockRealBitcoinTx.status?.block_height,
+        },
+      })
+    }
+
+    return HttpResponse.json({ jsonrpc: "2.0", id: "1", result: null })
+  }),
+
   // Real Bitcoin transaction endpoints
-  http.get(`https://blockstream.info/testnet/api/tx/${REAL_WITHDRAWAL_DATA.realDepositTx}`, () => {
+  http.get(`${BITCOIN_API_URL}/tx/${REAL_WITHDRAWAL_DATA.realDepositTx}`, () => {
     return HttpResponse.json(mockRealBitcoinTx)
   }),
 
-  http.get(`https://blockstream.info/testnet/api/tx/${REAL_WITHDRAWAL_DATA.realDepositTx}/merkle-proof`, () => {
+  http.get(`${BITCOIN_API_URL}/tx/${REAL_WITHDRAWAL_DATA.realDepositTx}/merkle-proof`, () => {
     return HttpResponse.json(mockRealMerkleProof)
   }),
 
-  http.get(`https://blockstream.info/testnet/api/tx/${REAL_WITHDRAWAL_DATA.realDepositTx}/hex`, () => {
+  http.get(`${BITCOIN_API_URL}/tx/${REAL_WITHDRAWAL_DATA.realDepositTx}/hex`, () => {
     // Simplified hex representation
     return new HttpResponse("0200000001f1e2d3c4b5a6978869504132210fedcba9876543210fedcba987654321abcdef00000000", {
       headers: { "Content-Type": "text/plain" },
@@ -175,7 +237,7 @@ const server = setupServer(
   }),
 
   // Bitcoin broadcast endpoint
-  http.post("https://blockstream.info/testnet/api/tx", () => {
+  http.post(`${BITCOIN_API_URL}/tx`, () => {
     return new HttpResponse("broadcast_real_bitcoin_withdrawal_tx_hash", {
       headers: { "Content-Type": "text/plain" },
     })
@@ -259,14 +321,14 @@ const server = setupServer(
   }),
 
   // Error scenarios
-  http.get("https://blockstream.info/testnet/api/tx/unconfirmed_tx_hash", () => {
+  http.get(`${BITCOIN_API_URL}/tx/${UNCONFIRMED_TX_ID}` , () => {
     return HttpResponse.json({
       ...mockRealBitcoinTx,
       status: { confirmed: false },
     })
   }),
 
-  http.get("https://blockstream.info/testnet/api/tx/unconfirmed_tx_hash/merkle-proof", () => {
+  http.get(`${BITCOIN_API_URL}/tx/${UNCONFIRMED_TX_ID}/merkle-proof`, () => {
     return new HttpResponse("Bad Request", { status: 400 })
   }),
 
@@ -279,6 +341,19 @@ const server = setupServer(
 beforeAll(() => server.listen())
 afterEach(() => server.resetHandlers())
 afterAll(() => server.close())
+
+const originalBtcAddresses = { ...addresses.btc }
+
+beforeEach(() => {
+  Object.assign(addresses.btc, {
+    apiUrl: BITCOIN_API_URL,
+    rpcUrl: BITCOIN_RPC_URL,
+  })
+})
+
+afterAll(() => {
+  Object.assign(addresses.btc, originalBtcAddresses)
+})
 
 describe("Bitcoin Integration Tests", () => {
   let mockWallet: Account
@@ -305,7 +380,7 @@ describe("Bitcoin Integration Tests", () => {
       // Step 1: Get deposit address (mock the NEAR contract response)
       const mockDepositResponse = "tb1qreal_deposit_address_from_bridge_contract"
       
-      // Mock both getBitcoinDepositAddress and getBitcoinBridgeConfig calls
+      // Mock both getUtxoDepositAddress and getUtxoBridgeConfig calls
       mockWallet.provider.callFunction = vi.fn()
         .mockImplementation((contractId: string, methodName: string) => {
           if (methodName === "get_user_deposit_address") {
@@ -317,12 +392,12 @@ describe("Bitcoin Integration Tests", () => {
           return Promise.resolve({})
         })
 
-      const depositAddressResult = await client.getBitcoinDepositAddress(
+      const depositAddressResult = await client.getUtxoDepositAddress(ChainKind.Btc, 
         REAL_WITHDRAWAL_DATA.testAccount
       )
 
       expect(depositAddressResult.depositAddress).toBe(mockDepositResponse)
-      expect(depositAddressResult.btcDepositArgs.deposit_msg.recipient_id).toBe(
+      expect(depositAddressResult.depositArgs.deposit_msg.recipient_id).toBe(
         REAL_WITHDRAWAL_DATA.testAccount
       )
 
@@ -337,10 +412,11 @@ describe("Bitcoin Integration Tests", () => {
       
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue(mockFinalizeResult)
 
-      const finalizeResult = await client.finalizeBitcoinDeposit(
+      const finalizeResult = await client.finalizeUtxoDeposit(
+        ChainKind.Btc,
         REAL_WITHDRAWAL_DATA.realDepositTx,
         REAL_WITHDRAWAL_DATA.realDepositVout,
-        depositAddressResult.btcDepositArgs
+        depositAddressResult.depositArgs
       )
 
       expect(finalizeResult).toBe("near_deposit_finalization_tx_hash")
@@ -366,15 +442,15 @@ describe("Bitcoin Integration Tests", () => {
       }
 
       await expect(
-        client.finalizeBitcoinDeposit("unconfirmed_tx_hash", 0, mockDepositArgs)
-      ).rejects.toThrow("Bitcoin: Failed to fetch merkle proof")
+        client.finalizeUtxoDeposit(ChainKind.Btc, UNCONFIRMED_TX_ID, 0, mockDepositArgs)
+      ).rejects.toThrow("UTXO: Transaction not confirmed")
     })
 
     it("should validate deposit amounts against bridge configuration", async () => {
       // Mock bridge config fetch
       mockWallet.provider.callFunction = vi.fn().mockResolvedValue(mockRealBtcConfig)
 
-      const config = await client.getBitcoinBridgeConfig()
+      const config = (await client.getUtxoBridgeConfig(ChainKind.Btc)) as BtcConnectorConfig
       
       expect(config.min_deposit_amount).toBe(REAL_WITHDRAWAL_DATA.minDepositAmount)
       
@@ -423,19 +499,21 @@ describe("Bitcoin Integration Tests", () => {
 
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue(mockInitResult)
 
-      const result = await client.initBitcoinWithdrawal(
+      const result = await client.initUtxoWithdrawal(
+        ChainKind.Btc,
         REAL_WITHDRAWAL_DATA.realWithdrawAddress,
-        BigInt(REAL_WITHDRAWAL_DATA.minWithdrawAmount)
+        BigInt(REAL_WITHDRAWAL_DATA.minWithdrawAmount),
       )
 
       expect(result.pendingId).toBe("real_pending_btc_withdrawal_123")
       expect(result.nearTxHash).toBe("near_init_withdrawal_tx_hash")
 
-      // Step 2: Wait for relayer to sign (automated via waitForBitcoinTransactionSigning)
-      const nearSigningTxHash = await client.waitForBitcoinTransactionSigning(
+      // Step 2: Wait for relayer to sign (automated via waitForUtxoTransactionSigning)
+      const nearSigningTxHash = await client.waitForUtxoTransactionSigning(
+        ChainKind.Btc,
         result.nearTxHash,
         1, // Single attempt for testing
-        100 // Quick timeout
+        100, // Quick timeout
       )
 
       expect(nearSigningTxHash).toBe("real_near_signing_transaction_hash_example")
@@ -455,7 +533,7 @@ describe("Bitcoin Integration Tests", () => {
 
       mockWallet.provider.viewTransactionStatus = vi.fn().mockResolvedValue(mockSignedTxStatus)
 
-      const bitcoinTxHash = await client.finalizeBitcoinWithdrawal(nearSigningTxHash)
+      const bitcoinTxHash = await client.finalizeUtxoWithdrawal(ChainKind.Btc, nearSigningTxHash)
       
       expect(bitcoinTxHash).toBe("broadcast_real_bitcoin_withdrawal_tx_hash")
 
@@ -468,7 +546,7 @@ describe("Bitcoin Integration Tests", () => {
       )
     })
 
-    it("should use executeBitcoinWithdrawal for complete automation", async () => {
+    it("should use executeUtxoWithdrawal for complete automation", async () => {
       // Mock UTXO and config data for withdrawal initialization
       const mockUTXOs = {
         "fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321@0": {
@@ -538,11 +616,12 @@ describe("Bitcoin Integration Tests", () => {
       )
 
       // Execute complete withdrawal in one call
-      const bitcoinTxHash = await client.executeBitcoinWithdrawal(
+      const bitcoinTxHash = await client.executeUtxoWithdrawal(
+        ChainKind.Btc,
         REAL_WITHDRAWAL_DATA.realWithdrawAddress,
         BigInt(30000), // 30,000 sats
         1, // Single attempt for testing
-        50 // Quick timeout
+        50, // Quick timeout
       )
 
       expect(bitcoinTxHash).toBe("broadcast_real_bitcoin_withdrawal_tx_hash")
@@ -550,10 +629,11 @@ describe("Bitcoin Integration Tests", () => {
 
     it("should handle relayer delays and timeouts", async () => {
       await expect(
-        client.waitForBitcoinTransactionSigning(
+        client.waitForUtxoTransactionSigning(
+          ChainKind.Btc,
           "pending_that_will_timeout",
           2, // 2 attempts
-          10 // 10ms delay
+          10,
         )
       ).rejects.toThrow(/Bitcoin: Transaction signing not found after 2 attempts/)
     })
@@ -580,17 +660,18 @@ describe("Bitcoin Integration Tests", () => {
           return Promise.resolve({})
         })
 
-      const config = await client.getBitcoinBridgeConfig()
+      const config = (await client.getUtxoBridgeConfig(ChainKind.Btc)) as BtcConnectorConfig
       
       // Test that validation works correctly - amount below minimum should throw
       const belowMinimum = BigInt(config.min_withdraw_amount) - 1n
 
       // Expect the validation to throw an error for amount below minimum
       await expect(
-        client.initBitcoinWithdrawal(
+        client.initUtxoWithdrawal(
+          ChainKind.Btc,
           REAL_WITHDRAWAL_DATA.realWithdrawAddress,
-          belowMinimum
-        )
+          belowMinimum,
+        ),
       ).rejects.toThrow(/Amount \d+ is below minimum withdrawal amount/)
 
       // Test with valid amount at the minimum
@@ -605,7 +686,8 @@ describe("Bitcoin Integration Tests", () => {
       
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue(mockInitResult)
 
-      const result = await client.initBitcoinWithdrawal(
+      const result = await client.initUtxoWithdrawal(
+        ChainKind.Btc,
         REAL_WITHDRAWAL_DATA.realWithdrawAddress,
         validAmount
       )
@@ -617,10 +699,14 @@ describe("Bitcoin Integration Tests", () => {
 
   describe("Error Scenarios and Recovery", () => {
     it("should handle Bitcoin network failures gracefully", async () => {
-      // Mock Bitcoin API failure
+      // Mock Bitcoin RPC failure
       server.use(
-        http.get(`https://blockstream.info/testnet/api/tx/${REAL_WITHDRAWAL_DATA.realDepositTx}`, () => {
-          return new HttpResponse("Service Unavailable", { status: 503 })
+        http.post(BITCOIN_RPC_URL, async ({ request }) => {
+          const body = (await request.json()) as { method: string }
+          if (body.method === "getrawtransaction") {
+            return new HttpResponse("Service Unavailable", { status: 503, statusText: "Service Unavailable" })
+          }
+          return HttpResponse.json({ jsonrpc: "2.0", id: "1", result: null })
         })
       )
 
@@ -629,19 +715,20 @@ describe("Bitcoin Integration Tests", () => {
       }
 
       await expect(
-        client.finalizeBitcoinDeposit(
+        client.finalizeUtxoDeposit(
+          ChainKind.Btc,
           REAL_WITHDRAWAL_DATA.realDepositTx,
           REAL_WITHDRAWAL_DATA.realDepositVout,
           mockDepositArgs
         )
-      ).rejects.toThrow(/Bitcoin: Failed to fetch transaction/)
+      ).rejects.toThrow(/UTXO RPC request failed/)
     })
 
     it("should handle NEAR contract failures", async () => {
       // Mock NEAR contract failure
       mockWallet.provider.callFunction = vi.fn().mockRejectedValue(new Error("Contract method not found"))
 
-      await expect(client.getBitcoinBridgeConfig()).rejects.toThrow("Contract method not found")
+      await expect(client.getUtxoBridgeConfig(ChainKind.Btc)).rejects.toThrow("Contract method not found")
     })
 
     it("should handle malformed transaction logs", async () => {
@@ -680,7 +767,7 @@ describe("Bitcoin Integration Tests", () => {
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue(mockMalformedResult)
 
       await expect(
-        client.initBitcoinWithdrawal(REAL_WITHDRAWAL_DATA.realWithdrawAddress, BigInt(50000))
+        client.initUtxoWithdrawal(ChainKind.Btc, REAL_WITHDRAWAL_DATA.realWithdrawAddress, BigInt(50000))
       ).rejects.toThrow("Bitcoin: Pending transaction not found in NEAR logs")
     })
 
@@ -698,15 +785,15 @@ describe("Bitcoin Integration Tests", () => {
     it("should work within broader bridge context", async () => {
       // Test that Bitcoin operations don't interfere with other bridge operations
       mockWallet.provider.callFunction = vi.fn()
-        .mockResolvedValueOnce(mockRealBtcConfig) // getBitcoinBridgeConfig
-        .mockResolvedValueOnce("tb1qtest") // getBitcoinDepositAddress
+        .mockResolvedValueOnce(mockRealBtcConfig) // getUtxoBridgeConfig
+        .mockResolvedValueOnce("tb1qtest") // getUtxoDepositAddress
 
       // Get Bitcoin config
-      const btcConfig = await client.getBitcoinBridgeConfig()
+      const btcConfig = await client.getUtxoBridgeConfig(ChainKind.Btc)
       expect(btcConfig.min_deposit_amount).toBe(REAL_WITHDRAWAL_DATA.minDepositAmount)
 
       // Get deposit address  
-      const depositResult = await client.getBitcoinDepositAddress("test.near")
+      const depositResult = await client.getUtxoDepositAddress(ChainKind.Btc, "test.near")
       expect(depositResult.depositAddress).toBe("tb1qtest")
 
       // Verify both calls were made correctly
@@ -728,10 +815,16 @@ describe("Bitcoin Integration Tests", () => {
       expect(client.networkId).toBe("testnet")
       expect(client.bridgeContractId).toBe(REAL_WITHDRAWAL_DATA.bridgeContract)
       
-      // Verify Bitcoin service uses testnet
-      const network = client.bitcoinService.getNetwork()
-      expect(network.bech32).toBe("tb") // testnet prefix
-      expect(network.pubKeyHash).toBe(0x6f) // testnet pubkey hash version
+      // Verify Bitcoin service rejects mainnet address and accepts testnet address
+      const testnetScript = client.bitcoinService.addressToScriptPubkey(
+        REAL_WITHDRAWAL_DATA.realWithdrawAddress
+      )
+      expect(typeof testnetScript).toBe("string")
+      expect(testnetScript).toMatch(/^[0-9a-f]+$/)
+
+      expect(() =>
+        client.bitcoinService.addressToScriptPubkey("bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq")
+      ).toThrow("Bitcoin: Failed to convert address to script_pubkey")
     })
   })
 
@@ -764,7 +857,7 @@ describe("Bitcoin Integration Tests", () => {
       mockWallet.provider.callFunction = vi.fn().mockResolvedValue(mockRealBtcConfig)
 
       // Execute multiple config fetches concurrently
-      const promises = Array(5).fill(null).map(() => client.getBitcoinBridgeConfig())
+      const promises = Array(5).fill(null).map(() => client.getUtxoBridgeConfig(ChainKind.Btc))
       const results = await Promise.all(promises)
 
       // All should succeed
@@ -821,7 +914,8 @@ describe("Bitcoin Integration Tests", () => {
       
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue(mockInitResult)
 
-      const result = await client.initBitcoinWithdrawal(
+      const result = await client.initUtxoWithdrawal(
+        ChainKind.Btc,
         REAL_WITHDRAWAL_DATA.realWithdrawAddress,
         largeAmount
       )
