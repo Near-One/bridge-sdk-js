@@ -2,6 +2,24 @@ import { describe, expect, it } from "vitest"
 import { calculateStorageAccountId } from "../../src/utils/storage.js"
 
 describe("calculateStorageAccountId", () => {
+    it("verify known storage account ID", () => {
+    const transferMessage = {
+      token: "near:token.publicailab.near" as const,
+      amount: 1000000000n,
+      recipient: "sol:3XfLNw6yhA78USrm6R3H4m4igjPepG5B88tJ216DT8Gv" as const,
+      fee: {
+        fee: 0n,
+        native_fee: 4996147724985508560896n,
+      },
+      sender: "near:intents.near" as const,
+      msg: "",
+    }
+
+    const accountId = calculateStorageAccountId(transferMessage)
+
+    expect(accountId).toBe("bff694d8802e268908ea311a613331eaa278628b55ab4adbe850fd3aa2e3cc7c")
+  })
+
   it("calculates consistent storage account ID for the same input", () => {
     const transferMessage = {
       token: "near:token.near" as const,
@@ -55,7 +73,7 @@ describe("calculateStorageAccountId", () => {
         amount: 1000000000000000000n,
         recipient: "near:recipient.near" as const,
         fee: { fee: 100000000000000000n, native_fee: 1000000000000000n },
-        sender: "eth:0x123" as const,
+        sender: "eth:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" as const,
         msg: "",
       },
       {
@@ -63,7 +81,7 @@ describe("calculateStorageAccountId", () => {
         amount: 1000000000n,
         recipient: "near:recipient.near" as const,
         fee: { fee: 10000000n, native_fee: 1000000n },
-        sender: "sol:22222222222222222222222222222222" as const,
+        sender: "sol:So11111111111111111111111111111111111111112" as const,
         msg: "",
       },
       {

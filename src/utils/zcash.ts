@@ -1,4 +1,4 @@
-import { equalBytes } from "@noble/curves/utils"
+import { equalBytes } from "@noble/curves/utils.js"
 import { sha256 } from "@noble/hashes/sha2.js"
 import { createBase58check } from "@scure/base"
 

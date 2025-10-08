@@ -5,20 +5,27 @@ Simple guide for Bitcoin ↔ NEAR transfers using the Omni Bridge SDK.
 ## Quick Start
 
 ```typescript
-import { NearBridgeClient, setNetwork } from '@near-one/bridge-sdk'
+import {
+  ChainKind,
+  NearBridgeClient,
+  addresses,
+  setNetwork,
+} from "@near-one/bridge-sdk"
 
 // Setup
 setNetwork("testnet") // or "mainnet"
-const bridgeClient = new NearBridgeClient(account, "omni.n-bridge.testnet")
+const bridgeClient = new NearBridgeClient(account, addresses.near)
 
 // Deposit: Bitcoin → NEAR (2 steps)
-const { depositAddress } = await bridgeClient.getBitcoinDepositAddress("your.near")
+const { depositAddress, depositArgs } =
+  await bridgeClient.getUtxoDepositAddress(ChainKind.Btc, "your.near")
 // Send Bitcoin to depositAddress, then:
-await bridgeClient.finalizeBitcoinDeposit(txHash, vout, depositArgs)
+await bridgeClient.finalizeUtxoDeposit(ChainKind.Btc, txHash, vout, depositArgs)
 
 // Withdraw: NEAR → Bitcoin (1 step)
-const btcTxHash = await bridgeClient.executeBitcoinWithdrawal(
-  "bc1qyour-bitcoin-address...", 
+const btcTxHash = await bridgeClient.executeUtxoWithdrawal(
+  ChainKind.Btc,
+  "bc1qyour-bitcoin-address...",
   BigInt(100000) // Amount in satoshis
 )
 ```
@@ -28,11 +35,14 @@ const btcTxHash = await bridgeClient.executeBitcoinWithdrawal(
 ### Step 1: Get Deposit Address
 
 ```typescript
-const depositResult = await bridgeClient.getBitcoinDepositAddress("recipient.near")
+const depositResult = await bridgeClient.getUtxoDepositAddress(
+  ChainKind.Btc,
+  "recipient.near"
+)
 console.log(`Send Bitcoin to: ${depositResult.depositAddress}`)
 
 // Check minimum amount
-const config = await bridgeClient.getBitcoinBridgeConfig()
+const config = await bridgeClient.getUtxoBridgeConfig(ChainKind.Btc)
 console.log(`Minimum: ${config.min_deposit_amount} satoshis`)
 ```
 
@@ -40,13 +50,14 @@ console.log(`Minimum: ${config.min_deposit_amount} satoshis`)
 
 ```typescript
 // 1. Send Bitcoin to the address above using any wallet
-// 2. Wait for confirmation 
+// 2. Wait for confirmation
 // 3. Find your transaction hash and output index (vout)
 
-const nearTxHash = await bridgeClient.finalizeBitcoinDeposit(
+const nearTxHash = await bridgeClient.finalizeUtxoDeposit(
+  ChainKind.Btc,
   "your_bitcoin_tx_hash",
   0, // output index (usually 0 or 1)
-  depositResult.btcDepositArgs
+  depositResult.depositArgs
 )
 
 console.log(`Success! NEAR TX: ${nearTxHash}`)
@@ -54,6 +65,7 @@ console.log(`Success! NEAR TX: ${nearTxHash}`)
 ```
 
 **Finding the Output Index (vout):**
+
 - Check your Bitcoin transaction on [blockstream.info](https://blockstream.info)
 - Find the output that goes to your deposit address
 - The position (starting from 0) is your `vout`
@@ -66,7 +78,8 @@ console.log(`Success! NEAR TX: ${nearTxHash}`)
 
 ```typescript
 // All steps automated in one call
-const bitcoinTxHash = await bridgeClient.executeBitcoinWithdrawal(
+const bitcoinTxHash = await bridgeClient.executeUtxoWithdrawal(
+  ChainKind.Btc,
   "bc1qyour-bitcoin-address...", // Target address
   BigInt(50000) // Amount in satoshis
 )
@@ -78,16 +91,23 @@ console.log(`Bitcoin TX: ${bitcoinTxHash}`)
 
 ```typescript
 // Step 1: Initialize
-const pendingId = await bridgeClient.initBitcoinWithdrawal(
+const init = await bridgeClient.initUtxoWithdrawal(
+  ChainKind.Btc,
   "bc1qyour-bitcoin-address...",
   BigInt(50000) // Amount in satoshis
 )
 
-// Step 2: Wait for MPC signing
-const nearTxHash = await bridgeClient.waitForBitcoinTransactionSigning(pendingId)
+// Step 2: Wait for MPC signing (returns the NEAR transaction that completed signing)
+const nearTxHash = await bridgeClient.waitForUtxoTransactionSigning(
+  ChainKind.Btc,
+  init.nearTxHash
+)
 
 // Step 3: Broadcast to Bitcoin
-const bitcoinTxHash = await bridgeClient.finalizeBitcoinWithdrawal(nearTxHash)
+const bitcoinTxHash = await bridgeClient.finalizeUtxoWithdrawal(
+  ChainKind.Btc,
+  nearTxHash
+)
 ```
 
 ## Configuration
@@ -97,23 +117,23 @@ const bitcoinTxHash = await bridgeClient.finalizeBitcoinWithdrawal(nearTxHash)
 ```typescript
 // Testnet (for development)
 setNetwork("testnet")
-const client = new NearBridgeClient(account, "omni.n-bridge.testnet")
+const client = new NearBridgeClient(account, addresses.near)
 
-// Mainnet (for production)  
+// Mainnet (for production)
 setNetwork("mainnet")
-const client = new NearBridgeClient(account, "omni.bridge.near")
+const client = new NearBridgeClient(account, addresses.near)
 ```
 
 ### Bridge Settings
 
 ```typescript
-const config = await bridgeClient.getBitcoinBridgeConfig()
+const config = await bridgeClient.getUtxoBridgeConfig(ChainKind.Btc)
 
 console.log({
-  minDeposit: config.min_deposit_amount,    // Minimum deposit
-  minWithdraw: config.min_withdraw_amount,  // Minimum withdrawal
-  depositFee: config.deposit_bridge_fee,    // Deposit fees
-  withdrawFee: config.withdraw_bridge_fee   // Withdrawal fees
+  minDeposit: config.min_deposit_amount, // Minimum deposit
+  minWithdraw: config.min_withdraw_amount, // Minimum withdrawal
+  depositFee: config.deposit_bridge_fee, // Deposit fees
+  withdrawFee: config.withdraw_bridge_fee, // Withdrawal fees
 })
 ```
 
@@ -121,14 +141,18 @@ console.log({
 
 ```typescript
 try {
-  const result = await bridgeClient.executeBitcoinWithdrawal(address, amount)
+  const result = await bridgeClient.executeUtxoWithdrawal(
+    ChainKind.Btc,
+    address,
+    amount
+  )
 } catch (error) {
-  if (error.message.includes('Insufficient funds')) {
-    console.log('Not enough nBTC balance')
-  } else if (error.message.includes('Transaction not confirmed')) {
-    console.log('Bitcoin deposit not confirmed yet')
-  } else if (error.message.includes('Transaction signing not found')) {
-    console.log('MPC signing timeout - try again')
+  if (error.message.includes("Insufficient funds")) {
+    console.log("Not enough nBTC balance")
+  } else if (error.message.includes("Transaction not confirmed")) {
+    console.log("Bitcoin deposit not confirmed yet")
+  } else if (error.message.includes("Transaction signing not found")) {
+    console.log("MPC signing timeout - try again")
   }
 }
 ```
@@ -137,7 +161,7 @@ try {
 
 ```typescript
 // Check minimum amounts
-const config = await bridgeClient.getBitcoinBridgeConfig()
+const config = await bridgeClient.getUtxoBridgeConfig(ChainKind.Btc)
 if (amount < BigInt(config.min_withdraw_amount)) {
   throw new Error(`Below minimum: ${config.min_withdraw_amount} satoshis`)
 }
@@ -145,9 +169,9 @@ if (amount < BigInt(config.min_withdraw_amount)) {
 // Validate Bitcoin address
 try {
   await bridgeClient.bitcoinService.addressToScriptPubkey(address)
-  console.log('Valid address')
+  console.log("Valid address")
 } catch {
-  console.log('Invalid Bitcoin address')
+  console.log("Invalid Bitcoin address")
 }
 ```
 
@@ -164,44 +188,50 @@ try {
 ```typescript
 async function testBridge() {
   setNetwork("testnet")
-  const client = new NearBridgeClient(account, "omni.n-bridge.testnet")
-  
+  const client = new NearBridgeClient(account, addresses.near)
+
   // Get deposit address
-  const { depositAddress } = await client.getBitcoinDepositAddress("test.testnet")
+  const { depositAddress } = await client.getUtxoDepositAddress(
+    ChainKind.Btc,
+    "test.testnet"
+  )
   console.log(`Send testnet BTC to: ${depositAddress}`)
-  
+
   // After sending and confirming:
-  // await client.finalizeBitcoinDeposit(txHash, vout, depositArgs)
-  
+  // const nearTxHash = await client.finalizeUtxoDeposit(ChainKind.Btc, txHash, vout, depositArgs)
+
   // Test withdrawal:
-  // await client.executeBitcoinWithdrawal("tb1q...", BigInt(10000))
+  // await client.executeUtxoWithdrawal(ChainKind.Btc, "tb1q...", BigInt(10000))
 }
 ```
 
 ## Common Issues
 
-| Problem | Solution |
-|---------|----------|
-| "Transaction not confirmed" | Wait for Bitcoin confirmations |
-| "Invalid vout" | Check block explorer for correct output index |
-| "Insufficient funds" | Check nBTC balance and fees |
-| "Signing timeout" | Relayer busy - retry in a few minutes |
-| "Invalid address" | Verify Bitcoin address format and network |
+| Problem                     | Solution                                      |
+| --------------------------- | --------------------------------------------- |
+| "Transaction not confirmed" | Wait for Bitcoin confirmations                |
+| "Invalid vout"              | Check block explorer for correct output index |
+| "Insufficient funds"        | Check nBTC balance and fees                   |
+| "Signing timeout"           | Relayer busy - retry in a few minutes         |
+| "Invalid address"           | Verify Bitcoin address format and network     |
 
 ## API Reference
 
 ### Deposit Methods
-- `getBtcUserDepositAddress(recipient)` → `{ depositAddress, btcDepositArgs }`
+
+- `getUtxoUserDepositAddress(chain, recipient)` → `{ address }`
 - `finalizeBitcoinDeposit(txHash, vout, args)` → `nearTxHash`
 
-### Withdrawal Methods  
-- `executeBitcoinWithdrawal(address, amount)` → `bitcoinTxHash` (recommended)
-- `initBitcoinWithdrawal(address, amount)` → `{ pendingId, nearTxHash }`
-- `waitForBitcoinTransactionSigning(nearTxHash)` → `signedTxHash`
-- `finalizeBitcoinWithdrawal(signedTxHash)` → `bitcoinTxHash`
+### Withdrawal Methods
+
+- `executeUtxoWithdrawal(ChainKind.Btc, address, amount)` → `bitcoinTxHash` (recommended)
+- `initUtxoWithdrawal(ChainKind.Btc, address, amount)` → `{ pendingId, nearTxHash }`
+- `waitForUtxoTransactionSigning(ChainKind.Btc, nearTxHash)` → `signedTxHash`
+- `finalizeUtxoWithdrawal(ChainKind.Btc, signedTxHash)` → `bitcoinTxHash`
 
 ### Configuration
-- `getBitcoinBridgeConfig()` → `BtcConnectorConfig`
+
+- `getUtxoBridgeConfig(ChainKind.Btc)` → `BtcConnectorConfig`
 - `setNetwork("testnet" | "mainnet")`
 
 ## Support

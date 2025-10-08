@@ -1,5 +1,77 @@
 # omni-bridge-sdk
 
+## 0.18.0
+
+### Minor Changes
+
+- f09278d: feat: update API tests
+
+### Patch Changes
+
+- ab46689: fix: change `calculateStorageAccountId` function to use borsh
+- 2f7ea99: docs: clarify token deployment proof steps
+
+## 0.17.5
+
+### Patch Changes
+
+- de1ab17: chore: bump merkletreejs from 0.5.2 to 0.6.0
+- e15e571: chore: bump @near-js/accounts from 2.1.0 to 2.3.1
+- 937fc4d: chore: bump @types/node from 24.5.0 to 24.5.1
+- 6c51fb6: chore: bump zod from 4.1.5 to 4.1.9
+
+## 0.17.4
+
+### Patch Changes
+
+- bbc68ca: chore(deps): bump @near-js/transactions from 2.1.0 to 2.3.1
+- 4416853: chore(deps-dev): bump @changesets/cli from 2.29.5 to 2.29.7
+- 7f38e66: chore(deps-dev): bump @types/bun from 1.2.21 to 1.2.22
+- 3fb68ad: chore(deps-dev): bump @types/node from 24.4.0 to 24.5.0
+
+## 0.17.3
+
+### Patch Changes
+
+- 6246393: chore(deps): bump @noble/curves from 1.9.2 to 2.0.0
+- 2799d47: chore(deps-dev): bump lefthook from 1.11.14 to 1.13.0
+- 7244225: chore(deps-dev): bump @biomejs/biome from 2.2.3 to 2.2.4
+- f412868: chore(deps-dev): bump @types/node from 24.3.1 to 24.4.0
+
+## 0.17.2
+
+### Patch Changes
+
+- 6948baa: chore(deps): bump @scure/btc-signer from 1.8.1 to 2.0.1
+- 5f82b42: chore(deps): bump @near-js/types from 2.3.0 to 2.3.1
+- 1e98a86: chore(deps-dev): bump @types/bun from 1.2.17 to 1.2.21
+
+## 0.17.1
+
+### Patch Changes
+
+- fc66918: chore(deps): bump ethers from 6.14.4 to 6.15.0
+- 8880c0d: chore(deps-dev): bump msw from 2.10.2 to 2.11.2
+- 202ac90: chore(deps): bump @near-js/client from 2.1.0 to 2.3.1
+- a8e7157: chore(deps): bump zod from 3.25.67 to 4.1.5
+
+## 0.17.0
+
+### Minor Changes
+
+- 7c73802: Add calculateStorageAccountId function for computing NEAR storage account IDs from transfer messages
+
+### Patch Changes
+
+- 28b7906: chore(deps): bump @near-js/types from 2.1.0 to 2.3.0
+- e0087e9: chore(deps-dev): bump @biomejs/biome from 2.0.5 to 2.2.3
+- eb65bdc: chore(deps-dev): bump typescript from 5.8.3 to 5.9.2
+- 993aae6: chore(deps-dev): bump knip from 5.61.2 to 5.63.1
+- 5f4e82a: chore(deps): bump @noble/hashes from 1.8.0 to 2.0.0
+- 4f9f686: chore(deps): bump @wormhole-foundation/sdk from 2.1.0 to 3.4.6
+- 33ea7f8: chore(deps): bump @near-js/providers from 2.1.0 to 2.3.0
+- 20a3925: chore(deps-dev): bump @types/node from 24.0.4 to 24.3.1
+
 ## 0.16.0
 
 ### Minor Changes

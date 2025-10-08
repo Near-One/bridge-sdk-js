@@ -17,6 +17,7 @@ type ClientTypes = {
   [ChainKind.Bnb]: EvmBridgeClient
   [ChainKind.Sol]: SolanaBridgeClient
   [ChainKind.Btc]: never // Bitcoin client not implemented yet
+  [ChainKind.Zcash]: never // Zcash client not implemented yet
 }
 
 // Define wallet types for each chain
@@ -28,6 +29,7 @@ type WalletTypes = {
   [ChainKind.Bnb]: ethers.Signer
   [ChainKind.Sol]: Provider
   [ChainKind.Btc]: never // Bitcoin wallet not implemented yet
+  [ChainKind.Zcash]: never // Zcash wallet not implemented yet
 }
 
 /**

@@ -5,6 +5,9 @@ import type { OmniAddress } from "./types/index.js"
 const ChainSchema = z.enum(["Eth", "Near", "Sol", "Arb", "Base", "Bnb"])
 export type Chain = z.infer<typeof ChainSchema>
 
+const UtxoChainParamSchema = z.enum(["btc", "zcash"])
+export type UtxoChainParam = z.infer<typeof UtxoChainParamSchema>
+
 // Custom transformer for safe BigInt coercion that handles scientific notation
 const safeBigInt = (nullable = false) => {
   const transformer = z.preprocess(
@@ -159,7 +162,7 @@ const PostActionSchema = z.object({
   memo: z.string().nullable().optional(),
 })
 
-const BtcDepositAddressResponseSchema = z.object({
+const UtxoDepositAddressResponseSchema = z.object({
   address: z.string(),
 })
 
@@ -180,7 +183,7 @@ export type Transfer = z.infer<typeof TransferSchema>
 export type ApiFeeResponse = z.infer<typeof ApiFeeResponseSchema>
 export type TransferStatus = z.infer<typeof TransferStatusSchema>
 export type PostAction = z.infer<typeof PostActionSchema>
-export type BtcDepositAddressResponse = z.infer<typeof BtcDepositAddressResponseSchema>
+export type UtxoDepositAddressResponse = z.infer<typeof UtxoDepositAddressResponseSchema>
 
 interface ApiClientConfig {
   baseUrl?: string
@@ -305,12 +308,14 @@ export class OmniBridgeAPI {
     return response.allowlisted_tokens as Record<string, OmniAddress>
   }
 
-  async getBtcUserDepositAddress(
+  async getUtxoUserDepositAddress(
+    chain: UtxoChainParam,
     recipient: string,
     postActions?: PostAction[] | null,
     extraMsg?: string | null,
-  ): Promise<BtcDepositAddressResponse> {
+  ): Promise<UtxoDepositAddressResponse> {
     const body: Record<string, unknown> = {
+      chain,
       recipient,
     }
 
@@ -321,8 +326,8 @@ export class OmniBridgeAPI {
       body.extra_msg = extraMsg
     }
 
-    const url = this.buildUrl("/api/v2/btc/get_user_deposit_address")
-    return this.fetchWithValidation(url, BtcDepositAddressResponseSchema, {
+    const url = this.buildUrl("/api/v2/utxo/get_user_deposit_address")
+    return this.fetchWithValidation(url, UtxoDepositAddressResponseSchema, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

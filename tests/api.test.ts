@@ -68,7 +68,7 @@ const normalizedFee = {
 const mockAllowlistedTokens = {
   allowlisted_tokens: {
     "eth.sepolia.testnet": "eth:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-    "nbtc-dev.testnet": "near:wrap.near",
+    "nbtc.n-bridge.testnet": "near:wrap.near",
     "wrap.testnet": "near:wrap.near",
     "milam-ft.dev-1670602093214-42636269062771": "near:wrap.near",
     "oats.testnet": "near:wrap.near",
@@ -76,7 +76,7 @@ const mockAllowlistedTokens = {
 }
 
 const mockBtcAddress = {
-  address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+  address: "tb1qssh0ejglq0v53pwrsxlhxpxw29gfu6c4ls9eyy",
 }
 
 const restHandlers = [
@@ -95,7 +95,7 @@ const restHandlers = [
   http.get(`${BASE_URL}/api/v2/transfer-fee/allowlisted-tokens`, () => {
     return HttpResponse.json(mockAllowlistedTokens)
   }),
-  http.post(`${BASE_URL}/api/v2/btc/get_user_deposit_address`, () => {
+  http.post(`${BASE_URL}/api/v2/utxo/get_user_deposit_address`, () => {
     return HttpResponse.json(mockBtcAddress)
   }),
 ]
@@ -182,7 +182,7 @@ describe("OmniBridgeAPI", () => {
       const tokens = await api.getAllowlistedTokens()
       expect(tokens).toEqual({
         "eth.sepolia.testnet": "eth:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
-        "nbtc-dev.testnet": "near:wrap.near",
+        "nbtc.n-bridge.testnet": "near:wrap.near",
         "wrap.testnet": "near:wrap.near",
         "milam-ft.dev-1670602093214-42636269062771": "near:wrap.near",
         "oats.testnet": "near:wrap.near",
@@ -200,11 +200,11 @@ describe("OmniBridgeAPI", () => {
     })
   })
 
-  describe("getBtcUserDepositAddress", () => {
+  describe("getUtxoUserDepositAddress", () => {
     it("should fetch BTC deposit address successfully", async () => {
-      const response = await api.getBtcUserDepositAddress("recipient.near")
+      const response = await api.getUtxoUserDepositAddress("btc", "recipient.near")
       expect(response).toEqual({
-        address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+        address: "tb1qssh0ejglq0v53pwrsxlhxpxw29gfu6c4ls9eyy",
       })
     })
 
@@ -216,24 +216,25 @@ describe("OmniBridgeAPI", () => {
           msg: "test message",
         },
       ]
-      const response = await api.getBtcUserDepositAddress(
+      const response = await api.getUtxoUserDepositAddress(
+        "btc",
         "recipient.near",
         postActions,
         "extra message",
       )
       expect(response).toEqual({
-        address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+        address: "tb1qssh0ejglq0v53pwrsxlhxpxw29gfu6c4ls9eyy",
       })
     })
 
     it("should handle API errors", async () => {
       server.use(
-        http.post(`${BASE_URL}/api/v2/btc/get_user_deposit_address`, () => {
+        http.post(`${BASE_URL}/api/v2/utxo/get_user_deposit_address`, () => {
           return new HttpResponse(null, { status: 404 })
         }),
       )
 
-      await expect(api.getBtcUserDepositAddress("recipient.near")).rejects.toThrow(
+      await expect(api.getUtxoUserDepositAddress("btc", "recipient.near")).rejects.toThrow(
         "Resource not found",
       )
     })
