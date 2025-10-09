@@ -1,5 +1,18 @@
 # omni-bridge-sdk
 
+## 0.19.2
+
+### Patch Changes
+
+- 6295b3d: chore(deps): bump @scure/base from 1.2.6 to 2.0.0
+- 9fc11a4: fix: remove legacy Solana code and always use shim-based methods
+
+  On-chain programs (testnet and mainnet) are running v0.2.5 which requires wormhole shim accounts. Removed legacy v0.2.4 code and version detection to fix InvalidProgramId errors during initTransfer.
+
+- 67e4815: chore(deps): bump @noble/hashes from 2.0.0 to 2.0.1
+- ec2a169: chore(deps): bump @near-js/accounts from 2.3.1 to 2.3.3
+- 54797fb: chore(deps): bump @near-js/transactions from 2.3.1 to 2.3.3
+
 ## 0.19.1
 
 ### Patch Changes
