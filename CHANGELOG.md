@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.19.3
+
+### Patch Changes
+
+- 9629b36: Fix getTokenDecimals typing to handle null returns from NEAR contract
+
 ## 0.19.2
 
 ### Patch Changes
