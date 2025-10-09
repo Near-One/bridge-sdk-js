@@ -50,6 +50,9 @@ const mockGetTokenDecimals = async (_contract: string, address: string) => {
   if (address.startsWith("eth:")) {
     return { decimals: 18, origin_decimals: 24 }
   }
+  if (address.includes("unregistered")) {
+    return null // Simulate unregistered token
+  }
   throw new Error("Unexpected token address")
 }
 
@@ -146,5 +149,31 @@ describe("omniTransfer", () => {
         recipient: "sol:pubkey",
       }),
     ).rejects.toThrow("Failed to get token address")
+  })
+
+  it("handles getTokenDecimals returning null gracefully", async () => {
+    // Mock getBridgedToken to return an unregistered token
+    vi.mocked(getBridgedToken).mockResolvedValue("sol:unregistered_token")
+
+    // Set up mock to verify that the unregistered token returns null
+    vi.mocked(getTokenDecimals).mockImplementation(async (_contract: string, address: string) => {
+      if (address.startsWith("eth:")) {
+        return { decimals: 18, origin_decimals: 24 }
+      }
+      if (address.includes("unregistered")) {
+        return null // This should cause the error
+      }
+      return { decimals: 9, origin_decimals: 24 }
+    })
+
+    await expect(
+      omniTransfer(wallet, {
+        tokenAddress: "eth:0x123...", // Use ETH token instead of NEAR
+        amount: 1000000000000000000n,
+        fee: 0n,
+        nativeFee: 0n,
+        recipient: "sol:pubkey",
+      }),
+    ).rejects.toThrow("Destination token sol:unregistered_token is not registered properly")
   })
 })

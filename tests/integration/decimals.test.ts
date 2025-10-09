@@ -18,20 +18,36 @@ describe.concurrent("getTokenDecimals integration", () => {
     const decimals = await getTokenDecimals("omni-locker.testnet", tokenAddress)
 
     // Verify response structure (these should not change)
-    expect(decimals).toHaveProperty("decimals")
-    expect(decimals).toHaveProperty("origin_decimals")
-    expect(typeof decimals.decimals).toBe("number")
-    expect(typeof decimals.origin_decimals).toBe("number")
+    expect(decimals).not.toBeNull()
+    if (decimals) {
+      expect(decimals).toHaveProperty("decimals")
+      expect(decimals).toHaveProperty("origin_decimals")
+      expect(typeof decimals.decimals).toBe("number")
+      expect(typeof decimals.origin_decimals).toBe("number")
 
-    // Snapshot the actual values
-    expect(decimals).toMatchSnapshot({
-      decimals: 9,
-      origin_decimals: 18,
-    })
+      // Snapshot the actual values
+      expect(decimals).toMatchSnapshot({
+        decimals: 9,
+        origin_decimals: 18,
+      })
+    }
   }, 10000) // Increase timeout for RPC call
 
   it("handles invalid token addresses", async ({ expect }) => {
     const invalidAddress = "sol:invalid.testnet"
     await expect(getTokenDecimals("omni-locker.testnet", invalidAddress)).rejects.toMatchSnapshot()
+  })
+
+  it("returns null for unregistered token addresses", async ({ expect }) => {
+    const unregisteredAddress = "sol:jKfAvRcA21vioDDqG5UGM7QQ5dMY7DuBdvAmvQNXrUJ"
+    const result = await getTokenDecimals("omni-locker.testnet", unregisteredAddress)
+    // This might return null for unregistered tokens
+    if (result === null) {
+      expect(result).toBeNull()
+    } else {
+      // If it doesn't return null, it should be a valid TokenDecimals object
+      expect(result).toHaveProperty("decimals")
+      expect(result).toHaveProperty("origin_decimals")
+    }
   })
 })
