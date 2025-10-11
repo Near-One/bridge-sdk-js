@@ -1,5 +1,14 @@
 # omni-bridge-sdk
 
+## 0.19.4
+
+### Patch Changes
+
+- 489ab3d: chore(deps): bump @noble/curves from 2.0.0 to 2.0.1
+- 3b0512f: chore(deps-dev): bump @types/node from 24.7.0 to 24.7.1
+- 0964d8b: chore(deps-dev): bump msw from 2.11.2 to 2.11.5
+- 6badfe1: chore(deps): bump zod from 4.1.9 to 4.1.12
+
 ## 0.19.3
 
 ### Patch Changes
