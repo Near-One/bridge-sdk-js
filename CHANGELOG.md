@@ -1,5 +1,14 @@
 # omni-bridge-sdk
 
+## 0.19.5
+
+### Patch Changes
+
+- e8d6715: chore(deps): bump @coral-xyz/anchor from 0.31.1 to 0.32.1
+- a6fe34f: chore(deps-dev): bump knip from 5.64.2 to 5.64.3
+- bd1fc37: chore(deps): bump @near-js/client from 2.3.1 to 2.3.3
+- 8e3de52: chore(deps): bump @near-js/types from 2.3.1 to 2.3.3
+
 ## 0.19.4
 
 ### Patch Changes
