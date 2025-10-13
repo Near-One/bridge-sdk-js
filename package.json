@@ -33,7 +33,7 @@
   "author": "NEAR One",
   "license": "MIT",
   "dependencies": {
-    "@coral-xyz/anchor": "^0.31.1",
+    "@coral-xyz/anchor": "^0.32.1",
     "@ethereumjs/mpt": "^10.0.0",
     "@ethereumjs/rlp": "^10.0.0",
     "@ethereumjs/util": "^10.0.0",
