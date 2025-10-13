@@ -268,13 +268,13 @@ export class OmniBridgeAPI {
     sender: OmniAddress,
     recipient: OmniAddress,
     tokenAddress: OmniAddress,
-    amount: string,
+    amount: string | bigint,
   ): Promise<ApiFeeResponse> {
     const url = this.buildUrl("/api/v2/transfer-fee", {
       sender,
       recipient,
       token: tokenAddress,
-      amount,
+      amount: typeof amount === "bigint" ? amount.toString() : amount,
     })
     return this.fetchWithValidation(url, ApiFeeResponseSchema)
   }

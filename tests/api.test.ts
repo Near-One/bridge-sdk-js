@@ -139,8 +139,13 @@ describe("OmniBridgeAPI", () => {
   })
 
   describe("getFee", () => {
-    it("should fetch fee successfully", async () => {
+    it("should fetch fee successfully with string amount", async () => {
       const fee = await api.getFee("near:sender.near", "near:recipient.near", "near:token.near", "1000000")
+      expect(fee).toEqual(normalizedFee)
+    })
+
+    it("should fetch fee successfully with bigint amount", async () => {
+      const fee = await api.getFee("near:sender.near", "near:recipient.near", "near:token.near", 1000000n)
       expect(fee).toEqual(normalizedFee)
     })
 
