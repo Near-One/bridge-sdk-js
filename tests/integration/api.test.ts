@@ -26,21 +26,35 @@ describe("OmniBridgeAPI Integration Tests", () => {
 
       const fee = await api.getFee(sender, recipient, tokenAddress)
 
-      // Check structure and types
-      expect(fee).toEqual({
-        native_token_fee: expect.toBeOneOf([expect.any(BigInt), null]),
-        transferred_token_fee: expect.toBeOneOf([expect.any(BigInt), null]),
-        usd_fee: expect.any(Number),
-      })
+      // Check required fields
+      expect(fee.native_token_fee).toEqual(expect.any(BigInt))
+      expect(fee.usd_fee).toEqual(expect.any(Number))
 
-      // Check valid ranges
-      if (fee.native_token_fee !== null) {
-        expect(fee.native_token_fee >= 0n).toBe(true)
+      // Check valid ranges for required fields
+      expect(fee.native_token_fee >= 0n).toBe(true)
+      expect(fee.usd_fee >= 0).toBe(true)
+
+      // Check optional fields if present
+      if (fee.gas_fee !== undefined) {
+        expect(fee.gas_fee).toEqual(expect.any(BigInt))
+        expect(fee.gas_fee >= 0n).toBe(true)
       }
-      if (fee.transferred_token_fee !== null) {
+      if (fee.protocol_fee !== undefined) {
+        expect(fee.protocol_fee).toEqual(expect.any(BigInt))
+        expect(fee.protocol_fee >= 0n).toBe(true)
+      }
+      if (fee.relayer_fee !== undefined) {
+        expect(fee.relayer_fee).toEqual(expect.any(BigInt))
+        expect(fee.relayer_fee >= 0n).toBe(true)
+      }
+      if (fee.max_gas_fee !== null && fee.max_gas_fee !== undefined) {
+        expect(fee.max_gas_fee).toEqual(expect.any(BigInt))
+        expect(fee.max_gas_fee >= 0n).toBe(true)
+      }
+      if (fee.transferred_token_fee !== null && fee.transferred_token_fee !== undefined) {
+        expect(fee.transferred_token_fee).toEqual(expect.any(BigInt))
         expect(fee.transferred_token_fee >= 0n).toBe(true)
       }
-      expect(fee.usd_fee >= 0).toBe(true)
     })
 
     it("should handle real API errors gracefully", async () => {
@@ -275,6 +289,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
             // utxo_transfer might be present for BTC-related transfers
             if (transfer.utxo_transfer) {
               expect(transfer.utxo_transfer).toEqual({
+                chain: expect.any(String),
                 amount: expect.any(String),
                 recipient: expect.any(String),
                 relayer_fee: expect.any(String),
