@@ -268,17 +268,14 @@ export class OmniBridgeAPI {
     sender: OmniAddress,
     recipient: OmniAddress,
     tokenAddress: OmniAddress,
-    amount?: string,
+    amount: string,
   ): Promise<ApiFeeResponse> {
-    const params: Record<string, string> = {
+    const url = this.buildUrl("/api/v2/transfer-fee", {
       sender,
       recipient,
       token: tokenAddress,
-    }
-    if (amount !== undefined) {
-      params.amount = amount
-    }
-    const url = this.buildUrl("/api/v2/transfer-fee", params)
+      amount,
+    })
     return this.fetchWithValidation(url, ApiFeeResponseSchema)
   }
 

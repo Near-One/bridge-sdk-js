@@ -116,6 +116,13 @@ export async function omniTransfer(
     throw new Error("Failed to get token decimals")
   }
 
+  // Verify the amount is greater than the fee
+  if (transfer.amount <= transfer.fee) {
+    throw new Error(
+      `Transfer amount (${transfer.amount}) must be greater than the fee (${transfer.fee})`,
+    )
+  }
+
   // Verify transfer amount will be valid after normalization
   const isValid = verifyTransferAmount(
     transfer.amount,

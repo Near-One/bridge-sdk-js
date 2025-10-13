@@ -115,7 +115,7 @@ describe("omniTransfer", () => {
         nativeFee: 0n,
         recipient: "sol:pubkey",
       }),
-    ).rejects.toThrow("Transfer amount too small")
+    ).rejects.toThrow("Transfer amount (1000000000000000000) must be greater than the fee (1000000000000000000)")
   })
 
   it("handles NEAR RPC errors gracefully", async () => {
