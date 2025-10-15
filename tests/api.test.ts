@@ -55,14 +55,22 @@ const normalizedTransfer = {
 }
 
 const mockFee = {
-  native_token_fee: 1000,
-  transferred_token_fee: 2000,
+  native_token_fee: 5000,
+  gas_fee: 1000,
+  protocol_fee: 2000,
+  relayer_fee: 2000,
   usd_fee: 1.5,
+  max_gas_fee: null,
+  transferred_token_fee: 500,
 }
 const normalizedFee = {
-  native_token_fee: BigInt(1000),
-  transferred_token_fee: BigInt(2000),
+  native_token_fee: BigInt(5000),
+  gas_fee: BigInt(1000),
+  protocol_fee: BigInt(2000),
+  relayer_fee: BigInt(2000),
   usd_fee: 1.5,
+  max_gas_fee: null,
+  transferred_token_fee: BigInt(500),
 }
 
 const mockAllowlistedTokens = {
@@ -131,8 +139,13 @@ describe("OmniBridgeAPI", () => {
   })
 
   describe("getFee", () => {
-    it("should fetch fee successfully", async () => {
-      const fee = await api.getFee("near:sender.near", "near:recipient.near", "near:token.near")
+    it("should fetch fee successfully with string amount", async () => {
+      const fee = await api.getFee("near:sender.near", "near:recipient.near", "near:token.near", "1000000")
+      expect(fee).toEqual(normalizedFee)
+    })
+
+    it("should fetch fee successfully with bigint amount", async () => {
+      const fee = await api.getFee("near:sender.near", "near:recipient.near", "near:token.near", 1000000n)
       expect(fee).toEqual(normalizedFee)
     })
 
@@ -144,7 +157,7 @@ describe("OmniBridgeAPI", () => {
       )
 
       await expect(
-        api.getFee("near:sender.near", "near:recipient.near", "near:token.near"),
+        api.getFee("near:sender.near", "near:recipient.near", "near:token.near", "1000000"),
       ).rejects.toThrow("API request failed")
     })
   })

@@ -99,6 +99,7 @@ const TransferMessageSchema = z.object({
   fee: z.object({
     fee: safeBigInt(),
     native_fee: safeBigInt(),
+    max_gas_fee: safeBigInt().optional(),
   }),
   msg: z.string().nullable(),
 })
@@ -116,6 +117,7 @@ const TransfersQuerySchema = z
 export type TransfersQuery = Partial<z.input<typeof TransfersQuerySchema>>
 
 const UtxoTransferSchema = z.object({
+  chain: z.string(),
   amount: z.string(),
   recipient: z.string(),
   relayer_fee: z.string(),
@@ -145,9 +147,13 @@ const TransferSchema = z.object({
 })
 
 const ApiFeeResponseSchema = z.object({
-  native_token_fee: safeBigInt(true),
-  transferred_token_fee: safeBigInt(true).nullable(),
+  native_token_fee: safeBigInt(),
+  gas_fee: safeBigInt().optional(),
+  protocol_fee: safeBigInt().optional(),
+  relayer_fee: safeBigInt().optional(),
   usd_fee: z.number(),
+  max_gas_fee: safeBigInt(true).nullable().optional(),
+  transferred_token_fee: safeBigInt(true).nullable().optional(),
 })
 
 const AllowlistedTokensResponseSchema = z.object({
@@ -262,11 +268,13 @@ export class OmniBridgeAPI {
     sender: OmniAddress,
     recipient: OmniAddress,
     tokenAddress: OmniAddress,
+    amount: string | bigint,
   ): Promise<ApiFeeResponse> {
     const url = this.buildUrl("/api/v2/transfer-fee", {
       sender,
       recipient,
       token: tokenAddress,
+      amount: typeof amount === "bigint" ? amount.toString() : amount,
     })
     return this.fetchWithValidation(url, ApiFeeResponseSchema)
   }
