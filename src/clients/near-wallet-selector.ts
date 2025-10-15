@@ -641,7 +641,7 @@ export class NearWalletSelectorBridgeClient {
       const wallet = await this.selector.wallet()
       const accounts = await wallet.getAccounts()
       const accountId = accounts[0].accountId
-      const provider = new JsonRpcProvider({ url: addresses.near.rpcUrl })
+      const provider = new JsonRpcProvider({ url: addresses.near.rpcUrls[0] })
       provider.query({
         request_type: "view_account",
         finality: "final",
@@ -707,7 +707,7 @@ export class NearWalletSelectorBridgeClient {
     args?: object
     // biome-ignore lint/suspicious/noExplicitAny: Arbitrary types needed for JSON response
   }): Promise<any> {
-    const rpcProvider = createRpcClientWrapper([addresses.near.rpcUrl])
+    const rpcProvider = createRpcClientWrapper(addresses.near.rpcUrls)
 
     const res = await callViewMethod({
       account: contractId,

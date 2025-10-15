@@ -76,7 +76,7 @@ export async function getBridgedToken(
   tokenAddress: OmniAddress,
   destinationChain: ChainKind,
 ): Promise<OmniAddress | null> {
-  const rpcProvider = createRpcClientWrapper([addresses.near.rpcUrl])
+  const rpcProvider = createRpcClientWrapper(addresses.near.rpcUrls)
   return await view<OmniAddress>({
     account: addresses.near.contract,
     method: "get_bridged_token",

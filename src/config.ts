@@ -7,7 +7,7 @@ export type ChainAddresses = {
   eth: string
   near: {
     contract: string
-    rpcUrl: string
+    rpcUrls: string[]
   }
   sol: {
     locker: string
@@ -49,7 +49,7 @@ const ADDRESSES: Record<NetworkType, ChainAddresses> = {
     eth: "0xe00c629afaccb0510995a2b95560e446a24c85b9",
     near: {
       contract: "omni.bridge.near",
-      rpcUrl: "https://rpc.near.org",
+      rpcUrls: ["https://rpc.near.org"],
     },
     sol: {
       locker: "dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe",
@@ -81,7 +81,7 @@ const ADDRESSES: Record<NetworkType, ChainAddresses> = {
     eth: "0x68a86e0Ea5B1d39F385c1326e4d493526dFe4401",
     near: {
       contract: "omni.n-bridge.testnet",
-      rpcUrl: "https://rpc.testnet.near.org",
+      rpcUrls: ["https://rpc.testnet.near.org"],
     },
     sol: {
       locker: "862HdJV59Vp83PbcubUnvuXc4EAXP8CDDs6LTxFpunTe",

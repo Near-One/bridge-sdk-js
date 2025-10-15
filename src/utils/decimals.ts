@@ -111,7 +111,7 @@ export async function getTokenDecimals(
     )
   }
 
-  const rpcProvider = createRpcClientWrapper([addresses.near.rpcUrl])
+  const rpcProvider = createRpcClientWrapper(addresses.near.rpcUrls)
   const result = await view<TokenDecimals>({
     account: contractId,
     method: "get_token_decimals",
