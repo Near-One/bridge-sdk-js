@@ -38,7 +38,9 @@ export class SolanaBridgeClient {
   private readonly program: Program<BridgeTokenFactory>
 
   private static getConstant(name: string) {
-    const value = BRIDGE_TOKEN_FACTORY_IDL.constants.find((c) => c.name === name)?.value
+    const value = BRIDGE_TOKEN_FACTORY_IDL.constants.find(
+      (c: { name: string }) => c.name === name,
+    )?.value
     if (!value) throw new Error(`Missing constant: ${name}`)
     // Parse the string array format "[x, y, z]" into actual numbers
     const numbers = JSON.parse(value as string)
