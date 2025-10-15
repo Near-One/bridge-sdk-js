@@ -114,13 +114,40 @@ const addr = omniAddress(ChainKind.Near, "account.near");
 Transfer messages represent cross-chain token transfers:
 
 ```typescript
+interface UtxoTransferOptions {
+  gasFee?: bigint;  // Max gas fee for UTXO chains (passed to contract)
+  maxFee?: bigint;  // Alternative max fee (auto-converted to message format)
+}
+
 interface OmniTransferMessage {
   tokenAddress: OmniAddress; // Source token address
   amount: bigint; // Amount to transfer
   fee: bigint; // Token fee
   nativeFee: bigint; // Gas fee in native token
   recipient: OmniAddress; // Destination address
-  message?: string // Optional message field
+  message?: string; // Optional message field (general purpose, overrides maxFee)
+  options?: UtxoTransferOptions; // Chain-specific options
+}
+```
+
+**Chain-Specific Options**: The `options` field allows you to specify chain-specific parameters:
+- **UTXO chains (Bitcoin/Zcash)**: Use `UtxoTransferOptions` to specify:
+  - `gasFee`: Maximum gas fee passed directly to the contract's `options.gas_fee` field
+  - `maxFee`: Alternative maximum fee that's automatically converted to the contract's `message` format
+  - The protocol fee is automatically calculated by the contract based on the configured `protocol_fee_rate`
+
+Example for Bitcoin:
+```typescript
+const transfer: OmniTransferMessage = {
+  tokenAddress: "near:nbtc.near",
+  recipient: "btc:bc1q...",
+  amount: BigInt(100000),
+  fee: BigInt(5000),
+  nativeFee: BigInt(1000),
+  options: {
+    gasFee: BigInt(3000),   // Max gas fee for Bitcoin network
+    maxFee: BigInt(500000)  // Alternative approach (auto-converted)
+  }
 }
 ```
 
@@ -178,6 +205,8 @@ console.log(`Native fee: ${fee.native_token_fee}`); // Includes relayer fee
 console.log(`Token fee: ${fee.transferred_token_fee}`);
 console.log(`USD fee: ${fee.usd_fee}`);
 ```
+
+> **Fee Validation**: Using `api.getFee()` is recommended to get accurate protocol and relayer fees. The smart contract validates fees on-chain and will reject transfers with insufficient fees. You can provide higher fees than the API suggests if desired (e.g., for priority processing or custom relayers).
 
 ## Understanding Wormhole VAAs
 

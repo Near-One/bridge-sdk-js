@@ -75,13 +75,19 @@ interface InitTransferMessageArgs {
   msg: string | null
 }
 
-interface InitTransferMessage {
+/**
+ * UTXO-specific transfer options (for BTC/Zcash chains)
+ */
+interface UtxoTransferOptions {
+  gas_fee?: string
+}
+
+type InitTransferMessage = {
   recipient: OmniAddress
   fee: string
   native_token_fee: string
-  // For UTXO chains (BTC/Zcash), fee can be split into gas_fee + protocol_fee
-  gas_fee?: string
-  protocol_fee?: string
+  msg?: string
+  options?: UtxoTransferOptions
 }
 
 interface StorageDepositOptions {
@@ -414,18 +420,28 @@ export class NearWalletSelectorBridgeClient {
       additionalTransactions: options.additionalTransactions,
     })
 
+    // Build message from options.maxFee if not explicitly provided
+    let message = transfer.message
+    if (!message && transfer.options?.maxFee !== undefined) {
+      message = JSON.stringify({
+        V0: {
+          max_fee: transfer.options.maxFee.toString(),
+        },
+      })
+    }
+
     const initTransferMessage: InitTransferMessage = {
       recipient: transfer.recipient,
       fee: transfer.fee.toString(),
       native_token_fee: transfer.nativeFee.toString(),
+      msg: message,
     }
 
-    // For UTXO chains (BTC/Zcash), include separate gas_fee and protocol_fee if provided
-    if (transfer.gasFee !== undefined) {
-      initTransferMessage.gas_fee = transfer.gasFee.toString()
-    }
-    if (transfer.protocolFee !== undefined) {
-      initTransferMessage.protocol_fee = transfer.protocolFee.toString()
+    // For UTXO chains (BTC/Zcash), include gas_fee if provided
+    if (transfer.options?.gasFee !== undefined) {
+      initTransferMessage.options = {
+        gas_fee: transfer.options.gasFee.toString(),
+      }
     }
 
     const args: InitTransferMessageArgs = {
