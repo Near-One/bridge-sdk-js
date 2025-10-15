@@ -51,6 +51,7 @@ export interface InitBtcTransferMsg {
       value: number
       script_pubkey: string
     }[]
+    max_gas_fee?: bigint
   }
 }
 

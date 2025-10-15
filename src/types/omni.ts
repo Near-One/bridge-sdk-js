@@ -25,6 +25,14 @@ export interface OmniTransferResult {
   nonce: bigint
   txId: string
 }
+/**
+ * UTXO-specific transfer options (for BTC/Zcash chains)
+ */
+export interface UtxoTransferOptions {
+  gasFee?: bigint
+  maxFee?: bigint
+}
+
 export interface OmniTransferMessage {
   tokenAddress: OmniAddress
   amount: bigint
@@ -32,6 +40,8 @@ export interface OmniTransferMessage {
   nativeFee: bigint
   recipient: OmniAddress
   message?: string
+  // Chain-specific options (e.g., UtxoTransferOptions for Bitcoin/Zcash)
+  options?: UtxoTransferOptions
 }
 
 export interface TokenMetadata {
