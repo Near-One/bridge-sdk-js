@@ -47,7 +47,7 @@ async function main() {
   })
   const account = new Account(NEAR_ACCOUNT, provider, signer)
 
-  const bridgeClient = new NearBridgeClient(account, addresses.near)
+  const bridgeClient = new NearBridgeClient(account, addresses.near.contract)
 
   // Get minimum deposit amount
   const config = (await bridgeClient.getUtxoBridgeConfig(ChainKind.Btc)) as BtcConnectorConfig

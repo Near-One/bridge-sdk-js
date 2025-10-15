@@ -48,7 +48,7 @@ async function main() {
   })
   const account = new Account(NEAR_ACCOUNT, provider, signer)
 
-  const bridgeClient = new NearBridgeClient(account, addresses.near, {
+  const bridgeClient = new NearBridgeClient(account, addresses.near.contract, {
     zcashApiKey: ZCASH_API_KEY,
   })
 

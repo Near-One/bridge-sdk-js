@@ -52,7 +52,7 @@ async function main() {
     process.exit(1)
   }
 
-  const bridgeClient = new NearBridgeClient(account, addresses.near, {
+  const bridgeClient = new NearBridgeClient(account, addresses.near.contract, {
     zcashApiKey: ZCASH_API_KEY,
   })
 
