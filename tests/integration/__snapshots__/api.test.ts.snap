@@ -51,7 +51,7 @@ exports[`OmniBridgeAPI Integration Tests > getAllowlistedTokens > should return 
   "token.publicailab.near": "near:token.publicailab.near",
   "token.sweat": "near:token.sweat",
   "wrap.near": "near:wrap.near",
-  "zec.omft.near": "sol:A7bdiYdS5GjqGFtxf17ppRHtDKPkkRqbKtR27dxvQXaS",
+  "zec.omft.near": "eth:0x4a64515e5e1d1073e83f30cb97bed20400b66e10",
 }
 `;
 
