@@ -115,6 +115,9 @@ interface InitTransferMessage {
   fee: string
   native_token_fee: string
   msg?: string
+  // For UTXO chains (BTC/Zcash), fee can be split into gas_fee + protocol_fee
+  gas_fee?: string
+  protocol_fee?: string
 }
 
 /**
@@ -385,6 +388,14 @@ export class NearBridgeClient {
       fee: transfer.fee.toString(),
       native_token_fee: transfer.nativeFee.toString(),
       msg: transfer.message,
+    }
+
+    // For UTXO chains (BTC/Zcash), include separate gas_fee and protocol_fee if provided
+    if (transfer.gasFee !== undefined) {
+      initTransferMessage.gas_fee = transfer.gasFee.toString()
+    }
+    if (transfer.protocolFee !== undefined) {
+      initTransferMessage.protocol_fee = transfer.protocolFee.toString()
     }
     const args: InitTransferMessageArgs = {
       receiver_id: this.lockerAddress,

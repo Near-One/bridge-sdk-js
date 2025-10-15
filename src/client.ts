@@ -116,17 +116,23 @@ export async function omniTransfer(
     throw new Error("Failed to get token decimals")
   }
 
-  // Verify the amount is greater than the fee
-  if (transfer.amount <= transfer.fee) {
+  // Calculate total fee (for UTXO chains, use gasFee + protocolFee if provided)
+  let totalFee = transfer.fee
+  if (transfer.gasFee !== undefined && transfer.protocolFee !== undefined) {
+    totalFee = transfer.gasFee + transfer.protocolFee
+  }
+
+  // Verify the amount is greater than the total fee
+  if (transfer.amount <= totalFee) {
     throw new Error(
-      `Transfer amount (${transfer.amount}) must be greater than the fee (${transfer.fee})`,
+      `Transfer amount (${transfer.amount}) must be greater than the fee (${totalFee})`,
     )
   }
 
   // Verify transfer amount will be valid after normalization
   const isValid = verifyTransferAmount(
     transfer.amount,
-    transfer.fee,
+    totalFee,
     originDecimals,
     destinationDecimals,
   )

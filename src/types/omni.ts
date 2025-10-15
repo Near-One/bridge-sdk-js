@@ -32,6 +32,9 @@ export interface OmniTransferMessage {
   nativeFee: bigint
   recipient: OmniAddress
   message?: string
+  // For UTXO chains (BTC/Zcash), fee can be split into gas_fee + protocol_fee
+  gasFee?: bigint
+  protocolFee?: bigint
 }
 
 export interface TokenMetadata {
