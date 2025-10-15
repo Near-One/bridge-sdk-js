@@ -116,7 +116,7 @@ export class NearWalletSelectorBridgeClient {
    */
   constructor(
     private selector: WalletSelector,
-    private lockerAddress: string = addresses.near,
+    private lockerAddress: string = addresses.near.contract,
   ) {
     if (lockerAddress) {
       this.lockerAddress = lockerAddress

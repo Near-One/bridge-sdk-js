@@ -149,7 +149,7 @@ export class NearBridgeClient {
    */
   constructor(
     private wallet: Account,
-    private lockerAddress: string = addresses.near,
+    private lockerAddress: string = addresses.near.contract,
     private readonly options: { zcashApiKey?: string } = {},
   ) {
     if (lockerAddress) {
