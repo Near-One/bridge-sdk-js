@@ -23,10 +23,11 @@ import {
   type TokenMetadata,
   type TransferMessagePayload,
 } from "../types/index.js"
-import BRIDGE_TOKEN_FACTORY_IDL from "../types/solana/bridge_token_factory_shim.js" with {
+import type { BridgeTokenFactory } from "../types/solana/bridge_token_factory_shim.js"
+// biome-ignore lint/correctness/useImportExtensions: JSON import requires .json extension
+import BRIDGE_TOKEN_FACTORY_IDL from "../types/solana/bridge_token_factory_shim.json" with {
   type: "json",
 }
-import type { BridgeTokenFactory } from "../types/solana/bridge_token_factory_shim.js"
 import { getChain } from "../utils/index.js"
 
 const MPL_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
