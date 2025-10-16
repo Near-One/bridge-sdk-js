@@ -1,5 +1,4 @@
 import { callViewMethod, createRpcClientWrapper } from "@near-js/client"
-import { JsonRpcProvider } from "@near-js/providers"
 import type { FinalExecutionOutcome } from "@near-js/types"
 import type { Optional, Transaction, WalletSelector } from "@near-wallet-selector/core"
 import { addresses } from "../config.js"
@@ -641,7 +640,7 @@ export class NearWalletSelectorBridgeClient {
       const wallet = await this.selector.wallet()
       const accounts = await wallet.getAccounts()
       const accountId = accounts[0].accountId
-      const provider = new JsonRpcProvider({ url: addresses.near.rpcUrls[0] })
+      const provider = createRpcClientWrapper(addresses.near.rpcUrls)
       provider.query({
         request_type: "view_account",
         finality: "final",
