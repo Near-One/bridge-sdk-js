@@ -13,7 +13,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
   })
 
   describe("getFee", () => {
-    it("should fetch real fee information", async () => {
+    it("should fetch real fee information", { timeout: 10000 }, async () => {
       const sender: OmniAddress = omniAddress(
         ChainKind.Near,
         "bridge-sender.near"

@@ -65,7 +65,7 @@ export async function omniTransfer(
   let destinationDecimals: number | undefined
 
   // Get token decimals
-  const contractId = addresses.near // Use NEAR contract for decimal verification
+  const contractId = addresses.near.contract // Use NEAR contract for decimal verification
 
   // Special handling for NEAR tokens:
   // Decimals are stored under foreign chain addresses, not under NEAR addresses
