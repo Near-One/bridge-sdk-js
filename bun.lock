@@ -299,7 +299,7 @@
 
     "@near-js/keystores-node": ["@near-js/keystores-node@0.1.2", "", { "dependencies": { "@near-js/crypto": "1.4.2", "@near-js/keystores": "0.2.2" } }, "sha512-MWLvTszZOVziiasqIT/LYNhUyWqOJjDGlsthOsY6dTL4ZcXjjmhmzrbFydIIeQr+CcEl5wukTo68ORI9JrHl6g=="],
 
-    "@near-js/providers": ["@near-js/providers@2.3.1", "", { "dependencies": { "@near-js/crypto": "2.3.1", "@near-js/transactions": "2.3.1", "@near-js/types": "2.3.1", "@near-js/utils": "2.3.1", "borsh": "1.0.0", "exponential-backoff": "^3.1.2" }, "optionalDependencies": { "node-fetch": "2.6.7" } }, "sha512-7FGCI1AmBbgFW6nvrSh+zuQziWp47lxYcQn6IcokdMyDiw8llcAuAvSmYCCPJvKyVj18V0y4fE83Tq2vXWp+rw=="],
+    "@near-js/providers": ["@near-js/providers@2.3.4", "", { "dependencies": { "@near-js/crypto": "2.3.4", "@near-js/transactions": "2.3.4", "@near-js/types": "2.3.4", "@near-js/utils": "2.3.4", "borsh": "1.0.0", "exponential-backoff": "^3.1.2" }, "optionalDependencies": { "node-fetch": "2.6.7" } }, "sha512-rauqJLuOY0uCnsjuYZwrKP8pH3eCnGpd/ZS5tddZtzix6+ws5tFAs7gPYyVGn28yYBB9F1VyL6Hs9oqPjRx5ag=="],
 
     "@near-js/signers": ["@near-js/signers@2.3.3", "", { "dependencies": { "@near-js/crypto": "2.3.3", "@near-js/keystores": "2.3.3", "@near-js/transactions": "2.3.3", "@noble/hashes": "1.7.1", "borsh": "1.0.0" } }, "sha512-oMZZjS9NhvgDEmmqZZHvM3PnUvaht51Hkw2rOgZ2xrWshsvpLViBhLY014aqHIqouWTNDvU+EyFziSstnLN3zw=="],
 
@@ -1551,13 +1551,13 @@
 
     "@near-js/keystores-node/@near-js/keystores": ["@near-js/keystores@0.2.2", "", { "dependencies": { "@near-js/crypto": "1.4.2", "@near-js/types": "0.3.1" } }, "sha512-DLhi/3a4qJUY+wgphw2Jl4S+L0AKsUYm1mtU0WxKYV5OBwjOXvbGrXNfdkheYkfh3nHwrQgtjvtszX6LrRXLLw=="],
 
-    "@near-js/providers/@near-js/crypto": ["@near-js/crypto@2.3.1", "", { "dependencies": { "@near-js/types": "2.3.1", "@near-js/utils": "2.3.1", "@noble/curves": "1.8.1", "borsh": "1.0.0", "randombytes": "2.1.0", "secp256k1": "5.0.1" } }, "sha512-lo0qn4mzkf//CU5rEBX7IrBAqGD414Dfcz9nkdG7CH3Z0PtkCEyOHw4DnKdOt3KHO2SJkeRm1mhyIk0g68Xb2w=="],
+    "@near-js/providers/@near-js/crypto": ["@near-js/crypto@2.3.4", "", { "dependencies": { "@near-js/types": "2.3.4", "@near-js/utils": "2.3.4", "@noble/curves": "1.8.1", "borsh": "1.0.0", "randombytes": "2.1.0", "secp256k1": "5.0.1" } }, "sha512-Cuj6GRODTyKMLVE9aBKMEr495Im8KyG2zQ++Skw6jL2w9aiPsBflK6wmUBnltWOEolxcxYOoUSuI0bWHiUmpJg=="],
 
-    "@near-js/providers/@near-js/transactions": ["@near-js/transactions@2.3.1", "", { "dependencies": { "@near-js/crypto": "2.3.1", "@near-js/types": "2.3.1", "@near-js/utils": "2.3.1", "@noble/hashes": "1.7.1", "borsh": "1.0.0" } }, "sha512-RyFFX7U+S9O9gk5uaonAGnW/z49WE8Z/DHh2x03St+efxNmJwrtzDr+dCjTmdJA9EZuIQIMbTaA7spZAHnFofw=="],
+    "@near-js/providers/@near-js/transactions": ["@near-js/transactions@2.3.4", "", { "dependencies": { "@near-js/crypto": "2.3.4", "@near-js/types": "2.3.4", "@near-js/utils": "2.3.4", "@noble/hashes": "1.7.1", "borsh": "1.0.0" } }, "sha512-+snNHt3rA6y1ICaK1Bu9a9d5MJcwsTiwTO0T8mkT5UEiX/A7FFVjlqpMWMBg5itHZbremqKmh9uGhKJprsHbNg=="],
 
-    "@near-js/providers/@near-js/types": ["@near-js/types@2.3.1", "", {}, "sha512-RFqX2Hs/jGDrOHn2PSw4YBNqCQLEd2QdtL0HZsP5vL3NrHXIv7Fwlvg+zCzdeXPEWK1RRXqkqB6ZvYf00Yp/Sw=="],
+    "@near-js/providers/@near-js/types": ["@near-js/types@2.3.4", "", {}, "sha512-J0rL4SwIAJwAeuh4vnJdUT5mG29vKE6w+CsI9TY/HDv4ej9QYrUR5+z32gTvw1o/PY8y4+9pEhTVUwTF4+dDFA=="],
 
-    "@near-js/providers/@near-js/utils": ["@near-js/utils@2.3.1", "", { "dependencies": { "@near-js/types": "2.3.1", "@scure/base": "^1.2.4", "depd": "2.0.0", "mustache": "4.0.0" } }, "sha512-0P9xxv4PADjyhJEmRdMHf3yVlEuCkUYgrXtUJAQr0oXec4XHINjvwkC/XIfEre4Q+maXM9gaxshqqKkyWiTubg=="],
+    "@near-js/providers/@near-js/utils": ["@near-js/utils@2.3.4", "", { "dependencies": { "@near-js/types": "2.3.4", "@scure/base": "^1.2.4", "depd": "2.0.0", "mustache": "4.0.0" } }, "sha512-2JDovlpkUCfyhdyX6PL8lWnEKu69oVnHtu93Mj5tWPZps7VM8TYSNAVO57iWh1VUS9amnNrOKVUSwsS4oSeq4w=="],
 
     "@near-js/signers/@noble/hashes": ["@noble/hashes@1.7.1", "", {}, "sha512-B8XBPsn4vT/KJAGqDzbwztd+6Yte3P4V7iafm24bxgDe/mlRuK6xmWPuCNrKt2vDafZ8MfJLlchDG/vYafQEjQ=="],
 
