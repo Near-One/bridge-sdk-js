@@ -94,7 +94,7 @@ const ADDRESSES: Record<NetworkType, ChainAddresses> = {
       apiUrl: "https://blockstream.info/testnet/api",
       mempoolUrl: "https://mempool.space/testnet/api",
       rpcUrl: "https://bitcoin-testnet-rpc.publicnode.com",
-      btcConnector: "brg-dev.testnet",
+      btcConnector: "btc-connector.n-bridge.testnet",
       btcToken: "nbtc.n-bridge.testnet",
       bitcoinRelayer: "cosmosfirst.testnet",
     },
