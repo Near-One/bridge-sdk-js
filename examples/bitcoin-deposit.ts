@@ -18,9 +18,8 @@
 import os from "node:os"
 import path from "node:path"
 import { Account } from "@near-js/accounts"
-import { getSignerFromKeystore } from "@near-js/client"
+import { createRpcClientWrapper, getSignerFromKeystore } from "@near-js/client"
 import { UnencryptedFileSystemKeyStore } from "@near-js/keystores-node"
-import { JsonRpcProvider } from "@near-js/providers"
 import { NearBridgeClient } from "../src/clients/near.js"
 import { ChainKind } from "../src/types/chain.js"
 import type { BtcConnectorConfig } from "../src/types/bitcoin.js"
@@ -42,12 +41,10 @@ async function main() {
   // Initialize NEAR client
   const keyStore = new UnencryptedFileSystemKeyStore(path.join(os.homedir(), ".near-credentials"))
   const signer = await getSignerFromKeystore(NEAR_ACCOUNT, NETWORK, keyStore)
-  const provider = new JsonRpcProvider({
-    url: "https://rpc.testnet.near.org",
-  })
-  const account = new Account(NEAR_ACCOUNT, provider, signer)
+  const nearProvider = createRpcClientWrapper(addresses.near.rpcUrls)
+  const account = new Account(NEAR_ACCOUNT, nearProvider, signer)
 
-  const bridgeClient = new NearBridgeClient(account, addresses.near)
+  const bridgeClient = new NearBridgeClient(account, addresses.near.contract)
 
   // Get minimum deposit amount
   const config = (await bridgeClient.getUtxoBridgeConfig(ChainKind.Btc)) as BtcConnectorConfig

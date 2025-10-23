@@ -1,4 +1,4 @@
-import { getProviderByNetwork, view } from "@near-js/client"
+import { createRpcClientWrapper, view } from "@near-js/client"
 
 import { addresses } from "../config.js"
 import { ChainKind, type OmniAddress } from "../types/index.js"
@@ -111,7 +111,7 @@ export async function getTokenDecimals(
     )
   }
 
-  const rpcProvider = getProviderByNetwork(addresses.network)
+  const rpcProvider = createRpcClientWrapper(addresses.near.rpcUrls)
   const result = await view<TokenDecimals>({
     account: contractId,
     method: "get_token_decimals",
