@@ -1,5 +1,20 @@
 # omni-bridge-sdk
 
+## 0.20.0
+
+### Minor Changes
+
+- 0810620: Add config override system with `setConfig()` and `resetConfig()` functions
+
+### Patch Changes
+
+- ad1550a: chore(deps): bump @wormhole-foundation/sdk from 3.8.5 to 3.8.7
+- 8d53ca9: chore(deps-dev): bump @types/bun from 1.2.22 to 1.3.0
+- 28cbf9a: chore(deps-dev): bump knip from 5.64.3 to 5.65.0
+- a1592ff: chore(deps-dev): bump typescript from 5.9.2 to 5.9.3
+- 0db0452: Update API client to match OpenAPI v2 specification with fee breakdown fields
+- 54a0264: chore: update API snapshot for ZEC token address change
+
 ## 0.19.5
 
 ### Patch Changes
