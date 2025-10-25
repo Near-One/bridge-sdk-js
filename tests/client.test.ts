@@ -57,7 +57,7 @@ const mockGetTokenDecimals = async (_contract: string, address: string) => {
 }
 
 // Import after mocks are set up
-import { omniTransfer } from "../src/client.js"
+import { isSolWallet, isWalletSelector, omniTransfer } from "../src/client.js"
 
 describe("omniTransfer", () => {
   // Setup mock wallet
@@ -175,5 +175,107 @@ describe("omniTransfer", () => {
         recipient: "sol:pubkey",
       }),
     ).rejects.toThrow("Destination token sol:unregistered_token is not registered properly")
+  })
+})
+
+describe("Type Guards", () => {
+  describe("isSolWallet", () => {
+    it("should identify Anchor Provider with connection and publicKey", () => {
+      const mockAnchorProvider = {
+        connection: { rpcEndpoint: "https://api.mainnet-beta.solana.com" },
+        publicKey: { toBase58: () => "test" },
+        wallet: {
+          publicKey: { toBase58: () => "test" },
+          signTransaction: async (tx: any) => tx,
+          signAllTransactions: async (txs: any[]) => txs,
+        },
+        sendAndConfirm: async () => "signature",
+      }
+
+      expect(isSolWallet(mockAnchorProvider as any)).toBe(true)
+    })
+
+    it("should identify minimal Provider with connection and publicKey", () => {
+      const minimalProvider = {
+        connection: { rpcEndpoint: "https://api.mainnet-beta.solana.com" },
+        publicKey: { toBase58: () => "test" },
+      }
+
+      expect(isSolWallet(minimalProvider as any)).toBe(true)
+    })
+
+    it("should reject WalletSelector", () => {
+      const mockWalletSelector = {
+        wallet: async () => ({ id: "test" }),
+        isSignedIn: () => true,
+        store: {},
+        options: {},
+      }
+
+      expect(isSolWallet(mockWalletSelector as any)).toBe(false)
+    })
+
+    it("should reject object with only publicKey", () => {
+      const mockObject = {
+        publicKey: { toBase58: () => "test" },
+      }
+
+      expect(isSolWallet(mockObject as any)).toBe(false)
+    })
+
+    it("should reject object with only connection", () => {
+      const mockObject = {
+        connection: { rpcEndpoint: "https://api.mainnet-beta.solana.com" },
+      }
+
+      expect(isSolWallet(mockObject as any)).toBe(false)
+    })
+
+    it("should reject null and undefined", () => {
+      expect(isSolWallet(null as any)).toBe(false)
+      expect(isSolWallet(undefined as any)).toBe(false)
+    })
+  })
+
+  describe("isWalletSelector", () => {
+    it("should identify WalletSelector with wallet function", () => {
+      const mockWalletSelector = {
+        wallet: async () => ({ id: "test" }),
+        isSignedIn: () => true,
+        store: {},
+        options: {},
+      }
+
+      expect(isWalletSelector(mockWalletSelector as any)).toBe(true)
+    })
+
+    it("should reject Anchor Provider", () => {
+      const mockAnchorProvider = {
+        connection: { rpcEndpoint: "https://api.mainnet-beta.solana.com" },
+        publicKey: { toBase58: () => "test" },
+        wallet: {
+          publicKey: { toBase58: () => "test" },
+          signTransaction: async (tx: any) => tx,
+          signAllTransactions: async (txs: any[]) => txs,
+        },
+        sendAndConfirm: async () => "signature",
+      }
+
+      expect(isWalletSelector(mockAnchorProvider as any)).toBe(false)
+    })
+
+    it("should reject object with wallet property that is not a function", () => {
+      const mockObject = {
+        wallet: { id: "test" },
+        store: {},
+      }
+
+      expect(isWalletSelector(mockObject as any)).toBe(false)
+    })
+
+    it("should reject null and undefined", () => {
+      expect(isWalletSelector(null as any)).toBe(false)
+      expect(isWalletSelector(undefined as any)).toBe(false)
+    })
   })
 })
