@@ -23,7 +23,7 @@ type Client =
 
 // Type guards
 export function isSolWallet(wallet: SolWallet | WalletSelector): wallet is SolWallet {
-  return wallet && typeof wallet === "object" && "publicKey" in wallet && "send" in wallet
+  return wallet && typeof wallet === "object" && "connection" in wallet && "publicKey" in wallet
 }
 
 export function isWalletSelector(wallet: SolWallet | WalletSelector): wallet is WalletSelector {
