@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.20.1
+
+### Patch Changes
+
+- cc4c220: Fix isSolWallet type guard to correctly identify Anchor Provider wallets by checking for connection and publicKey properties instead of send method
+
 ## 0.20.0
 
 ### Minor Changes
