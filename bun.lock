@@ -307,7 +307,7 @@
 
     "@near-js/transactions": ["@near-js/transactions@2.3.3", "", { "dependencies": { "@near-js/crypto": "2.3.3", "@near-js/types": "2.3.3", "@near-js/utils": "2.3.3", "@noble/hashes": "1.7.1", "borsh": "1.0.0" } }, "sha512-b0Wws5S+XMBlgR590BXq7tHqTvaNwK8v+068xu7KkLCdU9z/MJqd8MQLMr/LP56/GMQmf5giWAXVQJZ5cUSorw=="],
 
-    "@near-js/types": ["@near-js/types@2.3.3", "", {}, "sha512-pN3L+xaTG5U0GTu1cZirNNCBaKsZ4t0ftTggmNzzVSNb9duhcFKy1F4mZ8/NJSfMVlhT7yH5+C2mAZDZ0A6edw=="],
+    "@near-js/types": ["@near-js/types@2.4.0", "", {}, "sha512-tDH/SYrZ8kCWJWjSgYM2DJPcyajnu4Qef/x1h/AN0jdMEiIsP35t2xcApPXZuGVySi3VDcCNf719Di5Tw6ATTw=="],
 
     "@near-js/utils": ["@near-js/utils@2.3.3", "", { "dependencies": { "@near-js/types": "2.3.3", "@scure/base": "^1.2.4", "depd": "2.0.0", "mustache": "4.0.0" } }, "sha512-fit+rFtiPTFy1y4BnOVx5yFLjubNUPJyicOKJM/5R92vs5LoT09EJvhvnfXwQuTux0tIdyscIrvw1lCtz+bLVA=="],
 
@@ -1535,13 +1535,21 @@
 
     "@near-js/accounts/@near-js/providers": ["@near-js/providers@2.3.3", "", { "dependencies": { "@near-js/crypto": "2.3.3", "@near-js/transactions": "2.3.3", "@near-js/types": "2.3.3", "@near-js/utils": "2.3.3", "borsh": "1.0.0", "exponential-backoff": "^3.1.2" }, "optionalDependencies": { "node-fetch": "2.6.7" } }, "sha512-l4ACORKKCJzMIbh6xKKd2Esv1tgDKlPtXYr1ZisJpVE+b81CIjb4gYFcI1kJ0NhMzT9eJhao5A21B/35wBtQQg=="],
 
+    "@near-js/accounts/@near-js/types": ["@near-js/types@2.3.3", "", {}, "sha512-pN3L+xaTG5U0GTu1cZirNNCBaKsZ4t0ftTggmNzzVSNb9duhcFKy1F4mZ8/NJSfMVlhT7yH5+C2mAZDZ0A6edw=="],
+
     "@near-js/accounts/@noble/hashes": ["@noble/hashes@1.7.1", "", {}, "sha512-B8XBPsn4vT/KJAGqDzbwztd+6Yte3P4V7iafm24bxgDe/mlRuK6xmWPuCNrKt2vDafZ8MfJLlchDG/vYafQEjQ=="],
 
     "@near-js/client/@near-js/providers": ["@near-js/providers@2.3.3", "", { "dependencies": { "@near-js/crypto": "2.3.3", "@near-js/transactions": "2.3.3", "@near-js/types": "2.3.3", "@near-js/utils": "2.3.3", "borsh": "1.0.0", "exponential-backoff": "^3.1.2" }, "optionalDependencies": { "node-fetch": "2.6.7" } }, "sha512-l4ACORKKCJzMIbh6xKKd2Esv1tgDKlPtXYr1ZisJpVE+b81CIjb4gYFcI1kJ0NhMzT9eJhao5A21B/35wBtQQg=="],
 
+    "@near-js/client/@near-js/types": ["@near-js/types@2.3.3", "", {}, "sha512-pN3L+xaTG5U0GTu1cZirNNCBaKsZ4t0ftTggmNzzVSNb9duhcFKy1F4mZ8/NJSfMVlhT7yH5+C2mAZDZ0A6edw=="],
+
     "@near-js/client/@noble/hashes": ["@noble/hashes@1.7.1", "", {}, "sha512-B8XBPsn4vT/KJAGqDzbwztd+6Yte3P4V7iafm24bxgDe/mlRuK6xmWPuCNrKt2vDafZ8MfJLlchDG/vYafQEjQ=="],
 
+    "@near-js/crypto/@near-js/types": ["@near-js/types@2.3.3", "", {}, "sha512-pN3L+xaTG5U0GTu1cZirNNCBaKsZ4t0ftTggmNzzVSNb9duhcFKy1F4mZ8/NJSfMVlhT7yH5+C2mAZDZ0A6edw=="],
+
     "@near-js/crypto/@noble/curves": ["@noble/curves@1.8.1", "", { "dependencies": { "@noble/hashes": "1.7.1" } }, "sha512-warwspo+UYUPep0Q+vtdVB4Ugn8GGQj8iyB3gnRWsztmUHTI3S1nhdiWNsPUGL0vud7JlRRk1XEu7Lq1KGTnMQ=="],
+
+    "@near-js/keystores/@near-js/types": ["@near-js/types@2.3.3", "", {}, "sha512-pN3L+xaTG5U0GTu1cZirNNCBaKsZ4t0ftTggmNzzVSNb9duhcFKy1F4mZ8/NJSfMVlhT7yH5+C2mAZDZ0A6edw=="],
 
     "@near-js/keystores-browser/@near-js/crypto": ["@near-js/crypto@1.4.2", "", { "dependencies": { "@near-js/types": "0.3.1", "@near-js/utils": "1.1.0", "@noble/curves": "1.8.1", "borsh": "1.0.0", "randombytes": "2.1.0", "secp256k1": "5.0.1" } }, "sha512-GRfchsyfWvSAPA1gI9hYhw5FH94Ac1BUo+Cmp5rSJt/V0K3xVzCWgOQxvv4R3kDnWjaXJEuAmpEEnr4Bp3FWrA=="],
 
@@ -1561,7 +1569,11 @@
 
     "@near-js/signers/@noble/hashes": ["@noble/hashes@1.7.1", "", {}, "sha512-B8XBPsn4vT/KJAGqDzbwztd+6Yte3P4V7iafm24bxgDe/mlRuK6xmWPuCNrKt2vDafZ8MfJLlchDG/vYafQEjQ=="],
 
+    "@near-js/transactions/@near-js/types": ["@near-js/types@2.3.3", "", {}, "sha512-pN3L+xaTG5U0GTu1cZirNNCBaKsZ4t0ftTggmNzzVSNb9duhcFKy1F4mZ8/NJSfMVlhT7yH5+C2mAZDZ0A6edw=="],
+
     "@near-js/transactions/@noble/hashes": ["@noble/hashes@1.7.1", "", {}, "sha512-B8XBPsn4vT/KJAGqDzbwztd+6Yte3P4V7iafm24bxgDe/mlRuK6xmWPuCNrKt2vDafZ8MfJLlchDG/vYafQEjQ=="],
+
+    "@near-js/utils/@near-js/types": ["@near-js/types@2.3.3", "", {}, "sha512-pN3L+xaTG5U0GTu1cZirNNCBaKsZ4t0ftTggmNzzVSNb9duhcFKy1F4mZ8/NJSfMVlhT7yH5+C2mAZDZ0A6edw=="],
 
     "@near-js/utils/@scure/base": ["@scure/base@1.2.6", "", {}, "sha512-g/nm5FgUa//MCj1gV09zTJTaM6KBAHqLN907YVQqf7zC49+DcO4B1so4ZX07Ef10Twr6nuqYEH9GEggFXA4Fmg=="],
 
