@@ -1,0 +1,5 @@
+---
+"omni-bridge-sdk": patch
+---
+
+chore(deps): bump @near-js/providers from 2.3.1 to 2.3.4
