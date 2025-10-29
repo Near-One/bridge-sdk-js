@@ -799,7 +799,7 @@ describe("NearBridgeClient", () => {
           native_fee: "50000",
         },
         sender: "near:test-account.near",
-        msg: '{"V0":{"max_fee":500000}}',
+        msg: '{"MaxGasFee":500000}',
         destination_nonce: 1,
       },
     }
@@ -946,7 +946,7 @@ describe("NearBridgeClient", () => {
         transfer_message: {
           ...mockInitTransferEvent.transfer_message,
           amount: "5000000",
-          msg: '{"V0":{"max_fee":6000000}}',
+          msg: '{"MaxGasFee":6000000}',
         },
       }
 
@@ -955,7 +955,7 @@ describe("NearBridgeClient", () => {
       )
     })
 
-    it("should parse max_fee correctly from message V0 format", async () => {
+    it("should parse MaxGasFee correctly from message format", async () => {
       const result = await client.submitBitcoinTransfer(mockInitTransferEvent)
 
       expect(mockWallet.signAndSendTransaction).toHaveBeenCalled()
@@ -966,11 +966,11 @@ describe("NearBridgeClient", () => {
       expect(result).toBe(mockTxHash)
     })
 
-    it("should handle missing max_fee in V0 message", async () => {
+    it("should handle missing MaxGasFee in message", async () => {
       const eventWithoutMaxFee: InitTransferEvent = {
         transfer_message: {
           ...mockInitTransferEvent.transfer_message,
-          msg: '{"V0":{}}',
+          msg: "{}",
         },
       }
 

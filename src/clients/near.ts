@@ -405,9 +405,7 @@ export class NearBridgeClient {
     let message = transfer.message
     if (!message && transfer.options?.maxFee !== undefined) {
       message = JSON.stringify({
-        V0: {
-          max_fee: transfer.options.maxFee.toString(),
-        },
+        MaxGasFee: transfer.options.maxFee.toString(),
       })
     }
 
@@ -873,7 +871,7 @@ export class NearBridgeClient {
     if (transferMsg) {
       try {
         const parsedMsg = JSON.parse(transferMsg)
-        const parsedMaxFee = parsedMsg?.V0?.max_fee
+        const parsedMaxFee = parsedMsg?.MaxGasFee
         if (parsedMaxFee !== undefined && parsedMaxFee !== null) {
           maxGasFee = BigInt(parsedMaxFee)
         }
