@@ -917,7 +917,7 @@ export class NearBridgeClient {
     }
 
     const tx = await this.wallet.signAndSendTransaction({
-      receiverId: addresses.near,
+      receiverId: this.lockerAddress,
       actions: [
         actionCreators.functionCall(
           "submit_transfer_to_utxo_chain_connector",
