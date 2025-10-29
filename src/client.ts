@@ -23,15 +23,17 @@ type Client =
 
 // Type guards
 export function isSolWallet(wallet: SolWallet | WalletSelector): wallet is SolWallet {
-  return wallet && typeof wallet === "object" && "publicKey" in wallet && "send" in wallet
+  return Boolean(
+    wallet && typeof wallet === "object" && "connection" in wallet && "publicKey" in wallet,
+  )
 }
 
 export function isWalletSelector(wallet: SolWallet | WalletSelector): wallet is WalletSelector {
-  return (
+  return Boolean(
     wallet &&
-    typeof wallet === "object" &&
-    "wallet" in wallet &&
-    typeof wallet.wallet === "function"
+      typeof wallet === "object" &&
+      "wallet" in wallet &&
+      typeof wallet.wallet === "function",
   )
 }
 
@@ -65,7 +67,7 @@ export async function omniTransfer(
   let destinationDecimals: number | undefined
 
   // Get token decimals
-  const contractId = addresses.near // Use NEAR contract for decimal verification
+  const contractId = addresses.near.contract // Use NEAR contract for decimal verification
 
   // Special handling for NEAR tokens:
   // Decimals are stored under foreign chain addresses, not under NEAR addresses

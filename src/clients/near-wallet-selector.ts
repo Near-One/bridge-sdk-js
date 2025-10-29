@@ -1,5 +1,4 @@
 import { callViewMethod, createRpcClientWrapper } from "@near-js/client"
-import { JsonRpcProvider } from "@near-js/providers"
 import type { FinalExecutionOutcome } from "@near-js/types"
 import type { Optional, Transaction, WalletSelector } from "@near-wallet-selector/core"
 import { addresses } from "../config.js"
@@ -125,7 +124,7 @@ export class NearWalletSelectorBridgeClient {
    */
   constructor(
     private selector: WalletSelector,
-    private lockerAddress: string = addresses.near,
+    private lockerAddress: string = addresses.near.contract,
   ) {
     if (lockerAddress) {
       this.lockerAddress = lockerAddress
@@ -667,8 +666,7 @@ export class NearWalletSelectorBridgeClient {
       const wallet = await this.selector.wallet()
       const accounts = await wallet.getAccounts()
       const accountId = accounts[0].accountId
-      const { network } = this.selector.options
-      const provider = new JsonRpcProvider({ url: network.nodeUrl })
+      const provider = createRpcClientWrapper(addresses.near.rpcUrls)
       provider.query({
         request_type: "view_account",
         finality: "final",
@@ -734,8 +732,7 @@ export class NearWalletSelectorBridgeClient {
     args?: object
     // biome-ignore lint/suspicious/noExplicitAny: Arbitrary types needed for JSON response
   }): Promise<any> {
-    const { network } = this.selector.options
-    const rpcProvider = createRpcClientWrapper([network.nodeUrl])
+    const rpcProvider = createRpcClientWrapper(addresses.near.rpcUrls)
 
     const res = await callViewMethod({
       account: contractId,

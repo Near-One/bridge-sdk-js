@@ -7,6 +7,7 @@ import { parseOriginChain } from "../../src/utils/tokens.js"
 vi.mock("@near-js/client", () => ({
   getProviderByNetwork: vi.fn(),
   view: vi.fn(),
+  createRpcClientWrapper: vi.fn(() => ({})),
 }))
 
 // Import the mocked function

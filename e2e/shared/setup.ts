@@ -2,9 +2,8 @@ import os from "node:os"
 import path from "node:path"
 import { AnchorProvider, Wallet, setProvider } from "@coral-xyz/anchor"
 import { Account } from "@near-js/accounts"
-import { getSignerFromKeystore } from "@near-js/client"
+import { createRpcClientWrapper, getSignerFromKeystore } from "@near-js/client"
 import { UnencryptedFileSystemKeyStore } from "@near-js/keystores-node"
-import { JsonRpcProvider } from "@near-js/providers"
 import { Connection, Keypair } from "@solana/web3.js"
 import { ethers } from "ethers"
 
@@ -68,14 +67,14 @@ export async function createNearAccount(): Promise<Account> {
     const keyPair = KeyPair.fromString(privateKey as any)
     await keyStore.setKey(near.networkId, near.accountId, keyPair)
     const signer = await getSignerFromKeystore(near.accountId, near.networkId, keyStore)
-    const provider = new JsonRpcProvider({ url: near.rpcUrl })
+    const provider = createRpcClientWrapper([near.rpcUrl])
     return new Account(near.accountId, provider, signer)
   }
 
   // Local development - use keystore file
   const keyStore = new UnencryptedFileSystemKeyStore(near.credentialsPath)
   const signer = await getSignerFromKeystore(near.accountId, near.networkId, keyStore)
-  const provider = new JsonRpcProvider({ url: near.rpcUrl })
+  const provider = createRpcClientWrapper([near.rpcUrl])
   return new Account(near.accountId, provider, signer)
 }
 
