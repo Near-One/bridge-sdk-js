@@ -937,7 +937,7 @@ describe("NearBridgeClient", () => {
       }
 
       await expect(client.submitBitcoinTransfer(lowAmountEvent)).rejects.toThrow(
-        "Transfer amount (1000000) must be greater than withdrawal fee (1000000)",
+        "Transfer amount (900000) must be greater than withdrawal fee (1000000)",
       )
     })
 
@@ -951,7 +951,7 @@ describe("NearBridgeClient", () => {
       }
 
       await expect(client.submitBitcoinTransfer(highFeeEvent)).rejects.toThrow(
-        "Max gas fee (6000000) cannot exceed transfer amount (5000000)",
+        "Max gas fee (6000000) cannot exceed transfer amount (4900000)",
       )
     })
 
