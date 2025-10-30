@@ -865,7 +865,9 @@ export class NearBridgeClient {
       throw new Error(`Malformed recipient address: "${recipientRaw}"`)
     }
     const recipientAddress = recipientParts[1]
-    const amount = BigInt(initTransferEvent.transfer_message.amount - initTransferEvent.transfer_message.fee.fee)
+    const amount =
+      BigInt(initTransferEvent.transfer_message.amount) -
+      BigInt(initTransferEvent.transfer_message.fee.fee)
     let maxGasFee = 0n
     const transferMsg = initTransferEvent.transfer_message.msg
     if (transferMsg) {
