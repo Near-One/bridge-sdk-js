@@ -42,7 +42,7 @@
     "@near-js/providers": "^2.1.0",
     "@near-js/transactions": "^2.1.0",
     "@near-js/types": "^2.1.0",
-    "@near-wallet-selector/core": "^9.0.3",
+    "@near-wallet-selector/core": "^10.1.0",
     "@noble/curves": "^2.0.0",
     "@noble/hashes": "^2.0.0",
     "@scure/base": "^2.0.0",
