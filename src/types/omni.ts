@@ -29,7 +29,18 @@ export interface OmniTransferResult {
  * UTXO-specific transfer options (for BTC/Zcash chains)
  */
 export interface UtxoTransferOptions {
+  /**
+   * The gas fee to be paid for the transaction.
+   * This value is passed directly to the contract's `options.gas_fee` field.
+   * Can be used together with maxFee.
+   */
   gasFee?: bigint
+  /**
+   * The maximum fee allowed for the transaction.
+   * This value is auto-converted to the message format as `{"MaxGasFee":"..."}`.
+   * Cannot be used together with the `message` field in OmniTransferMessage (use one or the other).
+   * Can be used together with gasFee.
+   */
   maxFee?: bigint
 }
 

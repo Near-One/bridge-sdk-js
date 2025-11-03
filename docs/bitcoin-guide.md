@@ -98,14 +98,12 @@ const transfer: OmniTransferMessage = {
 
 The protocol fee is automatically calculated by the contract based on the amount and the configured `protocol_fee_rate`. Use `OmniBridgeAPI.getFee()` to get the correct `fee` and `nativeFee` values for your transfer.
 
-**Advanced**: You can manually construct the `message` field if needed (this overrides auto-construction from `maxFee`):
+**Advanced**: You can manually construct the `message` field if needed (this overrides auto-construction from `maxFee`). The contract expects the format `{"MaxGasFee":500000}`:
 ```typescript
 const transfer: OmniTransferMessage = {
   // ... other fields
   message: JSON.stringify({
-    V0: {
-      max_fee: 500000
-    }
+    MaxGasFee: 500000
   })
 }
 ```

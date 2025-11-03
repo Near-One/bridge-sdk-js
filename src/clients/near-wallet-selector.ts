@@ -75,9 +75,10 @@ interface InitTransferMessageArgs {
 }
 
 /**
- * UTXO-specific transfer options (for BTC/Zcash chains)
+ * Internal transfer message options (for BTC/Zcash chains)
+ * Note: This is different from the public UtxoTransferOptions in src/types/omni.ts
  */
-interface UtxoTransferOptions {
+interface InitTransferMessageOptions {
   max_gas_fee?: string
 }
 
@@ -86,7 +87,7 @@ type InitTransferMessage = {
   fee: string
   native_token_fee: string
   msg?: string
-  options?: UtxoTransferOptions
+  options?: InitTransferMessageOptions
 }
 
 interface StorageDepositOptions {

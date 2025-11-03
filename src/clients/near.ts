@@ -111,9 +111,10 @@ interface InitTransferMessageArgs {
 }
 
 /**
- * UTXO-specific transfer options (for BTC/Zcash chains)
+ * Internal transfer message options (for BTC/Zcash chains)
+ * Note: This is different from the public UtxoTransferOptions in src/types/omni.ts
  */
-interface UtxoTransferOptions {
+interface InitTransferMessageOptions {
   max_gas_fee?: string
 }
 
@@ -122,7 +123,7 @@ type InitTransferMessage = {
   fee: string
   native_token_fee: string
   msg?: string
-  options?: UtxoTransferOptions
+  options?: InitTransferMessageOptions
 }
 
 /**
@@ -404,7 +405,9 @@ export class NearBridgeClient {
     // Build message from options.maxFee if not explicitly provided
     // Fail if both message and maxFee are provided to avoid ambiguity
     if (transfer.message && transfer.options?.maxFee !== undefined) {
-      throw new Error("Cannot provide both 'message' and 'options.maxFee'. Use one or the other.")
+      throw new Error(
+        "Cannot provide both 'message' and 'options.maxFee'. Use one or the other. Note: 'options.gasFee' can still be used together with 'message'.",
+      )
     }
 
     let message = transfer.message

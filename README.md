@@ -134,6 +134,8 @@ interface OmniTransferMessage {
 - **UTXO chains (Bitcoin/Zcash)**: Use `UtxoTransferOptions` to specify:
   - `gasFee`: Maximum gas fee passed directly to the contract's `options.gas_fee` field
   - `maxFee`: Alternative maximum fee that's automatically converted to the contract's `message` format
+  - Both `gasFee` and `maxFee` can be used together (they serve different purposes)
+  - Note: `maxFee` cannot be used together with the `message` field (use one or the other)
   - The protocol fee is automatically calculated by the contract based on the configured `protocol_fee_rate`
 
 Example for Bitcoin:
@@ -146,7 +148,7 @@ const transfer: OmniTransferMessage = {
   nativeFee: BigInt(1000),
   options: {
     gasFee: BigInt(3000),   // Max gas fee for Bitcoin network
-    maxFee: BigInt(500000)  // Alternative approach (auto-converted)
+    maxFee: BigInt(500000)  // Can be used together with gasFee
   }
 }
 ```
