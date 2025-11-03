@@ -110,20 +110,11 @@ interface InitTransferMessageArgs {
   msg: string | null
 }
 
-/**
- * Internal transfer message options (for BTC/Zcash chains)
- * Note: This is different from the public UtxoTransferOptions in src/types/omni.ts
- */
-interface InitTransferMessageOptions {
-  max_gas_fee?: string
-}
-
 type InitTransferMessage = {
   recipient: OmniAddress
   fee: string
   native_token_fee: string
   msg?: string
-  options?: InitTransferMessageOptions
 }
 
 /**
@@ -405,9 +396,7 @@ export class NearBridgeClient {
     // Build message from options.maxFee if not explicitly provided
     // Fail if both message and maxFee are provided to avoid ambiguity
     if (transfer.message && transfer.options?.maxFee !== undefined) {
-      throw new Error(
-        "Cannot provide both 'message' and 'options.maxFee'. Use one or the other. Note: 'options.gasFee' can still be used together with 'message'.",
-      )
+      throw new Error("Cannot provide both 'message' and 'options.maxFee'. Use one or the other.")
     }
 
     let message = transfer.message
@@ -422,13 +411,6 @@ export class NearBridgeClient {
       fee: transfer.fee.toString(),
       native_token_fee: transfer.nativeFee.toString(),
       msg: message,
-    }
-
-    // For UTXO chains (BTC/Zcash), include max_gas_fee if provided
-    if (transfer.options?.gasFee !== undefined) {
-      initTransferMessage.options = {
-        max_gas_fee: transfer.options.gasFee.toString(),
-      }
     }
     const args: InitTransferMessageArgs = {
       receiver_id: this.lockerAddress,

@@ -76,34 +76,39 @@ console.log(`Success! NEAR TX: ${nearTxHash}`)
 
 ### Fee Structure for UTXO Chains
 
-Bitcoin and Zcash transfers support specifying fees via the `options` field:
+Bitcoin and Zcash transfers support specifying maximum network fees via the `options` field:
 
 ```typescript
 const transfer: OmniTransferMessage = {
   tokenAddress: "near:nbtc.near",
   recipient: "btc:bc1q...",
   amount: BigInt(100000),
-  fee: BigInt(5000), // Total fee (includes protocol fee calculated by contract)
-  nativeFee: BigInt(1000),
+  fee: BigInt(5000), // Bridge fee (includes protocol fee calculated by contract)
+  nativeFee: BigInt(1000), // NEAR gas fee
   options: {
-    gasFee: BigInt(3000),  // Maximum Bitcoin network gas fee
-    maxFee: BigInt(500000), // Alternative maximum fee (auto-converted to message format)
+    maxFee: BigInt(5000), // Maximum BTC network fee in satoshis
   }
 }
 ```
 
 **Fee Options:**
-- `gasFee`: Passed directly to the contract's `options.gas_fee` field
-- `maxFee`: Automatically converted to `message` format as `{"MaxGasFee":"500000"}`
+- `maxFee`: Maximum BTC/Zcash network fee allowed (in satoshis)
+  - Automatically converted to nested message format: `{"MaxGasFee":"5000"}`
+  - Protects you from excessive network fees
+  - The contract validates the actual gas fee doesn't exceed this limit
+  - Cannot be used together with the `message` field
 
-The protocol fee is automatically calculated by the contract based on the amount and the configured `protocol_fee_rate`. Use `OmniBridgeAPI.getFee()` to get the correct `fee` and `nativeFee` values for your transfer.
+**Fee Breakdown:**
+- `fee`: Bridge fee paid to the protocol (use `OmniBridgeAPI.getFee()` to get the correct value)
+- `nativeFee`: NEAR transaction gas fee
+- `options.maxFee`: Cap on Bitcoin/Zcash network fee (optional but recommended)
 
-**Advanced**: You can manually construct the `message` field if needed (this overrides auto-construction from `maxFee`). The contract expects the format `{"MaxGasFee":500000}`:
+**Advanced**: You can manually construct the `message` field if needed (this overrides `maxFee`):
 ```typescript
 const transfer: OmniTransferMessage = {
   // ... other fields
   message: JSON.stringify({
-    MaxGasFee: 500000
+    MaxGasFee: 5000  // in satoshis
   })
 }
 ```

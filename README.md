@@ -115,8 +115,7 @@ Transfer messages represent cross-chain token transfers:
 
 ```typescript
 interface UtxoTransferOptions {
-  gasFee?: bigint;  // Max gas fee for UTXO chains (passed to contract)
-  maxFee?: bigint;  // Alternative max fee (auto-converted to message format)
+  maxFee?: bigint;  // Maximum BTC/Zcash network fee (in satoshis)
 }
 
 interface OmniTransferMessage {
@@ -125,17 +124,17 @@ interface OmniTransferMessage {
   fee: bigint; // Token fee
   nativeFee: bigint; // Gas fee in native token
   recipient: OmniAddress; // Destination address
-  message?: string; // Optional message field (general purpose, overrides maxFee)
+  message?: string; // Optional message field (for advanced use, overrides maxFee)
   options?: UtxoTransferOptions; // Chain-specific options
 }
 ```
 
 **Chain-Specific Options**: The `options` field allows you to specify chain-specific parameters:
 - **UTXO chains (Bitcoin/Zcash)**: Use `UtxoTransferOptions` to specify:
-  - `gasFee`: Maximum gas fee passed directly to the contract's `options.gas_fee` field
-  - `maxFee`: Alternative maximum fee that's automatically converted to the contract's `message` format
-  - Both `gasFee` and `maxFee` can be used together (they serve different purposes)
-  - Note: `maxFee` cannot be used together with the `message` field (use one or the other)
+  - `maxFee`: Maximum BTC/Zcash network fee allowed (in satoshis). This protects you from excessive fees.
+    - Automatically converted to the nested message format: `{"MaxGasFee":"5000"}`
+    - The contract validates that the actual gas fee doesn't exceed this limit
+    - Cannot be used together with the `message` field (use one or the other)
   - The protocol fee is automatically calculated by the contract based on the configured `protocol_fee_rate`
 
 Example for Bitcoin:
@@ -147,8 +146,7 @@ const transfer: OmniTransferMessage = {
   fee: BigInt(5000),
   nativeFee: BigInt(1000),
   options: {
-    gasFee: BigInt(3000),   // Max gas fee for Bitcoin network
-    maxFee: BigInt(500000)  // Can be used together with gasFee
+    maxFee: BigInt(5000)  // Maximum BTC network fee in satoshis
   }
 }
 ```
