@@ -1004,7 +1004,7 @@ describe("NearBridgeClient", () => {
       fee: BigInt("100000"),
       nativeFee: BigInt("50000"),
       options: {
-        gasFee: BigInt("30000"),
+        maxFee: BigInt("30000"),
       },
     }
 
@@ -1071,7 +1071,7 @@ describe("NearBridgeClient", () => {
       expect(result).toEqual(mockInitTransferEvent)
     })
 
-    it("should include gas_fee in initTransfer for UTXO chains", async () => {
+    it("should include maxFee in initTransfer for UTXO chains", async () => {
       const result = await client.initTransfer(mockTransferWithUtxoFees)
 
       expect(mockWallet.signAndSendTransaction).toHaveBeenCalled()
@@ -1079,11 +1079,15 @@ describe("NearBridgeClient", () => {
       const action = callArgs.actions[0]
       expect(action.enum).toBe("functionCall")
       expect(action.functionCall.methodName).toBe("ft_transfer_call")
+
+      // Verify the message contains MaxGasFee
+      const msgArg = JSON.parse(action.functionCall.args.msg)
+      expect(JSON.parse(msgArg.msg)).toEqual({ MaxGasFee: "30000" })
       expect(result).toEqual(mockInitTransferEvent)
     })
 
-    it("should handle transfer with both maxFee and gasFee", async () => {
-      const transferWithBoth: OmniTransferMessage = {
+    it("should handle transfer with maxFee option", async () => {
+      const transferWithMaxFee: OmniTransferMessage = {
         tokenAddress: mockTokenOmniAddress,
         recipient: "btc:bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
         amount: BigInt("10000000"),
@@ -1091,11 +1095,10 @@ describe("NearBridgeClient", () => {
         nativeFee: BigInt("50000"),
         options: {
           maxFee: BigInt("500000"),
-          gasFee: BigInt("30000"),
         },
       }
 
-      const result = await client.initTransfer(transferWithBoth)
+      const result = await client.initTransfer(transferWithMaxFee)
 
       expect(mockWallet.signAndSendTransaction).toHaveBeenCalled()
       const callArgs = (mockWallet.signAndSendTransaction as any).mock.calls[0][0]

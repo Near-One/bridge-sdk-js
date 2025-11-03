@@ -845,8 +845,8 @@ export class NearBridgeClient {
   }
 
   /**
-   * Creates NEAR -> BTC transfer (NEAR -> BTC flow start, option #2)
-   * To be called after initTransfer() that sends BTC to bitcoin receiver address
+   * Creates NEAR -> UTXO chain transfer (NEAR -> BTC/Zcash flow start, option #2)
+   * To be called after initTransfer() that sends tokens to UTXO chain receiver address
    */
   async submitBitcoinTransfer(initTransferEvent: InitTransferEvent): Promise<string> {
     const recipientRaw = initTransferEvent.transfer_message.recipient
@@ -854,6 +854,15 @@ export class NearBridgeClient {
     if (recipientParts.length < 2 || !recipientParts[1]) {
       throw new Error(`Malformed recipient address: "${recipientRaw}"`)
     }
+
+    // Validate recipient chain is a UTXO chain
+    const recipientChain = getChain(recipientRaw)
+    if (recipientChain !== ChainKind.Btc && recipientChain !== ChainKind.Zcash) {
+      throw new Error(
+        `Invalid recipient chain: expected BTC or Zcash, got ${ChainKind[recipientChain] ?? recipientChain}`,
+      )
+    }
+
     const recipientAddress = recipientParts[1]
     const amount =
       BigInt(initTransferEvent.transfer_message.amount) -
@@ -874,10 +883,10 @@ export class NearBridgeClient {
       }
     }
 
-    const utxos = await this.getUtxoAvailableOutputs(ChainKind.Btc)
-    const bitcoinConfig = await this.getUtxoBridgeConfig(ChainKind.Btc)
+    const utxos = await this.getUtxoAvailableOutputs(recipientChain)
+    const utxoConfig = await this.getUtxoBridgeConfig(recipientChain)
 
-    const withdrawFee = BigInt(bitcoinConfig.withdraw_bridge_fee.fee_min)
+    const withdrawFee = BigInt(utxoConfig.withdraw_bridge_fee.fee_min)
 
     // Verify that amount covers the withdrawal fee
     if (amount <= withdrawFee) {
@@ -892,11 +901,11 @@ export class NearBridgeClient {
     }
 
     const plan = this.buildUtxoWithdrawalPlan(
-      ChainKind.Btc,
+      recipientChain,
       utxos,
       amount - withdrawFee,
       recipientAddress,
-      bitcoinConfig,
+      utxoConfig,
     )
 
     const msg: InitBtcTransferMsg = {

@@ -74,20 +74,11 @@ interface InitTransferMessageArgs {
   msg: string | null
 }
 
-/**
- * Internal transfer message options (for BTC/Zcash chains)
- * Note: This is different from the public UtxoTransferOptions in src/types/omni.ts
- */
-interface InitTransferMessageOptions {
-  max_gas_fee?: string
-}
-
 type InitTransferMessage = {
   recipient: OmniAddress
   fee: string
   native_token_fee: string
   msg?: string
-  options?: InitTransferMessageOptions
 }
 
 interface StorageDepositOptions {
@@ -438,13 +429,6 @@ export class NearWalletSelectorBridgeClient {
       fee: transfer.fee.toString(),
       native_token_fee: transfer.nativeFee.toString(),
       msg: message,
-    }
-
-    // For UTXO chains (BTC/Zcash), include max_gas_fee if provided
-    if (transfer.options?.gasFee !== undefined) {
-      initTransferMessage.options = {
-        max_gas_fee: transfer.options.gasFee.toString(),
-      }
     }
 
     const args: InitTransferMessageArgs = {
