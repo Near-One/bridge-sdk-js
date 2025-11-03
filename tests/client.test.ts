@@ -20,9 +20,9 @@ vi.mock("../src/utils/tokens", () => ({
 
 // Mock all the clients and dependencies
 vi.mock("../src/clients/evm", () => ({
-  EvmBridgeClient: vi.fn().mockImplementation(() => ({
-    initTransfer: vi.fn().mockResolvedValue("tx-hash"),
-  })),
+  EvmBridgeClient: class {
+    initTransfer = vi.fn().mockResolvedValue("tx-hash")
+  },
 }))
 
 vi.mock("../src/clients/near", () => ({
