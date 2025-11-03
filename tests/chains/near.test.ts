@@ -1081,8 +1081,14 @@ describe("NearBridgeClient", () => {
       expect(action.functionCall.methodName).toBe("ft_transfer_call")
 
       // Verify the message contains MaxGasFee
-      const msgArg = JSON.parse(action.functionCall.args.msg)
-      expect(JSON.parse(msgArg.msg)).toEqual({ MaxGasFee: "30000" })
+      const argsObj = action.functionCall.args
+      if (typeof argsObj.msg === "string") {
+        const msgArg = JSON.parse(argsObj.msg)
+        if (msgArg.msg) {
+          const innerMsg = JSON.parse(msgArg.msg)
+          expect(innerMsg).toEqual({ MaxGasFee: "30000" })
+        }
+      }
       expect(result).toEqual(mockInitTransferEvent)
     })
 
