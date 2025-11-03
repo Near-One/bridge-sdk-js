@@ -96,6 +96,25 @@ const BITCOIN_SIGNING_WAIT = {
 } as const
 
 /**
+ * Calculates bridge fee based on amount and fee configuration.
+ * Implements the same logic as the Rust contract's BridgeFee::get_fee method.
+ * @param bridgeFee - Bridge fee configuration with fee_min and fee_rate (u32 integer)
+ * @param amount - Transfer amount to calculate fee for
+ * @returns The calculated fee (max of percentage-based fee and minimum fee)
+ */
+function calculateBridgeFee(
+  bridgeFee: { fee_min: string; fee_rate: number },
+  amount: bigint,
+): bigint {
+  const MAX_RATIO = 10000n
+  const feeRate = BigInt(bridgeFee.fee_rate)
+  const feeMin = BigInt(bridgeFee.fee_min)
+
+  const percentageFee = (amount * feeRate) / MAX_RATIO
+  return percentageFee > feeMin ? percentageFee : feeMin
+}
+
+/**
  * Represents the storage deposit balance for a NEAR account
  */
 type StorageDeposit = {
@@ -806,8 +825,8 @@ export class NearBridgeClient {
       },
     }
 
-    const bridgeFeeMin = BigInt(config.withdraw_bridge_fee.fee_min)
-    const totalAmount = amount + plan.fee + bridgeFeeMin
+    const bridgeFee = calculateBridgeFee(config.withdraw_bridge_fee, amount)
+    const totalAmount = amount + plan.fee + bridgeFee
 
     const tx = await this.wallet.signAndSendTransaction({
       receiverId: token,
@@ -886,7 +905,7 @@ export class NearBridgeClient {
     const utxos = await this.getUtxoAvailableOutputs(recipientChain)
     const utxoConfig = await this.getUtxoBridgeConfig(recipientChain)
 
-    const withdrawFee = BigInt(utxoConfig.withdraw_bridge_fee.fee_min)
+    const withdrawFee = calculateBridgeFee(utxoConfig.withdraw_bridge_fee, amount)
 
     // Verify that amount covers the withdrawal fee
     if (amount <= withdrawFee) {

@@ -133,13 +133,13 @@ const mockRealBtcConfig: BtcConnectorConfig = {
   confirmations_delta: 0,
   deposit_bridge_fee: {
     fee_min: "1000",
-    fee_rate: 0.002,
-    protocol_fee_rate: 0.001,
+    fee_rate: 20,
+    protocol_fee_rate: 10,
   },
   withdraw_bridge_fee: {
     fee_min: "2000",
-    fee_rate: 0.003,
-    protocol_fee_rate: 0.0015,
+    fee_rate: 30,
+    protocol_fee_rate: 15,
   },
   min_deposit_amount: REAL_WITHDRAWAL_DATA.minDepositAmount,
   min_withdraw_amount: REAL_WITHDRAWAL_DATA.minWithdrawAmount,

@@ -822,7 +822,8 @@ describe("NearBridgeClient", () => {
     const mockBitcoinConfig = {
       withdraw_bridge_fee: {
         fee_min: "1000000",
-        fee_max: "5000000",
+        fee_rate: 0,
+        protocol_fee_rate: 9000,
       },
       btc_fee_recipient: "btc:mock-fee-recipient",
       btc_light_client: "btc-light-client.near",
