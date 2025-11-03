@@ -420,7 +420,7 @@ export class NearWalletSelectorBridgeClient {
     let message = transfer.message
     if (!message && transfer.options?.maxFee !== undefined) {
       message = JSON.stringify({
-        MaxGasFee: transfer.options.maxFee.toString(),
+        MaxGasFee: Number(transfer.options.maxFee),
       })
     }
 

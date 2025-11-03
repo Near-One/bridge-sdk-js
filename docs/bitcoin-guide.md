@@ -93,7 +93,7 @@ const transfer: OmniTransferMessage = {
 
 **Fee Options:**
 - `maxFee`: Maximum BTC/Zcash network fee allowed (in satoshis)
-  - Automatically converted to nested message format: `{"MaxGasFee":"5000"}`
+  - Automatically converted to nested message format: `{"MaxGasFee":5000}` (number, not string)
   - Protects you from excessive network fees
   - The contract validates the actual gas fee doesn't exceed this limit
   - Cannot be used together with the `message` field
@@ -108,7 +108,7 @@ const transfer: OmniTransferMessage = {
 const transfer: OmniTransferMessage = {
   // ... other fields
   message: JSON.stringify({
-    MaxGasFee: 5000  // in satoshis
+    MaxGasFee: 5000  // Number (not string) - in satoshis
   })
 }
 ```

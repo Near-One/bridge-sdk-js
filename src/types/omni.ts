@@ -31,7 +31,7 @@ export interface OmniTransferResult {
 export interface UtxoTransferOptions {
   /**
    * The maximum BTC/Zcash network fee allowed for the transaction (in satoshis).
-   * This value is auto-converted to the nested message format: `{"MaxGasFee":"..."}`.
+   * This value is auto-converted to the nested message format: `{"MaxGasFee":5000}` (number, not string).
    *
    * The contract validates that the actual gas fee used doesn't exceed this limit.
    *

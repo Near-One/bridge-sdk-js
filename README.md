@@ -132,7 +132,7 @@ interface OmniTransferMessage {
 **Chain-Specific Options**: The `options` field allows you to specify chain-specific parameters:
 - **UTXO chains (Bitcoin/Zcash)**: Use `UtxoTransferOptions` to specify:
   - `maxFee`: Maximum BTC/Zcash network fee allowed (in satoshis). This protects you from excessive fees.
-    - Automatically converted to the nested message format: `{"MaxGasFee":"5000"}`
+    - Automatically converted to the nested message format: `{"MaxGasFee":5000}`
     - The contract validates that the actual gas fee doesn't exceed this limit
     - Cannot be used together with the `message` field (use one or the other)
   - The protocol fee is automatically calculated by the contract based on the configured `protocol_fee_rate`
