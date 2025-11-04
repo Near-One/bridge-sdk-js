@@ -106,6 +106,7 @@ function calculateBridgeFee(
   bridgeFee: { fee_min: string; fee_rate: number },
   amount: bigint,
 ): bigint {
+  // Basis point denominator: 1 basis point = 0.01%, so 10000 = 100%.
   const MAX_RATIO = 10000n
   const feeRate = BigInt(bridgeFee.fee_rate)
   const feeMin = BigInt(bridgeFee.fee_min)
