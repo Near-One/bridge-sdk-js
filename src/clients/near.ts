@@ -916,7 +916,7 @@ export class NearBridgeClient {
 
     // Verify that max gas fee is reasonable if provided
     if (maxGasFee > 0n && maxGasFee + withdrawFee > amount) {
-      throw new Error(`Max gas fee (${maxGasFee}) cannot exceed transfer amount (${amount})`)
+      throw new Error(`Max gas fee (${maxGasFee}) plus withdrawal fee (${withdrawFee}) cannot exceed transfer amount (${amount})`)
     }
 
     const plan = this.buildUtxoWithdrawalPlan(
