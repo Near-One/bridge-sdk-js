@@ -1,5 +1,20 @@
 # omni-bridge-sdk
 
+## 0.20.2
+
+### Patch Changes
+
+- f83708b: chore(deps-dev): bump lefthook from 1.13.6 to 2.0.2
+- cfd25fd: chore(deps): bump @near-wallet-selector/core from 9.5.4 to 10.1.0
+- b126a89: chore(deps): bump @wormhole-foundation/sdk from 3.8.7 to 3.10.0
+- 4f0ee3f: chore(deps): bump @near-js/accounts from 2.3.3 to 2.3.4
+- 4e6719c: chore(deps-dev): bump @types/bun from 1.3.0 to 1.3.1
+- 63eba82: chore(deps-dev): bump vitest from 3.2.4 to 4.0.5
+- 1313a01: chore(deps): bump @near-js/providers from 2.3.1 to 2.3.4
+- 9174fe2: chore(deps): bump @near-js/transactions from 2.3.3 to 2.3.4
+- 4b24147: chore(deps): bump @near-js/types from 2.3.3 to 2.3.4
+- 000634f: chore(deps-dev): bump @types/node from 24.7.1 to 24.8.1
+
 ## 0.20.1
 
 ### Patch Changes
