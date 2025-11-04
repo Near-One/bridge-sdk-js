@@ -37,7 +37,7 @@ export interface UtxoTransferOptions {
    *
    * Cannot be used together with the `message` field in OmniTransferMessage (use one or the other).
    */
-  maxFee?: bigint
+  maxGasFee?: bigint
 }
 
 export interface OmniTransferMessage {

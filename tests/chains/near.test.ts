@@ -994,7 +994,7 @@ describe("NearBridgeClient", () => {
       fee: BigInt("100000"),
       nativeFee: BigInt("50000"),
       options: {
-        maxFee: BigInt("500000"),
+        maxGasFee: BigInt("500000"),
       },
     }
 
@@ -1005,7 +1005,7 @@ describe("NearBridgeClient", () => {
       fee: BigInt("100000"),
       nativeFee: BigInt("50000"),
       options: {
-        maxFee: BigInt("30000"),
+        maxGasFee: BigInt("30000"),
       },
     }
 
@@ -1061,7 +1061,7 @@ describe("NearBridgeClient", () => {
       })
     })
 
-    it("should auto-construct message from maxFee option", async () => {
+    it("should auto-construct message from maxGasFee option", async () => {
       const result = await client.initTransfer(mockTransferWithMaxFee)
 
       expect(mockWallet.signAndSendTransaction).toHaveBeenCalled()
@@ -1072,7 +1072,7 @@ describe("NearBridgeClient", () => {
       expect(result).toEqual(mockInitTransferEvent)
     })
 
-    it("should include maxFee in initTransfer for UTXO chains", async () => {
+    it("should include maxGasFee in initTransfer for UTXO chains", async () => {
       const result = await client.initTransfer(mockTransferWithUtxoFees)
 
       expect(mockWallet.signAndSendTransaction).toHaveBeenCalled()
@@ -1093,7 +1093,7 @@ describe("NearBridgeClient", () => {
       expect(result).toEqual(mockInitTransferEvent)
     })
 
-    it("should handle transfer with maxFee option", async () => {
+    it("should handle transfer with maxGasFee option", async () => {
       const transferWithMaxFee: OmniTransferMessage = {
         tokenAddress: mockTokenOmniAddress,
         recipient: "btc:bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
@@ -1101,7 +1101,7 @@ describe("NearBridgeClient", () => {
         fee: BigInt("100000"),
         nativeFee: BigInt("50000"),
         options: {
-          maxFee: BigInt("500000"),
+          maxGasFee: BigInt("500000"),
         },
       }
 

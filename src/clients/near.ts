@@ -413,16 +413,18 @@ export class NearBridgeClient {
       })
     }
 
-    // Build message from options.maxFee if not explicitly provided
-    // Fail if both message and maxFee are provided to avoid ambiguity
-    if (transfer.message && transfer.options?.maxFee !== undefined) {
-      throw new Error("Cannot provide both 'message' and 'options.maxFee'. Use one or the other.")
+    // Build message from options.maxGasFee if not explicitly provided
+    // Fail if both message and maxGasFee are provided to avoid ambiguity
+    if (transfer.message && transfer.options?.maxGasFee !== undefined) {
+      throw new Error(
+        "Cannot provide both 'message' and 'options.maxGasFee'. Use one or the other.",
+      )
     }
 
     let message = transfer.message
-    if (!message && transfer.options?.maxFee !== undefined) {
+    if (!message && transfer.options?.maxGasFee !== undefined) {
       message = JSON.stringify({
-        MaxGasFee: Number(transfer.options.maxFee),
+        MaxGasFee: Number(transfer.options.maxGasFee),
       })
     }
 
@@ -917,7 +919,9 @@ export class NearBridgeClient {
 
     // Verify that max gas fee is reasonable if provided
     if (maxGasFee > 0n && maxGasFee + withdrawFee > amount) {
-      throw new Error(`Max gas fee (${maxGasFee}) plus withdrawal fee (${withdrawFee}) cannot exceed transfer amount (${amount})`)
+      throw new Error(
+        `Max gas fee (${maxGasFee}) plus withdrawal fee (${withdrawFee}) cannot exceed transfer amount (${amount})`,
+      )
     }
 
     const plan = this.buildUtxoWithdrawalPlan(
