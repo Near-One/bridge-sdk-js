@@ -1,4 +1,5 @@
 import { Program, type Provider } from "@coral-xyz/anchor"
+import { sha256 } from "@noble/hashes/sha2.js"
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_2022_PROGRAM_ID,
@@ -107,9 +108,21 @@ export class SolanaBridgeClient {
     )
   }
 
+  private static tokenSeedBytes(token: string): Buffer {
+    const tokenBytes = Buffer.from(token, "utf-8")
+    if (tokenBytes.length > 32) {
+      // Mirror Anchor program logic: hash addresses longer than 32 bytes
+      return Buffer.from(sha256(tokenBytes))
+    }
+
+    const padded = Buffer.alloc(32)
+    tokenBytes.copy(padded)
+    return padded
+  }
+
   private wrappedMintId(token: string): [PublicKey, number] {
     return PublicKey.findProgramAddressSync(
-      [SolanaBridgeClient.SEEDS.WRAPPED_MINT, Buffer.from(token, "utf-8")],
+      [SolanaBridgeClient.SEEDS.WRAPPED_MINT, SolanaBridgeClient.tokenSeedBytes(token)],
       this.program.programId,
     )
   }
@@ -237,7 +250,17 @@ export class SolanaBridgeClient {
         tokenAddress: mint.toString(),
       }
     } catch (e) {
-      throw new Error(`Failed to deploy token with shim: ${e}`)
+      const message = e instanceof Error ? e.message : String(e)
+      if (
+        message.includes("already in use") ||
+        message.includes("AccountNotSystemOwned") ||
+        message.includes("account already exists")
+      ) {
+        throw new Error(
+          `Token already deployed on Solana (metadata account exists; replay is safe): ${mint.toString()}`,
+        )
+      }
+      throw new Error(`Failed to deploy token with shim: ${message}`)
     }
   }
 
