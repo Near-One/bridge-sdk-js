@@ -1,5 +1,16 @@
 # omni-bridge-sdk
 
+## 0.20.3
+
+### Patch Changes
+
+- 159ca44: chore(deps): bump @near-js/providers from 2.4.0 to 2.5.0
+- 0b9209d: fix: normalize Solana wrapped mint seeds
+- df5b49a: chore(deps): bump @near-js/client from 2.3.3 to 2.5.0
+- 422de95: chore(deps-dev): bump @biomejs/biome from 2.2.6 to 2.3.3
+- 0977190: chore(deps-dev): bump msw from 2.11.5 to 2.11.6
+- 1a725a8: chore(deps-dev): bump @types/node from 24.9.2 to 24.10.0
+
 ## 0.20.2
 
 ### Patch Changes
