@@ -301,7 +301,7 @@
 
     "@near-js/tokens": ["@near-js/tokens@2.5.1", "", {}, "sha512-doDtOaSA2FOsYzzwocg0L02z6ORNL7HFAuL455y2O38//F4C2jp+C9De9fWrItkrim2jKjoSR3UvO2AuVbwmWA=="],
 
-    "@near-js/transactions": ["@near-js/transactions@2.4.0", "", { "dependencies": { "@near-js/crypto": "2.4.0", "@near-js/types": "2.4.0", "@near-js/utils": "2.4.0", "@noble/hashes": "1.7.1", "borsh": "1.0.0" } }, "sha512-4fIQ0IasCSkFbSj6dHpOhYlJ74nws/C9SGWkKJXTW8Ca9TRURcetVbLCKco7HknZvpeDQOx5WBYhNiDAZFdlYg=="],
+    "@near-js/transactions": ["@near-js/transactions@2.5.1", "", { "dependencies": { "@near-js/crypto": "2.5.1", "@near-js/types": "2.5.1", "@near-js/utils": "2.5.1", "@noble/hashes": "1.7.1", "borsh": "1.0.0" } }, "sha512-0svK5K6VqOciSIn9mxreyS0uQf8T1UZc71JBA6yrstpHJhltz/dvNUMY0FV+xHx3H/KAdvCMjX0VLEpyi08yWQ=="],
 
     "@near-js/types": ["@near-js/types@2.5.0", "", {}, "sha512-U0HgAnRwN/XKJ1O4Htac+G5bvkMalBJ8i/kwAPJpoOI1MUtP9dhbCG4GBErADCpczukhrAWlDBHHdfhPnhgyzQ=="],
 
@@ -1507,8 +1507,6 @@
 
     "@near-js/accounts/@near-js/providers": ["@near-js/providers@2.5.1", "", { "dependencies": { "@near-js/crypto": "2.5.1", "@near-js/transactions": "2.5.1", "@near-js/types": "2.5.1", "@near-js/utils": "2.5.1", "borsh": "1.0.0", "exponential-backoff": "^3.1.2" }, "optionalDependencies": { "node-fetch": "2.6.7" } }, "sha512-4DUyAKdEJVOF/7Ud364lDS8Wk+ZUc67ozgqa3dd8z/9RqIWIPCufPiZS3/89Vxi0qL+1uKlXchPpiemZLC+UOw=="],
 
-    "@near-js/accounts/@near-js/transactions": ["@near-js/transactions@2.5.1", "", { "dependencies": { "@near-js/crypto": "2.5.1", "@near-js/types": "2.5.1", "@near-js/utils": "2.5.1", "@noble/hashes": "1.7.1", "borsh": "1.0.0" } }, "sha512-0svK5K6VqOciSIn9mxreyS0uQf8T1UZc71JBA6yrstpHJhltz/dvNUMY0FV+xHx3H/KAdvCMjX0VLEpyi08yWQ=="],
-
     "@near-js/accounts/@near-js/types": ["@near-js/types@2.5.1", "", {}, "sha512-lUJJmbV6qcilIwswldeP7FIjkjTWvmtgI+yQHVmiBNRVjYvPMiQ/e9vs3SXE/cYtRluAdq0JHJwYoqhFb69mwA=="],
 
     "@near-js/accounts/@noble/hashes": ["@noble/hashes@1.7.1", "", {}, "sha512-B8XBPsn4vT/KJAGqDzbwztd+6Yte3P4V7iafm24bxgDe/mlRuK6xmWPuCNrKt2vDafZ8MfJLlchDG/vYafQEjQ=="],
@@ -1541,15 +1539,9 @@
 
     "@near-js/providers/@near-js/utils": ["@near-js/utils@2.5.0", "", { "dependencies": { "@near-js/types": "2.5.0", "@scure/base": "^1.2.4", "depd": "2.0.0", "mustache": "4.0.0" } }, "sha512-hifdeZVzV9TFcgLNekRVVnB6q7zxdCQPmC9cybT1SjfeiIP/5jPabOZXGWNJPSloRcrTMluCTtaWinIw1HXanQ=="],
 
-    "@near-js/signers/@near-js/transactions": ["@near-js/transactions@2.5.1", "", { "dependencies": { "@near-js/crypto": "2.5.1", "@near-js/types": "2.5.1", "@near-js/utils": "2.5.1", "@noble/hashes": "1.7.1", "borsh": "1.0.0" } }, "sha512-0svK5K6VqOciSIn9mxreyS0uQf8T1UZc71JBA6yrstpHJhltz/dvNUMY0FV+xHx3H/KAdvCMjX0VLEpyi08yWQ=="],
-
     "@near-js/signers/@noble/hashes": ["@noble/hashes@1.7.1", "", {}, "sha512-B8XBPsn4vT/KJAGqDzbwztd+6Yte3P4V7iafm24bxgDe/mlRuK6xmWPuCNrKt2vDafZ8MfJLlchDG/vYafQEjQ=="],
 
-    "@near-js/transactions/@near-js/crypto": ["@near-js/crypto@2.4.0", "", { "dependencies": { "@near-js/types": "2.4.0", "@near-js/utils": "2.4.0", "@noble/curves": "1.8.1", "borsh": "1.0.0", "randombytes": "2.1.0", "secp256k1": "5.0.1" } }, "sha512-8IXciaareo7t5JLbIgElNlIHiw5cLaGasxQbdvOKnQSANSEcTgVGhHc6+0849il7klpeafFh5xiKH5tBZI9/cQ=="],
-
-    "@near-js/transactions/@near-js/types": ["@near-js/types@2.4.0", "", {}, "sha512-tDH/SYrZ8kCWJWjSgYM2DJPcyajnu4Qef/x1h/AN0jdMEiIsP35t2xcApPXZuGVySi3VDcCNf719Di5Tw6ATTw=="],
-
-    "@near-js/transactions/@near-js/utils": ["@near-js/utils@2.4.0", "", { "dependencies": { "@near-js/types": "2.4.0", "@scure/base": "^1.2.4", "depd": "2.0.0", "mustache": "4.0.0" } }, "sha512-XC1RB8oeytChlpFOlBbNtTNFmIeuspp6hrrp4xDDexOv7l4j2V79dOyG7JB0rrArQ7i/kH9+oOSXjQm3gdrHYA=="],
+    "@near-js/transactions/@near-js/types": ["@near-js/types@2.5.1", "", {}, "sha512-lUJJmbV6qcilIwswldeP7FIjkjTWvmtgI+yQHVmiBNRVjYvPMiQ/e9vs3SXE/cYtRluAdq0JHJwYoqhFb69mwA=="],
 
     "@near-js/transactions/@noble/hashes": ["@noble/hashes@1.7.1", "", {}, "sha512-B8XBPsn4vT/KJAGqDzbwztd+6Yte3P4V7iafm24bxgDe/mlRuK6xmWPuCNrKt2vDafZ8MfJLlchDG/vYafQEjQ=="],
 
@@ -1562,6 +1554,8 @@
     "@near-wallet-selector/core/@near-js/providers": ["@near-js/providers@2.4.0", "", { "dependencies": { "@near-js/crypto": "2.4.0", "@near-js/transactions": "2.4.0", "@near-js/types": "2.4.0", "@near-js/utils": "2.4.0", "borsh": "1.0.0", "exponential-backoff": "^3.1.2" }, "optionalDependencies": { "node-fetch": "2.6.7" } }, "sha512-wWAB+T0pYjeKFceKeWJ61D3R30TSmDYKi7a2uPUmwa8lkK55D4ERRYX+56UE6i/nZ3pOFbnnHxlTZgZE0yl8kA=="],
 
     "@near-wallet-selector/core/@near-js/signers": ["@near-js/signers@2.4.0", "", { "dependencies": { "@near-js/crypto": "2.4.0", "@near-js/keystores": "2.4.0", "@near-js/transactions": "2.4.0", "@noble/hashes": "1.7.1", "borsh": "1.0.0" } }, "sha512-3mscfC6vi/GVIMqZqhv+HIT4jnRPSzzF2y2OUruJIVAXewPOQVYDTH7PFWMoYcX+5eerKvHg5lBCreka+9xFyg=="],
+
+    "@near-wallet-selector/core/@near-js/transactions": ["@near-js/transactions@2.4.0", "", { "dependencies": { "@near-js/crypto": "2.4.0", "@near-js/types": "2.4.0", "@near-js/utils": "2.4.0", "@noble/hashes": "1.7.1", "borsh": "1.0.0" } }, "sha512-4fIQ0IasCSkFbSj6dHpOhYlJ74nws/C9SGWkKJXTW8Ca9TRURcetVbLCKco7HknZvpeDQOx5WBYhNiDAZFdlYg=="],
 
     "@near-wallet-selector/core/@near-js/types": ["@near-js/types@2.4.0", "", {}, "sha512-tDH/SYrZ8kCWJWjSgYM2DJPcyajnu4Qef/x1h/AN0jdMEiIsP35t2xcApPXZuGVySi3VDcCNf719Di5Tw6ATTw=="],
 
@@ -1847,12 +1841,6 @@
 
     "@near-js/providers/@near-js/utils/@scure/base": ["@scure/base@1.2.6", "", {}, "sha512-g/nm5FgUa//MCj1gV09zTJTaM6KBAHqLN907YVQqf7zC49+DcO4B1so4ZX07Ef10Twr6nuqYEH9GEggFXA4Fmg=="],
 
-    "@near-js/signers/@near-js/transactions/@near-js/types": ["@near-js/types@2.5.1", "", {}, "sha512-lUJJmbV6qcilIwswldeP7FIjkjTWvmtgI+yQHVmiBNRVjYvPMiQ/e9vs3SXE/cYtRluAdq0JHJwYoqhFb69mwA=="],
-
-    "@near-js/transactions/@near-js/crypto/@noble/curves": ["@noble/curves@1.8.1", "", { "dependencies": { "@noble/hashes": "1.7.1" } }, "sha512-warwspo+UYUPep0Q+vtdVB4Ugn8GGQj8iyB3gnRWsztmUHTI3S1nhdiWNsPUGL0vud7JlRRk1XEu7Lq1KGTnMQ=="],
-
-    "@near-js/transactions/@near-js/utils/@scure/base": ["@scure/base@1.2.6", "", {}, "sha512-g/nm5FgUa//MCj1gV09zTJTaM6KBAHqLN907YVQqf7zC49+DcO4B1so4ZX07Ef10Twr6nuqYEH9GEggFXA4Fmg=="],
-
     "@near-wallet-selector/core/@near-js/crypto/@near-js/utils": ["@near-js/utils@2.4.0", "", { "dependencies": { "@near-js/types": "2.4.0", "@scure/base": "^1.2.4", "depd": "2.0.0", "mustache": "4.0.0" } }, "sha512-XC1RB8oeytChlpFOlBbNtTNFmIeuspp6hrrp4xDDexOv7l4j2V79dOyG7JB0rrArQ7i/kH9+oOSXjQm3gdrHYA=="],
 
     "@near-wallet-selector/core/@near-js/crypto/@noble/curves": ["@noble/curves@1.8.1", "", { "dependencies": { "@noble/hashes": "1.7.1" } }, "sha512-warwspo+UYUPep0Q+vtdVB4Ugn8GGQj8iyB3gnRWsztmUHTI3S1nhdiWNsPUGL0vud7JlRRk1XEu7Lq1KGTnMQ=="],
@@ -1868,6 +1856,12 @@
     "@near-wallet-selector/core/@near-js/signers/@noble/hashes": ["@noble/hashes@1.7.1", "", {}, "sha512-B8XBPsn4vT/KJAGqDzbwztd+6Yte3P4V7iafm24bxgDe/mlRuK6xmWPuCNrKt2vDafZ8MfJLlchDG/vYafQEjQ=="],
 
     "@near-wallet-selector/core/@near-js/signers/borsh": ["borsh@1.0.0", "", {}, "sha512-fSVWzzemnyfF89EPwlUNsrS5swF5CrtiN4e+h0/lLf4dz2he4L3ndM20PS9wj7ICSkXJe/TQUHdaPTq15b1mNQ=="],
+
+    "@near-wallet-selector/core/@near-js/transactions/@near-js/utils": ["@near-js/utils@2.4.0", "", { "dependencies": { "@near-js/types": "2.4.0", "@scure/base": "^1.2.4", "depd": "2.0.0", "mustache": "4.0.0" } }, "sha512-XC1RB8oeytChlpFOlBbNtTNFmIeuspp6hrrp4xDDexOv7l4j2V79dOyG7JB0rrArQ7i/kH9+oOSXjQm3gdrHYA=="],
+
+    "@near-wallet-selector/core/@near-js/transactions/@noble/hashes": ["@noble/hashes@1.7.1", "", {}, "sha512-B8XBPsn4vT/KJAGqDzbwztd+6Yte3P4V7iafm24bxgDe/mlRuK6xmWPuCNrKt2vDafZ8MfJLlchDG/vYafQEjQ=="],
+
+    "@near-wallet-selector/core/@near-js/transactions/borsh": ["borsh@1.0.0", "", {}, "sha512-fSVWzzemnyfF89EPwlUNsrS5swF5CrtiN4e+h0/lLf4dz2he4L3ndM20PS9wj7ICSkXJe/TQUHdaPTq15b1mNQ=="],
 
     "@solana/buffer-layout-utils/@solana/web3.js/@noble/curves": ["@noble/curves@1.8.1", "", { "dependencies": { "@noble/hashes": "1.7.1" } }, "sha512-warwspo+UYUPep0Q+vtdVB4Ugn8GGQj8iyB3gnRWsztmUHTI3S1nhdiWNsPUGL0vud7JlRRk1XEu7Lq1KGTnMQ=="],
 
@@ -1990,6 +1984,8 @@
     "@near-wallet-selector/core/@near-js/crypto/@noble/curves/@noble/hashes": ["@noble/hashes@1.7.1", "", {}, "sha512-B8XBPsn4vT/KJAGqDzbwztd+6Yte3P4V7iafm24bxgDe/mlRuK6xmWPuCNrKt2vDafZ8MfJLlchDG/vYafQEjQ=="],
 
     "@near-wallet-selector/core/@near-js/providers/@near-js/utils/@scure/base": ["@scure/base@1.2.6", "", {}, "sha512-g/nm5FgUa//MCj1gV09zTJTaM6KBAHqLN907YVQqf7zC49+DcO4B1so4ZX07Ef10Twr6nuqYEH9GEggFXA4Fmg=="],
+
+    "@near-wallet-selector/core/@near-js/transactions/@near-js/utils/@scure/base": ["@scure/base@1.2.6", "", {}, "sha512-g/nm5FgUa//MCj1gV09zTJTaM6KBAHqLN907YVQqf7zC49+DcO4B1so4ZX07Ef10Twr6nuqYEH9GEggFXA4Fmg=="],
 
     "@solana/codecs/@solana/codecs-core/@solana/errors/chalk": ["chalk@5.4.1", "", {}, "sha512-zgVZuo2WcZgfUEmsn6eO3kINexW8RAE4maiQ8QNs8CtpPCSyMiYsULR3HQYkm3w8FIA3SberyMJMSldGsW+U3w=="],
 
