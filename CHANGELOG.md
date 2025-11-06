@@ -1,5 +1,15 @@
 # omni-bridge-sdk
 
+## 0.20.4
+
+### Patch Changes
+
+- 3f73d0f: chore(deps): bump @near-js/transactions from 2.4.0 to 2.5.0
+- c324bcc: chore(deps-dev): bump vitest from 4.0.6 to 4.0.7
+- 84ecd4a: chore(deps): bump @near-js/types from 2.4.0 to 2.5.0
+- 7310850: chore(deps): bump @near-js/accounts from 2.4.0 to 2.5.0
+- 12a4038: chore(deps-dev): bump knip from 5.65.0 to 5.67.1
+
 ## 0.20.3
 
 ### Patch Changes
