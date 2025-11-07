@@ -1,5 +1,20 @@
 # omni-bridge-sdk
 
+## 0.20.5
+
+### Patch Changes
+
+- f24cd8c: chore(deps-dev): bump @biomejs/biome from 2.3.3 to 2.3.4
+- 02820c9: chore(deps): bump @ethereumjs/mpt from 10.0.0 to 10.1.0
+- eda8018: chore(deps): bump @ethereumjs/rlp from 10.0.0 to 10.1.0
+- eda8018: chore(deps): bump @ethereumjs/util from 10.0.0 to 10.1.0
+- 41d6f37: chore(deps-dev): bump knip from 5.67.1 to 5.68.0
+- eda8018: chore(deps-dev): bump msw from 2.11.6 to 2.12.0
+- d706cd4: chore(deps): bump @near-js/client from 2.5.0 to 2.5.1
+- 8502fcd: chore(deps): bump @near-js/providers from 2.5.0 to 2.5.1
+- eda8018: chore(deps): bump @near-js/types from 2.5.0 to 2.5.1
+- eda8018: chore(deps-dev): bump vitest from 4.0.7 to 4.0.8
+
 ## 0.20.4
 
 ### Patch Changes
