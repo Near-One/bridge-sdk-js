@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.20.6
+
+### Patch Changes
+
+- 7c25ddd: fix(deps): pin @near-js/signers to versions with InMemorySigner
+
 ## 0.20.5
 
 ### Patch Changes
