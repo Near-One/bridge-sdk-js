@@ -145,7 +145,7 @@ export class NearWalletSelectorBridgeClient {
           type: "FunctionCall",
           params: {
             methodName: "log_metadata",
-            args,
+            args: Buffer.from(JSON.stringify(args)),
             gas: GAS.LOG_METADATA.toString(),
             deposit: DEPOSIT.LOG_METADATA.toString(),
           },
@@ -347,9 +347,11 @@ export class NearWalletSelectorBridgeClient {
             type: "FunctionCall",
             params: {
               methodName: "storage_deposit",
-              args: {
-                account_id: this.lockerAddress,
-              },
+              args: Buffer.from(
+                JSON.stringify({
+                  account_id: this.lockerAddress,
+                }),
+              ),
               gas: GAS.STORAGE_DEPOSIT.toString(),
               deposit: requiredAmount.toString(),
             },
@@ -372,7 +374,7 @@ export class NearWalletSelectorBridgeClient {
             type: "FunctionCall",
             params: {
               methodName: "storage_deposit",
-              args: {},
+              args: Buffer.from(JSON.stringify({})),
               gas: GAS.STORAGE_DEPOSIT.toString(),
               deposit: neededAmount.toString(),
             },
@@ -429,7 +431,7 @@ export class NearWalletSelectorBridgeClient {
           type: "FunctionCall",
           params: {
             methodName: "ft_transfer_call",
-            args,
+            args: Buffer.from(JSON.stringify(args)),
             gas: GAS.INIT_TRANSFER.toString(),
             deposit: DEPOSIT.INIT_TRANSFER.toString(),
           },
@@ -515,7 +517,7 @@ export class NearWalletSelectorBridgeClient {
           type: "FunctionCall",
           params: {
             methodName: "sign_transfer",
-            args,
+            args: Buffer.from(JSON.stringify(args)),
             gas: GAS.SIGN_TRANSFER.toString(),
             deposit: DEPOSIT.SIGN_TRANSFER.toString(),
           },
@@ -780,7 +782,7 @@ export class NearWalletSelectorBridgeClient {
             type: "FunctionCall",
             params: {
               methodName: "storage_deposit",
-              args: {},
+              args: Buffer.from(JSON.stringify({})),
               gas: GAS.STORAGE_DEPOSIT.toString(),
               deposit: neededAmount.toString(),
             },
@@ -802,7 +804,7 @@ export class NearWalletSelectorBridgeClient {
           type: "FunctionCall",
           params: {
             methodName: "ft_transfer_call",
-            args: transferArgs,
+            args: Buffer.from(JSON.stringify(transferArgs)),
             gas: GAS.FAST_FIN_TRANSFER.toString(),
             deposit: DEPOSIT.INIT_TRANSFER.toString(),
           },
