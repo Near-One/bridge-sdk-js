@@ -40,6 +40,7 @@
     "@near-js/accounts": "^2.5.1",
     "@near-js/client": "^2.5.1",
     "@near-js/providers": "^2.5.1",
+    "@near-js/signers": "^2.5.1",
     "@near-js/transactions": "^2.5.1",
     "@near-js/types": "^2.5.1",
     "@near-wallet-selector/core": "^10.1.0",
@@ -66,5 +67,8 @@
     "msw": "^2.12.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.8"
+  },
+  "overrides": {
+    "@near-js/signers": "^2.5.1"
   }
 }
