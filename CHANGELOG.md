@@ -1,5 +1,13 @@
 # omni-bridge-sdk
 
+## 0.20.7
+
+### Patch Changes
+
+- 1327296: chore(deps-dev): bump @types/bun from 1.3.1 to 1.3.2
+- 9a4d836: Fix NEAR wallet selector args serialization to use Buffer instead of plain objects
+- 26947aa: chore(deps-dev): bump msw from 2.12.0 to 2.12.1
+
 ## 0.20.6
 
 ### Patch Changes
