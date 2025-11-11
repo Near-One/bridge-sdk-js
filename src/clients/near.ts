@@ -424,7 +424,7 @@ export class NearBridgeClient {
     let message = transfer.message
     if (!message && transfer.options?.maxGasFee !== undefined) {
       message = JSON.stringify({
-        MaxGasFee: Number(transfer.options.maxGasFee),
+        MaxGasFee: transfer.options.maxGasFee.toString(),
       })
     }
 

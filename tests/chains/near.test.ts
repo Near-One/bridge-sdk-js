@@ -1087,7 +1087,7 @@ describe("NearBridgeClient", () => {
         const msgArg = JSON.parse(argsObj.msg)
         if (msgArg.msg) {
           const innerMsg = JSON.parse(msgArg.msg)
-          expect(innerMsg).toEqual({ MaxGasFee: 30000 })  // Number, not string
+          expect(innerMsg).toEqual({ MaxGasFee: "30000" })  // Stringified int
         }
       }
       expect(result).toEqual(mockInitTransferEvent)
