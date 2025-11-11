@@ -188,9 +188,7 @@ export class EvmBridgeClient {
       throw new Error("Failed to get transaction receipt")
     }
     const deployedAddress =
-      ("events" in receipt &&
-        Array.isArray(receipt.events) &&
-        receipt.events[0]?.["args"]?.["token"]) ||
+      ("events" in receipt && Array.isArray(receipt.events) && receipt.events[0]?.args?.token) ||
       ("contractAddress" in receipt && receipt.contractAddress) ||
       ""
 

@@ -163,6 +163,7 @@ export class NearBridgeClient {
     this.utxoServices[ChainKind.Btc] = this.bitcoinService
 
     // Initialize Zcash service if API key configured via options or environment
+    // biome-ignore lint/complexity/useLiteralKeys: process.env has index signature, requires bracket notation for noPropertyAccessFromIndexSignature
     const zcashApiKey = this.options.zcashApiKey || process.env["ZCASH_API_KEY"]
     if (zcashApiKey) {
       this.zcashService = new ZcashService(addresses.zcash.rpcUrl, zcashApiKey)
