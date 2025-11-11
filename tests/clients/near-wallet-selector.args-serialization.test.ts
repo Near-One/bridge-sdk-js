@@ -74,11 +74,11 @@ describe("NearWalletSelectorBridgeClient - Args Serialization", () => {
     await client.logMetadata("near:test.near")
 
     expect(mockWallet.signAndSendTransaction).toHaveBeenCalledTimes(1)
-    const callArgs = mockWallet.signAndSendTransaction.mock.calls[0][0]
-    const functionCallAction = callArgs.actions[0]
+    const callArgs = mockWallet.signAndSendTransaction.mock.calls[0]?.[0]
+    const functionCallAction = callArgs?.actions[0]
 
-    expect(functionCallAction.type).toBe("FunctionCall")
-    expect(functionCallAction.params.methodName).toBe("log_metadata")
+    expect(functionCallAction?.type).toBe("FunctionCall")
+    expect(functionCallAction?.params.methodName).toBe("log_metadata")
 
     // Validate args serialization using ACTUAL wallet selector round-trip
     validateArgsWithWalletSelector(functionCallAction, {
@@ -123,11 +123,11 @@ describe("NearWalletSelectorBridgeClient - Args Serialization", () => {
     await client.signTransfer(mockInitTransferEvent, "fee.near")
 
     expect(mockWallet.signAndSendTransaction).toHaveBeenCalledTimes(1)
-    const callArgs = mockWallet.signAndSendTransaction.mock.calls[0][0]
-    const functionCallAction = callArgs.actions[0]
+    const callArgs = mockWallet.signAndSendTransaction.mock.calls[0]?.[0]
+    const functionCallAction = callArgs?.actions[0]
 
-    expect(functionCallAction.type).toBe("FunctionCall")
-    expect(functionCallAction.params.methodName).toBe("sign_transfer")
+    expect(functionCallAction?.type).toBe("FunctionCall")
+    expect(functionCallAction?.params.methodName).toBe("sign_transfer")
 
     // Validate args serialization using ACTUAL wallet selector round-trip
     const najAction = internalActionToNaj(functionCallAction)
@@ -188,11 +188,11 @@ describe("NearWalletSelectorBridgeClient - Args Serialization", () => {
     })
 
     expect(mockWallet.signAndSendTransactions).toHaveBeenCalledTimes(1)
-    const callArgs = mockWallet.signAndSendTransactions.mock.calls[0][0]
-    const transactions = callArgs.transactions
+    const callArgs = mockWallet.signAndSendTransactions.mock.calls[0]?.[0]
+    const transactions = callArgs?.transactions
 
     // Find the ft_transfer_call transaction
-    const ftTransferTx = transactions.find((tx: any) =>
+    const ftTransferTx = transactions?.find((tx: any) =>
       tx.actions.some((action: any) => action.params?.methodName === "ft_transfer_call"),
     )
     expect(ftTransferTx).toBeDefined()
@@ -260,11 +260,11 @@ describe("NearWalletSelectorBridgeClient - Args Serialization", () => {
     })
 
     expect(mockWallet.signAndSendTransactions).toHaveBeenCalledTimes(1)
-    const callArgs = mockWallet.signAndSendTransactions.mock.calls[0][0]
-    const transactions = callArgs.transactions
+    const callArgs = mockWallet.signAndSendTransactions.mock.calls[0]?.[0]
+    const transactions = callArgs?.transactions
 
     // Find storage_deposit transactions
-    const storageDepositTxs = transactions.filter((tx: any) =>
+    const storageDepositTxs = transactions?.filter((tx: any) =>
       tx.actions.some((action: any) => action.params?.methodName === "storage_deposit"),
     )
 

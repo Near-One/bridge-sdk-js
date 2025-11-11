@@ -8,7 +8,6 @@ import type {
   BitcoinTransaction,
   BtcConnectorConfig,
   BtcDepositArgs,
-  NearBlocksReceiptsResponse,
 } from "../../src/types/bitcoin.js"
 import { ChainKind } from "../../src/types/chain.js"
 
@@ -120,7 +119,6 @@ const mockRealMerkleProof = {
   pos: 15, // Position in block
 }
 
-const UNKNOWN_TX_ID = "0".repeat(64)
 const UNCONFIRMED_TX_ID = "1".repeat(64)
 
 const mockRealBtcConfig: BtcConnectorConfig = {
@@ -382,7 +380,7 @@ describe("Bitcoin Integration Tests", () => {
       
       // Mock both getUtxoDepositAddress and getUtxoBridgeConfig calls
       mockWallet.provider.callFunction = vi.fn()
-        .mockImplementation((contractId: string, methodName: string) => {
+        .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_user_deposit_address") {
             return Promise.resolve(mockDepositResponse)
           }
@@ -453,9 +451,9 @@ describe("Bitcoin Integration Tests", () => {
       const config = (await client.getUtxoBridgeConfig(ChainKind.Btc)) as BtcConnectorConfig
       
       expect(config.min_deposit_amount).toBe(REAL_WITHDRAWAL_DATA.minDepositAmount)
-      
+
       // Verify the real transaction amount meets minimum requirements
-      const depositOutputValue = mockRealBitcoinTx.vout[REAL_WITHDRAWAL_DATA.realDepositVout].value
+      const depositOutputValue = mockRealBitcoinTx.vout[REAL_WITHDRAWAL_DATA.realDepositVout]?.value
       expect(depositOutputValue).toBeGreaterThan(parseInt(config.min_deposit_amount))
     })
   })
@@ -473,7 +471,7 @@ describe("Bitcoin Integration Tests", () => {
       }
 
       mockWallet.provider.callFunction = vi.fn()
-        .mockImplementation((contractId: string, methodName: string) => {
+        .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
             return Promise.resolve(mockUTXOs)
           }
@@ -558,7 +556,7 @@ describe("Bitcoin Integration Tests", () => {
       }
 
       mockWallet.provider.callFunction = vi.fn()
-        .mockImplementation((contractId: string, methodName: string) => {
+        .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
             return Promise.resolve(mockUTXOs)
           }
@@ -650,7 +648,7 @@ describe("Bitcoin Integration Tests", () => {
       }
 
       mockWallet.provider.callFunction = vi.fn()
-        .mockImplementation((contractId: string, methodName: string) => {
+        .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
             return Promise.resolve(mockUTXOs)
           }
@@ -743,7 +741,7 @@ describe("Bitcoin Integration Tests", () => {
       }
 
       mockWallet.provider.callFunction = vi.fn()
-        .mockImplementation((contractId: string, methodName: string) => {
+        .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
             return Promise.resolve(mockUTXOs)
           }
@@ -893,7 +891,7 @@ describe("Bitcoin Integration Tests", () => {
       }
 
       mockWallet.provider.callFunction = vi.fn()
-        .mockImplementation((contractId: string, methodName: string) => {
+        .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
             return Promise.resolve(mockUTXOs)
           }

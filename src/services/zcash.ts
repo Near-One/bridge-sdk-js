@@ -84,7 +84,7 @@ export class ZcashService {
       feeCalculator: (inputs, outputs) => this.calculateZcashFee(inputs, outputs),
       dustThreshold,
       minChange,
-      maxInputs: overrides?.maxInputs,
+      maxInputs: overrides?.maxInputs ?? undefined,
       sort: overrides?.sort ?? "largest-first",
     })
 

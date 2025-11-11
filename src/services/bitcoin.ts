@@ -57,7 +57,7 @@ export class BitcoinService {
 
     this.rpc = new UtxoRpcClient({
       url: rpcConfig?.url ?? defaultRpcUrl,
-      headers: rpcConfig?.headers,
+      headers: rpcConfig?.headers ?? undefined,
       chain: ChainKind.Btc,
     })
   }
@@ -126,8 +126,8 @@ export class BitcoinService {
       feeCalculator,
       dustThreshold,
       minChange,
-      maxInputs: overrides?.maxInputs ?? SIMPLE_UTXO_DEFAULTS.maxInputs,
-      sort: overrides?.sort ?? SIMPLE_UTXO_DEFAULTS.sort,
+      maxInputs: overrides?.maxInputs ?? SIMPLE_UTXO_DEFAULTS.maxInputs ?? undefined,
+      sort: overrides?.sort ?? SIMPLE_UTXO_DEFAULTS.sort ?? undefined,
     })
 
     const outputs = this.buildOutputs(selection, amount, targetAddress, changeAddress)
