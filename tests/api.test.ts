@@ -58,18 +58,14 @@ const mockFee = {
   native_token_fee: 5000,
   gas_fee: 1000,
   protocol_fee: 2000,
-  relayer_fee: 2000,
   usd_fee: 1.5,
-  max_gas_fee: null,
   transferred_token_fee: 500,
 }
 const normalizedFee = {
   native_token_fee: BigInt(5000),
   gas_fee: BigInt(1000),
   protocol_fee: BigInt(2000),
-  relayer_fee: BigInt(2000),
   usd_fee: 1.5,
-  max_gas_fee: null,
   transferred_token_fee: BigInt(500),
 }
 
