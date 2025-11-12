@@ -69,6 +69,7 @@ const GAS = {
   SIGN_BTC_TX: BigInt(3e14), // 300 TGas
   VERIFY_WITHDRAW: BigInt(5e12), // 5 TGas
   FAST_FIN_TRANSFER: BigInt(3e14), // 300 TGas
+  SUBMIT_BTC_TRANSFER: BigInt(3e14), // 300 TGas
 } as const
 
 /**
@@ -95,6 +96,26 @@ const BITCOIN_SIGNING_WAIT = {
 } as const
 
 /**
+ * Calculates bridge fee based on amount and fee configuration.
+ * Implements the same logic as the Rust contract's BridgeFee::get_fee method.
+ * @param bridgeFee - Bridge fee configuration with fee_min and fee_rate (u32 integer)
+ * @param amount - Transfer amount to calculate fee for
+ * @returns The calculated fee (max of percentage-based fee and minimum fee)
+ */
+function calculateBridgeFee(
+  bridgeFee: { fee_min: string; fee_rate: number },
+  amount: bigint,
+): bigint {
+  // Basis point denominator: 1 basis point = 0.01%, so 10000 = 100%.
+  const MAX_RATIO = 10000n
+  const feeRate = BigInt(bridgeFee.fee_rate)
+  const feeMin = BigInt(bridgeFee.fee_min)
+
+  const percentageFee = (amount * feeRate) / MAX_RATIO
+  return percentageFee > feeMin ? percentageFee : feeMin
+}
+
+/**
  * Represents the storage deposit balance for a NEAR account
  */
 type StorageDeposit = {
@@ -109,7 +130,7 @@ interface InitTransferMessageArgs {
   msg: string | null
 }
 
-interface InitTransferMessage {
+type InitTransferMessage = {
   recipient: OmniAddress
   fee: string
   native_token_fee: string
@@ -154,6 +175,19 @@ export class NearBridgeClient {
   ) {
     if (lockerAddress) {
       this.lockerAddress = lockerAddress
+    }
+    // Configure BigInt serialization for JSON.stringify
+    // biome-ignore lint/suspicious/noExplicitAny: TS will complain that `toJSON()` does not exist on BigInt
+    // biome-ignore lint/complexity/useLiteralKeys: TS will complain that `toJSON()` does not exist on BigInt
+    ;(BigInt.prototype as any)["toJSON"] = function () {
+      // The contract can't accept `origin_nonce` as a string, so we have to serialize it as a number.
+      // However, this can cause precision loss if the number is too large. We'll check if it's safe to convert
+      // and if not, we'll serialize it as a string and the contract will have to handle it.
+      const maxSafe = BigInt(Number.MAX_SAFE_INTEGER)
+      if (this <= maxSafe) {
+        return Number(this)
+      }
+      return this.toString()
     }
 
     // Initialize Bitcoin service
@@ -388,6 +422,21 @@ export class NearBridgeClient {
       })
     }
 
+    // Build message from options.maxGasFee if not explicitly provided
+    // Fail if both message and maxGasFee are provided to avoid ambiguity
+    if (transfer.message && transfer.options?.maxGasFee !== undefined) {
+      throw new Error(
+        "Cannot provide both 'message' and 'options.maxGasFee'. Use one or the other.",
+      )
+    }
+
+    let message = transfer.message
+    if (!message && transfer.options?.maxGasFee !== undefined) {
+      message = JSON.stringify({
+        MaxGasFee: transfer.options.maxGasFee.toString(),
+      })
+    }
+
     const initTransferMessage: InitTransferMessage = {
       recipient: transfer.recipient,
       fee: transfer.fee.toString(),
@@ -427,9 +476,14 @@ export class NearBridgeClient {
 
   parseSignTransferEvent(json: string): SignTransferEvent {
     const parsed = JSON.parse(json, (key, value) => {
-      // Convert only if the key matches *and* the value is a decimal string
-      if (key === "origin_nonce" && typeof value === "string" && /^\d+$/.test(value)) {
-        return BigInt(value)
+      // Convert origin_nonce from string or number to BigInt
+      if (key === "origin_nonce") {
+        if (typeof value === "string" && /^\d+$/.test(value)) {
+          return BigInt(value)
+        }
+        if (typeof value === "number") {
+          return BigInt(value)
+        }
       }
       return value
     })
@@ -451,18 +505,6 @@ export class NearBridgeClient {
     initTransferEvent: InitTransferEvent,
     feeRecipient: AccountId,
   ): Promise<SignTransferEvent> {
-    // biome-ignore lint/suspicious/noExplicitAny: TS will complain that `toJSON()` does not exist on BigInt
-    // biome-ignore lint/complexity/useLiteralKeys: TS will complain that `toJSON()` does not exist on BigInt
-    ;(BigInt.prototype as any)["toJSON"] = function () {
-      // The contract can't accept `origin_nonce` as a string, so we have to serialize it as a number.
-      // However, this can cause precision loss if the number is too large. We'll check if it's safe to convert
-      // and if not, we'll serialize it as a string and the contract will have to handle it.
-      const maxSafe = BigInt(Number.MAX_SAFE_INTEGER)
-      if (this <= maxSafe) {
-        return Number(this)
-      }
-      return this.toString()
-    }
     const args: SignTransferArgs = {
       transfer_id: {
         origin_chain: ChainKind[getChain(initTransferEvent.transfer_message.sender)],
@@ -795,8 +837,8 @@ export class NearBridgeClient {
       },
     }
 
-    const bridgeFeeMin = BigInt(config.withdraw_bridge_fee.fee_min)
-    const totalAmount = amount + plan.fee + bridgeFeeMin
+    const bridgeFee = calculateBridgeFee(config.withdraw_bridge_fee, amount)
+    const totalAmount = amount + plan.fee + bridgeFee
 
     const tx = await this.wallet.signAndSendTransaction({
       receiverId: token,
@@ -836,6 +878,103 @@ export class NearBridgeClient {
     }
 
     return { pendingId, nearTxHash: tx.transaction.hash }
+  }
+
+  /**
+   * Creates NEAR -> UTXO chain transfer (NEAR -> BTC/Zcash flow start, option #2)
+   * To be called after initTransfer() that sends tokens to UTXO chain receiver address
+   */
+  async submitBitcoinTransfer(initTransferEvent: InitTransferEvent): Promise<string> {
+    const recipientRaw = initTransferEvent.transfer_message.recipient
+    const recipientParts = recipientRaw.split(":")
+    if (recipientParts.length < 2 || !recipientParts[1]) {
+      throw new Error(`Malformed recipient address: "${recipientRaw}"`)
+    }
+
+    // Validate recipient chain is a UTXO chain
+    const recipientChain = getChain(recipientRaw)
+    if (recipientChain !== ChainKind.Btc && recipientChain !== ChainKind.Zcash) {
+      throw new Error(
+        `Invalid recipient chain: expected BTC or Zcash, got ${ChainKind[recipientChain] ?? recipientChain}`,
+      )
+    }
+
+    const recipientAddress = recipientParts[1]
+    const amount =
+      BigInt(initTransferEvent.transfer_message.amount) -
+      BigInt(initTransferEvent.transfer_message.fee.fee)
+    let maxGasFee = 0n
+    const transferMsg = initTransferEvent.transfer_message.msg
+    if (transferMsg) {
+      try {
+        const parsedMsg = JSON.parse(transferMsg)
+        const parsedMaxFee = parsedMsg?.MaxGasFee
+        if (parsedMaxFee !== undefined && parsedMaxFee !== null) {
+          maxGasFee = BigInt(parsedMaxFee)
+        }
+      } catch (err) {
+        throw new Error(
+          `Failed to parse transfer message: ${err instanceof Error ? err.message : String(err)}`,
+        )
+      }
+    }
+
+    const utxos = await this.getUtxoAvailableOutputs(recipientChain)
+    const utxoConfig = await this.getUtxoBridgeConfig(recipientChain)
+
+    const withdrawFee = calculateBridgeFee(utxoConfig.withdraw_bridge_fee, amount)
+
+    // Verify that amount covers the withdrawal fee
+    if (amount <= withdrawFee) {
+      throw new Error(
+        `Transfer amount (${amount}) must be greater than withdrawal fee (${withdrawFee})`,
+      )
+    }
+
+    // Verify that max gas fee is reasonable if provided
+    if (maxGasFee > 0n && maxGasFee + withdrawFee > amount) {
+      throw new Error(
+        `Max gas fee (${maxGasFee}) plus withdrawal fee (${withdrawFee}) cannot exceed transfer amount (${amount})`,
+      )
+    }
+
+    const plan = this.buildUtxoWithdrawalPlan(
+      recipientChain,
+      utxos,
+      amount - withdrawFee,
+      recipientAddress,
+      utxoConfig,
+    )
+
+    const msg: InitBtcTransferMsg = {
+      Withdraw: {
+        target_btc_address: recipientAddress,
+        input: plan.inputs,
+        output: plan.outputs,
+        max_gas_fee: maxGasFee,
+      },
+    }
+
+    const tx = await this.wallet.signAndSendTransaction({
+      receiverId: this.lockerAddress,
+      actions: [
+        actionCreators.functionCall(
+          "submit_transfer_to_utxo_chain_connector",
+          {
+            transfer_id: {
+              origin_chain: ChainKind[getChain(initTransferEvent.transfer_message.sender)],
+              origin_nonce: BigInt(initTransferEvent.transfer_message.origin_nonce),
+            },
+            msg: JSON.stringify(msg),
+          },
+          GAS.SUBMIT_BTC_TRANSFER,
+          BigInt(0),
+        ),
+      ],
+      waitUntil: "FINAL",
+    })
+
+    return tx.transaction.hash
   }
 
   async signUtxoTransaction(

@@ -131,13 +131,13 @@ const mockRealBtcConfig: BtcConnectorConfig = {
   confirmations_delta: 0,
   deposit_bridge_fee: {
     fee_min: "1000",
-    fee_rate: 0.002,
-    protocol_fee_rate: 0.001,
+    fee_rate: 20,
+    protocol_fee_rate: 10,
   },
   withdraw_bridge_fee: {
     fee_min: "2000",
-    fee_rate: 0.003,
-    protocol_fee_rate: 0.0015,
+    fee_rate: 30,
+    protocol_fee_rate: 15,
   },
   min_deposit_amount: REAL_WITHDRAWAL_DATA.minDepositAmount,
   min_withdraw_amount: REAL_WITHDRAWAL_DATA.minWithdrawAmount,
@@ -422,7 +422,7 @@ describe("Bitcoin Integration Tests", () => {
       // Verify the correct parameters were passed to NEAR contract
       expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith(
         expect.objectContaining({
-          receiverId: "brg-dev.testnet",
+          receiverId: "btc-connector.n-bridge.testnet",
           actions: [
             expect.objectContaining({
               functionCall: expect.objectContaining({
@@ -797,12 +797,12 @@ describe("Bitcoin Integration Tests", () => {
       // Verify both calls were made correctly
       expect(mockWallet.provider.callFunction).toHaveBeenCalledTimes(2)
       expect(mockWallet.provider.callFunction).toHaveBeenNthCalledWith(1, 
-        "brg-dev.testnet",
+        "btc-connector.n-bridge.testnet",
         "get_config",
         {}
       )
       expect(mockWallet.provider.callFunction).toHaveBeenNthCalledWith(2,
-        "brg-dev.testnet",
+        "btc-connector.n-bridge.testnet",
         "get_user_deposit_address",
         { deposit_msg: { recipient_id: "test.near" } }
       )

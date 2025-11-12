@@ -92,13 +92,13 @@ const mockBtcConnectorConfig: BtcConnectorConfig = {
   confirmations_delta: 0,
   deposit_bridge_fee: {
     fee_min: "1000",
-    fee_rate: 0.002,
-    protocol_fee_rate: 0.001,
+    fee_rate: 20,
+    protocol_fee_rate: 10,
   },
   withdraw_bridge_fee: {
     fee_min: "2000",
-    fee_rate: 0.003,
-    protocol_fee_rate: 0.0015,
+    fee_rate: 30,
+    protocol_fee_rate: 15,
   },
   min_deposit_amount: "10000",
   min_withdraw_amount: "20000",
@@ -279,9 +279,9 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       expect(config).toEqual(mockBtcConnectorConfig)
       expect(config.min_deposit_amount).toBe("10000")
       expect(config.min_withdraw_amount).toBe("20000")
-      expect(config.deposit_bridge_fee.fee_rate).toBe(0.002)
+      expect(config.deposit_bridge_fee.fee_rate).toBe(20)
       expect(mockWallet.provider.callFunction).toHaveBeenCalledWith(
-        "brg-dev.testnet", // from config.addresses.btc.btcConnector
+        "btc-connector.n-bridge.testnet", // from config.addresses.btc.btcConnector
         "get_config",
         {},
       )
@@ -309,7 +309,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       expect(result.depositArgs.deposit_msg.recipient_id).toBe(REAL_TEST_DATA.testAccount)
 
       expect(mockWallet.provider.callFunction).toHaveBeenCalledWith(
-        "brg-dev.testnet",
+        "btc-connector.n-bridge.testnet",
         "get_user_deposit_address",
         {
           deposit_msg: {
@@ -391,7 +391,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       // Verify the call was made with correct receiverId
       expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith(
         expect.objectContaining({
-          receiverId: "brg-dev.testnet",
+          receiverId: "btc-connector.n-bridge.testnet",
           actions: expect.arrayContaining([
             expect.objectContaining({
               functionCall: expect.objectContaining({
@@ -437,7 +437,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
 
         expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith(
           expect.objectContaining({
-            receiverId: "brg-dev.testnet",
+            receiverId: "btc-connector.n-bridge.testnet",
             actions: [
               expect.objectContaining({
                 functionCall: expect.objectContaining({

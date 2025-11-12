@@ -1,7 +1,7 @@
 import type { OmniAddress } from "../types/index.js"
 import { ChainKind } from "../types/index.js"
 
-type ChainPrefix = "eth" | "near" | "sol" | "arb" | "base" | "bnb"
+type ChainPrefix = "eth" | "near" | "sol" | "arb" | "base" | "bnb" | "btc" | "zec"
 
 // Type helpers for EVM chains
 export type EVMChainKind = ChainKind.Eth | ChainKind.Base | ChainKind.Arb | ChainKind.Bnb
@@ -37,6 +37,8 @@ export const getChain = (addr: OmniAddress): ChainKind => {
     arb: ChainKind.Arb,
     base: ChainKind.Base,
     bnb: ChainKind.Bnb,
+    btc: ChainKind.Btc,
+    zec: ChainKind.Zcash,
   } as const
 
   return chainMapping[prefix]
