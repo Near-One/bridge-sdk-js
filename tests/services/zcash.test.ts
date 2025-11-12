@@ -36,8 +36,8 @@ describe("ZcashService buildWithdrawalPlan", () => {
     ])
     expect(plan.outputs).toHaveLength(2)
     expect(plan.fee).toBeGreaterThan(0n)
-    expect(plan.outputs[0].script_pubkey).toBe(`script:${targetAddress}`)
-    expect(plan.outputs[1].script_pubkey).toBe(`script:${changeAddress}`)
+    expect(plan.outputs[0]?.script_pubkey).toBe(`script:${targetAddress}`)
+    expect(plan.outputs[1]?.script_pubkey).toBe(`script:${changeAddress}`)
 
     scriptSpy.mockRestore()
   })

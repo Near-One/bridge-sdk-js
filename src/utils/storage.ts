@@ -75,7 +75,12 @@ export function calculateStorageAccountId(transferMessage: TransferMessageForSto
 }
 
 function parseOmniAddress(token: string) {
-  const [chain, address] = token.split(":", 2)
+  const parts = token.split(":", 2)
+  const chain = parts[0]
+  const address = parts[1]
+  if (!address) {
+    throw new Error(`Invalid token address format: ${token}`)
+  }
   const decodeHex = (addr: string) => Array.from(hex.decode(addr.slice(2)))
   const decodeBase58 = (addr: string) => Array.from(bs58.decode(addr))
 

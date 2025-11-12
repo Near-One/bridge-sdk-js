@@ -49,42 +49,6 @@ const mockMerkleProof = {
   pos: 0,
 }
 
-const mockNearBlocksResponse = {
-  txns: [
-    {
-      transaction_hash: "near_tx_hash_123",
-      included_in_block_hash: "near_block_hash",
-      block_timestamp: "2024-01-01T00:00:00.000Z",
-      signer_account_id: "relayer.testnet",
-      receiver_account_id: "btc-connector.testnet",
-      actions: [
-        {
-          action: "FunctionCall",
-          method: "sign_btc_transaction",
-          args: '{"btc_pending_id":"test_pending_123","sign_index":0}',
-        },
-      ],
-    },
-  ],
-}
-
-const mockUTXOs: UTXO[] = [
-  {
-    path: "m/44'/1'/0'/0/0",
-    tx_bytes: new Uint8Array([0x02, 0x00, 0x00, 0x00]), // Mock transaction bytes
-    vout: 0,
-    balance: "100000",
-    txid: "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123451",
-  },
-  {
-    path: "m/44'/1'/0'/0/1",
-    tx_bytes: new Uint8Array([0x02, 0x00, 0x00, 0x01]),
-    vout: 1,
-    balance: "50000",
-    txid: "b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef12345678",
-  },
-]
-
 // Mock server setup
 const BITCOIN_RPC_URL = "https://rpc.testnet.example.com"
 const BITCOIN_API_URL = "https://btc.example.com/testnet/api"
@@ -156,21 +120,12 @@ const server = setupServer(
     })
   }),
 
-  // NearBlocks API endpoint
-  http.get("https://api-testnet.nearblocks.io/v1/account/cosmosfirst.testnet/receipts", () => {
-    return HttpResponse.json(mockNearBlocksResponse)
-  }),
-
   // Error cases
   http.get(`${BITCOIN_API_URL}/tx/invalid_hash/merkle-proof`, () => {
     return new HttpResponse(null, { status: 404 })
   }),
 
   http.get(`${BITCOIN_API_URL}/tx/invalid_hash`, () => {
-    return new HttpResponse(null, { status: 404 })
-  }),
-
-  http.get("https://api-testnet.nearblocks.io/v1/account/nonexistent.testnet/receipts", () => {
     return new HttpResponse(null, { status: 404 })
   }),
 )
@@ -290,7 +245,7 @@ describe("BitcoinService", () => {
     it("should throw error for invalid transaction", async () => {
       // Mock server will return error for this specific hex
       server.use(
-      http.post(`${BITCOIN_API_URL}/tx`, ({ request }) => {
+      http.post(`${BITCOIN_API_URL}/tx`, () => {
           return new HttpResponse("Transaction decode failed", { status: 400 })
         })
       )

@@ -5,7 +5,7 @@ import { buildBitcoinMerkleProof, type UtxoDepositProof } from "./index.js"
 
 export interface UtxoRpcConfig {
   url: string
-  headers?: Record<string, string>
+  headers?: Record<string, string> | undefined
   chain: UtxoChain
 }
 

@@ -195,6 +195,32 @@ interface ApiClientConfig {
   baseUrl?: string
 }
 
+// Zod schemas for API request params (explicit properties, no index signatures)
+const TransferStatusParamsSchema = z.object({
+  origin_chain: z.string().optional(),
+  origin_nonce: z.string().optional(),
+  transaction_hash: z.string().optional(),
+})
+
+const FindTransfersParamsSchema = z.object({
+  offset: z.string(),
+  limit: z.string(),
+  sender: z.string().optional(),
+  transaction_id: z.string().optional(),
+})
+
+const UtxoDepositAddressBodySchema = z.object({
+  chain: UtxoChainParamSchema,
+  recipient: z.string(),
+  post_actions: z.array(PostActionSchema).optional(),
+  extra_msg: z.string().optional(),
+})
+
+// Infer types from schemas
+type TransferStatusParams = z.infer<typeof TransferStatusParamsSchema>
+type FindTransfersParams = z.infer<typeof FindTransfersParamsSchema>
+type UtxoDepositAddressBody = z.infer<typeof UtxoDepositAddressBodySchema>
+
 class ApiError extends Error {
   constructor(
     message: string,
@@ -240,10 +266,12 @@ export class OmniBridgeAPI {
     return schema.parse(data)
   }
 
-  private buildUrl(path: string, params: Record<string, string> = {}): URL {
+  private buildUrl(path: string, params: Record<string, string | undefined> = {}): URL {
     const url = new URL(`${this.baseUrl}${path}`)
     for (const [key, value] of Object.entries(params)) {
-      url.searchParams.set(key, value)
+      if (value !== undefined) {
+        url.searchParams.set(key, value)
+      }
     }
     return url
   }
@@ -251,7 +279,7 @@ export class OmniBridgeAPI {
   async getTransferStatus(
     options: { originChain: Chain; originNonce: number } | { transactionHash: string },
   ): Promise<TransferStatus[]> {
-    const params: Record<string, string> = {}
+    const params: TransferStatusParams = {}
 
     if ("originChain" in options) {
       params.origin_chain = options.originChain
@@ -282,7 +310,7 @@ export class OmniBridgeAPI {
   async getTransfer(
     options: { originChain: Chain; originNonce: number } | { transactionHash: string },
   ): Promise<Transfer[]> {
-    const params: Record<string, string> = {}
+    const params: TransferStatusParams = {}
 
     if ("originChain" in options) {
       params.origin_chain = options.originChain
@@ -298,7 +326,7 @@ export class OmniBridgeAPI {
   async findOmniTransfers(query: TransfersQuery): Promise<Transfer[]> {
     const params = TransfersQuerySchema.parse(query)
 
-    const urlParams: Record<string, string> = {
+    const urlParams: FindTransfersParams = {
       offset: params.offset.toString(),
       limit: params.limit.toString(),
     }
@@ -322,7 +350,7 @@ export class OmniBridgeAPI {
     postActions?: PostAction[] | null,
     extraMsg?: string | null,
   ): Promise<UtxoDepositAddressResponse> {
-    const body: Record<string, unknown> = {
+    const body: UtxoDepositAddressBody = {
       chain,
       recipient,
     }

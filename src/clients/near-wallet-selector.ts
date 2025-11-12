@@ -78,11 +78,11 @@ type InitTransferMessage = {
   recipient: OmniAddress
   fee: string
   native_token_fee: string
-  msg?: string
+  msg?: string | undefined
 }
 
 interface StorageDepositOptions {
-  additionalTransactions?: Array<Optional<Transaction, "signerId">>
+  additionalTransactions?: Array<Optional<Transaction, "signerId">> | undefined
 }
 
 interface InitTransferOptions extends StorageDepositOptions {}
@@ -135,7 +135,11 @@ export class NearWalletSelectorBridgeClient {
       throw new Error("Token address must be on NEAR")
     }
 
-    const [_, tokenAccountId] = tokenAddress.split(":")
+    const parts = tokenAddress.split(":")
+    const tokenAccountId = parts[1]
+    if (!tokenAccountId) {
+      throw new Error("Invalid token address format")
+    }
     const args: LogMetadataArgs = { token_id: tokenAccountId }
 
     const wallet = await this.selector.wallet()
@@ -320,7 +324,11 @@ export class NearWalletSelectorBridgeClient {
     if (getChain(transfer.tokenAddress) !== ChainKind.Near) {
       throw new Error("Token address must be on NEAR")
     }
-    const tokenAddress = transfer.tokenAddress.split(":")[1]
+    const parts = transfer.tokenAddress.split(":")
+    const tokenAddress = parts[1]
+    if (!tokenAddress) {
+      throw new Error("Invalid token address format")
+    }
 
     // First, check if the FT has the token locker contract registered for storage
     const lockerStorage = await this.viewFunction({
@@ -406,11 +414,15 @@ export class NearWalletSelectorBridgeClient {
     if (getChain(transfer.tokenAddress) !== ChainKind.Near) {
       throw new Error("Token address must be on NEAR")
     }
-    const tokenAddress = transfer.tokenAddress.split(":")[1]
+    const parts = transfer.tokenAddress.split(":")
+    const tokenAddress = parts[1]
+    if (!tokenAddress) {
+      throw new Error("Invalid token address format")
+    }
 
     // Pass through any additional transactions to storageDeposit
     const transactions = await this.storageDeposit(transfer, {
-      additionalTransactions: options.additionalTransactions,
+      additionalTransactions: options.additionalTransactions ?? undefined,
     })
 
     // Build message from options.maxGasFee if not explicitly provided
@@ -877,7 +889,11 @@ export class NearWalletSelectorBridgeClient {
       throw new Error(`No bridged token found on NEAR for ${omniTokenAddress}`)
     }
 
-    const nearTokenId = nearTokenAddress.split(":")[1] // Extract account ID from near:account.near
+    const parts = nearTokenAddress.split(":")
+    const nearTokenId = parts[1]
+    if (!nearTokenId) {
+      throw new Error("Invalid NEAR token address format")
+    }
 
     // Step 3: Get relayer account
     const wallet = await this.selector.wallet()

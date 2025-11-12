@@ -17,9 +17,9 @@ export type FeeCalculator = (inputCount: number, outputCount: number) => bigint
 export interface UtxoSelectionOptions {
   feeCalculator: FeeCalculator
   dustThreshold: bigint
-  minChange?: bigint
-  maxInputs?: number
-  sort?: "largest-first" | "smallest-first"
+  minChange?: bigint | undefined
+  maxInputs?: number | undefined
+  sort?: "largest-first" | "smallest-first" | undefined
 }
 
 export interface UtxoSelectionResult {
@@ -90,7 +90,11 @@ export function buildBitcoinMerkleProof(txids: string[], targetTxid: string) {
 
   const leaves = txids.map((id) => Buffer.from(hex.decode(id)))
   const tree = new MerkleTree(leaves, sha256, { isBitcoinTree: true })
-  const proof = tree.getProof(leaves[targetIndex], targetIndex)
+  const targetLeaf = leaves[targetIndex]
+  if (!targetLeaf) {
+    throw new Error("Target leaf not found")
+  }
+  const proof = tree.getProof(targetLeaf, targetIndex)
 
   return {
     index: targetIndex,

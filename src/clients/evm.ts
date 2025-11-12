@@ -21,6 +21,55 @@ const BRIDGE_TOKEN_FACTORY_ABI = [
   "function logMetadata(address tokenAddress) external returns (string)",
 ] as const
 
+// Typed interfaces for contracts (explicit methods, no index signatures)
+interface BridgeTokenFactory extends ethers.BaseContract {
+  deployToken(
+    signatureData: ethers.BytesLike,
+    metadata: TokenMetadata,
+    overrides?: ethers.Overrides,
+  ): Promise<ethers.ContractTransactionResponse>
+  finTransfer(
+    signature: ethers.BytesLike,
+    transferPayload: BridgeDeposit,
+    overrides?: ethers.Overrides,
+  ): Promise<ethers.ContractTransactionResponse>
+  initTransfer(
+    tokenAddress: string,
+    amount: bigint,
+    fee: bigint,
+    nativeFee: bigint,
+    recipient: string,
+    message: string,
+    overrides?: ethers.Overrides,
+  ): Promise<ethers.ContractTransactionResponse>
+  logMetadata(
+    tokenAddress: string,
+    overrides?: ethers.Overrides,
+  ): Promise<ethers.ContractTransactionResponse>
+  getAddress(): Promise<string>
+}
+
+interface ERC20Contract extends ethers.BaseContract {
+  approve(
+    spender: string,
+    amount: bigint,
+    overrides?: ethers.Overrides,
+  ): Promise<ethers.ContractTransactionResponse>
+  allowance(owner: string, spender: string): Promise<bigint>
+}
+
+// Typed interface for InitTransfer event args
+interface InitTransferEventArgs {
+  sender: string
+  tokenAddress: string
+  originNonce: bigint
+  amount: bigint
+  fee: bigint
+  nativeTokenFee: bigint
+  recipient: string
+  message: string
+}
+
 /**
  * Gas limits for EVM transactions mapped by chain tag
  * @internal
@@ -44,7 +93,7 @@ const GAS_LIMIT = {
  * EVM blockchain implementation of the bridge client
  */
 export class EvmBridgeClient {
-  private factory: ethers.Contract
+  private factory: BridgeTokenFactory
 
   /**
    * Creates a new EVM bridge client instance
@@ -75,7 +124,11 @@ export class EvmBridgeClient {
         throw new Error(`Factory address not configured for chain ${chain}`)
     }
 
-    this.factory = new ethers.Contract(bridgeAddress, BRIDGE_TOKEN_FACTORY_ABI, this.wallet)
+    this.factory = new ethers.Contract(
+      bridgeAddress,
+      BRIDGE_TOKEN_FACTORY_ABI,
+      this.wallet,
+    ) as unknown as BridgeTokenFactory
   }
 
   /**
@@ -93,7 +146,11 @@ export class EvmBridgeClient {
     }
 
     // Extract token address from OmniAddress
-    const [_, tokenAccountId] = tokenAddress.split(":")
+    const parts = tokenAddress.split(":")
+    const tokenAccountId = parts[1]
+    if (!tokenAccountId) {
+      throw new Error("Invalid token address format")
+    }
 
     try {
       // Call logMetadata function on the contract
@@ -127,7 +184,13 @@ export class EvmBridgeClient {
     })
 
     const receipt = await tx.wait()
-    const deployedAddress = receipt.events?.[0]?.args?.token || receipt.contractAddress
+    if (!receipt) {
+      throw new Error("Failed to get transaction receipt")
+    }
+    const deployedAddress =
+      ("events" in receipt && Array.isArray(receipt.events) && receipt.events[0]?.args?.token) ||
+      ("contractAddress" in receipt && receipt.contractAddress) ||
+      ""
 
     return {
       txHash: tx.hash,
@@ -152,12 +215,16 @@ export class EvmBridgeClient {
       "function allowance(address owner, address spender) external view returns (uint256)",
     ]
 
-    const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, this.wallet)
+    const tokenContract = new ethers.Contract(
+      tokenAddress,
+      erc20Abi,
+      this.wallet,
+    ) as unknown as ERC20Contract
 
     try {
       const tx = await tokenContract.approve(await this.factory.getAddress(), amount)
       const receipt = await tx.wait()
-      return receipt.hash
+      return receipt?.hash ?? ""
     } catch (error) {
       throw new Error(
         `Failed to approve token: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -190,7 +257,11 @@ export class EvmBridgeClient {
     const erc20Abi = [
       "function allowance(address owner, address spender) external view returns (uint256)",
     ]
-    const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, this.wallet)
+    const tokenContract = new ethers.Contract(
+      tokenAddress,
+      erc20Abi,
+      this.wallet,
+    ) as unknown as ERC20Contract
 
     try {
       const allowance = await tokenContract.allowance(owner, await this.factory.getAddress())
@@ -220,7 +291,11 @@ export class EvmBridgeClient {
       throw new Error(`Token address must be on ${ChainKind[this.chain]} chain`)
     }
 
-    const [_, tokenAccountId] = transfer.tokenAddress.split(":")
+    const parts = transfer.tokenAddress.split(":")
+    const tokenAccountId = parts[1]
+    if (!tokenAccountId) {
+      throw new Error("Invalid token address format")
+    }
 
     // Check and approve ERC20 tokens if needed
     if (!this.isNativeToken(omniAddress(this.chain, tokenAccountId))) {
@@ -264,6 +339,9 @@ export class EvmBridgeClient {
         },
       )
       const receipt = await tx.wait()
+      if (!receipt) {
+        throw new Error("Failed to get transaction receipt")
+      }
       return receipt.hash
     } catch (error) {
       throw new Error(
@@ -282,19 +360,34 @@ export class EvmBridgeClient {
     transferMessage: TransferMessagePayload,
     signature: MPCSignature,
   ): Promise<string> {
+    const tokenParts = transferMessage.token_address.split(":")
+    const tokenAddress = tokenParts[1]
+    if (!tokenAddress) {
+      throw new Error("Invalid token address format")
+    }
+
+    const recipientParts = transferMessage.recipient.split(":")
+    const recipient = recipientParts[1]
+    if (!recipient) {
+      throw new Error("Invalid recipient address format")
+    }
+
     const bridgeDeposit: BridgeDeposit = {
       destinationNonce: BigInt(transferMessage.destination_nonce),
       originChain: ChainKind[transferMessage.transfer_id.origin_chain as keyof typeof ChainKind],
       originNonce: BigInt(transferMessage.transfer_id.origin_nonce),
-      tokenAddress: transferMessage.token_address.split(":")[1],
+      tokenAddress,
       amount: BigInt(transferMessage.amount),
-      recipient: transferMessage.recipient.split(":")[1],
+      recipient,
       feeRecipient: transferMessage.fee_recipient ?? "",
     }
 
     try {
       const tx = await this.factory.finTransfer(signature.toBytes(true), bridgeDeposit)
       const receipt = await tx.wait()
+      if (!receipt) {
+        throw new Error("Failed to get transaction receipt")
+      }
       return receipt.hash
     } catch (error) {
       throw new Error(
@@ -341,18 +434,16 @@ export class EvmBridgeClient {
           throw new Error("InitTransfer event not found in transaction logs")
         }
 
+        const args = parsedLog.args as unknown as InitTransferEventArgs
         return {
-          sender: parsedLog.args.sender,
-          tokenAddress: parsedLog.args.tokenAddress,
-          originNonce:
-            typeof parsedLog.args.originNonce === "bigint"
-              ? parsedLog.args.originNonce
-              : parsedLog.args.originNonce.toBigInt(),
-          amount: parsedLog.args.amount,
-          fee: parsedLog.args.fee,
-          nativeTokenFee: parsedLog.args.nativeTokenFee,
-          recipient: parsedLog.args.recipient,
-          message: parsedLog.args.message,
+          sender: args.sender,
+          tokenAddress: args.tokenAddress,
+          originNonce: BigInt(args.originNonce),
+          amount: args.amount,
+          fee: args.fee,
+          nativeTokenFee: args.nativeTokenFee,
+          recipient: args.recipient,
+          message: args.message,
         }
       } catch {
         // Continue searching other logs if this one doesn't match
@@ -363,6 +454,7 @@ export class EvmBridgeClient {
   }
 
   private isNativeToken(omniAddress: OmniAddress): boolean {
-    return omniAddress.split(":")[1] === "0x0000000000000000000000000000000000000000"
+    const parts = omniAddress.split(":")
+    return parts[1] === "0x0000000000000000000000000000000000000000"
   }
 }

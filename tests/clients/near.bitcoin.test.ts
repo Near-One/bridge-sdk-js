@@ -10,7 +10,6 @@ import type {
   BtcDepositArgs,
 } from "../../src/types/bitcoin.js"
 import { ChainKind } from "../../src/types/chain.js"
-import type { ZcashService } from "../../src/services/zcash.js"
 
 // Set network to testnet for consistency
 setNetwork("testnet")
@@ -468,14 +467,14 @@ describe("NearBridgeClient Bitcoin Methods", () => {
 
       // Mock provider.callFunction to handle different contract calls
       mockWallet.provider.callFunction = vi.fn()
-        .mockImplementation((contractId: string, methodName: string) => {
+        .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
             return Promise.resolve({
               [`${validTxid}@0`]: {
-                path: mockUTXOs[0].path,
-                tx_bytes: mockUTXOs[0].tx_bytes,
-                vout: mockUTXOs[0].vout,
-                balance: mockUTXOs[0].balance,
+                path: mockUTXOs[0]?.path,
+                tx_bytes: mockUTXOs[0]?.tx_bytes,
+                vout: mockUTXOs[0]?.vout,
+                balance: mockUTXOs[0]?.balance,
                 // Note: txid will be extracted from the key by getAvailableUTXOs
               }
             })
@@ -512,16 +511,16 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       // Verify the transaction was called with correct receiver ID
       expect(mockWallet.signAndSendTransaction).toHaveBeenCalled()
       const calls = (mockWallet.signAndSendTransaction as any).mock.calls
-      expect(calls[0][0].receiverId).toBe("nbtc.n-bridge.testnet")
-      expect(calls[0][0].actions).toHaveLength(1)
-      expect(calls[0][0].actions[0]?.functionCall?.methodName).toBe("ft_transfer_call")
+      expect(calls[0]?.[0]?.receiverId).toBe("nbtc.n-bridge.testnet")
+      expect(calls[0]?.[0]?.actions).toHaveLength(1)
+      expect(calls[0]?.[0]?.actions[0]?.functionCall?.methodName).toBe("ft_transfer_call")
     })
 
     it("should throw error when pending ID not found in logs", async () => {
       // Mock the required dependencies
       const validTxid = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
       mockWallet.provider.callFunction = vi.fn()
-        .mockImplementation((contractId: string, methodName: string) => {
+        .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
             return Promise.resolve({
               [`${validTxid}@0`]: {
@@ -560,7 +559,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       // Mock the required dependencies
       const validTxid = "2345678901abcdef2345678901abcdef2345678901abcdef2345678901abcdef"
       mockWallet.provider.callFunction = vi.fn()
-        .mockImplementation((contractId: string, methodName: string) => {
+        .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
             return Promise.resolve({
               [`${validTxid}@0`]: {
@@ -652,7 +651,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
 
       const planSpy = vi
         .spyOn(client.bitcoinService, "buildWithdrawalPlan")
-        .mockImplementation((...args) => {
+        .mockImplementation(() => {
           return {
             inputs: ["ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff:0"],
             outputs: [
@@ -684,7 +683,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
 
       expect(result.pendingId).toBe("override_pending")
       expect(planSpy).toHaveBeenCalled()
-      const overrides = planSpy.mock.calls[0][5]
+      const overrides = planSpy.mock.calls[0]?.[5]
       expect(overrides).toMatchObject({ dustThreshold: 4321n, minChange: 4321n, maxInputs: 1 })
 
       planSpy.mockRestore()
@@ -925,7 +924,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       // Mock the required dependencies for initUtxoWithdrawal
       const validTxid = "5678901234abcdef5678901234abcdef5678901234abcdef5678901234abcdef"
       mockWallet.provider.callFunction = vi.fn()
-        .mockImplementation((contractId: string, methodName: string) => {
+        .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
             return Promise.resolve({
               [`${validTxid}@0`]: {
@@ -994,7 +993,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       // Mock the required dependencies
       const validTxid = "6789012345abcdef6789012345abcdef6789012345abcdef6789012345abcdef"
       mockWallet.provider.callFunction = vi.fn()
-        .mockImplementation((contractId: string, methodName: string) => {
+        .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
             return Promise.resolve({
               [`${validTxid}@0`]: {
@@ -1042,7 +1041,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       // Mock the required dependencies
       const validTxid = "3456789012abcdef3456789012abcdef3456789012abcdef3456789012abcdef"
       mockWallet.provider.callFunction = vi.fn()
-        .mockImplementation((contractId: string, methodName: string) => {
+        .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
             return Promise.resolve({
               [`${validTxid}@0`]: {
@@ -1081,7 +1080,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       // Mock the required dependencies
       const validTxid = "4567890123abcdef4567890123abcdef4567890123abcdef4567890123abcdef"
       mockWallet.provider.callFunction = vi.fn()
-        .mockImplementation((contractId: string, methodName: string) => {
+        .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
             return Promise.resolve({
               [`${validTxid}@0`]: {
@@ -1121,7 +1120,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       // Mock the required dependencies
       const validTxid = "5678901234abcdef5678901234abcdef5678901234abcdef5678901234abcdef"
       mockWallet.provider.callFunction = vi.fn()
-        .mockImplementation((contractId: string, methodName: string) => {
+        .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
             return Promise.resolve({
               [`${validTxid}@0`]: {

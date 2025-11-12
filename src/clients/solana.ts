@@ -152,7 +152,12 @@ export class SolanaBridgeClient {
    * @returns Promise resolving to transaction signature
    */
   async logMetadata(token: OmniAddress, payer?: Keypair): Promise<string> {
-    const tokenPublicKey = new PublicKey(token.split(":")[1])
+    const parts = token.split(":")
+    const tokenAddress = parts[1]
+    if (!tokenAddress) {
+      throw new Error("Invalid token address format")
+    }
+    const tokenPublicKey = new PublicKey(tokenAddress)
     const tokenProgram = await this.getTokenProgramForMint(tokenPublicKey)
 
     const [metadata] = PublicKey.findProgramAddressSync(
@@ -318,7 +323,12 @@ export class SolanaBridgeClient {
       }
     } else {
       // SPL token transfers
-      const mint = new PublicKey(transfer.tokenAddress.split(":")[1])
+      const parts = transfer.tokenAddress.split(":")
+      const mintAddress = parts[1]
+      if (!mintAddress) {
+        throw new Error("Invalid token address format")
+      }
+      const mint = new PublicKey(mintAddress)
       const tokenProgram = await this.getTokenProgramForMint(mint)
       const [from] = PublicKey.findProgramAddressSync(
         [payerPubKey.toBuffer(), tokenProgram.toBuffer(), mint.toBuffer()],
@@ -474,7 +484,12 @@ export class SolanaBridgeClient {
     if (getChain(address) !== ChainKind.Sol) {
       throw new Error("Token address must be on Solana")
     }
-    return address.split(":")[1]
+    const parts = address.split(":")
+    const solAddress = parts[1]
+    if (!solAddress) {
+      throw new Error("Invalid Solana address format")
+    }
+    return solAddress
   }
 
   private async isBridgedToken(token: PublicKey): Promise<boolean> {

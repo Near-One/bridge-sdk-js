@@ -134,7 +134,7 @@ type InitTransferMessage = {
   recipient: OmniAddress
   fee: string
   native_token_fee: string
-  msg?: string
+  msg?: string | undefined
 }
 
 /**
@@ -197,7 +197,8 @@ export class NearBridgeClient {
     this.utxoServices[ChainKind.Btc] = this.bitcoinService
 
     // Initialize Zcash service if API key configured via options or environment
-    const zcashApiKey = this.options.zcashApiKey || process.env.ZCASH_API_KEY
+    // biome-ignore lint/complexity/useLiteralKeys: process.env has index signature, requires bracket notation for noPropertyAccessFromIndexSignature
+    const zcashApiKey = this.options.zcashApiKey || process.env["ZCASH_API_KEY"]
     if (zcashApiKey) {
       this.zcashService = new ZcashService(addresses.zcash.rpcUrl, zcashApiKey)
       this.utxoServices[ChainKind.Zcash] = this.zcashService
@@ -231,7 +232,11 @@ export class NearBridgeClient {
       throw new Error("Token address must be on NEAR")
     }
 
-    const [_, tokenAccountId] = tokenAddress.split(":")
+    const parts = tokenAddress.split(":")
+    const tokenAccountId = parts[1]
+    if (!tokenAccountId) {
+      throw new Error("Invalid token address format")
+    }
     const args: LogMetadataArgs = { token_id: tokenAccountId }
 
     const outcome = await this.wallet.signAndSendTransaction({
@@ -392,7 +397,11 @@ export class NearBridgeClient {
     if (getChain(transfer.tokenAddress) !== ChainKind.Near) {
       throw new Error("Token address must be on NEAR")
     }
-    const tokenAddress = transfer.tokenAddress.split(":")[1]
+    const parts = transfer.tokenAddress.split(":")
+    const tokenAddress = parts[1]
+    if (!tokenAddress) {
+      throw new Error("Invalid token address format")
+    }
 
     // First, check if the FT has the token locker contract registered for storage
     await this.storageDepositForToken(tokenAddress)
@@ -432,7 +441,7 @@ export class NearBridgeClient {
       recipient: transfer.recipient,
       fee: transfer.fee.toString(),
       native_token_fee: transfer.nativeFee.toString(),
-      msg: message,
+      msg: transfer.message ?? undefined,
     }
     const args: InitTransferMessageArgs = {
       receiver_id: this.lockerAddress,
@@ -857,8 +866,13 @@ export class NearBridgeClient {
       throw new Error(`${chainLabel}: Pending transaction not found in NEAR logs`)
     }
 
-    const pendingData = JSON.parse(pendingLog.split("EVENT_JSON:")[1])
-    const pendingId = pendingData.data[0].btc_pending_id
+    const parts = pendingLog.split("EVENT_JSON:")
+    const jsonPart = parts[1]
+    if (!jsonPart) {
+      throw new Error(`${chainLabel}: Invalid log format`)
+    }
+    const pendingData = JSON.parse(jsonPart)
+    const pendingId = pendingData.data?.[0]?.btc_pending_id
     if (!pendingId) {
       throw new Error(`${chainLabel}: Pending transaction identifier missing in NEAR logs`)
     }
@@ -1003,7 +1017,12 @@ export class NearBridgeClient {
       throw new Error(`${chainLabel}: Signed transaction not found in NEAR logs`)
     }
 
-    const signedData = JSON.parse(signedLog.split("EVENT_JSON:")[1])
+    const parts = signedLog.split("EVENT_JSON:")
+    const jsonPart = parts[1]
+    if (!jsonPart) {
+      throw new Error(`${chainLabel}: Invalid log format`)
+    }
+    const signedData = JSON.parse(jsonPart)
     const txBytes = signedData.data?.[0]?.tx_bytes
     if (!Array.isArray(txBytes)) {
       throw new Error("Signed transaction bytes missing in logs")
@@ -1026,7 +1045,11 @@ export class NearBridgeClient {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const transfer = await api.getTransfer({ transactionHash: nearTxHash })
-        const signedTxHash = transfer[0].signed?.NearReceipt?.transaction_hash
+        const firstTransfer = transfer[0]
+        if (!firstTransfer) {
+          throw new Error(`${chainLabel}: No transfer found`)
+        }
+        const signedTxHash = firstTransfer.signed?.NearReceipt?.transaction_hash
         if (signedTxHash) {
           return signedTxHash
         }
@@ -1088,10 +1111,17 @@ export class NearBridgeClient {
     const { connector } = this.getUtxoConnector(chain)
     const result = await this.wallet.provider.callFunction(connector, "get_utxos_paged", {})
     const utxos = result as Record<string, UTXO>
-    return Object.entries(utxos).map(([key, utxo]) => ({
-      ...utxo,
-      txid: key.split("@")[0],
-    }))
+    return Object.entries(utxos).map(([key, utxo]) => {
+      const parts = key.split("@")
+      const txid = parts[0]
+      if (!txid) {
+        throw new Error(`Invalid UTXO key format: ${key}`)
+      }
+      return {
+        ...utxo,
+        txid,
+      }
+    })
   }
 
   async getUtxoBridgeConfig(chain: UtxoChain): Promise<BtcConnectorConfig> {
@@ -1308,7 +1338,11 @@ export class NearBridgeClient {
       throw new Error(`No bridged token found on NEAR for ${omniTokenAddress}`)
     }
 
-    const nearTokenId = nearTokenAddress.split(":")[1] // Extract account ID from near:account.near
+    const parts = nearTokenAddress.split(":")
+    const nearTokenId = parts[1]
+    if (!nearTokenId) {
+      throw new Error("Invalid NEAR token address format")
+    }
 
     // Step 3: Amounts and fees are passed directly - contract handles normalization internally
 

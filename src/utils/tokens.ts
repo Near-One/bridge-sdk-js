@@ -42,7 +42,8 @@ export function isBridgeToken(nearAddress: string): boolean {
  */
 export function parseOriginChain(nearAddress: string): ChainKind | null {
   // Check exact matches
-  if (nearAddress in CHAIN_PATTERNS) return CHAIN_PATTERNS[nearAddress]
+  const exactMatch = CHAIN_PATTERNS[nearAddress]
+  if (exactMatch !== undefined) return exactMatch
 
   // Check prefixed patterns
   if (/\.(omdep\.near|omnidep\.testnet|factory\.bridge\.(near|testnet))$/.test(nearAddress)) {

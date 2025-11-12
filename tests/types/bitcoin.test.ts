@@ -59,6 +59,7 @@ describe("Bitcoin Types", () => {
       expect(confirmedTx.vin).toHaveLength(1)
       expect(confirmedTx.vout).toHaveLength(1)
       expect(confirmedTx.fee).toBeGreaterThan(0)
+      expect(confirmedTx.vin[0]?.is_coinbase).toBe(false)
     })
 
     it("should handle unconfirmed transaction", () => {
@@ -111,7 +112,7 @@ describe("Bitcoin Types", () => {
         fee: 0,
       }
 
-      expect(coinbaseTx.vin[0].is_coinbase).toBe(true)
+      expect(coinbaseTx.vin[0]?.is_coinbase).toBe(true)
       expect(coinbaseTx.fee).toBe(0)
     })
   })
@@ -201,11 +202,11 @@ describe("Bitcoin Types", () => {
         },
       ]
 
-      expect(outputs[0].scriptpubkey_type).toBe("p2pkh")
-      expect(outputs[1].scriptpubkey_type).toBe("v0_p2wpkh")
-      expect(outputs[2].scriptpubkey_type).toBe("p2sh")
-      expect(outputs[3].scriptpubkey_type).toBe("op_return")
-      expect(outputs[3].value).toBe(0)
+      expect(outputs[0]?.scriptpubkey_type).toBe("p2pkh")
+      expect(outputs[1]?.scriptpubkey_type).toBe("v0_p2wpkh")
+      expect(outputs[2]?.scriptpubkey_type).toBe("p2sh")
+      expect(outputs[3]?.scriptpubkey_type).toBe("op_return")
+      expect(outputs[3]?.value).toBe(0)
     })
   })
 
@@ -376,7 +377,7 @@ describe("Bitcoin Types", () => {
 
       expect(btcDepositArgs.deposit_msg.recipient_id).toMatch(/\.near$/)
       expect(btcDepositArgs.deposit_msg.post_actions).toHaveLength(1)
-      expect(btcDepositArgs.deposit_msg.post_actions?.[0].amount).toBe(1000000n)
+      expect(btcDepositArgs.deposit_msg.post_actions?.[0]?.amount).toBe(1000000n)
     })
 
     it("should structure withdrawal message correctly", () => {
@@ -452,9 +453,9 @@ describe("Bitcoin Types", () => {
       }
 
       expect(response.txns).toHaveLength(1)
-      expect(response.txns[0].transaction_hash).toMatch(/^[0-9a-zA-Z]+$/)
-      expect(response.txns[0].actions[0].method).toBe("sign_btc_transaction")
-      expect(response.txns[0].actions[0].args).toContain("pending_123")
+      expect(response.txns[0]?.transaction_hash).toMatch(/^[0-9a-zA-Z]+$/)
+      expect(response.txns[0]?.actions[0]?.method).toBe("sign_btc_transaction")
+      expect(response.txns[0]?.actions[0]?.args).toContain("pending_123")
     })
 
     it("should handle different action types", () => {
@@ -484,9 +485,9 @@ describe("Bitcoin Types", () => {
       }
 
       expect(transaction.actions).toHaveLength(3)
-      expect(transaction.actions[0].action).toBe("FunctionCall")
-      expect(transaction.actions[1].action).toBe("Transfer")
-      expect(transaction.actions[2].action).toBe("CreateAccount")
+      expect(transaction.actions[0]?.action).toBe("FunctionCall")
+      expect(transaction.actions[1]?.action).toBe("Transfer")
+      expect(transaction.actions[2]?.action).toBe("CreateAccount")
     })
   })
 
@@ -537,7 +538,7 @@ describe("Bitcoin Types", () => {
       const omniAddress = `btc:${bitcoinAddress}` // Hypothetical future format
 
       expect(omniAddress).toMatch(/^btc:/)
-      expect(omniAddress.split(":")[1]).toBe(bitcoinAddress)
+      expect(omniAddress.split(":")?.[1]).toBe(bitcoinAddress)
     })
 
     it("should handle amount serialization for API calls", () => {
