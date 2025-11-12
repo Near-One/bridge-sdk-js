@@ -51,6 +51,13 @@ export interface InitBtcTransferMsg {
       value: number
       script_pubkey: string
     }[]
+    /**
+     * Maximum gas fee allowed for the withdrawal transaction.
+     * Units: satoshis.
+     * If specified, the bridge will not process withdrawals with a fee exceeding this value.
+     * Optional. Must be a positive integer if provided.
+     */
+    max_gas_fee?: bigint
   }
 }
 

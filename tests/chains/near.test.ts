@@ -786,4 +786,333 @@ describe("NearBridgeClient", () => {
       )
     })
   })
+
+  describe("submitBitcoinTransfer", () => {
+    const mockInitTransferEvent: InitTransferEvent = {
+      transfer_message: {
+        origin_nonce: 1,
+        token: mockTokenOmniAddress,
+        amount: "10000000",
+        recipient: "btc:bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+        fee: {
+          fee: "100000",
+          native_fee: "50000",
+        },
+        sender: "near:test-account.near",
+        msg: '{"MaxGasFee":500000}',
+        destination_nonce: 1,
+      },
+    }
+
+    const mockUtxos = [
+      {
+        txid: "mock-txid-1",
+        vout: 0,
+        value: 5000000,
+        confirmations: 6,
+      },
+      {
+        txid: "mock-txid-2",
+        vout: 1,
+        value: 8000000,
+        confirmations: 10,
+      },
+    ]
+
+    const mockBitcoinConfig = {
+      withdraw_bridge_fee: {
+        fee_min: "1000000",
+        fee_rate: 0,
+        protocol_fee_rate: 9000,
+      },
+      btc_fee_recipient: "btc:mock-fee-recipient",
+      btc_light_client: "btc-light-client.near",
+      max_deposit_amount: "100000000",
+      min_deposit_amount: "10000",
+    }
+
+    beforeEach(() => {
+      // Mock UTXO methods
+      vi.spyOn(client, "getUtxoAvailableOutputs").mockResolvedValue(mockUtxos as any)
+      vi.spyOn(client, "getUtxoBridgeConfig").mockResolvedValue(mockBitcoinConfig as any)
+      vi.spyOn(client as any, "buildUtxoWithdrawalPlan").mockReturnValue({
+        inputs: [
+          {
+            txid: "mock-txid-1",
+            vout: 0,
+            value: 5000000,
+          },
+        ],
+        outputs: [
+          {
+            address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+            value: 8500000,
+          },
+        ],
+        fee: 500000,
+      } as any)
+
+      mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue({
+        transaction: { hash: mockTxHash },
+      })
+    })
+
+    it("should successfully submit bitcoin transfer with message", async () => {
+      const result = await client.submitBitcoinTransfer(mockInitTransferEvent)
+
+      expect(client.getUtxoAvailableOutputs).toHaveBeenCalledWith(ChainKind.Btc)
+      expect(client.getUtxoBridgeConfig).toHaveBeenCalledWith(ChainKind.Btc)
+      expect(mockWallet.signAndSendTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actions: [
+            expect.objectContaining({
+              enum: "functionCall",
+              functionCall: expect.objectContaining({
+                methodName: "submit_transfer_to_utxo_chain_connector",
+              }),
+            }),
+          ],
+        }),
+      )
+      expect(result).toBe(mockTxHash)
+    })
+
+    it("should successfully submit bitcoin transfer without message", async () => {
+      const eventWithoutMsg: InitTransferEvent = {
+        transfer_message: {
+          ...mockInitTransferEvent.transfer_message,
+          msg: "",
+        },
+      }
+
+      const result = await client.submitBitcoinTransfer(eventWithoutMsg)
+
+      expect(result).toBe(mockTxHash)
+    })
+
+    it("should throw error for malformed recipient address", async () => {
+      const invalidEvent: InitTransferEvent = {
+        transfer_message: {
+          ...mockInitTransferEvent.transfer_message,
+          recipient: "invalid-address" as OmniAddress,
+        },
+      }
+
+      await expect(client.submitBitcoinTransfer(invalidEvent)).rejects.toThrow(
+        'Malformed recipient address: "invalid-address"',
+      )
+    })
+
+    it("should throw error for recipient address without address part", async () => {
+      const invalidEvent: InitTransferEvent = {
+        transfer_message: {
+          ...mockInitTransferEvent.transfer_message,
+          recipient: "btc:" as OmniAddress,
+        },
+      }
+
+      await expect(client.submitBitcoinTransfer(invalidEvent)).rejects.toThrow(
+        'Malformed recipient address: "btc:"',
+      )
+    })
+
+    it("should throw error for invalid JSON in message", async () => {
+      const invalidEvent: InitTransferEvent = {
+        transfer_message: {
+          ...mockInitTransferEvent.transfer_message,
+          msg: "invalid json {",
+        },
+      }
+
+      await expect(client.submitBitcoinTransfer(invalidEvent)).rejects.toThrow(
+        "Failed to parse transfer message:",
+      )
+    })
+
+    it("should throw error when amount is less than or equal to withdrawal fee", async () => {
+      const lowAmountEvent: InitTransferEvent = {
+        transfer_message: {
+          ...mockInitTransferEvent.transfer_message,
+          amount: "1000000", // Equal to withdrawal fee
+        },
+      }
+
+      await expect(client.submitBitcoinTransfer(lowAmountEvent)).rejects.toThrow(
+        "Transfer amount (900000) must be greater than withdrawal fee (1000000)",
+      )
+    })
+
+    it("should throw error when max gas fee exceeds transfer amount", async () => {
+      const highFeeEvent: InitTransferEvent = {
+        transfer_message: {
+          ...mockInitTransferEvent.transfer_message,
+          amount: "5000000",
+          msg: '{"MaxGasFee":6000000}',
+        },
+      }
+
+      await expect(client.submitBitcoinTransfer(highFeeEvent)).rejects.toThrow(
+        "Max gas fee (6000000) plus withdrawal fee (1000000) cannot exceed transfer amount (4900000)",
+      )
+    })
+
+    it("should parse MaxGasFee correctly from message format", async () => {
+      const result = await client.submitBitcoinTransfer(mockInitTransferEvent)
+
+      expect(mockWallet.signAndSendTransaction).toHaveBeenCalled()
+      const callArgs = (mockWallet.signAndSendTransaction as any).mock.calls[0][0]
+      const action = callArgs.actions[0]
+      expect(action.enum).toBe("functionCall")
+      expect(action.functionCall.methodName).toBe("submit_transfer_to_utxo_chain_connector")
+      expect(result).toBe(mockTxHash)
+    })
+
+    it("should handle missing MaxGasFee in message", async () => {
+      const eventWithoutMaxFee: InitTransferEvent = {
+        transfer_message: {
+          ...mockInitTransferEvent.transfer_message,
+          msg: "{}",
+        },
+      }
+
+      const result = await client.submitBitcoinTransfer(eventWithoutMaxFee)
+
+      expect(mockWallet.signAndSendTransaction).toHaveBeenCalled()
+      const callArgs = (mockWallet.signAndSendTransaction as any).mock.calls[0][0]
+      const action = callArgs.actions[0]
+      expect(action.enum).toBe("functionCall")
+      expect(action.functionCall.methodName).toBe("submit_transfer_to_utxo_chain_connector")
+      expect(result).toBe(mockTxHash)
+    })
+  })
+
+  describe("initTransfer with UTXO options", () => {
+    const mockTransferWithMaxFee: OmniTransferMessage = {
+      tokenAddress: mockTokenOmniAddress,
+      recipient: "btc:bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+      amount: BigInt("10000000"),
+      fee: BigInt("100000"),
+      nativeFee: BigInt("50000"),
+      options: {
+        maxGasFee: BigInt("500000"),
+      },
+    }
+
+    const mockTransferWithUtxoFees: OmniTransferMessage = {
+      tokenAddress: mockTokenOmniAddress,
+      recipient: "btc:bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+      amount: BigInt("10000000"),
+      fee: BigInt("100000"),
+      nativeFee: BigInt("50000"),
+      options: {
+        maxGasFee: BigInt("30000"),
+      },
+    }
+
+    const mockInitTransferEvent: InitTransferEvent = {
+      transfer_message: {
+        origin_nonce: 1,
+        token: mockTokenOmniAddress,
+        amount: "10000000",
+        recipient: "btc:bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+        fee: {
+          fee: "100000",
+          native_fee: "50000",
+        },
+        sender: "near:test-account.near",
+        msg: "",
+        destination_nonce: 1,
+      },
+    }
+
+    beforeEach(() => {
+      // Mock storage balance calls
+      mockWallet.provider.callFunction = vi
+        .fn()
+        .mockImplementation((_contractId: string, methodName: string, _args: unknown) => {
+          if (methodName === "storage_balance_of") {
+            return Promise.resolve({
+              total: "1000000000000000000000000",
+              available: "500000000000000000000000",
+            })
+          }
+          if (methodName.includes("required_balance_for")) {
+            return Promise.resolve("1000000000000000000000")
+          }
+          if (methodName === "storage_balance_bounds") {
+            return Promise.resolve({
+              min: "1000000000000000000000",
+              max: "2000000000000000000000",
+            })
+          }
+          return Promise.resolve("1000000000000000000000000")
+        })
+
+      // Mock successful initTransfer
+      mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue({
+        transaction: { hash: mockTxHash },
+        receipts_outcome: [
+          {
+            outcome: {
+              logs: [`{"InitTransferEvent": ${JSON.stringify(mockInitTransferEvent)}}`],
+            },
+          },
+        ],
+      })
+    })
+
+    it("should auto-construct message from maxGasFee option", async () => {
+      const result = await client.initTransfer(mockTransferWithMaxFee)
+
+      expect(mockWallet.signAndSendTransaction).toHaveBeenCalled()
+      const callArgs = (mockWallet.signAndSendTransaction as any).mock.calls[0][0]
+      const action = callArgs.actions[0]
+      expect(action.enum).toBe("functionCall")
+      expect(action.functionCall.methodName).toBe("ft_transfer_call")
+      expect(result).toEqual(mockInitTransferEvent)
+    })
+
+    it("should include maxGasFee in initTransfer for UTXO chains", async () => {
+      const result = await client.initTransfer(mockTransferWithUtxoFees)
+
+      expect(mockWallet.signAndSendTransaction).toHaveBeenCalled()
+      const callArgs = (mockWallet.signAndSendTransaction as any).mock.calls[0][0]
+      const action = callArgs.actions[0]
+      expect(action.enum).toBe("functionCall")
+      expect(action.functionCall.methodName).toBe("ft_transfer_call")
+
+      // Verify the message contains MaxGasFee
+      const argsObj = action.functionCall.args
+      if (typeof argsObj.msg === "string") {
+        const msgArg = JSON.parse(argsObj.msg)
+        if (msgArg.msg) {
+          const innerMsg = JSON.parse(msgArg.msg)
+          expect(innerMsg).toEqual({ MaxGasFee: "30000" })  // Stringified int
+        }
+      }
+      expect(result).toEqual(mockInitTransferEvent)
+    })
+
+    it("should handle transfer with maxGasFee option", async () => {
+      const transferWithMaxFee: OmniTransferMessage = {
+        tokenAddress: mockTokenOmniAddress,
+        recipient: "btc:bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+        amount: BigInt("10000000"),
+        fee: BigInt("100000"),
+        nativeFee: BigInt("50000"),
+        options: {
+          maxGasFee: BigInt("500000"),
+        },
+      }
+
+      const result = await client.initTransfer(transferWithMaxFee)
+
+      expect(mockWallet.signAndSendTransaction).toHaveBeenCalled()
+      const callArgs = (mockWallet.signAndSendTransaction as any).mock.calls[0][0]
+      const action = callArgs.actions[0]
+      expect(action.enum).toBe("functionCall")
+      expect(action.functionCall.methodName).toBe("ft_transfer_call")
+      expect(result).toEqual(mockInitTransferEvent)
+    })
+  })
 })

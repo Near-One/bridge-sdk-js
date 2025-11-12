@@ -74,6 +74,45 @@ console.log(`Success! NEAR TX: ${nearTxHash}`)
 
 **Note**: Change addresses for Bitcoin transactions are automatically configured by the bridge. Users only specify the target withdrawal address.
 
+### Fee Structure for UTXO Chains
+
+Bitcoin and Zcash transfers support specifying maximum network fees via the `options` field:
+
+```typescript
+const transfer: OmniTransferMessage = {
+  tokenAddress: "near:nbtc.near",
+  recipient: "btc:bc1q...",
+  amount: BigInt(100000),
+  fee: BigInt(5000), // Bridge fee (includes protocol fee calculated by contract)
+  nativeFee: BigInt(1000), // NEAR gas fee
+  options: {
+    maxFee: BigInt(5000), // Maximum BTC network fee in satoshis
+  }
+}
+```
+
+**Fee Options:**
+- `maxFee`: Maximum BTC/Zcash network fee allowed (in satoshis)
+  - Automatically converted to nested message format: `{"MaxGasFee":"5000"}` (stringified int)
+  - Protects you from excessive network fees
+  - The contract validates the actual gas fee doesn't exceed this limit
+  - Cannot be used together with the `message` field
+
+**Fee Breakdown:**
+- `fee`: Bridge fee paid to the protocol (use `OmniBridgeAPI.getFee()` to get the correct value)
+- `nativeFee`: NEAR transaction gas fee
+- `options.maxFee`: Cap on Bitcoin/Zcash network fee (optional but recommended)
+
+**Advanced**: You can manually construct the `message` field if needed (this overrides `maxFee`):
+```typescript
+const transfer: OmniTransferMessage = {
+  // ... other fields
+  message: JSON.stringify({
+    MaxGasFee: "5000"  // Stringified int - in satoshis
+  })
+}
+```
+
 ### Simple Method (Recommended)
 
 ```typescript

@@ -25,6 +25,21 @@ export interface OmniTransferResult {
   nonce: bigint
   txId: string
 }
+/**
+ * UTXO-specific transfer options (for BTC/Zcash chains)
+ */
+export interface UtxoTransferOptions {
+  /**
+   * The maximum BTC/Zcash network fee allowed for the transaction (in satoshis).
+   * This value is auto-converted to the nested message format: `{"MaxGasFee":"5000"}` (stringified int).
+   *
+   * The contract validates that the actual gas fee used doesn't exceed this limit.
+   *
+   * Cannot be used together with the `message` field in OmniTransferMessage (use one or the other).
+   */
+  maxGasFee?: bigint
+}
+
 export interface OmniTransferMessage {
   tokenAddress: OmniAddress
   amount: bigint
@@ -32,6 +47,8 @@ export interface OmniTransferMessage {
   nativeFee: bigint
   recipient: OmniAddress
   message?: string
+  // Chain-specific options (e.g., UtxoTransferOptions for Bitcoin/Zcash)
+  options?: UtxoTransferOptions
 }
 
 export interface TokenMetadata {

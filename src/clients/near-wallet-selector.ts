@@ -74,10 +74,11 @@ interface InitTransferMessageArgs {
   msg: string | null
 }
 
-interface InitTransferMessage {
+type InitTransferMessage = {
   recipient: OmniAddress
   fee: string
   native_token_fee: string
+  msg?: string
 }
 
 interface StorageDepositOptions {
@@ -412,11 +413,28 @@ export class NearWalletSelectorBridgeClient {
       additionalTransactions: options.additionalTransactions,
     })
 
+    // Build message from options.maxGasFee if not explicitly provided
+    // Fail if both message and maxGasFee are provided to avoid ambiguity
+    if (transfer.message && transfer.options?.maxGasFee !== undefined) {
+      throw new Error(
+        "Cannot provide both 'message' and 'options.maxGasFee'. Use one or the other.",
+      )
+    }
+
+    let message = transfer.message
+    if (!message && transfer.options?.maxGasFee !== undefined) {
+      message = JSON.stringify({
+        MaxGasFee: transfer.options.maxGasFee.toString(),
+      })
+    }
+
     const initTransferMessage: InitTransferMessage = {
       recipient: transfer.recipient,
       fee: transfer.fee.toString(),
       native_token_fee: transfer.nativeFee.toString(),
+      msg: message,
     }
+
     const args: InitTransferMessageArgs = {
       receiver_id: this.lockerAddress,
       amount: transfer.amount.toString(),
