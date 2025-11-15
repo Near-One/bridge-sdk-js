@@ -14,7 +14,7 @@
     "test": "vitest",
     "lint": "biome check --write .",
     "typecheck": "tsc --noEmit",
-    "prepare": "bun run build",
+    "prepare": "tsc",
     "prepublishOnly": "bun run build",
     "lefthook": "lefthook install",
     "check-exports": "attw --pack .",
