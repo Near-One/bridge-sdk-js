@@ -1,6 +1,7 @@
 import { callViewMethod, createRpcClientWrapper } from "@near-js/client"
+import { actionCreators } from "@near-js/transactions"
 import type { FinalExecutionOutcome } from "@near-js/types"
-import type { Optional, Transaction, WalletSelector } from "@near-wallet-selector/core"
+import type { Optional, Transaction, Wallet, WalletSelector } from "@near-wallet-selector/core"
 import { addresses } from "../config.js"
 import {
   type AccountId,
@@ -142,19 +143,11 @@ export class NearWalletSelectorBridgeClient {
     }
     const args: LogMetadataArgs = { token_id: tokenAccountId }
 
-    const wallet = await this.selector.wallet()
+    const wallet: Wallet = await this.selector.wallet()
     const outcome: FinalExecutionOutcome = await wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
       actions: [
-        {
-          type: "FunctionCall",
-          params: {
-            methodName: "log_metadata",
-            args: Buffer.from(JSON.stringify(args)),
-            gas: GAS.LOG_METADATA.toString(),
-            deposit: DEPOSIT.LOG_METADATA.toString(),
-          },
-        },
+        actionCreators.functionCall("log_metadata", args, GAS.LOG_METADATA, DEPOSIT.LOG_METADATA),
       ],
     })
     if (!outcome) {
@@ -213,19 +206,16 @@ export class NearWalletSelectorBridgeClient {
       methodName: "required_balance_for_deploy_token",
     })
 
-    const wallet = await this.selector.wallet()
+    const wallet: Wallet = await this.selector.wallet()
     const outcome: FinalExecutionOutcome = await wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
       actions: [
-        {
-          type: "FunctionCall",
-          params: {
-            methodName: "deploy_token",
-            args: serializedArgs,
-            gas: GAS.DEPLOY_TOKEN.toString(),
-            deposit: deployDepositStr,
-          },
-        },
+        actionCreators.functionCall(
+          "deploy_token",
+          serializedArgs,
+          GAS.DEPLOY_TOKEN,
+          BigInt(deployDepositStr),
+        ),
       ],
     })
     if (!outcome) {
@@ -281,7 +271,7 @@ export class NearWalletSelectorBridgeClient {
     }
     const serializedArgs = BindTokenArgsSchema.serialize(args)
 
-    const wallet = await this.selector.wallet()
+    const wallet: Wallet = await this.selector.wallet()
 
     // Retrieve required deposit dynamically for bind_token
     const bindDepositStr = await this.viewFunction({
@@ -292,15 +282,12 @@ export class NearWalletSelectorBridgeClient {
     const outcome = await wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
       actions: [
-        {
-          type: "FunctionCall",
-          params: {
-            methodName: "bind_token",
-            args: serializedArgs,
-            gas: GAS.BIND_TOKEN.toString(),
-            deposit: bindDepositStr,
-          },
-        },
+        actionCreators.functionCall(
+          "bind_token",
+          serializedArgs,
+          GAS.BIND_TOKEN,
+          BigInt(bindDepositStr),
+        ),
       ],
     })
     if (!outcome) {
@@ -352,19 +339,14 @@ export class NearWalletSelectorBridgeClient {
       transactions.push({
         receiverId: tokenAddress,
         actions: [
-          {
-            type: "FunctionCall",
-            params: {
-              methodName: "storage_deposit",
-              args: Buffer.from(
-                JSON.stringify({
-                  account_id: this.lockerAddress,
-                }),
-              ),
-              gas: GAS.STORAGE_DEPOSIT.toString(),
-              deposit: requiredAmount.toString(),
+          actionCreators.functionCall(
+            "storage_deposit",
+            {
+              account_id: this.lockerAddress,
             },
-          },
+            GAS.STORAGE_DEPOSIT,
+            requiredAmount,
+          ),
         ],
       })
     }
@@ -379,15 +361,7 @@ export class NearWalletSelectorBridgeClient {
       transactions.push({
         receiverId: this.lockerAddress,
         actions: [
-          {
-            type: "FunctionCall",
-            params: {
-              methodName: "storage_deposit",
-              args: Buffer.from(JSON.stringify({})),
-              gas: GAS.STORAGE_DEPOSIT.toString(),
-              deposit: neededAmount.toString(),
-            },
-          },
+          actionCreators.functionCall("storage_deposit", {}, GAS.STORAGE_DEPOSIT, neededAmount),
         ],
       })
     }
@@ -457,18 +431,15 @@ export class NearWalletSelectorBridgeClient {
     transactions.push({
       receiverId: tokenAddress,
       actions: [
-        {
-          type: "FunctionCall",
-          params: {
-            methodName: "ft_transfer_call",
-            args: Buffer.from(JSON.stringify(args)),
-            gas: GAS.INIT_TRANSFER.toString(),
-            deposit: DEPOSIT.INIT_TRANSFER.toString(),
-          },
-        },
+        actionCreators.functionCall(
+          "ft_transfer_call",
+          args,
+          GAS.INIT_TRANSFER,
+          DEPOSIT.INIT_TRANSFER,
+        ),
       ],
     })
-    const wallet = await this.selector.wallet()
+    const wallet: Wallet = await this.selector.wallet()
     const tx: FinalExecutionOutcome[] = await wallet.signAndSendTransactions({ transactions })
     if (!tx) {
       throw new Error("Transaction failed")
@@ -539,19 +510,16 @@ export class NearWalletSelectorBridgeClient {
       },
     }
 
-    const wallet = await this.selector.wallet()
+    const wallet: Wallet = await this.selector.wallet()
     const outcome: FinalExecutionOutcome = await wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
       actions: [
-        {
-          type: "FunctionCall",
-          params: {
-            methodName: "sign_transfer",
-            args: Buffer.from(JSON.stringify(args)),
-            gas: GAS.SIGN_TRANSFER.toString(),
-            deposit: DEPOSIT.SIGN_TRANSFER.toString(),
-          },
-        },
+        actionCreators.functionCall(
+          "sign_transfer",
+          args,
+          GAS.SIGN_TRANSFER,
+          DEPOSIT.SIGN_TRANSFER,
+        ),
       ],
     })
     if (!outcome) {
@@ -632,7 +600,7 @@ export class NearWalletSelectorBridgeClient {
     }
     const serializedArgs = FinTransferArgsSchema.serialize(args)
 
-    const wallet = await this.selector.wallet()
+    const wallet: Wallet = await this.selector.wallet()
 
     // Retrieve required deposit dynamically for fin_transfer
     const finDepositStr = await this.viewFunction({
@@ -644,15 +612,7 @@ export class NearWalletSelectorBridgeClient {
     const outcome = await wallet.signAndSendTransaction({
       receiverId: this.lockerAddress,
       actions: [
-        {
-          type: "FunctionCall",
-          params: {
-            methodName: "fin_transfer",
-            args: serializedArgs,
-            gas: GAS.FIN_TRANSFER.toString(),
-            deposit: finDeposit.toString(),
-          },
-        },
+        actionCreators.functionCall("fin_transfer", serializedArgs, GAS.FIN_TRANSFER, finDeposit),
       ],
     })
     if (!outcome) {
@@ -669,7 +629,7 @@ export class NearWalletSelectorBridgeClient {
    */
   private async getBalances(): Promise<BalanceResults> {
     try {
-      const wallet = await this.selector.wallet()
+      const wallet: Wallet = await this.selector.wallet()
       const accounts = await wallet.getAccounts()
       const accountId = accounts[0].accountId
       const provider = createRpcClientWrapper(addresses.near.rpcUrls)
@@ -787,7 +747,7 @@ export class NearWalletSelectorBridgeClient {
     const totalRequiredBalance = requiredBalance + storageDepositAmount
 
     // Check current storage balance and deposit if needed
-    const wallet = await this.selector.wallet()
+    const wallet: Wallet = await this.selector.wallet()
     const accounts = await wallet.getAccounts()
     const accountId = accounts[0].accountId
 
@@ -808,15 +768,7 @@ export class NearWalletSelectorBridgeClient {
       transactions.push({
         receiverId: this.lockerAddress,
         actions: [
-          {
-            type: "FunctionCall",
-            params: {
-              methodName: "storage_deposit",
-              args: Buffer.from(JSON.stringify({})),
-              gas: GAS.STORAGE_DEPOSIT.toString(),
-              deposit: neededAmount.toString(),
-            },
-          },
+          actionCreators.functionCall("storage_deposit", {}, GAS.STORAGE_DEPOSIT, neededAmount),
         ],
       })
     }
@@ -830,15 +782,12 @@ export class NearWalletSelectorBridgeClient {
     transactions.push({
       receiverId: args.token_id,
       actions: [
-        {
-          type: "FunctionCall",
-          params: {
-            methodName: "ft_transfer_call",
-            args: Buffer.from(JSON.stringify(transferArgs)),
-            gas: GAS.FAST_FIN_TRANSFER.toString(),
-            deposit: DEPOSIT.INIT_TRANSFER.toString(),
-          },
-        },
+        actionCreators.functionCall(
+          "ft_transfer_call",
+          transferArgs,
+          GAS.FAST_FIN_TRANSFER,
+          DEPOSIT.INIT_TRANSFER,
+        ),
       ],
     })
 
@@ -896,7 +845,7 @@ export class NearWalletSelectorBridgeClient {
     }
 
     // Step 3: Get relayer account
-    const wallet = await this.selector.wallet()
+    const wallet: Wallet = await this.selector.wallet()
     const accounts = await wallet.getAccounts()
     const relayerAccountId = accounts[0].accountId
 
