@@ -13,15 +13,17 @@ export class TransferAssertions {
     originNonce: number,
     expectedStatus?: "initialized" | "signed" | "finalised",
   ): Promise<void> {
-    const status = await this.api.getTransferStatus(originChain, originNonce)
+    const statuses = await this.api.getTransferStatus({ originChain, originNonce })
 
-    expect(status).toBeDefined()
-    expect(typeof status).toBe("object")
+    expect(statuses).toBeDefined()
+    expect(Array.isArray(statuses)).toBe(true)
+    expect(statuses.length).toBeGreaterThan(0)
 
+    const status = statuses[0]
     console.log(`✓ Transfer status retrieved for ${originChain}:${originNonce}`)
     console.log("  Status:", JSON.stringify(status, null, 2))
 
-    if (expectedStatus) {
+    if (expectedStatus && status) {
       // Add specific status validation based on what the API returns
       expect(status).toHaveProperty(expectedStatus)
     }
@@ -31,9 +33,17 @@ export class TransferAssertions {
     originChain: "Near" | "Eth" | "Sol" | "Arb" | "Base",
     originNonce: number,
   ): Promise<void> {
-    const transfer = await this.api.getTransfer(originChain, originNonce)
+    const transfers = await this.api.getTransfer({ originChain, originNonce })
 
-    expect(transfer).toBeDefined()
+    expect(transfers).toBeDefined()
+    expect(Array.isArray(transfers)).toBe(true)
+    expect(transfers.length).toBeGreaterThan(0)
+
+    const transfer = transfers[0]
+    if (!transfer) {
+      throw new Error("No transfer found")
+    }
+
     expect(transfer).toHaveProperty("id")
     expect(transfer).toHaveProperty("initialized")
     expect(transfer).toHaveProperty("transfer_message")
@@ -49,11 +59,15 @@ export class TransferAssertions {
     }
 
     console.log(`✓ Transfer details retrieved for ${originChain}:${originNonce}`)
-    console.log(`  Transfer ID: ${transfer.id.origin_chain}:${transfer.id.origin_nonce}`)
-    console.log(`  Token: ${transfer.transfer_message.token}`)
-    console.log(`  Amount: ${transfer.transfer_message.amount}`)
-    console.log(`  Sender: ${transfer.transfer_message.sender}`)
-    console.log(`  Recipient: ${transfer.transfer_message.recipient}`)
+    if (transfer.id) {
+      console.log(`  Transfer ID: ${transfer.id.origin_chain}:${transfer.id.origin_nonce}`)
+    }
+    if (transfer.transfer_message) {
+      console.log(`  Token: ${transfer.transfer_message.token}`)
+      console.log(`  Amount: ${transfer.transfer_message.amount}`)
+      console.log(`  Sender: ${transfer.transfer_message.sender}`)
+      console.log(`  Recipient: ${transfer.transfer_message.recipient}`)
+    }
   }
 
   async waitForTransferProgression(
@@ -68,10 +82,11 @@ export class TransferAssertions {
 
     while (Date.now() - startTime < maxWaitTimeMs) {
       try {
-        const transfer = await this.api.getTransfer(originChain, originNonce)
+        const transfers = await this.api.getTransfer({ originChain, originNonce })
+        const transfer = transfers[0]
 
         // Check if transfer has progressed beyond initialization
-        if (transfer.signed !== null || transfer.finalised !== null || transfer.claimed !== null) {
+        if (transfer && (transfer.signed !== null || transfer.finalised !== null || transfer.claimed !== null)) {
           console.log("✓ Transfer has progressed!")
           return
         }
