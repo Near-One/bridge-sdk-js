@@ -1,6 +1,6 @@
-import { createRpcClientWrapper, view } from "@near-js/client"
+import { Near } from "near-kit"
 
-import { addresses } from "../config.js"
+import { getNetwork } from "../config.js"
 import { ChainKind, type OmniAddress } from "../types/index.js"
 import { getChain } from "./chain.js"
 
@@ -111,14 +111,9 @@ export async function getTokenDecimals(
     )
   }
 
-  const rpcProvider = createRpcClientWrapper(addresses.near.rpcUrls)
-  const result = await view<TokenDecimals>({
-    account: contractId,
-    method: "get_token_decimals",
-    args: {
-      address: tokenAddress,
-    },
-    deps: { rpcProvider },
+  const near = new Near({ network: getNetwork() })
+  const result = await near.view<TokenDecimals>(contractId, "get_token_decimals", {
+    address: tokenAddress,
   })
   // The view function can return null when the token is not registered
   return result as TokenDecimals | null
