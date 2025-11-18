@@ -11,6 +11,7 @@
   "packageManager": "bun@1.2.16",
   "scripts": {
     "build": "tsc",
+    "prepare": "tsc",
     "test": "vitest",
     "lint": "biome check --write .",
     "typecheck": "tsc --noEmit",
