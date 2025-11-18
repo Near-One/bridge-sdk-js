@@ -252,7 +252,8 @@
           "name": "recipient"
         },
         {
-          "name": "mint"
+          "name": "mint",
+          "writable": true
         },
         {
           "name": "vault",
