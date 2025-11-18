@@ -1,6 +1,6 @@
-import type { Account } from "@near-js/accounts"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { NearBridgeClient } from "../../src/clients/near.js"
+import type { Near } from "near-kit"
+import { NearBridgeClient } from "../../src/clients/near-kit.js"
 import {
   ChainKind,
   type EvmVerifyProofArgs,

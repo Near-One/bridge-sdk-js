@@ -2,10 +2,10 @@ import { describe, expect, it, vi } from "vitest"
 import type { WalletSelector } from "@near-wallet-selector/core"
 import { internalActionToNaj, najActionToInternal } from "@near-wallet-selector/core"
 import type { FinalExecutionOutcome } from "@near-js/types"
-import { NearWalletSelectorBridgeClient } from "../../src/clients/near-wallet-selector.js"
+import { NearBridgeClient } from "../../src/clients/near-kit.js"
 
 /**
- * Test suite to validate that NearWalletSelectorBridgeClient properly serializes
+ * Test suite to validate that NearBridgeClient properly serializes
  * function call arguments as Buffer/Uint8Array, as expected by the NEAR wallet selector.
  *
  * Background: The wallet selector core uses najActionToInternal() which does
@@ -20,7 +20,7 @@ import { NearWalletSelectorBridgeClient } from "../../src/clients/near-wallet-se
  *
  * These tests simulate this round-trip to validate args are properly serialized.
  */
-describe("NearWalletSelectorBridgeClient - Args Serialization", () => {
+describe("NearBridgeClient - Args Serialization", () => {
   /**
    * Directly test what line 4462 of wallet selector does: JSON.parse(Buffer.from(args).toString())
    * This is the exact code that fails if args is a plain object instead of Buffer/Uint8Array.
@@ -69,7 +69,7 @@ describe("NearWalletSelectorBridgeClient - Args Serialization", () => {
       wallet: vi.fn().mockResolvedValue(mockWallet),
     } as unknown as WalletSelector
 
-    const client = new NearWalletSelectorBridgeClient(mockSelector)
+    const client = new NearBridgeClient(mockSelector)
 
     await client.logMetadata("near:test.near")
 
@@ -107,7 +107,7 @@ describe("NearWalletSelectorBridgeClient - Args Serialization", () => {
       wallet: vi.fn().mockResolvedValue(mockWallet),
     } as unknown as WalletSelector
 
-    const client = new NearWalletSelectorBridgeClient(mockSelector)
+    const client = new NearBridgeClient(mockSelector)
 
     const mockInitTransferEvent = {
       transfer_message: {
@@ -168,7 +168,7 @@ describe("NearWalletSelectorBridgeClient - Args Serialization", () => {
     } as unknown as WalletSelector
 
     // Mock viewFunction to return balance data
-    const client = new NearWalletSelectorBridgeClient(mockSelector)
+    const client = new NearBridgeClient(mockSelector)
     vi.spyOn(client as any, "viewFunction").mockImplementation(async (args: any) => {
       if (args.methodName === "storage_balance_of") {
         return { total: "1000000", available: "1000000" }
@@ -235,7 +235,7 @@ describe("NearWalletSelectorBridgeClient - Args Serialization", () => {
       wallet: vi.fn().mockResolvedValue(mockWallet),
     } as unknown as WalletSelector
 
-    const client = new NearWalletSelectorBridgeClient(mockSelector)
+    const client = new NearBridgeClient(mockSelector)
 
     // Mock viewFunction to simulate needing storage deposit
     vi.spyOn(client as any, "viewFunction").mockImplementation(async (args: any) => {

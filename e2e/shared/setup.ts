@@ -1,9 +1,7 @@
 import os from "node:os"
 import path from "node:path"
 import { AnchorProvider, Wallet, setProvider } from "@coral-xyz/anchor"
-import { Account } from "@near-js/accounts"
-import { createRpcClientWrapper, getSignerFromKeystore } from "@near-js/client"
-import { UnencryptedFileSystemKeyStore } from "@near-js/keystores-node"
+import { Near } from "near-kit"
 import { Connection, Keypair } from "@solana/web3.js"
 import { ethers } from "ethers"
 
@@ -43,39 +41,40 @@ export const TEST_CONFIG: TestConfig = {
     ethereum: {
       rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
       chainId: 11155111, // Sepolia
-      privateKey: process.env.ETH_PRIVATE_KEY,
+      ...(process.env["ETH_PRIVATE_KEY"] && { privateKey: process.env["ETH_PRIVATE_KEY"] }),
     },
     solana: {
       rpcUrl: "https://api.devnet.solana.com",
-      commitment: "confirmed",
-      privateKey: process.env.SOL_PRIVATE_KEY,
+      commitment: "confirmed" as const,
+      ...(process.env["SOL_PRIVATE_KEY"] && { privateKey: process.env["SOL_PRIVATE_KEY"] }),
     },
   },
 }
 
-export async function createNearAccount(): Promise<Account> {
+export async function createNearAccount(): Promise<Near> {
   const { near } = TEST_CONFIG.networks
 
   // Use environment variable in CI, fallback to keystore file locally
-  const privateKey = process.env.NEAR_PRIVATE_KEY
+  const privateKey = process.env["NEAR_PRIVATE_KEY"]
+
   if (privateKey) {
     // CI environment - use private key from environment
-    const { InMemoryKeyStore } = await import("@near-js/keystores")
-    const { KeyPair } = await import("@near-js/crypto")
-    const keyStore = new InMemoryKeyStore()
-    // biome-ignore lint/suspicious/noExplicitAny: NEAR KeyPair typing issue
-    const keyPair = KeyPair.fromString(privateKey as any)
-    await keyStore.setKey(near.networkId, near.accountId, keyPair)
-    const signer = await getSignerFromKeystore(near.accountId, near.networkId, keyStore)
-    const provider = createRpcClientWrapper([near.rpcUrl])
-    return new Account(near.accountId, provider, signer)
+    return new Near({
+      network: near.networkId,
+      privateKey: privateKey as `ed25519:${string}`,
+      defaultSignerId: near.accountId,
+      rpcUrl: near.rpcUrl,
+    })
   }
 
-  // Local development - use keystore file
-  const keyStore = new UnencryptedFileSystemKeyStore(near.credentialsPath)
-  const signer = await getSignerFromKeystore(near.accountId, near.networkId, keyStore)
-  const provider = createRpcClientWrapper([near.rpcUrl])
-  return new Account(near.accountId, provider, signer)
+  // Local development - use FileKeyStore
+  const { FileKeyStore } = await import("near-kit/keys/file")
+  return new Near({
+    network: near.networkId,
+    keyStore: new FileKeyStore(near.credentialsPath, near.networkId),
+    defaultSignerId: near.accountId,
+    rpcUrl: near.rpcUrl,
+  })
 }
 
 export async function createEthereumWallet(): Promise<ethers.Wallet> {
@@ -112,7 +111,7 @@ export async function createSolanaProvider(): Promise<AnchorProvider> {
 }
 
 export interface TestAccountsSetup {
-  nearAccount: Account
+  nearAccount: Near
   ethWallet: ethers.Wallet
   solanaProvider: AnchorProvider
 }
