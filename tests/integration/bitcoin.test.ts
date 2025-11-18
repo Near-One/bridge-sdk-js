@@ -429,18 +429,14 @@ describe("Bitcoin Integration Tests", () => {
       expect(finalizeResult).toBe("near_deposit_finalization_tx_hash")
 
       // Verify the correct parameters were passed to NEAR contract
-      expect(mockTransactionBuilder.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          receiverId: "btc-connector.n-bridge.testnet",
-          actions: [
-            expect.objectContaining({
-              functionCall: expect.objectContaining({
-                methodName: "verify_deposit",
-              }),
-            }),
-          ],
-        })
+      expect(mockNear.transaction).toHaveBeenCalledWith(REAL_WITHDRAWAL_DATA.testAccount)
+      expect(mockTransactionBuilder.functionCall).toHaveBeenCalledWith(
+        "btc-connector.n-bridge.testnet",
+        "verify_deposit",
+        expect.any(Object),
+        expect.any(Object)
       )
+      expect(mockTransactionBuilder.send).toHaveBeenCalledWith({ waitUntil: "FINAL" })
     })
 
     it("should handle unconfirmed Bitcoin transactions", async () => {
