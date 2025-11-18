@@ -1,6 +1,5 @@
-import type { Account } from "@near-js/accounts"
-import { actionCreators } from "@near-js/transactions"
-import type { FinalExecutionOutcome } from "@near-js/types"
+import type { Near } from "near-kit"
+import { Amount } from "near-kit"
 import { OmniBridgeAPI } from "../api.js"
 import { addresses } from "../config.js"
 import { BitcoinService } from "../services/bitcoin.js"
@@ -52,39 +51,38 @@ import type { EvmBridgeClient } from "./evm.js"
 
 /**
  * Configuration for NEAR network gas limits.
- * All values are specified in TGas (Terra Gas) units.
+ * Using human-readable gas units for near-kit
  * @internal
  */
 const GAS = {
-  LOG_METADATA: BigInt(3e14), // 300 TGas
-  DEPLOY_TOKEN: BigInt(1.2e14), // 120 TGas
-  BIND_TOKEN: BigInt(3e14), // 300 TGas
-  INIT_TRANSFER: BigInt(3e14), // 300 TGas
-  FIN_TRANSFER: BigInt(3e14), // 300 TGas
-  SIGN_TRANSFER: BigInt(3e14), // 300 TGas
-  STORAGE_DEPOSIT: BigInt(1e13), // 10 TGas
+  LOG_METADATA: "300 Tgas",
+  DEPLOY_TOKEN: "120 Tgas",
+  BIND_TOKEN: "300 Tgas",
+  INIT_TRANSFER: "300 Tgas",
+  FIN_TRANSFER: "300 Tgas",
+  SIGN_TRANSFER: "300 Tgas",
+  STORAGE_DEPOSIT: "10 Tgas",
   // Bitcoin-specific gas constants
-  GET_DEPOSIT_ADDRESS: BigInt(3e12), // 3 TGas
-  VERIFY_DEPOSIT: BigInt(3e14), // 300 TGas
-  INIT_BTC_TRANSFER: BigInt(1e14), // 100 TGas
-  SIGN_BTC_TX: BigInt(3e14), // 300 TGas
-  VERIFY_WITHDRAW: BigInt(5e12), // 5 TGas
-  FAST_FIN_TRANSFER: BigInt(3e14), // 300 TGas
-  SUBMIT_BTC_TRANSFER: BigInt(3e14), // 300 TGas
+  GET_DEPOSIT_ADDRESS: "3 Tgas",
+  VERIFY_DEPOSIT: "300 Tgas",
+  INIT_BTC_TRANSFER: "100 Tgas",
+  SIGN_BTC_TX: "300 Tgas",
+  VERIFY_WITHDRAW: "5 Tgas",
+  FAST_FIN_TRANSFER: "300 Tgas",
+  SUBMIT_BTC_TRANSFER: "300 Tgas",
 } as const
 
 /**
  * Configuration for NEAR network deposit amounts.
- * Values represent the amount of NEAR tokens required for each operation.
+ * Using human-readable NEAR units for near-kit
  * @internal
  */
 const DEPOSIT = {
-  LOG_METADATA: BigInt(1), // 1 yoctoNEAR
-  SIGN_TRANSFER: BigInt(1), // 1 yoctoNEAR
-  INIT_TRANSFER: BigInt(1), // 1 yoctoNEAR
-  // Bitcoin-specific deposit constants
-  SIGN_BTC_TX: BigInt(1), // 1 yoctoNEAR
-  VERIFY_WITHDRAW: BigInt(1), // 1 yoctoNEAR
+  LOG_METADATA: "1 yocto",
+  SIGN_TRANSFER: "1 yocto",
+  INIT_TRANSFER: "1 yocto",
+  SIGN_BTC_TX: "1 yocto",
+  VERIFY_WITHDRAW: "1 yocto",
 } as const
 
 /**
@@ -155,35 +153,36 @@ interface BalanceResults {
 }
 
 /**
- * NEAR blockchain implementation of the bridge client.
- * Handles token deployment, binding, and transfer operations on the NEAR blockchain.
+ * NEAR blockchain implementation of the bridge client using near-kit.
+ * Unified client that works with both server-side (privateKey) and browser (wallet) scenarios.
  */
 export class NearBridgeClient {
   public bitcoinService: BitcoinService
   public zcashService?: ZcashService
   private readonly utxoServices: Partial<Record<UtxoChain, UtxoChainService>> = {}
+  private readonly near: Near
+  private readonly lockerAddress: string
+  private readonly defaultSignerId: string | undefined
 
   /**
    * Creates a new NEAR bridge client instance
-   * @param wallet - NEAR account instance for transaction signing
+   * @param near - Near instance from near-kit (configured with network and credentials)
    * @param lockerAddress - Address of the token locker contract
-   * @throws {Error} If locker address is not configured
+   * @param options - Optional configuration (e.g., zcashApiKey, defaultSignerId)
    */
   constructor(
-    private wallet: Account,
-    private lockerAddress: string = addresses.near.contract,
-    options?: { zcashApiKey?: string } | string,
+    near: Near,
+    lockerAddress: string = addresses.near.contract,
+    private readonly options: { zcashApiKey?: string; defaultSignerId?: string } = {},
   ) {
-    if (lockerAddress) {
-      this.lockerAddress = lockerAddress
-    }
+    this.near = near
+    this.lockerAddress = lockerAddress
+    this.defaultSignerId = options.defaultSignerId
+
     // Configure BigInt serialization for JSON.stringify
     // biome-ignore lint/suspicious/noExplicitAny: TS will complain that `toJSON()` does not exist on BigInt
     // biome-ignore lint/complexity/useLiteralKeys: TS will complain that `toJSON()` does not exist on BigInt
     ;(BigInt.prototype as any)["toJSON"] = function () {
-      // The contract can't accept `origin_nonce` as a string, so we have to serialize it as a number.
-      // However, this can cause precision loss if the number is too large. We'll check if it's safe to convert
-      // and if not, we'll serialize it as a string and the contract will have to handle it.
       const maxSafe = BigInt(Number.MAX_SAFE_INTEGER)
       if (this <= maxSafe) {
         return Number(this)
@@ -197,23 +196,13 @@ export class NearBridgeClient {
     })
     this.utxoServices[ChainKind.Btc] = this.bitcoinService
 
-    // Initialize Zcash service if API key configured via parameter or environment
-    const zcashApiKey = typeof options === "string" ? options : options?.zcashApiKey
-    // biome-ignore lint/complexity/useLiteralKeys: process.env has index signature, requires bracket notation for noPropertyAccessFromIndexSignature
-    const apiKey = zcashApiKey || process.env["ZCASH_API_KEY"]
-    if (apiKey) {
-      this.zcashService = new ZcashService(addresses.zcash.rpcUrl, apiKey)
+    // Initialize Zcash service if API key configured
+    // biome-ignore lint/complexity/useLiteralKeys: process.env has index signature
+    const zcashApiKey = this.options.zcashApiKey || process.env["ZCASH_API_KEY"]
+    if (zcashApiKey) {
+      this.zcashService = new ZcashService(addresses.zcash.rpcUrl, zcashApiKey)
       this.utxoServices[ChainKind.Zcash] = this.zcashService
     }
-  }
-
-  /**
-   * Get the network ID from the wallet connection
-   */
-  get networkId(): string {
-    return (
-      (this.wallet as { connection?: { networkId?: string } }).connection?.networkId || "unknown"
-    )
   }
 
   /**
@@ -224,12 +213,31 @@ export class NearBridgeClient {
   }
 
   /**
+   * Get the signer ID to use for transactions
+   * @param signerId - Optional explicit signer ID
+   * @returns The signer ID to use
+   * @throws If no signer ID is provided and no defaultSignerId is configured
+   */
+  private getSignerId(signerId?: string): string {
+    const signer = signerId || this.defaultSignerId
+    if (!signer) {
+      throw new Error(
+        "No signerId provided and no defaultSignerId configured. " +
+          "Either pass signerId explicitly or configure defaultSignerId when creating the NearBridgeClient.",
+      )
+    }
+    return signer
+  }
+
+  /**
    * Logs metadata for a token on the NEAR blockchain
    * @param tokenAddress - Omni address of the token
+   * @param signerId - Optional signer ID (uses defaultSignerId if not provided)
    * @throws {Error} If token address is not on NEAR chain
-   * @returns Promise resolving to the transaction hash
+   * @returns Promise resolving to the LogMetadataEvent
    */
-  async logMetadata(tokenAddress: OmniAddress): Promise<LogMetadataEvent> {
+  async logMetadata(tokenAddress: OmniAddress, signerId?: string): Promise<LogMetadataEvent> {
+    const signer = this.getSignerId(signerId)
     if (getChain(tokenAddress) !== ChainKind.Near) {
       throw new Error("Token address must be on NEAR")
     }
@@ -239,15 +247,16 @@ export class NearBridgeClient {
     if (!tokenAccountId) {
       throw new Error("Invalid token address format")
     }
+
     const args: LogMetadataArgs = { token_id: tokenAccountId }
 
-    const outcome = await this.wallet.signAndSendTransaction({
-      receiverId: this.lockerAddress,
-      actions: [
-        actionCreators.functionCall("log_metadata", args, GAS.LOG_METADATA, DEPOSIT.LOG_METADATA),
-      ],
-      waitUntil: "FINAL",
-    })
+    const outcome = await this.near
+      .transaction(signer)
+      .functionCall(this.lockerAddress, "log_metadata", args, {
+        gas: GAS.LOG_METADATA,
+        attachedDeposit: DEPOSIT.LOG_METADATA,
+      })
+      .send({ waitUntil: "FINAL" })
 
     // Parse event from transaction logs
     const event = outcome.receipts_outcome
@@ -265,13 +274,17 @@ export class NearBridgeClient {
    * Deploys a token to the specified destination chain
    * @param destinationChain - Target chain where the token will be deployed
    * @param vaa - Verified Action Approval containing deployment information
+   * @param evmProof - EVM proof for verification
+   * @param signerId - Optional signer ID (uses defaultSignerId if not provided)
    * @returns Promise resolving to the transaction hash
    */
   async deployToken(
     destinationChain: ChainKind,
     vaa?: string,
     evmProof?: EvmVerifyProofArgs,
+    signerId?: string,
   ): Promise<string> {
+    const signer = this.getSignerId(signerId)
     if (!vaa && !evmProof) {
       throw new Error("Must provide either VAA or EVM proof")
     }
@@ -287,31 +300,27 @@ export class NearBridgeClient {
       proverArgsSerialized = EvmVerifyProofArgsSchema.serialize(evmProof)
     }
 
-    // Construct deploy token arguments
     const args: DeployTokenArgs = {
       chain_kind: destinationChain,
       prover_args: proverArgsSerialized,
     }
     const serializedArgs = DeployTokenArgsSchema.serialize(args)
 
-    // Retrieve required deposit dynamically for deploy_token
-    const deployDepositStr = (await this.wallet.provider.callFunction(
+    // Retrieve required deposit dynamically
+    const deployDepositStr = await this.near.view<string>(
       this.lockerAddress,
       "required_balance_for_deploy_token",
       {},
-    )) as string
+    )
 
-    const tx = await this.wallet.signAndSendTransaction({
-      receiverId: this.lockerAddress,
-      actions: [
-        actionCreators.functionCall(
-          "deploy_token",
-          serializedArgs,
-          GAS.DEPLOY_TOKEN,
-          BigInt(deployDepositStr),
-        ),
-      ],
-    })
+    const tx = await this.near
+      .transaction(signer)
+      .functionCall(this.lockerAddress, "deploy_token", serializedArgs, {
+        gas: GAS.DEPLOY_TOKEN,
+        attachedDeposit: Amount.yocto(BigInt(deployDepositStr)),
+      })
+      .send()
+
     return tx.transaction.hash
   }
 
@@ -320,6 +329,7 @@ export class NearBridgeClient {
    * @param sourceChain - Source chain where the original token comes from
    * @param vaa - Verified Action Approval for Wormhole verification
    * @param evmProof - EVM proof for Ethereum or EVM chain verification
+   * @param signerId - Optional signer ID (uses defaultSignerId if not provided)
    * @throws {Error} If VAA or EVM proof is not provided
    * @throws {Error} If EVM proof is provided for non-EVM chain
    * @returns Promise resolving to the transaction hash
@@ -328,15 +338,15 @@ export class NearBridgeClient {
     sourceChain: ChainKind,
     vaa?: string,
     evmProof?: EvmVerifyProofArgs,
+    signerId?: string,
   ): Promise<string> {
+    const signer = this.getSignerId(signerId)
     if (!vaa && !evmProof) {
       throw new Error("Must provide either VAA or EVM proof")
     }
 
-    if (evmProof) {
-      if (sourceChain !== ChainKind.Eth) {
-        throw new Error("EVM proof is only valid for Ethereum")
-      }
+    if (evmProof && sourceChain !== ChainKind.Eth) {
+      throw new Error("EVM proof is only valid for Ethereum")
     }
 
     let proverArgsSerialized: Uint8Array = new Uint8Array(0)
@@ -354,78 +364,71 @@ export class NearBridgeClient {
       proverArgsSerialized = EvmVerifyProofArgsSchema.serialize(proverArgs)
     }
 
-    // Construct bind token arguments
     const args: BindTokenArgs = {
       chain_kind: sourceChain,
       prover_args: proverArgsSerialized,
     }
     const serializedArgs = BindTokenArgsSchema.serialize(args)
 
-    // Retrieve required deposit dynamically for bind_token
-    const bindDepositStr = (await this.wallet.provider.callFunction(
+    // Retrieve required deposit dynamically
+    const bindDepositStr = await this.near.view<string>(
       this.lockerAddress,
       "required_balance_for_bind_token",
       {},
-    )) as string
+    )
 
-    const tx = await this.wallet.signAndSendTransaction({
-      receiverId: this.lockerAddress,
-      actions: [
-        actionCreators.functionCall(
-          "bind_token",
-          serializedArgs,
-          GAS.BIND_TOKEN,
-          BigInt(bindDepositStr),
-        ),
-      ],
-    })
+    const tx = await this.near
+      .transaction(signer)
+      .functionCall(this.lockerAddress, "bind_token", serializedArgs, {
+        gas: GAS.BIND_TOKEN,
+        attachedDeposit: Amount.yocto(BigInt(bindDepositStr)),
+      })
+      .send()
 
     return tx.transaction.hash
   }
 
   /**
    * Transfers NEP-141 tokens to the token locker contract on NEAR.
-   * This transaction generates a proof that is subsequently used to mint
-   * corresponding tokens on the destination chain.
-   *
-   * @param token - Omni address of the NEP-141 token to transfer
-   * @param recipient - Recipient's Omni address on the destination chain where tokens will be minted
-   * @param amount - Amount of NEP-141 tokens to transfer
-   * @throws {Error} If token address is not on NEAR chain
+   * @param transfer - Transfer message containing token, recipient, amount, etc.
+   * @param signerId - Optional signer ID (uses defaultSignerId if not provided)
    * @returns Promise resolving to InitTransferEvent
    */
-
-  async initTransfer(transfer: OmniTransferMessage): Promise<InitTransferEvent> {
+  async initTransfer(transfer: OmniTransferMessage, signerId?: string): Promise<InitTransferEvent> {
+    const signer = this.getSignerId(signerId)
     if (getChain(transfer.tokenAddress) !== ChainKind.Near) {
       throw new Error("Token address must be on NEAR")
     }
+
     const parts = transfer.tokenAddress.split(":")
     const tokenAddress = parts[1]
     if (!tokenAddress) {
       throw new Error("Invalid token address format")
     }
 
-    // First, check if the FT has the token locker contract registered for storage
-    await this.storageDepositForToken(tokenAddress)
-
-    // Now do the storage deposit dance for the locker itself
-    const { regBalance, initBalance, storage } = await this.getBalances()
+    // Handle storage deposits
+    await this.storageDepositForToken(tokenAddress, signer)
+    const { regBalance, initBalance, storage } = await this.getBalances(signer)
     const requiredBalance = regBalance + initBalance
     const existingBalance = storage?.available ?? BigInt(0)
     const neededAmount = requiredBalance - existingBalance + transfer.nativeFee
 
     if (neededAmount > 0) {
-      await this.wallet.functionCall({
-        contractId: this.lockerAddress,
-        methodName: "storage_deposit",
-        args: {},
-        gas: GAS.STORAGE_DEPOSIT,
-        attachedDeposit: neededAmount,
-      })
+      await this.near
+        .transaction(signer)
+        .functionCall(
+          this.lockerAddress,
+          "storage_deposit",
+          {},
+          {
+            gas: GAS.STORAGE_DEPOSIT,
+            attachedDeposit: `${neededAmount} yocto`,
+          },
+        )
+        .send()
     }
 
-    // Build message from options.maxGasFee if not explicitly provided
-    // Fail if both message and maxGasFee are provided to avoid ambiguity
+    // Build message
     if (transfer.message && transfer.options?.maxGasFee !== undefined) {
       throw new Error(
         "Cannot provide both 'message' and 'options.maxGasFee'. Use one or the other.",
@@ -443,8 +446,9 @@ export class NearBridgeClient {
       recipient: transfer.recipient,
       fee: transfer.fee.toString(),
       native_token_fee: transfer.nativeFee.toString(),
-      msg: transfer.message ?? undefined,
+      msg: message,
     }
+
     const args: InitTransferMessageArgs = {
       receiver_id: this.lockerAddress,
       amount: transfer.amount.toString(),
@@ -452,18 +456,13 @@ export class NearBridgeClient {
       msg: JSON.stringify(initTransferMessage),
     }
 
-    console.log("Calling ft_transfer_call with args:", args)
-    const tx = await this.wallet.signAndSendTransaction({
-      receiverId: tokenAddress,
-      actions: [
-        actionCreators.functionCall(
-          "ft_transfer_call",
-          args,
-          GAS.INIT_TRANSFER,
-          DEPOSIT.INIT_TRANSFER,
-        ),
-      ],
-    })
+    const tx = await this.near
+      .transaction(signer)
+      .functionCall(tokenAddress, "ft_transfer_call", args, {
+        gas: GAS.INIT_TRANSFER,
+        attachedDeposit: DEPOSIT.INIT_TRANSFER,
+      })
+      .send()
 
     // Parse event from transaction logs
     const event = tx.receipts_outcome
@@ -473,12 +472,15 @@ export class NearBridgeClient {
     if (!event) {
       throw new Error("InitTransferEvent not found in transaction logs")
     }
+
     return JSON.parse(event).InitTransferEvent
   }
 
+  /**
+   * Parse a SignTransferEvent from JSON string
+   */
   parseSignTransferEvent(json: string): SignTransferEvent {
     const parsed = JSON.parse(json, (key, value) => {
-      // Convert origin_nonce from string or number to BigInt
       if (key === "origin_nonce") {
         if (typeof value === "string" && /^\d+$/.test(value)) {
           return BigInt(value)
@@ -497,16 +499,20 @@ export class NearBridgeClient {
     )
     return signedEvent
   }
+
   /**
    * Signs transfer using the token locker
    * @param initTransferEvent - Transfer event of the previously-initiated transfer
-   * @param feeRecipient - Address of the fee recipient, can be the original sender or a relayer
-   * @returns Promise resolving to the transaction hash
+   * @param feeRecipient - Address of the fee recipient
+   * @param signerId - Optional signer ID (uses defaultSignerId if not provided)
+   * @returns Promise resolving to SignTransferEvent
    */
   async signTransfer(
     initTransferEvent: InitTransferEvent,
     feeRecipient: AccountId,
+    signerId?: string,
   ): Promise<SignTransferEvent> {
+    const signer = this.getSignerId(signerId)
     const args: SignTransferArgs = {
       transfer_id: {
         origin_chain: ChainKind[getChain(initTransferEvent.transfer_message.sender)],
@@ -519,18 +525,13 @@ export class NearBridgeClient {
       },
     }
 
-    const outcome = await this.wallet.signAndSendTransaction({
-      receiverId: this.lockerAddress,
-      actions: [
-        actionCreators.functionCall(
-          "sign_transfer",
-          args,
-          GAS.SIGN_TRANSFER,
-          DEPOSIT.SIGN_TRANSFER,
-        ),
-      ],
-      waitUntil: "FINAL",
-    })
+    const outcome = await this.near
+      .transaction(signer)
+      .functionCall(this.lockerAddress, "sign_transfer", args, {
+        gas: GAS.SIGN_TRANSFER,
+        attachedDeposit: DEPOSIT.SIGN_TRANSFER,
+      })
+      .send({ waitUntil: "FINAL" })
 
     // Parse event from transaction logs
     const event = outcome.receipts_outcome
@@ -545,39 +546,35 @@ export class NearBridgeClient {
   }
 
   /**
-   * Finalizes a cross-chain token transfer on NEAR by processing the transfer proof and managing storage deposits.
-   * Supports both Wormhole VAA and EVM proof verification for transfers from supported chains.
-   *
-   * @param token - The token identifier on NEAR where transferred tokens will be minted
-   * @param account - The recipient account ID on NEAR
-   * @param storageDepositAmount - Amount of NEAR tokens for storage deposit (in yoctoNEAR)
-   * @param sourceChain - The originating chain of the transfer
-   * @param vaa - Optional Wormhole Verified Action Approval containing transfer information, encoded as a hex string
-   * @param evmProof - Optional proof data for transfers from EVM-compatible chains
-   *
-   * @throws {Error} When neither VAA nor EVM proof is provided
-   * @throws {Error} When EVM proof is provided for non-EVM chains (only valid for Ethereum, Arbitrum, or Base)
-   *
-   * @returns Promise resolving to the finalization transaction hash
-   *
+   * Finalizes a cross-chain token transfer on NEAR
+   * @param token - Token identifier on NEAR
+   * @param account - Recipient account ID
+   * @param storageDepositAmount - Storage deposit amount
+   * @param sourceChain - Originating chain
+   * @param signerId - Account ID of the signer
+   * @param vaa - Optional Wormhole VAA
+   * @param evmProof - Optional EVM proof
+   * @param proofKind - Type of proof
+   * @returns Promise resolving to transaction outcome
    */
   async finalizeTransfer(
     token: AccountId,
     account: AccountId,
     storageDepositAmount: U128,
     sourceChain: ChainKind,
+    signerId?: string,
     vaa?: string,
     evmProof?: EvmVerifyProofArgs,
     proofKind: ProofKind = ProofKind.InitTransfer,
-  ): Promise<FinalExecutionOutcome> {
+  ) {
+    const signer = this.getSignerId(signerId)
     if (!vaa && !evmProof) {
       throw new Error("Must provide either VAA or EVM proof")
     }
-    if (evmProof) {
-      if (sourceChain !== ChainKind.Eth) {
-        throw new Error("EVM proof is only valid for Ethereum")
-      }
+    if (evmProof && sourceChain !== ChainKind.Eth) {
+      throw new Error("EVM proof is only valid for Ethereum")
     }
+
     let proverArgsSerialized: Uint8Array = new Uint8Array(0)
     if (vaa) {
       const proverArgs: WormholeVerifyProofArgs = {
@@ -606,73 +603,58 @@ export class NearBridgeClient {
     }
     const serializedArgs = FinTransferArgsSchema.serialize(args)
 
-    // Retrieve required deposit dynamically for fin_transfer
-    const finDepositStr = await this.wallet.provider.callFunction(
+    // Retrieve required deposit dynamically
+    const finDepositStr = await this.near.view<string>(
       this.lockerAddress,
       "required_balance_for_fin_transfer",
       {},
     )
-    const finDeposit = BigInt(finDepositStr as string) + storageDepositAmount
+    const finDeposit = BigInt(finDepositStr) + storageDepositAmount
 
-    const tx = await this.wallet.signAndSendTransaction({
-      receiverId: this.lockerAddress,
-      actions: [
-        actionCreators.functionCall("fin_transfer", serializedArgs, GAS.FIN_TRANSFER, finDeposit),
-      ],
-      waitUntil: "FINAL",
-    })
+    const tx = await this.near
+      .transaction(signer)
+      .functionCall(this.lockerAddress, "fin_transfer", serializedArgs, {
+        gas: GAS.FIN_TRANSFER,
+        attachedDeposit: `${finDeposit} yocto`,
+      })
+      .send({ waitUntil: "FINAL" })
+
     return tx
   }
 
   /**
-   * Retrieves various balance information for the current account
+   * Retrieves various balance information for an account
    * @private
-   * @returns Promise resolving to object containing required balances and storage information
-   * @throws {Error} If balance fetching fails
    */
-  private async getBalances(): Promise<BalanceResults> {
+  private async getBalances(accountId: string): Promise<BalanceResults> {
     try {
       const [regBalanceStr, initBalanceStr, finBalanceStr, bindBalanceStr, storage] =
         await Promise.all([
-          this.wallet.provider.callFunction(this.lockerAddress, "required_balance_for_account", {}),
-          this.wallet.provider.callFunction(
+          this.near.view<string>(this.lockerAddress, "required_balance_for_account", {}),
+          this.near.view<string>(this.lockerAddress, "required_balance_for_init_transfer", {}),
+          this.near.view<string>(this.lockerAddress, "required_balance_for_fin_transfer", {}),
+          this.near.view<string>(this.lockerAddress, "required_balance_for_bind_token", {}),
+          this.near.view<{ total: string; available: string } | null>(
             this.lockerAddress,
-            "required_balance_for_init_transfer",
-            {},
+            "storage_balance_of",
+            { account_id: accountId },
           ),
-          this.wallet.provider.callFunction(
-            this.lockerAddress,
-            "required_balance_for_fin_transfer",
-            {},
-          ),
-          this.wallet.provider.callFunction(
-            this.lockerAddress,
-            "required_balance_for_bind_token",
-            {},
-          ),
-          this.wallet.provider.callFunction(this.lockerAddress, "storage_balance_of", {
-            account_id: this.wallet.accountId,
-          }),
-          this.wallet.provider.callFunction(this.lockerAddress, "storage_balance_of", {
-            account_id: this.wallet.accountId,
-          }),
         ])
 
       // Convert storage balance to bigint
       let convertedStorage = null
       if (storage) {
-        const storageBalance = storage as { total: string; available: string }
         convertedStorage = {
-          total: BigInt(storageBalance.total),
-          available: BigInt(storageBalance.available),
+          total: BigInt(storage.total),
+          available: BigInt(storage.available),
         }
       }
 
       return {
-        regBalance: BigInt(regBalanceStr as string),
-        initBalance: BigInt(initBalanceStr as string),
-        finBalance: BigInt(finBalanceStr as string),
-        bindBalance: BigInt(bindBalanceStr as string),
+        regBalance: BigInt(regBalanceStr),
+        initBalance: BigInt(initBalanceStr),
+        finBalance: BigInt(finBalanceStr),
+        bindBalance: BigInt(bindBalanceStr),
         storage: convertedStorage,
       }
     } catch (error) {
@@ -723,9 +705,11 @@ export class NearBridgeClient {
   async getUtxoDepositAddress(
     chain: UtxoChain,
     recipientId: string,
+    signerId?: string,
     amount?: bigint,
     fee?: bigint,
   ): Promise<{ depositAddress: string; depositArgs: BtcDepositArgs }> {
+    const signer = this.getSignerId(signerId)
     const { connector } = this.getUtxoConnector(chain)
 
     let depositMsg: BtcDepositArgs["deposit_msg"]
@@ -734,7 +718,7 @@ export class NearBridgeClient {
         throw new Error("Amount is required for Omni address deposits")
       }
       depositMsg = {
-        recipient_id: this.wallet.accountId,
+        recipient_id: signer,
         post_actions: [
           {
             receiver_id: this.lockerAddress,
@@ -753,13 +737,9 @@ export class NearBridgeClient {
       }
     }
 
-    const depositAddress = (await this.wallet.provider.callFunction(
-      connector,
-      "get_user_deposit_address",
-      {
-        deposit_msg: depositMsg,
-      },
-    )) as string
+    const depositAddress = await this.near.view<string>(connector, "get_user_deposit_address", {
+      deposit_msg: depositMsg,
+    })
 
     return {
       depositAddress,
@@ -772,7 +752,9 @@ export class NearBridgeClient {
     txHash: string,
     vout: number,
     depositArgs: BtcDepositArgs,
+    signerId?: string,
   ): Promise<string> {
+    const signer = this.getSignerId(signerId)
     const { connector } = this.getUtxoConnector(chain)
     const config = (await this.getUtxoBridgeConfig(chain)) as BtcConnectorConfig
     const service = this.getUtxoService(chain)
@@ -793,11 +775,10 @@ export class NearBridgeClient {
       merkle_proof: proof.merkle_proof,
     }
 
-    const tx = await this.wallet.signAndSendTransaction({
-      receiverId: connector,
-      actions: [actionCreators.functionCall("verify_deposit", args, GAS.VERIFY_DEPOSIT)],
-      waitUntil: "FINAL",
-    })
+    const tx = await this.near
+      .transaction(signer)
+      .functionCall(connector, "verify_deposit", args, { gas: GAS.VERIFY_DEPOSIT })
+      .send({ waitUntil: "FINAL" })
 
     return tx.transaction.hash
   }
@@ -806,12 +787,13 @@ export class NearBridgeClient {
     chain: UtxoChain,
     targetAddress: string,
     amount: bigint,
+    signerId?: string,
   ): Promise<{ pendingId: string; nearTxHash: string }> {
+    const signer = this.getSignerId(signerId)
     const chainLabel = this.getUtxoChainLabel(chain)
-
     const { connector, token } = this.getUtxoConnector(chain)
-
     const config = await this.getUtxoBridgeConfig(chain)
+
     if (amount < BigInt(config.min_withdraw_amount)) {
       throw new Error(
         `Amount ${amount} is below minimum withdrawal amount ${config.min_withdraw_amount}`,
@@ -842,22 +824,22 @@ export class NearBridgeClient {
     const bridgeFee = calculateBridgeFee(config.withdraw_bridge_fee, amount)
     const totalAmount = amount + plan.fee + bridgeFee
 
-    const tx = await this.wallet.signAndSendTransaction({
-      receiverId: token,
-      actions: [
-        actionCreators.functionCall(
-          "ft_transfer_call",
-          {
-            receiver_id: connector,
-            amount: totalAmount.toString(),
-            msg: JSON.stringify(msg),
-          },
-          GAS.INIT_BTC_TRANSFER,
-          BigInt(1),
-        ),
-      ],
-      waitUntil: "FINAL",
-    })
+    const tx = await this.near
+      .transaction(signer)
+      .functionCall(
+        token,
+        "ft_transfer_call",
+        {
+          receiver_id: connector,
+          amount: totalAmount.toString(),
+          msg: JSON.stringify(msg),
+        },
+        {
+          gas: GAS.INIT_BTC_TRANSFER,
+          attachedDeposit: "1 yocto",
+        },
+      )
+      .send({ waitUntil: "FINAL" })
 
     const pendingLogKey = "generate_btc_pending_info"
     const pendingLog = tx.receipts_outcome
@@ -873,6 +855,7 @@ export class NearBridgeClient {
     if (!jsonPart) {
       throw new Error(`${chainLabel}: Invalid log format`)
     }
+
     const pendingData = JSON.parse(jsonPart)
     const pendingId = pendingData.data?.[0]?.btc_pending_id
     if (!pendingId) {
@@ -883,17 +866,19 @@ export class NearBridgeClient {
   }
 
   /**
-   * Creates NEAR -> UTXO chain transfer (NEAR -> BTC/Zcash flow start, option #2)
-   * To be called after initTransfer() that sends tokens to UTXO chain receiver address
+   * Creates NEAR -> UTXO chain transfer
    */
-  async submitBitcoinTransfer(initTransferEvent: InitTransferEvent): Promise<string> {
+  async submitBitcoinTransfer(
+    initTransferEvent: InitTransferEvent,
+    signerId?: string,
+  ): Promise<string> {
+    const signer = this.getSignerId(signerId)
     const recipientRaw = initTransferEvent.transfer_message.recipient
     const recipientParts = recipientRaw.split(":")
     if (recipientParts.length < 2 || !recipientParts[1]) {
       throw new Error(`Malformed recipient address: "${recipientRaw}"`)
     }
 
-    // Validate recipient chain is a UTXO chain
     const recipientChain = getChain(recipientRaw)
     if (recipientChain !== ChainKind.Btc && recipientChain !== ChainKind.Zcash) {
       throw new Error(
@@ -907,6 +892,7 @@ export class NearBridgeClient {
     const amount =
       BigInt(initTransferEvent.transfer_message.amount) -
       BigInt(initTransferEvent.transfer_message.fee.fee)
+
     let maxGasFee = 0n
     const transferMsg = initTransferEvent.transfer_message.msg
     if (transferMsg) {
@@ -925,17 +911,14 @@ export class NearBridgeClient {
 
     const utxos = await this.getUtxoAvailableOutputs(recipientChain)
     const utxoConfig = await this.getUtxoBridgeConfig(recipientChain)
-
     const withdrawFee = calculateBridgeFee(utxoConfig.withdraw_bridge_fee, amount)
 
-    // Verify that amount covers the withdrawal fee
     if (amount <= withdrawFee) {
       throw new Error(
         `Transfer amount (${amount}) must be greater than withdrawal fee (${withdrawFee})`,
       )
     }
 
-    // Verify that max gas fee is reasonable if provided
     if (maxGasFee > 0n && maxGasFee + withdrawFee > amount) {
       throw new Error(
         `Max gas fee (${maxGasFee}) plus withdrawal fee (${withdrawFee}) cannot exceed transfer amount (${amount})`,
@@ -959,24 +942,24 @@ export class NearBridgeClient {
       },
     }
 
-    const tx = await this.wallet.signAndSendTransaction({
-      receiverId: this.lockerAddress,
-      actions: [
-        actionCreators.functionCall(
-          "submit_transfer_to_utxo_chain_connector",
-          {
-            transfer_id: {
-              origin_chain: ChainKind[getChain(initTransferEvent.transfer_message.sender)],
-              origin_nonce: BigInt(initTransferEvent.transfer_message.origin_nonce),
-            },
-            msg: JSON.stringify(msg),
+    const tx = await this.near
+      .transaction(signer)
+      .functionCall(
+        this.lockerAddress,
+        "submit_transfer_to_utxo_chain_connector",
+        {
+          transfer_id: {
+            origin_chain: ChainKind[getChain(initTransferEvent.transfer_message.sender)],
+            origin_nonce: BigInt(initTransferEvent.transfer_message.origin_nonce),
           },
-          GAS.SUBMIT_BTC_TRANSFER,
-          BigInt(0),
-        ),
-      ],
-      waitUntil: "FINAL",
-    })
+          msg: JSON.stringify(msg),
+        },
+        {
+          gas: GAS.SUBMIT_BTC_TRANSFER,
+          attachedDeposit: "0 yocto",
+        },
+      )
+      .send({ waitUntil: "FINAL" })
 
     return tx.transaction.hash
   }
@@ -985,31 +968,36 @@ export class NearBridgeClient {
     chain: UtxoChain,
     pendingId: string,
     signIndex: number,
+    signerId?: string,
   ): Promise<string> {
-    const methodName = "sign_btc_transaction"
-    const args = {
-      btc_pending_id: pendingId,
-      sign_index: signIndex,
-    }
-
+    const signer = this.getSignerId(signerId)
     const { connector } = this.getUtxoConnector(chain)
 
-    const tx = await this.wallet.signAndSendTransaction({
-      receiverId: connector,
-      actions: [
-        actionCreators.functionCall(methodName, args, GAS.SIGN_BTC_TX, DEPOSIT.SIGN_BTC_TX),
-      ],
-    })
+    const tx = await this.near
+      .transaction(signer)
+      .functionCall(
+        connector,
+        "sign_btc_transaction",
+        {
+          btc_pending_id: pendingId,
+          sign_index: signIndex,
+        },
+        {
+          gas: GAS.SIGN_BTC_TX,
+          attachedDeposit: DEPOSIT.SIGN_BTC_TX,
+        },
+      )
+      .send()
 
     return tx.transaction.hash
   }
 
-  async finalizeUtxoWithdrawal(chain: UtxoChain, nearTxHash: string): Promise<string> {
-    const nearTx = await this.wallet.provider.viewTransactionStatus(
-      nearTxHash,
-      this.wallet.accountId,
-      "FINAL",
-    )
+  async finalizeUtxoWithdrawal(
+    chain: UtxoChain,
+    nearTxHash: string,
+    senderId: string,
+  ): Promise<string> {
+    const nearTx = await this.near.getTransactionStatus(nearTxHash, senderId, "FINAL")
 
     const chainLabel = this.getUtxoChainLabel(chain)
     const signedLogKey = "signed_btc_transaction"
@@ -1026,6 +1014,7 @@ export class NearBridgeClient {
     if (!jsonPart) {
       throw new Error(`${chainLabel}: Invalid log format`)
     }
+
     const signedData = JSON.parse(jsonPart)
     const txBytes = signedData.data?.[0]?.tx_bytes
     if (!Array.isArray(txBytes)) {
@@ -1044,8 +1033,8 @@ export class NearBridgeClient {
     delayMs: number = BITCOIN_SIGNING_WAIT.DEFAULT_DELAY_MS,
   ): Promise<string> {
     const chainLabel = this.getUtxoChainLabel(chain)
-
     const api = new OmniBridgeAPI()
+
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const transfer = await api.getTransfer({ transactionHash: nearTxHash })
@@ -1061,9 +1050,7 @@ export class NearBridgeClient {
         if (attempt === maxAttempts) {
           const seconds = (maxAttempts * delayMs) / 1000
           throw new Error(
-            `${chainLabel}: Transaction signing not found after ${maxAttempts} attempts (${seconds}s). ${String(
-              error,
-            )}`,
+            `${chainLabel}: Transaction signing not found after ${maxAttempts} attempts (${seconds}s). ${String(error)}`,
           )
         }
       }
@@ -1078,43 +1065,47 @@ export class NearBridgeClient {
     chain: UtxoChain,
     targetAddress: string,
     amount: bigint,
+    signerId?: string,
     maxWaitAttempts: number = BITCOIN_SIGNING_WAIT.DEFAULT_MAX_ATTEMPTS,
     waitDelayMs: number = BITCOIN_SIGNING_WAIT.DEFAULT_DELAY_MS,
   ): Promise<string> {
-    const withdrawal = await this.initUtxoWithdrawal(chain, targetAddress, amount)
+    const signer = this.getSignerId(signerId)
+    const withdrawal = await this.initUtxoWithdrawal(chain, targetAddress, amount, signer)
     const nearTxHash = await this.waitForUtxoTransactionSigning(
       chain,
       withdrawal.nearTxHash,
       maxWaitAttempts,
       waitDelayMs,
     )
-    return await this.finalizeUtxoWithdrawal(chain, nearTxHash)
+    return await this.finalizeUtxoWithdrawal(chain, nearTxHash, signer)
   }
 
-  async verifyUtxoWithdrawal(chain: UtxoChain, txHash: string): Promise<string> {
+  async verifyUtxoWithdrawal(chain: UtxoChain, txHash: string, signerId?: string): Promise<string> {
+    const signer = this.getSignerId(signerId)
     const { connector } = this.getUtxoConnector(chain)
     const service = this.getUtxoService(chain)
     const proof: BitcoinMerkleProofResponse = await service.getMerkleProof(txHash)
 
-    const tx = await this.wallet.signAndSendTransaction({
-      receiverId: connector,
-      actions: [
-        actionCreators.functionCall(
-          "btc_verify_withdraw",
-          { tx_proof: proof },
-          GAS.VERIFY_WITHDRAW,
-          DEPOSIT.VERIFY_WITHDRAW,
-        ),
-      ],
-    })
+    const tx = await this.near
+      .transaction(signer)
+      .functionCall(
+        connector,
+        "btc_verify_withdraw",
+        { tx_proof: proof },
+        {
+          gas: GAS.VERIFY_WITHDRAW,
+          attachedDeposit: DEPOSIT.VERIFY_WITHDRAW,
+        },
+      )
+      .send()
 
     return tx.transaction.hash
   }
 
   async getUtxoAvailableOutputs(chain: UtxoChain): Promise<UTXO[]> {
     const { connector } = this.getUtxoConnector(chain)
-    const result = await this.wallet.provider.callFunction(connector, "get_utxos_paged", {})
-    const utxos = result as Record<string, UTXO>
+    const result = await this.near.view<Record<string, UTXO>>(connector, "get_utxos_paged", {})
+    const utxos = result
     return Object.entries(utxos).map(([key, utxo]) => {
       const parts = key.split("@")
       const txid = parts[0]
@@ -1130,11 +1121,7 @@ export class NearBridgeClient {
 
   async getUtxoBridgeConfig(chain: UtxoChain): Promise<BtcConnectorConfig> {
     const { connector } = this.getUtxoConnector(chain)
-    return (await this.wallet.provider.callFunction(
-      connector,
-      "get_config",
-      {},
-    )) as BtcConnectorConfig
+    return await this.near.view<BtcConnectorConfig>(connector, "get_config", {})
   }
 
   private buildUtxoWithdrawalPlan(
@@ -1190,35 +1177,38 @@ export class NearBridgeClient {
     }
   }
 
-  /// Performs a storage deposit on behalf of the token_locker so that the tokens can be transferred to the locker. To be called once for each NEP-141
-  private async storageDepositForToken(tokenAddress: string): Promise<string> {
-    const storage = (await this.wallet.provider.callFunction(tokenAddress, "storage_balance_of", {
+  /// Performs a storage deposit on behalf of the token_locker
+  private async storageDepositForToken(tokenAddress: string, signerId: string): Promise<string> {
+    const signer = this.getSignerId(signerId)
+    const storage = await this.near.view<string | null>(tokenAddress, "storage_balance_of", {
       account_id: this.lockerAddress,
-    })) as string
+    })
+
     if (storage === null) {
-      // Check how much is required
-      const bounds = (await this.wallet.provider.callFunction(
+      const bounds = await this.near.view<{ min: string; max: string }>(
         tokenAddress,
         "storage_balance_bounds",
         {
           account_id: this.lockerAddress,
         },
-      )) as { min: string; max: string }
+      )
       const requiredAmount = BigInt(bounds.min)
 
-      const tx = await this.wallet.signAndSendTransaction({
-        receiverId: tokenAddress,
-        actions: [
-          actionCreators.functionCall(
-            "storage_deposit",
-            {
-              account_id: this.lockerAddress,
-            },
-            GAS.STORAGE_DEPOSIT,
-            requiredAmount,
-          ),
-        ],
-      })
+      const tx = await this.near
+        .transaction(signer)
+        .functionCall(
+          tokenAddress,
+          "storage_deposit",
+          {
+            account_id: this.lockerAddress,
+          },
+          {
+            gas: GAS.STORAGE_DEPOSIT,
+            attachedDeposit: `${requiredAmount} yocto`,
+          },
+        )
+        .send()
+
       return tx.transaction.hash
     }
     return storage
@@ -1227,59 +1217,52 @@ export class NearBridgeClient {
   /**
    * Gets the required balance for fast transfer operations
    * @private
-   * @returns Promise resolving to the required balance amount in yoctoNEAR
    */
   async getRequiredBalanceForFastTransfer(): Promise<bigint> {
-    const balanceStr = await this.wallet.viewFunction({
-      contractId: this.lockerAddress,
-      methodName: "required_balance_for_fast_transfer",
-    })
+    const balanceStr = await this.near.view<string>(
+      this.lockerAddress,
+      "required_balance_for_fast_transfer",
+      {},
+    )
     return BigInt(balanceStr)
   }
 
   /**
-   * Performs a fast finalize transfer on NEAR chain.
-   *
-   * This method enables relayers to "front" tokens to users immediately upon detecting
-   * an InitTransfer event on an EVM chain, without waiting for full cryptographic finality.
-   * The relayer provides their own tokens to the user instantly, and later gets reimbursed
-   * when the original cross-chain proof is processed.
-   *
-   * The process:
-   * 1. Relayer transfers their own tokens from their NEAR account to the bridge contract
-   * 2. Bridge contract immediately sends tokens to the final recipient
-   * 3. Bridge marks the transfer as completed and records the relayer as owed reimbursement
-   * 4. Later, when the slow cryptographic proof arrives, the relayer gets reimbursed
-   *
-   * @param args - Fast finalize transfer arguments containing token, amount, recipient, transfer_id, relayer info, etc.
+   * Performs a fast finalize transfer on NEAR chain
+   * @param args - Fast finalize transfer arguments
+   * @param signerId - Optional signer ID (uses defaultSignerId if not provided)
    * @returns Promise resolving to the NEAR transaction hash
-   * @throws {Error} If the transaction fails or required storage deposit fails
    */
-  async fastFinTransfer(args: FastFinTransferArgs): Promise<string> {
-    // Get required balance for fast transfer
+  async fastFinTransfer(args: FastFinTransferArgs, signerId?: string): Promise<string> {
+    const signer = this.getSignerId(signerId)
     const requiredBalance = await this.getRequiredBalanceForFastTransfer()
     const storageDepositAmount = BigInt(args.storage_deposit_amount ?? 0)
     const totalRequiredBalance = requiredBalance + storageDepositAmount
 
-    // Check current storage balance and deposit if needed
-    const storage = (await this.wallet.provider.callFunction(
+    const storage = await this.near.view<{ total: string; available: string } | null>(
       this.lockerAddress,
       "storage_balance_of",
       {
-        account_id: this.wallet.accountId,
+        account_id: signer,
       },
-    )) as { total: string; available: string }
+    )
 
     const existingBalance = storage?.available ? BigInt(storage.available) : BigInt(0)
     const neededAmount = totalRequiredBalance - existingBalance
 
+    // Build transaction with storage deposit if needed
+    let tx = this.near.transaction(signer)
+
     if (neededAmount > 0) {
-      await this.wallet.signAndSendTransaction({
-        receiverId: this.lockerAddress,
-        actions: [
-          actionCreators.functionCall("storage_deposit", {}, GAS.STORAGE_DEPOSIT, neededAmount),
-        ],
-      })
+      tx = tx.functionCall(
+        this.lockerAddress,
+        "storage_deposit",
+        {},
+        {
+          gas: GAS.STORAGE_DEPOSIT,
+          attachedDeposit: `${neededAmount} yocto`,
+        },
+      )
     }
 
     const transferArgs = {
@@ -1288,53 +1271,39 @@ export class NearBridgeClient {
       msg: JSON.stringify(args),
     }
 
-    // Execute the fast finalize transfer
-    const tx = await this.wallet.signAndSendTransaction({
-      receiverId: args.token_id,
-      actions: [
-        actionCreators.functionCall(
-          "ft_transfer_call",
-          transferArgs,
-          GAS.FAST_FIN_TRANSFER,
-          DEPOSIT.INIT_TRANSFER,
-        ),
-      ],
-    })
+    // Chain the ft_transfer_call
+    const result = await tx
+      .functionCall(args.token_id, "ft_transfer_call", transferArgs, {
+        gas: GAS.FAST_FIN_TRANSFER,
+        attachedDeposit: DEPOSIT.INIT_TRANSFER,
+      })
+      .send()
 
-    return tx.transaction.hash
+    return result.transaction.hash
   }
 
   /**
-   * Performs a complete fast transfer from EVM to NEAR.
-   * This function orchestrates the entire fast transfer process:
-   * 1. Fetches and parses the InitTransfer event from the EVM transaction
-   * 2. Gets the corresponding NEAR token ID using getBridgedToken
-   * 3. Executes the fast finalize transfer on NEAR
-   *
+   * Performs a complete fast transfer from EVM to NEAR
    * @param originChain - The EVM chain where the original transfer was initiated
    * @param evmTxHash - Transaction hash of the InitTransfer on the EVM chain
    * @param evmClient - EVM bridge client for parsing the transaction
+   * @param signerId - Account ID of the signer
    * @param storageDepositAmount - Optional storage deposit amount in yoctoNEAR
    * @returns Promise resolving to the NEAR transaction hash
-   * @throws {Error} If the origin chain is not supported for fast transfers
-   * @throws {Error} If the EVM transaction or event cannot be found/parsed
-   * @throws {Error} If the fast transfer execution fails
    */
   async nearFastTransfer(
     originChain: ChainKind,
     evmTxHash: string,
     evmClient: EvmBridgeClient,
+    signerId?: string,
     storageDepositAmount?: string,
   ): Promise<string> {
-    // Validate supported chains for fast transfer
+    const signer = this.getSignerId(signerId)
     if (!isEvmChain(originChain)) {
       throw new Error(`Fast transfer is not supported for chain kind: ${ChainKind[originChain]}`)
     }
 
-    // Step 1: Parse the InitTransfer event from EVM transaction
     const transferEvent = await evmClient.getInitTransferEvent(evmTxHash)
-
-    // Step 2: Get the NEAR token ID for the EVM token using getBridgedToken
     const omniTokenAddress = omniAddress(originChain, transferEvent.tokenAddress)
     const nearTokenAddress = await getBridgedToken(omniTokenAddress, ChainKind.Near)
 
@@ -1348,7 +1317,7 @@ export class NearBridgeClient {
       throw new Error("Invalid NEAR token address format")
     }
 
-    // Step 3: Get token decimals and calculate amount to send
+    // Get token decimals and calculate amount to send
     const tokenDecimals = await getTokenDecimals(this.lockerAddress, omniTokenAddress)
     if (!tokenDecimals) {
       throw new Error(`Token ${omniTokenAddress} is not registered on NEAR`)
@@ -1379,13 +1348,13 @@ export class NearBridgeClient {
     )
     const amountToSend = normalizedAmount - normalizedFee
 
-    // Step 4: Construct the transfer ID
+    // Construct the transfer ID
     const transferId: TransferId = {
-      origin_chain: originChain, // Use numeric enum value
+      origin_chain: originChain,
       origin_nonce: transferEvent.originNonce,
     }
 
-    // Step 5: Execute the fast finalize transfer
+    // Execute the fast finalize transfer
     const fastTransferArgs: FastFinTransferArgs = {
       token_id: nearTokenId,
       amount: transferEvent.amount.toString(),
@@ -1398,9 +1367,9 @@ export class NearBridgeClient {
       },
       msg: transferEvent.message,
       storage_deposit_amount: storageDepositAmount,
-      relayer: this.wallet.accountId,
+      relayer: signer,
     }
 
-    return await this.fastFinTransfer(fastTransferArgs)
+    return await this.fastFinTransfer(fastTransferArgs, signer)
   }
 }

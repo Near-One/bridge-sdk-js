@@ -1,0 +1,1574 @@
+# near-kit
+
+> A TypeScript library for interacting with NEAR - simple, type-safe, and intuitive
+
+
+
+# AI Agent Cookbook: Introduction to near-kit
+
+This document provides essential introductory information for an AI agent using `near-kit`.
+
+## `near-kit` is NOT `near-api-js`
+
+A critical point of understanding is that `near-kit` is a new, modern library for interacting with the NEAR blockchain. It is **not** `near-api-js` or a part of the `@near-js/*` family of libraries.
+
+Many existing codebases and training datasets are based on `near-api-js`. While the core concepts of NEAR are the same, the APIs are fundamentally different. An agent trained on `near-api-js` must adapt to the new patterns in `near-kit`.
+
+### Key Differences from `near-api-js`
+
+- **Simplicity & Fluency**: `near-kit` uses a fluent, chainable API for building transactions, which is more readable and less verbose.
+- **Modern API Design**: The overall design feels more like a modern `fetch` library, with a focus on simplicity for common tasks.
+
+**`near-api-js` Example:**
+```typescript
+const { utils } = require("near-api-js");
+
+await account.functionCall({
+  contractId: "market.near",
+  methodName: "buy_nft",
+  args: { token_id: "token-1" },
+  gas: "50000000000000", // Manual gas calculation
+  attachedDeposit: utils.format.parseNearAmount("10"),
+});
+```
+
+**`near-kit` Equivalent:**
+```typescript
+await near
+  .transaction("alice.testnet")
+  .functionCall(
+    "market.near",
+    "buy_nft",
+    { token_id: "token-1" },
+    { gas: "50 Tgas", attachedDeposit: "10 NEAR" }
+  )
+  .send();
+```
+
+An agent should **never** assume `near-api-js` patterns, such as `account.viewFunction` or `utils.format.parseNearAmount`, will work. It should instead rely on the patterns documented in this cookbook, such as `near.view()` and the `near.transaction()` builder.
+
+### Human-Readable Units
+
+`near-kit` accepts human-readable strings directly for amounts and gas:
+
+```typescript
+// Use string literals with units
+await near.transaction("alice.testnet").transfer("bob.testnet", "10.5 NEAR").send();
+
+// Or use the Amount helper for dynamic values
+import { Amount } from "near-kit";
+const deposit = Amount.NEAR(10.5); // "10.5 NEAR"
+await near.transaction("alice.testnet").transfer("bob.testnet", deposit).send();
+```
+
+For displaying balances, use `formatAmount()`:
+
+```typescript
+import { formatAmount } from "near-kit";
+
+const accountDetails = await near.getAccountDetails("alice.testnet");
+const formatted = formatAmount(accountDetails.amount); // "100.50 NEAR"
+
+// Customize formatting
+const custom = formatAmount(accountDetails.amount, {
+  precision: 4,        // Decimal places (default: 2)
+  trimZeros: true,     // Remove trailing zeros (default: false)
+  includeSuffix: false // Exclude " NEAR" suffix (default: true)
+});
+```
+
+## Installation
+
+To use `near-kit` in a project, it must be added as a dependency.
+
+```bash
+# Using bun
+bun install near-kit
+
+# Using npm
+npm install near-kit
+
+# Using yarn
+yarn add near-kit
+```
+
+After installation, it can be imported into any TypeScript or JavaScript file.
+
+```typescript
+import { Near } from "near-kit";
+```
+
+
+# AI Agent Cookbook: Initialization
+
+This document provides patterns for initializing the `near-kit` `Near` class for an AI agent.
+
+## Core Concepts
+
+- The `Near` class is the main entry point.
+- Configuration is passed as an object to the constructor.
+- The most important options are `network` and a credential source (`privateKey`, `keyStore`, or `wallet`).
+
+## Type Definition: `NearConfig`
+
+```typescript
+import type { KeyStore, Signer, WalletConnection } from "near-kit";
+
+export type NearConfig = {
+  // Network selection
+  network?: "mainnet" | "testnet" | "localnet" | {
+    networkId: string;
+    rpcUrl: string;
+    walletUrl?: string;
+  };
+  
+  // Optional RPC override and custom headers
+  rpcUrl?: string;
+  headers?: Record<string, string>;
+
+  // Credential source (choose one)
+  keyStore?: KeyStore | Record<string, string>;
+  signer?: Signer;
+  privateKey?: `ed25519:${string}` | `secp256k1:${string}`;
+  wallet?: WalletConnection;
+
+  // Default account for signing
+  defaultSignerId?: string;
+
+  // Default finality for transactions
+  defaultWaitUntil?: "NONE" | "INCLUDED" | "EXECUTED_OPTIMISTIC" | "FINAL";
+  
+  // Retry behavior for network errors
+  retryConfig?: {
+    maxRetries?: number;
+    initialDelayMs?: number;
+  };
+};
+```
+
+---
+
+## Patterns
+
+### Pattern 1: Connect to Testnet with a Private Key
+
+This is the most common pattern for server-side scripts and testing.
+
+```typescript
+import { Near } from "near-kit";
+
+// Initialize for testnet with a specific private key and default signer account
+const near = new Near({
+  network: "testnet",
+  privateKey: "ed25519:...", // Replace with a valid ed25519 private key
+  defaultSignerId: "my-account.testnet",
+});
+```
+
+### Pattern 2: Connect to Mainnet (Read-Only)
+
+To perform read-only operations (like `view` calls), no credentials are needed.
+
+```typescript
+import { Near } from "near-kit";
+
+// Initialize for mainnet for read-only operations
+const near = new Near({
+  network: "mainnet",
+});
+```
+
+### Pattern 3: Using an In-Memory Key Store
+
+Use `InMemoryKeyStore` to manage multiple keys for the lifetime of the process.
+
+```typescript
+import { Near, InMemoryKeyStore } from "near-kit";
+
+// Pre-populate a key store with multiple accounts
+const keyStore = new InMemoryKeyStore({
+  "alice.testnet": "ed25519:...",
+  "bob.testnet": "ed25519:...",
+});
+
+const near = new Near({
+  network: "testnet",
+  keyStore,
+});
+
+// Transactions can now be signed by 'alice.testnet' or 'bob.testnet'
+// e.g., near.transaction("alice.testnet")...
+```
+
+### Pattern 4: Using a File-Based Key Store (Node.js only)
+
+Use `FileKeyStore` to access keys stored in the `near-cli` compatible format (`~/.near-credentials`).
+
+```typescript
+import { Near } from "near-kit";
+import { FileKeyStore } from "near-kit/keys";
+
+// This will read keys from the ~/.near-credentials/testnet directory
+const keyStore = new FileKeyStore("~/.near-credentials", "testnet");
+
+const near = new Near({
+  network: "testnet",
+  keyStore,
+});
+```
+
+### Pattern 5: Using a Custom RPC with an API Key
+
+If you are using a third-party RPC provider that requires an API key, use the `rpcUrl` and `headers` options.
+
+```typescript
+import { Near } from "near-kit";
+
+const near = new Near({
+  network: "mainnet",
+  rpcUrl: "https://my.rpc.provider.com/mainnet",
+  headers: {
+    "x-api-key": "MY_API_KEY",
+  },
+});
+```
+
+
+# AI Agent Cookbook: Reading Data
+
+This document provides patterns for reading data from the NEAR blockchain using `near-kit`. These operations are read-only, do not cost gas, and do not require credentials.
+
+## Core Concepts
+
+- All read operations are `async` and return a `Promise`.
+- Most read operations can take an optional `BlockReference` object to query historical data.
+
+## Type Definition: `BlockReference`
+
+```typescript
+export type BlockReference = {
+  /**
+   * Finality level for the query.
+   * 'optimistic': Latest block, possibly not final.
+   * 'final': Fully finalized block.
+   * Default is 'final' for view calls.
+   */
+  finality?: "optimistic" | "final";
+
+  /**
+   * A specific block ID (height or hash) to query against.
+   * Overrides finality if provided.
+   */
+  blockId?: number | string;
+};
+```
+
+---
+
+## Patterns
+
+### Pattern 1: Call a Contract View Method
+
+Use `near.view()` to call a read-only method on a smart contract.
+
+```typescript
+import { Near } from "near-kit";
+const near = new Near({ network: "testnet" });
+
+// Call 'get_messages' on a guestbook contract
+const messages = await near.view(
+  "guestbook.near-examples.testnet",
+  "get_messages",
+  {} // Arguments for the view call
+);
+// `messages` will contain the parsed JSON result from the contract.
+```
+
+### Pattern 2: Get an Account's NEAR Balance
+
+Use `near.getBalance()` to retrieve the balance of an account.
+
+```typescript
+import { Near } from "near-kit";
+const near = new Near({ network: "testnet" });
+
+// Get the balance for 'alice.testnet'
+const balance = await near.getBalance("alice.testnet");
+// `balance` will be a formatted string, e.g., "100.00 NEAR".
+```
+
+### Pattern 3: Check if an Account Exists
+
+Use `near.accountExists()` for a boolean check.
+
+```typescript
+import { Near } from "near-kit";
+const near = new Near({ network: "testnet" });
+
+// Check if 'alice.testnet' exists
+const exists = await near.accountExists("alice.testnet");
+// `exists` will be true or false.
+```
+
+### Pattern 4: Get Network Status
+
+Use `near.getStatus()` to get high-level information about the network.
+
+```typescript
+import { Near } from "near-kit";
+const near = new Near({ network: "testnet" });
+
+// Get the current network status
+const status = await near.getStatus();
+// `status` will be an object like:
+// {
+//   chainId: 'testnet',
+//   latestBlockHeight: 123456789,
+//   syncing: false
+// }
+```
+
+### Pattern 5: Get Detailed Transaction Status
+
+Use `near.getTransactionStatus()` to get the detailed outcome of a past transaction.
+
+```typescript
+import { Near } from "near-kit";
+const near = new Near({ network: "testnet" });
+
+const txHash = "8ZQ7...your_tx_hash"; // A valid transaction hash
+const senderId = "alice.testnet";     // The account that sent the transaction
+
+// Get the final outcome of the transaction
+const result = await near.getTransactionStatus(txHash, senderId, "FINAL");
+// `result` will be a `FinalExecutionOutcomeWithReceipts` object.
+```
+
+### Pattern 6: Querying at a Specific Block Height
+
+Most read methods accept a `BlockReference`. Use this to query historical state.
+
+```typescript
+import { Near } from "near-kit";
+const near = new Near({ network: "testnet" });
+
+// Get the balance of 'alice.testnet' at a specific block height
+const historicalBalance = await near.getBalance("alice.testnet", {
+  blockId: 123450000,
+});
+```
+
+
+# AI Agent Cookbook: Transaction Builder
+
+This document provides patterns for creating and sending transactions using the `TransactionBuilder`. This is the primary mechanism for performing state-changing operations on the NEAR blockchain.
+
+## Core Concepts
+
+-   Start a transaction with `near.transaction(signerId)`.
+-   Chain one or more actions (`.transfer()`, `.functionCall()`, etc.).
+-   All actions in a single chain are **atomic** (they all succeed or all fail).
+-   Send the transaction to the network with `.send()`.
+
+```admonish warning title="Atomicity Boundary"
+The atomicity guarantee applies only to the actions within the transaction itself. It does **not** extend to cross-contract calls, which are executed as separate receipts in subsequent blocks. If a cross-contract call fails, it will not cause the original transaction to be reverted.
+```
+
+## Type Definition: `Action`
+
+An action is a single operation to be performed in a transaction. The most common ones are represented by the following types:
+
+```typescript
+// A transfer of NEAR tokens
+type TransferAction = {
+  transfer: { deposit: bigint };
+};
+
+// A call to a smart contract method
+type FunctionCallAction = {
+  functionCall: {
+    methodName: string;
+    args: Uint8Array;
+    gas: bigint;
+    deposit: bigint;
+  };
+};
+
+// Creation of a new account
+type CreateAccountAction = {
+  createAccount: {};
+};
+
+// Deployment of a smart contract
+type DeployContractAction = {
+  deployContract: { code: Uint8Array };
+};
+
+// For all other actions, refer to the library's source code or official NEAR documentation.
+```
+
+---
+
+## Patterns
+
+### Pattern 1: Send NEAR
+
+Use the `.transfer()` action.
+
+```typescript
+import { Near } from "near-kit";
+const near = new Near({ network: "testnet", privateKey: "...", defaultSignerId: "alice.testnet" });
+
+// Send 1.5 NEAR from 'alice.testnet' to 'bob.testnet'
+const result = await near
+  .transaction("alice.testnet")
+  .transfer("bob.testnet", "1.5 NEAR")
+  .send();
+```
+
+### Pattern 2: Call a Contract Method
+
+Use the `.functionCall()` action.
+
+```typescript
+import { Near } from "near-kit";
+const near = new Near({ network: "testnet", privateKey: "...", defaultSignerId: "alice.testnet" });
+
+// Call 'add_message' on a guestbook contract with an attached deposit
+const result = await near
+  .transaction("alice.testnet")
+  .functionCall(
+    "guestbook.testnet",
+    "add_message",
+    { text: "Hello from near-kit!" },
+    { gas: "30 Tgas", attachedDeposit: "0.1 NEAR" }
+  )
+  .send();
+```
+
+### Pattern 3: Create an Account
+
+Use the `.createAccount()` action.
+
+```typescript
+import { Near } from "near-kit";
+const near = new Near({ network: "testnet", privateKey: "...", defaultSignerId: "alice.testnet" });
+
+// Create the account 'new-account.testnet'
+const result = await near
+  .transaction("alice.testnet")
+  .createAccount("new-account.testnet")
+  .send();
+```
+
+### Pattern 4: Deploy a Contract
+
+Use the `.deployContract()` action. This is often chained with `.createAccount()`.
+
+```typescript
+import { Near } from "near-kit";
+import { readFileSync } from "fs";
+const near = new Near({ network: "testnet", privateKey: "...", defaultSignerId: "alice.testnet" });
+
+const contractWasm = readFileSync("./path/to/contract.wasm");
+
+// Create an account and deploy a contract to it in one transaction
+const result = await near
+  .transaction("alice.testnet")
+  .createAccount("my-contract.testnet")
+  .deployContract("my-contract.testnet", contractWasm)
+  .send();
+```
+
+### Pattern 5: Add an Access Key
+
+Use the `.addKey()` action to add a key with specific permissions to an account.
+
+```typescript
+import { Near, generateKey } from "near-kit";
+const near = new Near({ network: "testnet", privateKey: "...", defaultSignerId: "alice.testnet" });
+
+const newKey = generateKey(); // Generates a new ed25519 key pair
+
+// Add a Function Call access key to 'my-app.testnet'
+const result = await near
+  .transaction("my-app.testnet")
+  .addKey(newKey.publicKey.toString(), {
+    type: "functionCall",
+    receiverId: "some-contract.testnet",
+    methodNames: ["some_method"],
+    allowance: "0.25 NEAR",
+  })
+  .send();
+```
+
+### Pattern 6: Delete an Access Key
+
+Use the `.deleteKey()` action.
+
+```typescript
+import { Near } from "near-kit";
+const near = new Near({ network: "testnet", privateKey: "...", defaultSignerId: "alice.testnet" });
+
+// The public key to delete, in 'ed25519:<bs58_string>' format
+const publicKeyToDelete = "ed25519:...";
+
+// Delete a specific access key from 'alice.testnet'
+const result = await near
+  .transaction("alice.testnet")
+  .deleteKey("alice.testnet", publicKeyToDelete)
+  .send();
+```
+
+### Pattern 7: Delete an Account
+
+Use the `.deleteAccount()` action. The remaining balance will be sent to the beneficiary.
+
+```typescript
+import { Near } from "near-kit";
+const near = new Near({ network: "testnet", privateKey: "...", defaultSignerId: "alice.testnet" });
+
+// Delete 'alice.testnet' and send remaining funds to 'bob.testnet'
+const result = await near
+  .transaction("alice.testnet")
+  .deleteAccount("bob.testnet")
+  .send();
+```
+
+### Pattern 8: Stake NEAR with a Validator
+
+Use the `.stake()` action to stake tokens and earn rewards.
+
+```typescript
+import { Near } from "near-kit";
+const near = new Near({ network: "testnet", privateKey: "...", defaultSignerId: "alice.testnet" });
+
+// The public key of the validator to stake with
+const validatorKey = "ed25519:..."; 
+const amountToStake = "1000 NEAR";
+
+// Stake 1000 NEAR from 'alice.testnet' with the specified validator
+const result = await near
+  .transaction("alice.testnet")
+  .stake(validatorKey, amountToStake)
+  .send();
+```
+
+### Pattern 9: Publish a Contract to the Global Registry
+
+Use `.publishContract()` to make a contract's code available for others to deploy by reference.
+
+```typescript
+import { Near } from "near-kit";
+import { readFileSync } from "fs";
+const near = new Near({ network: "testnet", privateKey: "...", defaultSignerId: "publisher.testnet" });
+
+const contractWasm = readFileSync("./path/to/contract.wasm");
+
+// Publish an immutable contract, identified by its code hash
+const result = await near
+  .transaction("publisher.testnet")
+  .publishContract(contractWasm)
+  .send();
+```
+
+### Pattern 10: Deploy a Contract from the Global Registry
+
+Use `.deployFromPublished()` to create a new contract instance from a published code reference.
+
+```typescript
+import { Near } from "near-kit";
+const near = new Near({ network: "testnet", privateKey: "...", defaultSignerId: "deployer.testnet" });
+
+// Reference the published contract by its code hash
+const codeHash = "5FzD8..."; // The hash of the contract code from the publish step
+
+// Deploy a new instance from the published code
+const result = await near
+  .transaction("deployer.testnet")
+  .createAccount("new-instance.testnet")
+  .deployFromPublished({ codeHash })
+  .send();
+```
+
+### Pattern 11: Create and Submit a Delegate Action (for Meta-Transactions)
+
+Use `.delegate()` instead of `.send()` to sign an action off-chain. The result can be sent to a relayer.
+
+```typescript
+import { Near } from "near-kit";
+
+// User's client
+const userNear = new Near({ network: "testnet", privateKey: "...", defaultSignerId: "user.testnet" });
+
+// User signs a function call off-chain (no gas cost)
+const signedDelegate = await userNear
+  .transaction("user.testnet")
+  .functionCall("guestbook.testnet", "add_message", { text: "Hello from meta-tx!" })
+  .delegate();
+
+// `signedDelegate` can now be sent to a relayer service.
+```
+
+### Pattern 12: Submit a Signed Delegate Action (as a Relayer)
+
+A relayer uses `.signedDelegateAction()` to submit the user's action to the network, paying the gas on their behalf.
+
+```typescript
+import { Near } from "near-kit";
+// Assume `signedDelegate` was received from a user.
+
+// Relayer's client
+const relayerNear = new Near({ network: "testnet", privateKey: "...", defaultSignerId: "relayer.testnet" });
+
+// Relayer wraps the user's action and sends it
+const result = await relayerNear
+  .transaction("relayer.testnet")
+  .signedDelegateAction(signedDelegate)
+  .send();
+```
+
+
+# AI Agent Cookbook: Types & Results
+
+This document provides detailed TypeScript definitions for the inputs and outputs of `near-kit`'s primary functions. Use this as a schema for constructing inputs and parsing results.
+
+## `transaction.send()` Result
+
+The `.send()` method on a `TransactionBuilder` returns a `FinalExecutionOutcomeWithReceipts` object.
+
+```typescript
+import type {
+  FinalExecutionStatus,
+  ExecutionOutcomeWithId,
+} from "near-kit";
+
+export type FinalExecutionOutcomeWithReceipts = {
+  // The final status of the transaction.
+  final_execution_status: FinalExecutionStatus; // "FINAL", "EXECUTED_OPTIMISTIC", "INCLUDED", "NONE"
+  
+  // The status of the transaction itself.
+  status: {
+    SuccessValue?: string; // Base64-encoded return value, if any
+    Failure?: object;      // Error object if the transaction failed
+  };
+
+  // The transaction object that was sent.
+  transaction: {
+    signer_id: string;
+    public_key: string;
+    nonce: number;
+    receiver_id: string;
+    actions: object[];
+    signature: string;
+    hash: string;
+  };
+
+  // The outcome of the initial transaction execution.
+  transaction_outcome: ExecutionOutcomeWithId;
+
+  // The outcomes of all receipts generated by the transaction.
+  receipts_outcome: ExecutionOutcomeWithId[];
+};
+```
+
+### Key Properties to Check
+
+-   `result.final_execution_status`: Use this to confirm the transaction is fully finalized.
+-   `result.status.SuccessValue`: If a contract method returns a value, it will be here as a base64-encoded string. You need to decode it and then parse it (e.g., `JSON.parse(Buffer.from(successValue, 'base64').toString())`).
+-   `result.status.Failure`: If the transaction failed at the protocol level, details will be here.
+-   `result.receipts_outcome[...].outcome.logs`: An array of log messages from the contract. Essential for debugging.
+-   `result.receipts_outcome[...].outcome.status.Failure`: If a specific action (receipt) failed, the `FunctionCallError` details will be here.
+
+---
+
+## `near.view()` Result
+
+The `near.view()` method returns the parsed JSON result directly from the contract. The type is whatever the contract method returns.
+
+```typescript
+// Example: calling a method that returns an array of messages
+const messages = await near.view<Array<{ sender: string; text: string }>>(
+  "guestbook.testnet",
+  "get_messages",
+  {}
+);
+// `messages` is already a JavaScript array of objects.
+```
+
+If the view call fails, it will throw a `FunctionCallError`.
+
+---
+
+## `near.getStatus()` Result
+
+Returns a `NodeStatusResult` object.
+
+```typescript
+export type NodeStatusResult = {
+  chain_id: string;
+  rpc_addr: string;
+  sync_info: {
+    latest_block_hash: string;
+    latest_block_height: number;
+    latest_state_root: string;
+    latest_block_time: string;
+    syncing: boolean;
+  };
+  validators: object[];
+};
+```
+
+### Simplified `near.getStatus()`
+
+`near-kit` provides a simplified version of this as `near.getStatus()`:
+
+```typescript
+const status = await near.getStatus();
+// status = {
+//   chainId: 'testnet',
+//   latestBlockHeight: 123456789,
+//   syncing: false
+// }
+```
+
+---
+
+## `near.getBalance()` Result
+
+Returns a formatted string.
+
+```typescript
+const balance = await near.getBalance("alice.testnet");
+// balance is a string like "100.00 NEAR"
+```
+
+If you need the raw yoctoNEAR value, use `near.getAccountDetails()`.
+
+---
+
+## Amount Utilities
+
+### `Amount` Namespace
+
+Helper functions for creating amount strings programmatically:
+
+```typescript
+import { Amount } from "near-kit";
+
+// Constructors
+Amount.NEAR(10);        // "10 NEAR"
+Amount.NEAR(10.5);      // "10.5 NEAR"
+Amount.NEAR("10.5");    // "10.5 NEAR"
+Amount.yocto(1000000n); // "1000000 yocto"
+Amount.yocto("1000000"); // "1000000 yocto"
+
+// Constants
+Amount.ZERO;      // "0 yocto"
+Amount.ONE_NEAR;  // "1 NEAR"
+Amount.ONE_YOCTO; // "1 yocto"
+```
+
+### `formatAmount()` Function
+
+Converts raw yoctoNEAR to human-readable NEAR:
+
+```typescript
+import { formatAmount } from "near-kit";
+
+// Basic usage
+formatAmount("100000000000000000000000000");
+// "100.00 NEAR"
+
+// With options
+formatAmount("100500000000000000000000000", {
+  precision: 4,        // Number of decimal places (default: 2)
+  trimZeros: true,     // Remove trailing zeros (default: false)
+  includeSuffix: false // Exclude " NEAR" suffix (default: true)
+});
+// "100.5"
+```
+
+### `parseAmount()` Function
+
+Converts human-readable amounts to yoctoNEAR (returns a string):
+
+```typescript
+import { parseAmount } from "near-kit";
+
+parseAmount("10 NEAR");      // "10000000000000000000000000"
+parseAmount("10.5 NEAR");    // "10500000000000000000000000"
+parseAmount("1000 yocto");   // "1000"
+parseAmount(1000n);          // "1000" (bigints are treated as yoctoNEAR)
+```
+
+---
+
+## `near.getAccountDetails()` Result
+
+Provides low-level details about an account.
+
+```typescript
+export type AccountView = {
+  amount: string; // Balance in yoctoNEAR
+  locked: string; // Staked balance in yoctoNEAR
+  code_hash: string;
+  storage_usage: number;
+  storage_paid_at: number;
+};
+
+const details = await near.getAccountDetails("alice.testnet");
+// details.amount will be a string like "100000000000000000000000000"
+
+---
+
+## `near.rpc.getAccessKey()` Result
+
+Provides low-level details about an access key. Note that this is a method on the `rpc` object, not the main `near` object.
+
+```typescript
+export type AccessKeyView = {
+  nonce: number;
+  permission: "FullAccess" | {
+    FunctionCall: {
+      receiver_id: string;
+      method_names: string[];
+      allowance?: string | null;
+    };
+  };
+  block_height: number;
+  block_hash: string;
+};
+
+const key = await near.rpc.getAccessKey("alice.testnet", "ed25519:...");
+// key.permission will be 'FullAccess' or an object with FunctionCall details.
+```
+
+---
+
+## Error Types
+
+All errors thrown by `near-kit` extend the base `NearError` class.
+
+### `NearError`
+
+This is the base class for all errors.
+
+```typescript
+export class NearError extends Error {
+  code: string; // A stable, machine-readable error code (e.g., "NETWORK_ERROR")
+  data?: unknown; // Optional additional data about the error
+}
+```
+
+### `FunctionCallError`
+
+This is the most common error, indicating that a smart contract call failed during execution.
+
+```typescript
+export class FunctionCallError extends NearError {
+  code: "FUNCTION_CALL_ERROR";
+  contractId: string; // The ID of the contract that failed
+  methodName?: string; // The name of the method that was called
+  panic?: string; // The panic message from the contract (e.g., "ERR_NOT_ENOUGH_FUNDS")
+  logs: string[]; // Any logs emitted by the contract before it failed
+}
+```
+
+---
+
+## Transaction Action Types
+
+Transactions are composed of one or more actions. Here are the structures for the most common action types. An agent can use these to construct or inspect transactions.
+
+### `TransferAction`
+
+```typescript
+export type TransferAction = {
+  transfer: {
+    deposit: bigint; // Amount in yoctoNEAR
+  };
+};
+```
+
+### `FunctionCallAction`
+
+```typescript
+export type FunctionCallAction = {
+  functionCall: {
+    methodName: string;
+    args: Uint8Array; // Serialized arguments
+    gas: bigint; // Raw gas units
+    deposit: bigint; // Attached deposit in yoctoNEAR
+  };
+};
+```
+
+### `CreateAccountAction`
+
+```typescript
+export type CreateAccountAction = {
+  createAccount: {};
+};
+```
+
+### `DeployContractAction`
+
+```typescript
+export type DeployContractAction = {
+  deployContract: {
+    code: Uint8Array; // Wasm bytecode of the contract
+  };
+};
+```
+
+### `AddKeyAction`
+
+```typescript
+import type { PublicKey, AccessKeyPermissionBorsh } from "near-kit";
+
+export type AddKeyAction = {
+  addKey: {
+    publicKey: PublicKey;
+    accessKey: {
+      nonce: bigint;
+      permission: AccessKeyPermissionBorsh;
+    };
+  };
+};
+```
+
+### `DeleteKeyAction`
+
+```typescript
+import type { PublicKey } from "near-kit";
+
+export type DeleteKeyAction = {
+  deleteKey: {
+    publicKey: PublicKey;
+  };
+};
+```
+
+### `DeleteAccountAction`
+
+```typescript
+export type DeleteAccountAction = {
+  deleteAccount: {
+    beneficiaryId: string; // Account to receive the remaining balance
+  };
+};
+```
+
+### `StakeAction`
+
+```typescript
+import type { PublicKey } from "near-kit";
+
+export type StakeAction = {
+  stake: {
+    stake: bigint; // Amount to stake in yoctoNEAR
+    publicKey: PublicKey; // Validator's public key
+  };
+};
+```
+
+
+
+# AI Agent Cookbook: Error Handling
+
+This document provides patterns for handling the typed errors thrown by `near-kit`. A robust agent must be able to catch and interpret these errors to act intelligently.
+
+## Core Concept
+
+All `near-kit` errors extend the base JavaScript `Error`. Use a standard `try...catch` block and check the error's type using `instanceof` to handle specific cases.
+
+---
+
+## Patterns
+
+### Pattern 1: Handling a Failed Contract Call
+
+A `FunctionCallError` is the most common error. It means the transaction was valid, but the contract code panicked during execution.
+
+```typescript
+import { Near, FunctionCallError } from "near-kit";
+const near = new Near({ network: "testnet", privateKey: "..." });
+
+try {
+  await near.call("some-contract.testnet", "method_that_panics", {});
+} catch (error) {
+  if (error instanceof FunctionCallError) {
+    // The contract panicked. This is the most useful error for debugging.
+    console.error(`Contract Error in ${error.contractId}`);
+    console.error(`- Method: ${error.methodName}`);
+    
+    // The specific panic message from the contract.
+    // This is the most important piece of information.
+    console.error(`- Panic: ${error.panic}`); 
+    
+    // Logs emitted by the contract before it panicked.
+    console.error(`- Logs:`, error.logs);
+    
+    // The full transaction result that led to the error.
+    // console.error(`- Result:`, error.result);
+  } else if (error instanceof Error) {
+    console.error("An unexpected error occurred:", error.message);
+  }
+}
+```
+
+**Actionable Intelligence:** The `error.panic` string (e.g., `"ERR_NOT_ENOUGH_FUNDS"`, `"ERR_INVALID_ARGUMENT"`) is the key. An agent can use this string to understand *why* the call failed and change its strategy (e.g., attach more deposit, correct the arguments).
+
+### Pattern 2: Handling an Account That Doesn't Exist
+
+An `AccountDoesNotExistError` occurs when you try to interact with an account that has not been created.
+
+```typescript
+import { Near, AccountDoesNotExistError } from "near-kit";
+const near = new Near({ network: "testnet", privateKey: "..." });
+
+try {
+  await near.send("non-existent-account.testnet", "1 NEAR");
+} catch (error) {
+  if (error instanceof AccountDoesNotExistError) {
+    console.error(`The account "${error.accountId}" does not exist.`);
+    // Agent's next action could be to create the account.
+  } else if (error instanceof Error) {
+    console.error("An unexpected error occurred:", error.message);
+  }
+}
+```
+
+**Actionable Intelligence:** When this error is caught, the agent knows it must first create the account using a `.createAccount()` action before it can proceed.
+
+### Pattern 3: Handling Network and RPC Errors
+
+A `NetworkError` indicates a problem with the RPC node or the connection to it.
+
+```typescript
+import { Near, NetworkError } from "near-kit";
+const near = new Near({ network: "testnet", privateKey: "..." });
+
+try {
+  await near.getStatus();
+} catch (error) {
+  if (error instanceof NetworkError) {
+    console.error(`A network error occurred: ${error.message}`);
+    
+    // near-kit automatically retries retryable errors.
+    // This flag tells you if the error is considered temporary.
+    if (error.retryable) {
+      console.log("This was a temporary issue. You can try again later.");
+    } else {
+      console.log("This seems to be a permanent network issue.");
+    }
+  } else if (error instanceof Error) {
+    console.error("An unexpected error occurred:", error.message);
+  }
+}
+```
+
+**Actionable Intelligence:** The `error.retryable` flag is important. If `true`, the agent can wait and try the exact same operation again. If `false`, it may need to switch to a different RPC endpoint.
+
+### Pattern 4: Handling Invalid Transactions
+
+An `InvalidTransactionError` means the transaction was rejected by the network before execution. This can happen for several reasons, such as using a key with insufficient permissions or a nonce being incorrect (though `near-kit` handles nonce errors automatically).
+
+```typescript
+import { Near, InvalidTransactionError } from "near-kit";
+const near = new Near({ network: "testnet", privateKey: "..." });
+
+try {
+  // Example: Trying to add a full access key with a limited access key
+  await near.transaction("signer.testnet").addKey("ed25519:...", { type: "fullAccess" }).send();
+} catch (error) {
+  if (error instanceof InvalidTransactionError) {
+    // The `cause` property often contains the specific reason.
+    console.error(`Invalid Transaction: ${error.cause}`);
+  } else if (error instanceof Error) {
+    console.error("An unexpected error occurred:", error.message);
+  }
+}
+```
+
+**Actionable Intelligence:** The `error.cause` string provides the reason for the failure (e.g., `"InvalidAccessKey"`). The agent must analyze this to understand the constraint it violated.
+
+
+# AI Agent Cookbook: Sandbox Testing
+
+This document provides a pattern for using the `near-kit` Sandbox for automated testing. The Sandbox provides a local, isolated NEAR blockchain, which is essential for reliable and fast testing.
+
+## Core Concept
+
+The Sandbox is managed by the `Sandbox` class. The typical testing flow is:
+1.  **Start Sandbox**: Before tests run, start a new Sandbox instance.
+2.  **Run Tests**: Execute tests against the local blockchain.
+3.  **Stop Sandbox**: After tests complete, shut down the Sandbox to clean up resources.
+
+---
+
+## Pattern: Sandbox Usage in a Test File
+
+This pattern shows how to use the Sandbox within a test file using a testing framework like `bun:test`, `jest`, or `vitest`.
+
+```typescript
+import { Near } from "near-kit";
+import { Sandbox } from "near-kit/sandbox";
+import { beforeAll, afterAll, test, expect } from "bun:test"; // Or your test framework
+
+// Define a scope for the sandbox instance
+let sandbox: Sandbox;
+let near: Near;
+
+// Use a describe block to group tests that use the same sandbox
+describe("Smart Contract Tests", () => {
+  // 1. Start the Sandbox before all tests in this block
+  beforeAll(async () => {
+    sandbox = await Sandbox.start();
+    
+    // Initialize near-kit to connect to the new sandbox instance
+    near = new Near({ network: sandbox });
+    
+    console.log(`Sandbox started with RPC at ${sandbox.rpcUrl}`);
+  }, 120000); // Use a long timeout for the first run, as it may download binaries
+
+  // 2. Stop the Sandbox after all tests in this block have finished
+  afterAll(async () => {
+    if (sandbox) {
+      await sandbox.stop();
+      console.log("Sandbox stopped.");
+    }
+  });
+
+  // 3. Write your tests
+  test("should create an account and transfer funds", async () => {
+    // The sandbox provides a pre-funded root account
+    const rootAccount = sandbox.rootAccount;
+    const newAccountId = `test-account.${rootAccount.id}`;
+
+    // The root account's key is automatically loaded into the Near instance
+    const result = await near
+      .transaction(rootAccount.id)
+      .createAccount(newAccountId)
+      .transfer(newAccountId, "100 NEAR")
+      .send();
+
+    // Assert that the transaction was successful
+    expect(result.final_execution_status).toContain("EXECUTED");
+
+    // Verify the outcome
+    const balance = await near.getBalance(newAccountId);
+    expect(balance).toBe("100.00");
+  });
+
+  test("should deploy a contract and call a method", async () => {
+    const rootAccount = sandbox.rootAccount;
+    const contractId = `my-contract.${rootAccount.id}`;
+    
+    // In a real scenario, you would load your contract's Wasm file
+    // const contractWasm = readFileSync("./path/to/contract.wasm");
+
+    // For this example, we'll use a placeholder wasm
+    const placeholderWasm = Buffer.from([
+      0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+    ]);
+
+    // Deploy the contract
+    await near
+      .transaction(rootAccount.id)
+      .createAccount(contractId)
+      .deployContract(contractId, placeholderWasm)
+      .send();
+      
+    // You can now interact with the deployed contract
+    // const response = await near.view(contractId, "some_view_method", {});
+    // expect(response).toBe("some_value");
+  });
+});
+```
+
+### The `sandbox` Object
+
+The `Sandbox.start()` method returns a `Sandbox` instance with the following key properties:
+
+-   `sandbox.rpcUrl`: The RPC endpoint for this sandbox instance (e.g., `http://127.0.0.1:42693`).
+-   `sandbox.networkId`: The network ID, which is always `'localnet'`.
+-   `sandbox.rootAccount.id`: The ID of the pre-funded root account (e.g., `test.near`).
+-   `sandbox.rootAccount.secretKey`: The private key for the root account.
+
+When you pass the `sandbox` object directly to `new Near({ network: sandbox })`, `near-kit` automatically configures the RPC connection and loads the root account's key into an in-memory keystore, making it ready to sign transactions immediately.
+
+
+# AI Agent Cookbook: End-to-End Example
+
+This document provides a complete, end-to-end example of an agent script that uses `near-kit` to perform a series of on-chain actions. This script demonstrates how to tie together initialization, transaction building, sandbox testing, and error handling.
+
+## Scenario
+
+The agent will perform the following tasks in a local sandbox environment:
+1.  Start a new sandbox instance.
+2.  Create a new account for a contract.
+3.  Deploy a simple "status message" smart contract to the new account.
+4.  Call the contract to set an initial status message.
+5.  View the contract to verify the status message was set correctly.
+6.  Clean up by stopping the sandbox.
+
+This example uses `bun:test` for structure, but the logic can be adapted to any Node.js or Bun script.
+
+## The Smart Contract
+
+For this example, we'll use a simple pre-compiled "status message" contract. You would typically compile your own contract to Wasm, but for simplicity, we'll use a placeholder.
+
+## End-to-End Agent Script
+
+```typescript
+import { Near, FunctionCallError } from "near-kit";
+import { Sandbox } from "near-kit/sandbox";
+import { afterAll, beforeAll, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+
+// A simple status message contract (replace with your actual contract Wasm)
+// This placeholder is a minimal valid Wasm module.
+const STATUS_CONTRACT_WASM = Buffer.from([
+  0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x04, 0x01, 0x60,
+  0x00, 0x00, 0x03, 0x02, 0x01, 0x00, 0x07, 0x08, 0x01, 0x04, 0x6d, 0x61,
+  0x69, 0x6e, 0x00, 0x00, 0x0a, 0x04, 0x01, 0x02, 0x00, 0x0b,
+]);
+
+describe("E2E Agent Workflow", () => {
+  let sandbox: Sandbox;
+  let near: Near;
+
+  beforeAll(async () => {
+    try {
+      console.log("Starting sandbox...");
+      sandbox = await Sandbox.start();
+      near = new Near({ network: sandbox });
+      console.log("Sandbox started successfully.");
+    } catch (error) {
+      console.error("Failed to start sandbox:", error);
+      throw error; // Fail the test suite if sandbox doesn't start
+    }
+  }, 120000); // Long timeout for potential binary download
+
+  afterAll(async () => {
+    if (sandbox) {
+      await sandbox.stop();
+      console.log("Sandbox stopped.");
+    }
+  });
+
+  test("should deploy a guestbook contract, add a message, and verify it", async () => {
+    const rootAccount = sandbox.rootAccount;
+    const contractId = `guestbook-contract.${rootAccount.id}`;
+    const message = "Hello from the agent!";
+
+    // --- 1. Load Contract Wasm ---
+    // In a real agent, this Wasm might be fetched from a URL or provided as input.
+    // For this example, we load it from the project's test files.
+    const wasmPath = "../../../tests/contracts/guestbook.wasm";
+    const wasm = readFileSync(wasmPath);
+    console.log("Loaded guestbook.wasm");
+
+    // --- 2. Create Account & Deploy Contract ---
+    console.log(`Deploying contract to ${contractId}...`);
+    try {
+      const deployResult = await near
+        .transaction(rootAccount.id)
+        .createAccount(contractId)
+        .transfer(contractId, "5 NEAR") // Add some balance for storage
+        .deployContract(contractId, wasm)
+        .send({ waitUntil: "FINAL" });
+
+      expect(deployResult.final_execution_status).toBe("FINAL");
+      console.log("Contract deployed successfully.");
+    } catch (error) {
+      console.error("Failed to deploy contract:", error);
+      throw error;
+    }
+
+    // --- 3. Call the Contract to Add a Message ---
+    console.log(`Adding message: "${message}"`);
+    try {
+      await near
+        .transaction(rootAccount.id)
+        .functionCall(
+          contractId,
+          "add_message",
+          { text: message },
+          { attachedDeposit: "0.1 NEAR" } // Guestbook requires a deposit
+        )
+        .send({ waitUntil: "FINAL" });
+      console.log("Message added successfully.");
+    } catch (error) {
+      console.error("Failed to add message:", error);
+      throw error;
+    }
+
+    // --- 4. View the Contract to Verify State ---
+    console.log("Verifying message on-chain...");
+    try {
+      const messages = await near.view<Array<{ sender: string; text: string }>>(
+        contractId,
+        "get_messages",
+        {}
+      );
+      
+      const lastMessage = messages.pop();
+      expect(lastMessage?.text).toBe(message);
+      expect(lastMessage?.sender).toBe(rootAccount.id);
+      console.log(`Verified message: "${lastMessage?.text}" from ${lastMessage?.sender}`);
+    } catch (error) {
+      console.error("Failed to verify message:", error);
+      throw error;
+    }
+  });
+});
+```
+
+### How an Agent Would Use This
+
+-   **Automation**: This entire script can be run automatically on a schedule or triggered by an event.
+-   **Error Handling**: The `try...catch` blocks are crucial. An intelligent agent would parse the specific error (`FunctionCallError`, `InvalidTransactionError`, etc.) to decide its next action. For example, on an `InvalidNonceError`, the agent knows to retry the transaction. On a `FunctionCallError` with a specific panic message like "ERR_NOT_ENOUGH_FUNDS", it might retry with a larger attached deposit.
+-   **State Management**: A more advanced agent would store the `contractId` and other relevant data in a database to track the state of the entities it manages.
+-   **Decision Making**: Based on the results of `view` calls, the agent could decide to execute different transactions. For example, if `get_status` returned "needs_update", the agent would trigger the `set_status` call.
+
+
+# AI Agent Cookbook: Frontend Wallet Integration
+
+For decentralized applications (dApps) that run in a user's browser, transactions must be signed by a wallet. `near-kit` integrates with browser wallets by using a `wallet` adapter in the `Near` class constructor. This delegates all signing operations to the user's wallet.
+
+## Core Concept: The `wallet` Adapter
+
+Instead of providing a `privateKey` or `keyStore`, you initialize the `Near` instance with a `wallet` object. This object is created by an adapter function that bridges `near-kit` with a specific wallet connection library.
+
+```typescript
+// Server-side or script initialization
+const nearOnServer = new Near({
+  network: "testnet",
+  privateKey: "ed25519:...",
+});
+
+// Browser-based dApp initialization
+import { fromWalletSelector } from "near-kit";
+import { setupWalletSelector } from "@near-wallet-selector/core";
+
+// (Wallet Selector setup code...)
+const wallet = await walletSelector.wallet();
+
+const nearInBrowser = new Near({
+  network: "testnet",
+  wallet: fromWalletSelector(wallet), // The wallet adapter is passed here
+});
+```
+
+## The Universal Code Pattern
+
+A key design principle of `near-kit` is that your application's business logic should remain the same, regardless of the environment. The way you build a transaction is identical whether it's signed by a private key on a server or by a wallet in a browser.
+
+This function for adding a message to a guestbook will work anywhere:
+```typescript
+// This function is universal and works in any environment
+async function addGuestbookMessage(
+  near: Near,
+  signerId: string,
+  message: string
+) {
+  return await near
+    .transaction(signerId)
+    .functionCall(
+      "guestbook.near-examples.testnet",
+      "add_message",
+      { text: message },
+      { gas: "30 Tgas" }
+    )
+    .send();
+}
+```
+
+The only difference is how the `near` instance passed to this function was initialized.
+
+## Pattern 1: Using NEAR Wallet Selector
+
+[`@near-wallet-selector`](https://github.com/near/wallet-selector) is the most common library for connecting to various NEAR wallets. `near-kit` integrates with it via the `fromWalletSelector` adapter.
+
+### Flow:
+1.  Set up `@near-wallet-selector/core` and desired wallet modules (e.g., `@near-wallet-selector/meteor-wallet`).
+2.  When the user signs in, get the `wallet` object from the selector.
+3.  Create a `near-kit` `Near` instance using `fromWalletSelector(wallet)`.
+4.  Use this `near` instance to build and send transactions. The wallet selector will prompt the user for approval.
+
+### Example:
+```typescript
+import { setupWalletSelector } from '@near-wallet-selector/core';
+import { Near, fromWalletSelector } from 'near-kit';
+
+// 1. Setup wallet selector
+const walletSelector = await setupWalletSelector({
+  network: 'testnet',
+  modules: [/* ... wallet modules ... */],
+});
+
+// 2. Wait for user to sign in and get the wallet object
+const wallet = await walletSelector.wallet();
+
+if (wallet) {
+  // 3. Create the Near instance with the adapter
+  const near = new Near({
+    network: 'testnet',
+    wallet: fromWalletSelector(wallet),
+  });
+
+  const accountId = (await wallet.getAccounts())[0].accountId;
+
+  // 4. Call the universal function
+  await addGuestbookMessage(near, accountId, "Hello from Wallet Selector!");
+}
+```
+
+## Pattern 2: Using HOT Connector
+
+[`@hot-labs/near-connect`](https://github.com/azbang/hot-connector) is used for integrating with the HOT Wallet inside Telegram. `near-kit` supports this through the `fromHotConnect` adapter.
+
+### Flow:
+1.  Initialize the `NearConnector` from `@hot-labs/near-connect`.
+2.  Listen for the `wallet:signIn` event.
+3.  When the event fires, create a `near-kit` `Near` instance using `fromHotConnect(connector)`.
+4.  Use this `near` instance to build and send transactions.
+
+### Example:
+```typescript
+import { NearConnector } from "@hot-labs/near-connect";
+import { Near, fromHotConnect } from "near-kit";
+
+// 1. Initialize the HOT connector
+const connector = new NearConnector({ network: "testnet" });
+
+// 2. Listen for sign-in
+connector.on("wallet:signIn", async (data) => {
+  // 3. Create the Near instance with the adapter
+  const near = new Near({
+    network: "testnet",
+    wallet: fromHotConnect(connector as any),
+  });
+
+  const accountId = data.accounts[0].accountId;
+
+  // 4. Call the universal function
+  await addGuestbookMessage(near, accountId, "Hello from HOT Wallet!");
+});
+
+// To trigger the flow, you would call:
+// await connector.connect();
+```
+
+
+# AI Agent Cookbook: Advanced Topics
+
+This document covers advanced concepts that are crucial for building robust and efficient agents: Gas, storage costs, and creating complex, multi-action transactions.
+
+## Gas Fees
+
+On NEAR, computation and network bandwidth are paid for with gas. Every action in a transaction consumes gas.
+
+### Specifying Gas
+
+Gas can be specified using strings with `Tgas` as the unit (e.g., `"30 Tgas"`), which `near-kit` converts to the proper raw gas units. `Tgas` (Tera-gas, or 10^12 gas units) is the standard for defining gas limits.
+
+- **`"30 Tgas"`** is the standard amount for a simple cross-contract call.
+- **`"300 Tgas"`** is the maximum gas that can be attached to a single function call.
+
+Gas is specified in the `options` object of a `.functionCall()` action.
+
+```typescript
+await near
+  .transaction(sender)
+  .functionCall(
+    contract,
+    "some_complex_method",
+    {},
+    {
+      gas: "100 Tgas",
+    }
+  )
+  .send();
+```
+
+If you do not specify a gas amount, a default value is used, which is usually sufficient for simple operations. For computationally intensive methods, you must attach enough gas.
+
+## Storage Costs
+
+Storing data on the NEAR blockchain is not free. Accounts must pay for the storage they use, a concept known as "storage staking". When an action causes a contract to store more data, the account that initiated the action must cover the cost by attaching a deposit.
+
+### Attaching Deposits
+
+Deposits are specified as strings in NEAR tokens (e.g., `"1 NEAR"`), which `near-kit` converts automatically.
+
+- **`"1 NEAR"`**: Attaches 1 NEAR token.
+- **`"0.01 NEAR"`**: Attaches 0.01 NEAR.
+- **`"1 yocto"`**: Attaches the smallest possible unit of NEAR (10^-24 NEAR). This is often used to satisfy storage checks that require a deposit of at least 1 yoctoNEAR.
+
+The deposit is specified in the `options` object of a `.functionCall()` action.
+
+```typescript
+// Call a method that requires a storage deposit
+await near
+  .transaction(sender)
+  .functionCall(
+    "nft-contract.testnet",
+    "nft_mint",
+    { token_id: "my-nft", metadata: { ... } },
+    {
+      // Attach 0.1 NEAR to cover the storage cost of the new NFT
+      attachedDeposit: "0.1 NEAR",
+    }
+  )
+  .send();
+```
+
+**Important**: If a contract call fails with a panic message like `"ERR_NOT_ENOUGH_DEPOSIT"`, it means the `attachedDeposit` was too low to cover the storage costs. The agent should retry the call with a larger deposit.
+
+## Complex, Multi-Action Transactions
+
+The `TransactionBuilder` allows for chaining multiple actions into a single, atomic transaction. This is powerful for setting up accounts, deploying contracts, and initializing them in one step. All actions in the chain either succeed together or fail together.
+
+### Pattern: Create, Fund, Deploy, and Initialize
+
+This pattern demonstrates a common workflow for creating a new contract account from scratch.
+
+1.  **`createAccount`**: Create a new account.
+2.  **`transfer`**: Send NEAR to the new account to cover its balance and future storage needs.
+3.  **`addKey`**: Add an access key to the new account (optional, but good practice).
+4.  **`deployContract`**: Deploy the Wasm bytecode to the new account.
+5.  **`functionCall`**: Call an initialization method on the newly deployed contract.
+
+```typescript
+import { generateKey } from "near-kit";
+import { readFileSync } from "fs";
+
+const signerId = "your-app.testnet";
+const newContractId = `my-new-contract.${signerId}`;
+const contractWasm = readFileSync("./path/to/contract.wasm");
+const newKey = generateKey();
+
+const result = await near
+  .transaction(signerId) // The app account pays for this setup
+  .createAccount(newContractId)
+  .transfer(newContractId, "5 NEAR") // Fund the new account
+  .addKey(newKey.publicKey.toString(), { type: "fullAccess" }) // Add a new full access key
+  .deployContract(newContractId, contractWasm) // Deploy the code
+  .functionCall(
+    newContractId,
+    "init", // Call the initialization method
+    { owner_id: signerId },
+    { gas: "50 Tgas" }
+  )
+  .send();
+
+console.log(`Contract ${newContractId} deployed and initialized successfully!`);
+```
+
+This entire chain is submitted as a single transaction. If any step fails (e.g., the `init` method panics), the entire setup is rolled back, and the `newContractId` account will not exist.
+
+

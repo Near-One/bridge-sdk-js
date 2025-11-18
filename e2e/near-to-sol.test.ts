@@ -1,11 +1,11 @@
 import { beforeAll, describe, expect, test } from "bun:test"
-import { NearBridgeClient } from "../src/clients/near.js"
+import { NearBridgeClient } from "../src/clients/near-kit.js"
 import { SolanaBridgeClient } from "../src/clients/solana.js"
 import { setNetwork } from "../src/config.js"
 import { ChainKind, type OmniTransferMessage } from "../src/types/index.js"
 import { omniAddress } from "../src/utils/index.js"
 import { NEAR_TO_SOL_ROUTES, TIMEOUTS } from "./shared/fixtures.js"
-import { type TestAccountsSetup, setupTestAccounts } from "./shared/setup.js"
+import { TEST_CONFIG, type TestAccountsSetup, setupTestAccounts } from "./shared/setup.js"
 
 describe("NEAR to SOL E2E Transfer Tests (Manual Flow)", () => {
   let testAccounts: TestAccountsSetup
@@ -18,11 +18,13 @@ describe("NEAR to SOL E2E Transfer Tests (Manual Flow)", () => {
 
     // Setup test accounts and clients
     testAccounts = await setupTestAccounts()
-    nearClient = new NearBridgeClient(testAccounts.nearAccount)
+    nearClient = new NearBridgeClient(testAccounts.nearAccount, undefined, {
+      defaultSignerId: TEST_CONFIG.networks.near.accountId,
+    })
     solanaClient = new SolanaBridgeClient(testAccounts.solanaProvider)
 
     console.log("🚀 Test setup complete:")
-    console.log(`  NEAR Account: ${testAccounts.nearAccount.accountId}`)
+    console.log(`  NEAR Account: ${TEST_CONFIG.networks.near.accountId}`)
     console.log(`  SOL Address: ${testAccounts.solanaProvider.publicKey.toString()}`)
   })
 

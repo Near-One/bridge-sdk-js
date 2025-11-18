@@ -1,13 +1,13 @@
 import { beforeAll, describe, expect, test } from "bun:test"
 import { ethers } from "ethers"
 import { EvmBridgeClient } from "../src/clients/evm.js"
-import { NearBridgeClient } from "../src/clients/near.js"
+import { NearBridgeClient } from "../src/clients/near-kit.js"
 import { setNetwork } from "../src/config.js"
 import { getEvmProof } from "../src/proofs/evm.js"
 import { ChainKind, type OmniTransferMessage, ProofKind } from "../src/types/index.js"
 import { omniAddress } from "../src/utils/index.js"
 import { ETH_TO_NEAR_ROUTES, TIMEOUTS } from "./shared/fixtures.js"
-import { type TestAccountsSetup, setupTestAccounts } from "./shared/setup.js"
+import { TEST_CONFIG, type TestAccountsSetup, setupTestAccounts } from "./shared/setup.js"
 
 describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
   let testAccounts: TestAccountsSetup
@@ -21,11 +21,13 @@ describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
     // Setup test accounts and clients
     testAccounts = await setupTestAccounts()
     ethClient = new EvmBridgeClient(testAccounts.ethWallet, ChainKind.Eth)
-    nearClient = new NearBridgeClient(testAccounts.nearAccount)
+    nearClient = new NearBridgeClient(testAccounts.nearAccount, undefined, {
+      defaultSignerId: TEST_CONFIG.networks.near.accountId,
+    })
 
     console.log("🚀 Test setup complete:")
     console.log(`  ETH Address: ${testAccounts.ethWallet.address}`)
-    console.log(`  NEAR Account: ${testAccounts.nearAccount.accountId}`)
+    console.log(`  NEAR Account: ${TEST_CONFIG.networks.near.accountId}`)
   })
 
   test.each(ETH_TO_NEAR_ROUTES)(
