@@ -88,6 +88,7 @@ describe("SOL to NEAR E2E Transfer Tests - Failure Cases (Manual Flow)", () => {
         "heavenly-interest.testnet",
         BigInt(0),
         ChainKind.Sol,
+        undefined, // signerId (uses defaultSignerId)
         vaa, // Wormhole VAA
         undefined, // No EVM proof needed for SOL
         ProofKind.InitTransfer,

@@ -112,6 +112,7 @@ describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
           route.recipient,
           BigInt(0),
           ChainKind.Eth,
+          undefined, // signerId (uses defaultSignerId)
           undefined, // No VAA needed for EVM
           { proof_kind: ProofKind.InitTransfer, proof }, // EVM proof required
         )
