@@ -15,7 +15,7 @@
         "@near-js/signers": "^2.5.1",
         "@near-js/transactions": "^2.5.1",
         "@near-js/types": "^2.5.1",
-        "@near-wallet-selector/core": "^10.1.0",
+        "@near-wallet-selector/core": "^10.1.1",
         "@noble/curves": "^2.0.1",
         "@noble/hashes": "^2.0.1",
         "@scure/base": "^2.0.0",
@@ -26,7 +26,7 @@
         "@zorsh/zorsh": "^0.3.3",
         "ethers": "^6.15.0",
         "merkletreejs": "^0.6.0",
-        "near-kit": "^0.2.1",
+        "near-kit": "^0.3.0",
         "zod": "^4.1.12",
       },
       "devDependencies": {
@@ -1110,7 +1110,7 @@
 
     "near-abi": ["near-abi@0.2.0", "", { "dependencies": { "@types/json-schema": "^7.0.11" } }, "sha512-kCwSf/3fraPU2zENK18sh+kKG4uKbEUEQdyWQkmW8ZofmLarObIz2+zAYjA1teDZLeMvEQew3UysnPDXgjneaA=="],
 
-    "near-kit": ["near-kit@0.2.1", "", { "dependencies": { "@napi-rs/keyring": "^1.2.0", "@noble/curves": "^2.0.1", "@noble/hashes": "^2.0.1", "@scure/base": "^2.0.0", "@scure/bip32": "^2.0.1", "@scure/bip39": "^2.0.1", "@zorsh/zorsh": "^0.3.3", "tar": "^7.5.2", "zod": "^4.1.12" }, "peerDependencies": { "@hot-labs/near-connect": ">=0.6.0", "@near-wallet-selector/core": ">=8.0.0" }, "optionalPeers": ["@hot-labs/near-connect", "@near-wallet-selector/core"] }, "sha512-2tVwW0sTAFd2n+ONHkxBHkRJKc6LCF4ct8g6woikI7m4tVpM7QgeIH+248CEk6MPjABdBnD7rfReWyWqGdy6qg=="],
+    "near-kit": ["near-kit@0.3.0", "", { "dependencies": { "@napi-rs/keyring": "^1.2.0", "@noble/curves": "^2.0.1", "@noble/hashes": "^2.0.1", "@scure/base": "^2.0.0", "@scure/bip32": "^2.0.1", "@scure/bip39": "^2.0.1", "@zorsh/zorsh": "^0.3.3", "tar": "^7.5.2", "zod": "^4.1.12" }, "peerDependencies": { "@hot-labs/near-connect": ">=0.6.0", "@near-wallet-selector/core": ">=8.0.0" }, "optionalPeers": ["@hot-labs/near-connect", "@near-wallet-selector/core"] }, "sha512-7ZavD41syaq6szbDAhg0PtAU9SkFCJFwlYnjPL0o9CA+fvhLgiiHHUG+LaVxTr1WSJFNXmSEuftTrKCfODrbpQ=="],
 
     "no-case": ["no-case@3.0.4", "", { "dependencies": { "lower-case": "^2.0.2", "tslib": "^2.0.3" } }, "sha512-fgAN3jGAh+RoxUGZHTSOLJIqUc2wmoBwGR4tbpNAKmmovFoWq0OdRkb0VkldReO2a2iBT/OEulG9XSUc10r3zg=="],
 

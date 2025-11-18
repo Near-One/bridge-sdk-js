@@ -43,7 +43,7 @@
     "@near-js/signers": "^2.5.1",
     "@near-js/transactions": "^2.5.1",
     "@near-js/types": "^2.5.1",
-    "@near-wallet-selector/core": "^10.1.0",
+    "@near-wallet-selector/core": "^10.1.1",
     "@noble/curves": "^2.0.1",
     "@noble/hashes": "^2.0.1",
     "@scure/base": "^2.0.0",
@@ -54,7 +54,7 @@
     "@zorsh/zorsh": "^0.3.3",
     "ethers": "^6.15.0",
     "merkletreejs": "^0.6.0",
-    "near-kit": "^0.2.1",
+    "near-kit": "^0.3.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {
