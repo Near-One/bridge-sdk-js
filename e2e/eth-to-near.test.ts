@@ -96,7 +96,7 @@ describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
       expect(proof.proof.length).toBeGreaterThan(0)
 
       // Step 4: Wait for transaction to be finalized
-      const shouldWaitForLightClient = process.env.FULL_E2E_TEST === "true"
+      const shouldWaitForLightClient = process.env["FULL_E2E_TEST"] === "true"
 
       if (shouldWaitForLightClient) {
         console.log("\n⏳ Step 4: Waiting for light client (30 mins)...")
