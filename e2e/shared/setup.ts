@@ -1,9 +1,9 @@
-import os from "node:os"
-import path from "node:path"
 import { AnchorProvider, Wallet, setProvider } from "@coral-xyz/anchor"
-import { Near } from "near-kit"
 import { Connection, Keypair } from "@solana/web3.js"
 import { ethers } from "ethers"
+import { Near } from "near-kit"
+import os from "node:os"
+import path from "node:path"
 
 export interface TestConfig {
   timeout: number
@@ -35,18 +35,22 @@ export const TEST_CONFIG: TestConfig = {
       accountId: "omni-sdk-test.testnet",
       networkId: "testnet",
       contractId: "v1.signer-prod.testnet",
-      rpcUrl: "https://rpc.testnet.near.org",
+      rpcUrl: "https://test.rpc.fastnear.com",
       credentialsPath: path.join(os.homedir(), ".near-credentials"),
     },
     ethereum: {
       rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
       chainId: 11155111, // Sepolia
-      ...(process.env["ETH_PRIVATE_KEY"] && { privateKey: process.env["ETH_PRIVATE_KEY"] }),
+      ...(process.env["ETH_PRIVATE_KEY"] && {
+        privateKey: process.env["ETH_PRIVATE_KEY"],
+      }),
     },
     solana: {
       rpcUrl: "https://api.devnet.solana.com",
       commitment: "confirmed" as const,
-      ...(process.env["SOL_PRIVATE_KEY"] && { privateKey: process.env["SOL_PRIVATE_KEY"] }),
+      ...(process.env["SOL_PRIVATE_KEY"] && {
+        privateKey: process.env["SOL_PRIVATE_KEY"],
+      }),
     },
   },
 }
@@ -81,7 +85,9 @@ export async function createEthereumWallet(): Promise<ethers.Wallet> {
   const { ethereum } = TEST_CONFIG.networks
 
   if (!ethereum.privateKey) {
-    throw new Error("ETH_PRIVATE_KEY environment variable required for Ethereum tests")
+    throw new Error(
+      "ETH_PRIVATE_KEY environment variable required for Ethereum tests"
+    )
   }
 
   const provider = new ethers.JsonRpcProvider(ethereum.rpcUrl)
@@ -92,11 +98,15 @@ export async function createSolanaProvider(): Promise<AnchorProvider> {
   const { solana } = TEST_CONFIG.networks
 
   if (!solana.privateKey) {
-    throw new Error("SOL_PRIVATE_KEY environment variable required for Solana tests")
+    throw new Error(
+      "SOL_PRIVATE_KEY environment variable required for Solana tests"
+    )
   }
 
   // Convert private key from base58 string to Keypair
-  const privateKeyBytes = Uint8Array.from(Buffer.from(solana.privateKey, "base64"))
+  const privateKeyBytes = Uint8Array.from(
+    Buffer.from(solana.privateKey, "base64")
+  )
   const keypair = Keypair.fromSecretKey(privateKeyBytes)
 
   const connection = new Connection(solana.rpcUrl, solana.commitment)
