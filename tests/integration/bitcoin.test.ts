@@ -358,15 +358,23 @@ afterAll(() => {
 describe("Bitcoin Integration Tests", () => {
   let mockNear: Near
   let client: NearBridgeClient
+  let mockTransactionBuilder: {
+    functionCall: ReturnType<typeof vi.fn>
+    send: ReturnType<typeof vi.fn>
+  }
 
   beforeEach(() => {
+    // Create mock transaction builder
+    mockTransactionBuilder = {
+      functionCall: vi.fn().mockReturnThis(),
+      send: vi.fn().mockResolvedValue({ transaction: { hash: "mock-tx-hash" } }),
+    }
+
     // Create mock Near instance matching near-kit interface
     mockNear = {
-      transaction: vi.fn().mockReturnValue({
-        functionCall: vi.fn().mockReturnThis(),
-        send: vi.fn().mockResolvedValue({ transaction: { hash: "mock-tx-hash" } }),
-      }),
+      transaction: vi.fn().mockReturnValue(mockTransactionBuilder),
       view: vi.fn(),
+      getTransactionStatus: vi.fn(),
     } as any
 
     client = new NearBridgeClient(mockNear, REAL_WITHDRAWAL_DATA.bridgeContract, {
@@ -380,7 +388,7 @@ describe("Bitcoin Integration Tests", () => {
       const mockDepositResponse = "tb1qreal_deposit_address_from_bridge_contract"
       
       // Mock both getUtxoDepositAddress and getUtxoBridgeConfig calls
-      mockNear.provider.callFunction = vi.fn()
+      mockNear.view = vi.fn()
         .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_user_deposit_address") {
             return Promise.resolve(mockDepositResponse)
@@ -409,7 +417,7 @@ describe("Bitcoin Integration Tests", () => {
         receipts_outcome: [],
       }
       
-      mockNear.signAndSendTransaction = vi.fn().mockResolvedValue(mockFinalizeResult)
+      mockTransactionBuilder.send = vi.fn().mockResolvedValue(mockFinalizeResult)
 
       const finalizeResult = await client.finalizeUtxoDeposit(
         ChainKind.Btc,
@@ -421,7 +429,7 @@ describe("Bitcoin Integration Tests", () => {
       expect(finalizeResult).toBe("near_deposit_finalization_tx_hash")
 
       // Verify the correct parameters were passed to NEAR contract
-      expect(mockNear.signAndSendTransaction).toHaveBeenCalledWith(
+      expect(mockTransactionBuilder.send).toHaveBeenCalledWith(
         expect.objectContaining({
           receiverId: "btc-connector.n-bridge.testnet",
           actions: [
@@ -447,7 +455,7 @@ describe("Bitcoin Integration Tests", () => {
 
     it("should validate deposit amounts against bridge configuration", async () => {
       // Mock bridge config fetch
-      mockNear.provider.callFunction = vi.fn().mockResolvedValue(mockRealBtcConfig)
+      mockNear.view = vi.fn().mockResolvedValue(mockRealBtcConfig)
 
       const config = (await client.getUtxoBridgeConfig(ChainKind.Btc)) as BtcConnectorConfig
       
@@ -471,7 +479,7 @@ describe("Bitcoin Integration Tests", () => {
         }
       }
 
-      mockNear.provider.callFunction = vi.fn()
+      mockNear.view = vi.fn()
         .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
             return Promise.resolve(mockUTXOs)
@@ -496,7 +504,7 @@ describe("Bitcoin Integration Tests", () => {
         ],
       }
 
-      mockNear.signAndSendTransaction = vi.fn().mockResolvedValue(mockInitResult)
+      mockTransactionBuilder.send = vi.fn().mockResolvedValue(mockInitResult)
 
       const result = await client.initUtxoWithdrawal(
         ChainKind.Btc,
@@ -530,15 +538,15 @@ describe("Bitcoin Integration Tests", () => {
         ],
       }
 
-      mockNear.provider.viewTransactionStatus = vi.fn().mockResolvedValue(mockSignedTxStatus)
+      mockNear.getTransactionStatus = vi.fn().mockResolvedValue(mockSignedTxStatus)
 
-      const bitcoinTxHash = await client.finalizeUtxoWithdrawal(ChainKind.Btc, nearSigningTxHash)
+      const bitcoinTxHash = await client.finalizeUtxoWithdrawal(ChainKind.Btc, nearSigningTxHash, REAL_WITHDRAWAL_DATA.testAccount)
       
       expect(bitcoinTxHash).toBe("broadcast_real_bitcoin_withdrawal_tx_hash")
 
       // Verify complete flow worked
-      expect(mockNear.signAndSendTransaction).toHaveBeenCalledTimes(1)
-      expect(mockNear.provider.viewTransactionStatus).toHaveBeenCalledWith(
+      expect(mockTransactionBuilder.send).toHaveBeenCalledTimes(1)
+      expect(mockNear.getTransactionStatus).toHaveBeenCalledWith(
         nearSigningTxHash,
         REAL_WITHDRAWAL_DATA.testAccount,
         "FINAL"
@@ -556,7 +564,7 @@ describe("Bitcoin Integration Tests", () => {
         }
       }
 
-      mockNear.provider.callFunction = vi.fn()
+      mockNear.view = vi.fn()
         .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
             return Promise.resolve(mockUTXOs)
@@ -593,8 +601,8 @@ describe("Bitcoin Integration Tests", () => {
         ],
       }
 
-      mockNear.signAndSendTransaction = vi.fn().mockResolvedValue(mockInitResult)
-      mockNear.provider.viewTransactionStatus = vi.fn().mockResolvedValue(mockSignedTxStatus)
+      mockTransactionBuilder.send = vi.fn().mockResolvedValue(mockInitResult)
+      mockNear.getTransactionStatus = vi.fn().mockResolvedValue(mockSignedTxStatus)
 
       // Mock NearBlocks response for the automated pending ID
       server.use(
@@ -619,6 +627,7 @@ describe("Bitcoin Integration Tests", () => {
         ChainKind.Btc,
         REAL_WITHDRAWAL_DATA.realWithdrawAddress,
         BigInt(30000), // 30,000 sats
+        undefined, // use defaultSignerId
         1, // Single attempt for testing
         50, // Quick timeout
       )
@@ -648,7 +657,7 @@ describe("Bitcoin Integration Tests", () => {
         }
       }
 
-      mockNear.provider.callFunction = vi.fn()
+      mockNear.view = vi.fn()
         .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
             return Promise.resolve(mockUTXOs)
@@ -683,7 +692,7 @@ describe("Bitcoin Integration Tests", () => {
         ],
       }
       
-      mockNear.signAndSendTransaction = vi.fn().mockResolvedValue(mockInitResult)
+      mockTransactionBuilder.send = vi.fn().mockResolvedValue(mockInitResult)
 
       const result = await client.initUtxoWithdrawal(
         ChainKind.Btc,
@@ -725,7 +734,7 @@ describe("Bitcoin Integration Tests", () => {
 
     it("should handle NEAR contract failures", async () => {
       // Mock NEAR contract failure
-      mockNear.provider.callFunction = vi.fn().mockRejectedValue(new Error("Contract method not found"))
+      mockNear.view = vi.fn().mockRejectedValue(new Error("Contract method not found"))
 
       await expect(client.getUtxoBridgeConfig(ChainKind.Btc)).rejects.toThrow("Contract method not found")
     })
@@ -741,7 +750,7 @@ describe("Bitcoin Integration Tests", () => {
         }
       }
 
-      mockNear.provider.callFunction = vi.fn()
+      mockNear.view = vi.fn()
         .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
             return Promise.resolve(mockUTXOs)
@@ -763,7 +772,7 @@ describe("Bitcoin Integration Tests", () => {
         ],
       }
 
-      mockNear.signAndSendTransaction = vi.fn().mockResolvedValue(mockMalformedResult)
+      mockTransactionBuilder.send = vi.fn().mockResolvedValue(mockMalformedResult)
 
       await expect(
         client.initUtxoWithdrawal(ChainKind.Btc, REAL_WITHDRAWAL_DATA.realWithdrawAddress, BigInt(50000))
@@ -783,7 +792,7 @@ describe("Bitcoin Integration Tests", () => {
   describe("Cross-Chain Integration", () => {
     it("should work within broader bridge context", async () => {
       // Test that Bitcoin operations don't interfere with other bridge operations
-      mockNear.provider.callFunction = vi.fn()
+      mockNear.view = vi.fn()
         .mockResolvedValueOnce(mockRealBtcConfig) // getUtxoBridgeConfig
         .mockResolvedValueOnce("tb1qtest") // getUtxoDepositAddress
 
@@ -796,13 +805,13 @@ describe("Bitcoin Integration Tests", () => {
       expect(depositResult.depositAddress).toBe("tb1qtest")
 
       // Verify both calls were made correctly
-      expect(mockNear.provider.callFunction).toHaveBeenCalledTimes(2)
-      expect(mockNear.provider.callFunction).toHaveBeenNthCalledWith(1, 
+      expect(mockNear.view).toHaveBeenCalledTimes(2)
+      expect(mockNear.view).toHaveBeenNthCalledWith(1, 
         "btc-connector.n-bridge.testnet",
         "get_config",
         {}
       )
-      expect(mockNear.provider.callFunction).toHaveBeenNthCalledWith(2,
+      expect(mockNear.view).toHaveBeenNthCalledWith(2,
         "btc-connector.n-bridge.testnet",
         "get_user_deposit_address",
         { deposit_msg: { recipient_id: "test.near" } }
@@ -811,7 +820,6 @@ describe("Bitcoin Integration Tests", () => {
 
     it("should maintain proper network configuration", async () => {
       // Verify testnet configuration is properly set
-      expect(client.networkId).toBe("testnet")
       expect(client.bridgeContractId).toBe(REAL_WITHDRAWAL_DATA.bridgeContract)
       
       // Verify Bitcoin service rejects mainnet address and accepts testnet address
@@ -853,7 +861,7 @@ describe("Bitcoin Integration Tests", () => {
   describe("Performance and Scalability", () => {
     it("should handle multiple concurrent operations", async () => {
       // Mock successful operations
-      mockNear.provider.callFunction = vi.fn().mockResolvedValue(mockRealBtcConfig)
+      mockNear.view = vi.fn().mockResolvedValue(mockRealBtcConfig)
 
       // Execute multiple config fetches concurrently
       const promises = Array(5).fill(null).map(() => client.getUtxoBridgeConfig(ChainKind.Btc))
@@ -865,7 +873,7 @@ describe("Bitcoin Integration Tests", () => {
       })
 
       // Verify all calls were made
-      expect(mockNear.provider.callFunction).toHaveBeenCalledTimes(5)
+      expect(mockNear.view).toHaveBeenCalledTimes(5)
     })
 
     it("should handle large amounts correctly", async () => {
@@ -891,7 +899,7 @@ describe("Bitcoin Integration Tests", () => {
         }
       }
 
-      mockNear.provider.callFunction = vi.fn()
+      mockNear.view = vi.fn()
         .mockImplementation((_contractId: string, methodName: string) => {
           if (methodName === "get_utxos_paged") {
             return Promise.resolve(mockUTXOs)
@@ -911,7 +919,7 @@ describe("Bitcoin Integration Tests", () => {
         ],
       }
       
-      mockNear.signAndSendTransaction = vi.fn().mockResolvedValue(mockInitResult)
+      mockTransactionBuilder.send = vi.fn().mockResolvedValue(mockInitResult)
 
       const result = await client.initUtxoWithdrawal(
         ChainKind.Btc,
