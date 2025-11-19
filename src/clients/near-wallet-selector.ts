@@ -28,6 +28,7 @@ import {
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
 } from "../types/index.js"
+import { getTokenDecimals, normalizeAmount } from "../utils/decimals.js"
 import { getChain, isEvmChain, omniAddress } from "../utils/index.js"
 import { getBridgedToken } from "../utils/tokens.js"
 import type { EvmBridgeClient } from "./evm.js"
@@ -823,7 +824,7 @@ export class NearWalletSelectorBridgeClient {
 
     const transferArgs = {
       receiver_id: this.lockerAddress,
-      amount: args.amount,
+      amount: args.amount_to_send,
       msg: JSON.stringify(args),
     }
 
@@ -895,21 +896,44 @@ export class NearWalletSelectorBridgeClient {
       throw new Error("Invalid NEAR token address format")
     }
 
-    // Step 3: Get relayer account
+    // Step 3: Get token decimals and calculate amount to send
+    const tokenDecimals = await getTokenDecimals(this.lockerAddress, omniTokenAddress)
+    if (!tokenDecimals) {
+      throw new Error(`Token ${omniTokenAddress} is not registered on NEAR`)
+    }
+
+    // Validate amount is greater than fee
+    const amount = BigInt(transferEvent.amount)
+    const fee = BigInt(transferEvent.fee)
+    if (amount < fee) {
+      throw new Error(
+        `Transfer amount is less than fee: ${transferEvent.amount} < ${transferEvent.fee}`,
+      )
+    }
+
+    // Calculate amount to send: (amount - fee) normalized to NEAR decimals
+    const amountToSend = normalizeAmount(
+      amount - fee,
+      tokenDecimals.origin_decimals,
+      tokenDecimals.decimals,
+    )
+
+    // Step 4: Get relayer account
     const wallet = await this.selector.wallet()
     const accounts = await wallet.getAccounts()
     const relayerAccountId = accounts[0].accountId
 
-    // Step 4: Construct the transfer ID
+    // Step 5: Construct the transfer ID
     const transferId: TransferId = {
       origin_chain: originChain, // Use numeric enum value
       origin_nonce: transferEvent.originNonce,
     }
 
-    // Step 5: Execute the fast finalize transfer - pass amounts directly
+    // Step 6: Execute the fast finalize transfer
     const fastTransferArgs: FastFinTransferArgs = {
       token_id: nearTokenId,
       amount: transferEvent.amount.toString(),
+      amount_to_send: amountToSend.toString(),
       transfer_id: transferId,
       recipient: transferEvent.recipient,
       fee: {

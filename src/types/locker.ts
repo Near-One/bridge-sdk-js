@@ -53,6 +53,7 @@ export type DeployTokenArgs = b.infer<typeof DeployTokenArgsSchema>
 export type FastFinTransferArgs = {
   token_id: AccountId
   amount: string
+  amount_to_send: string
   transfer_id: TransferId
   recipient: string
   fee: {
