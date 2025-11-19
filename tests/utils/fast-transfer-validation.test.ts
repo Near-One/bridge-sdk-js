@@ -40,11 +40,10 @@ describe("Fast transfer NEAR contract validation", () => {
     const eventFee = BigInt("100000000000000000") // 0.1 WETH (18 decimals)
 
     // What we calculate and send via ft_transfer_call
-    const amountToSend = normalizeAmount(
-      eventAmount - eventFee,
-      decimals.decimals,
-      decimals.origin_decimals
-    )
+    // Must normalize separately to avoid precision loss
+    const normalizedAmount = normalizeAmount(eventAmount, decimals.decimals, decimals.origin_decimals)
+    const normalizedFee = normalizeAmount(eventFee, decimals.decimals, decimals.origin_decimals)
+    const amountToSend = normalizedAmount - normalizedFee
 
     // NEAR contract validation:
     // denormalize(msg.amount) should equal amount_to_send + denormalize(msg.fee)
@@ -63,11 +62,9 @@ describe("Fast transfer NEAR contract validation", () => {
     const eventAmount = BigInt("1000000") // 1.0 USDC (6 decimals)
     const eventFee = BigInt("100000") // 0.1 USDC
 
-    const amountToSend = normalizeAmount(
-      eventAmount - eventFee,
-      decimals.origin_decimals,
-      decimals.decimals
-    )
+    const normalizedAmount = normalizeAmount(eventAmount, decimals.decimals, decimals.origin_decimals)
+    const normalizedFee = normalizeAmount(eventFee, decimals.decimals, decimals.origin_decimals)
+    const amountToSend = normalizedAmount - normalizedFee
 
     const denormalizedEventAmount = denormalizeAmount(eventAmount, decimals)
     const denormalizedFee = denormalizeAmount(eventFee, decimals)
@@ -84,15 +81,53 @@ describe("Fast transfer NEAR contract validation", () => {
     const eventAmount = BigInt("1000000000000000000000000") // 1.0 NEAR (24 decimals)
     const eventFee = BigInt("100000000000000000000000") // 0.1 NEAR
 
-    const amountToSend = normalizeAmount(
-      eventAmount - eventFee,
-      decimals.decimals,
-      decimals.origin_decimals
-    )
+    const normalizedAmount = normalizeAmount(eventAmount, decimals.decimals, decimals.origin_decimals)
+    const normalizedFee = normalizeAmount(eventFee, decimals.decimals, decimals.origin_decimals)
+    const amountToSend = normalizedAmount - normalizedFee
 
     const denormalizedEventAmount = denormalizeAmount(eventAmount, decimals)
     const denormalizedFee = denormalizeAmount(eventFee, decimals)
 
     expect(denormalizedEventAmount).toBe(amountToSend + denormalizedFee)
+  })
+
+  it("should handle precision loss correctly when fee doesn't divide evenly", () => {
+    // The case Codex identified: amount=1e18, fee=1 with 18->8 decimals
+    const decimals: TokenDecimals = {
+      decimals: 18, // EVM decimals
+      origin_decimals: 8, // NEAR decimals
+    }
+
+    const eventAmount = BigInt("1000000000000000000") // 1.0 token (18 decimals)
+    const eventFee = BigInt("1") // Tiny fee (18 decimals)
+
+    // WRONG: normalizing (amount - fee) truncates incorrectly
+    const wrongAmount = normalizeAmount(
+      eventAmount - eventFee,
+      decimals.decimals,
+      decimals.origin_decimals
+    )
+    // = normalizeAmount(999999999999999999, 18, 8) = 99999999 (truncated)
+
+    // CORRECT: normalize separately then subtract
+    const normalizedAmount = normalizeAmount(eventAmount, decimals.decimals, decimals.origin_decimals)
+    const normalizedFee = normalizeAmount(eventFee, decimals.decimals, decimals.origin_decimals)
+    const correctAmount = normalizedAmount - normalizedFee
+    // = 100000000 - 0 = 100000000
+
+    // Verify they're different
+    expect(wrongAmount).not.toBe(correctAmount)
+    expect(wrongAmount).toBe(BigInt("99999999")) // Lost precision!
+    expect(correctAmount).toBe(BigInt("100000000")) // Correct value
+
+    // Verify ONLY the correct one satisfies contract validation
+    const denormalizedEventAmount = denormalizeAmount(eventAmount, decimals)
+    const denormalizedFee = denormalizeAmount(eventFee, decimals)
+
+    // Wrong calculation fails validation
+    expect(denormalizedEventAmount).not.toBe(wrongAmount + denormalizedFee)
+
+    // Correct calculation passes validation
+    expect(denormalizedEventAmount).toBe(correctAmount + denormalizedFee)
   })
 })
