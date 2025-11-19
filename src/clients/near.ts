@@ -1361,10 +1361,12 @@ export class NearBridgeClient {
     }
 
     // Calculate amount to send: (amount - fee) normalized to NEAR decimals
+    // Event amounts are in origin chain decimals (tokenDecimals.decimals)
+    // Need to convert to NEAR decimals (tokenDecimals.origin_decimals)
     const amountToSend = normalizeAmount(
       amount - fee,
-      tokenDecimals.origin_decimals,
       tokenDecimals.decimals,
+      tokenDecimals.origin_decimals,
     )
 
     // Step 4: Construct the transfer ID
