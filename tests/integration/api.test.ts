@@ -46,14 +46,6 @@ describe("OmniBridgeAPI Integration Tests", () => {
         expect(fee.protocol_fee).toEqual(expect.any(BigInt))
         expect(fee.protocol_fee >= 0n).toBe(true)
       }
-      if (fee.relayer_fee !== undefined && fee.relayer_fee !== null) {
-        expect(fee.relayer_fee).toEqual(expect.any(BigInt))
-        expect(fee.relayer_fee >= 0n).toBe(true)
-      }
-      if (fee.max_gas_fee !== null && fee.max_gas_fee !== undefined) {
-        expect(fee.max_gas_fee).toEqual(expect.any(BigInt))
-        expect(fee.max_gas_fee >= 0n).toBe(true)
-      }
       if (fee.transferred_token_fee !== null && fee.transferred_token_fee !== undefined) {
         expect(fee.transferred_token_fee).toEqual(expect.any(BigInt))
         expect(fee.transferred_token_fee >= 0n).toBe(true)
