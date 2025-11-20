@@ -39,6 +39,7 @@ import {
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
 } from "../types/index.js"
+import { getTokenDecimals, normalizeAmount } from "../utils/decimals.js"
 import { getChain, isEvmChain, omniAddress } from "../utils/index.js"
 import { getBridgedToken } from "../utils/tokens.js"
 import type {
@@ -1280,7 +1281,7 @@ export class NearBridgeClient {
 
     const transferArgs = {
       receiver_id: this.lockerAddress,
-      amount: args.amount,
+      amount: args.amount_to_send,
       msg: JSON.stringify(args),
     }
 
@@ -1344,7 +1345,36 @@ export class NearBridgeClient {
       throw new Error("Invalid NEAR token address format")
     }
 
-    // Step 3: Amounts and fees are passed directly - contract handles normalization internally
+    // Step 3: Get token decimals and calculate amount to send
+    const tokenDecimals = await getTokenDecimals(this.lockerAddress, omniTokenAddress)
+    if (!tokenDecimals) {
+      throw new Error(`Token ${omniTokenAddress} is not registered on NEAR`)
+    }
+
+    // Validate amount is greater than fee
+    const amount = BigInt(transferEvent.amount)
+    const fee = BigInt(transferEvent.fee)
+    if (amount < fee) {
+      throw new Error(
+        `Transfer amount is less than fee: ${transferEvent.amount} < ${transferEvent.fee}`,
+      )
+    }
+
+    // Calculate amount to send: normalize amount and fee separately to avoid precision loss
+    // Event amounts are in origin chain decimals (tokenDecimals.decimals)
+    // Need to convert to NEAR decimals (tokenDecimals.origin_decimals)
+    // IMPORTANT: Must normalize separately then subtract to match contract validation
+    const normalizedAmount = normalizeAmount(
+      amount,
+      tokenDecimals.decimals,
+      tokenDecimals.origin_decimals,
+    )
+    const normalizedFee = normalizeAmount(
+      fee,
+      tokenDecimals.decimals,
+      tokenDecimals.origin_decimals,
+    )
+    const amountToSend = normalizedAmount - normalizedFee
 
     // Step 4: Construct the transfer ID
     const transferId: TransferId = {
@@ -1352,10 +1382,11 @@ export class NearBridgeClient {
       origin_nonce: transferEvent.originNonce,
     }
 
-    // Step 5: Execute the fast finalize transfer - pass amounts directly
+    // Step 5: Execute the fast finalize transfer
     const fastTransferArgs: FastFinTransferArgs = {
       token_id: nearTokenId,
       amount: transferEvent.amount.toString(),
+      amount_to_send: amountToSend.toString(),
       transfer_id: transferId,
       recipient: transferEvent.recipient,
       fee: {
