@@ -249,7 +249,9 @@ const server = setupServer(
     const baseTransfer = {
       id: {
         origin_chain: "Near",
-        origin_nonce: 123
+        kind: {
+          Nonce: 123
+        }
       },
       initialized: null,
       fast_finalised_on_near: null,

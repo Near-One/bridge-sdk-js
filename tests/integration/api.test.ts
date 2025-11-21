@@ -37,7 +37,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
       }
       expect(fee.usd_fee >= 0).toBe(true)
 
-      // Check optional fields if present
+      // Check optional fields if present and not null
       if (fee.gas_fee !== undefined && fee.gas_fee !== null) {
         expect(fee.gas_fee).toEqual(expect.any(BigInt))
         expect(fee.gas_fee >= 0n).toBe(true)
@@ -50,14 +50,12 @@ describe("OmniBridgeAPI Integration Tests", () => {
         expect(fee.relayer_fee).toEqual(expect.any(BigInt))
         expect(fee.relayer_fee >= 0n).toBe(true)
       }
-      if (fee.max_gas_fee !== null && fee.max_gas_fee !== undefined) {
-        expect(fee.max_gas_fee).toEqual(expect.any(BigInt))
-        expect(fee.max_gas_fee >= 0n).toBe(true)
-      }
-      if (fee.transferred_token_fee !== null && fee.transferred_token_fee !== undefined) {
+      if (fee.transferred_token_fee !== undefined && fee.transferred_token_fee !== null) {
         expect(fee.transferred_token_fee).toEqual(expect.any(BigInt))
         expect(fee.transferred_token_fee >= 0n).toBe(true)
       }
+      // Check the new insufficient_utxo field
+      expect(fee.insufficient_utxo).toEqual(expect.any(Boolean))
     })
 
     it("should handle real API errors gracefully", async () => {
@@ -171,7 +169,9 @@ describe("OmniBridgeAPI Integration Tests", () => {
         expect(transfer).toEqual({
           id: {
             origin_chain: expect.stringMatching(/^(Eth|Near|Sol|Arb|Base)$/),
-            origin_nonce: expect.any(Number),
+            kind: {
+              Nonce: expect.any(Number),
+            },
           },
           initialized: expect.any(Object),
           claimed: expect.toBeOneOf([expect.anything(), undefined, null]), // null or transaction object
