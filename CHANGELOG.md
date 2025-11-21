@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.21.1
+
+### Patch Changes
+
+- aecdf48: Update transfer fee schema: remove max_gas_fee, add insufficient_utxo flag
+
 ## 0.21.0
 
 ### Minor Changes
