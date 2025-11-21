@@ -49,6 +49,7 @@ exports[`OmniBridgeAPI Integration Tests > getAllowlistedTokens > should return 
   "arb.omdep.near": "eth:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
   "base.omdep.near": "eth:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
   "eth.bridge.near": "eth:0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+  "nbtc.bridge.near": "eth:0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
   "sol.omdep.near": "sol:So11111111111111111111111111111111111111112",
   "token.publicailab.near": "near:token.publicailab.near",
   "token.sweat": "near:token.sweat",
