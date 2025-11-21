@@ -60,7 +60,7 @@ export class TransferAssertions {
 
     console.log(`✓ Transfer details retrieved for ${originChain}:${originNonce}`)
     if (transfer.id) {
-      console.log(`  Transfer ID: ${transfer.id.origin_chain}:${transfer.id.origin_nonce}`)
+      console.log(`  Transfer ID: ${transfer.id.origin_chain}:${transfer.id.kind.Nonce}`)
     }
     if (transfer.transfer_message) {
       console.log(`  Token: ${transfer.transfer_message.token}`)
