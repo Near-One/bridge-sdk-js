@@ -172,7 +172,7 @@ export class NearBridgeClient {
   constructor(
     private wallet: Account,
     private lockerAddress: string = addresses.near.contract,
-    private readonly options: { zcashApiKey?: string } = {},
+    options?: { zcashApiKey?: string } | string,
   ) {
     if (lockerAddress) {
       this.lockerAddress = lockerAddress
@@ -197,11 +197,12 @@ export class NearBridgeClient {
     })
     this.utxoServices[ChainKind.Btc] = this.bitcoinService
 
-    // Initialize Zcash service if API key configured via options or environment
+    // Initialize Zcash service if API key configured via parameter or environment
+    const zcashApiKey = typeof options === "string" ? options : options?.zcashApiKey
     // biome-ignore lint/complexity/useLiteralKeys: process.env has index signature, requires bracket notation for noPropertyAccessFromIndexSignature
-    const zcashApiKey = this.options.zcashApiKey || process.env["ZCASH_API_KEY"]
-    if (zcashApiKey) {
-      this.zcashService = new ZcashService(addresses.zcash.rpcUrl, zcashApiKey)
+    const apiKey = zcashApiKey || process.env["ZCASH_API_KEY"]
+    if (apiKey) {
+      this.zcashService = new ZcashService(addresses.zcash.rpcUrl, apiKey)
       this.utxoServices[ChainKind.Zcash] = this.zcashService
     }
   }
@@ -896,7 +897,9 @@ export class NearBridgeClient {
     const recipientChain = getChain(recipientRaw)
     if (recipientChain !== ChainKind.Btc && recipientChain !== ChainKind.Zcash) {
       throw new Error(
-        `Invalid recipient chain: expected BTC or Zcash, got ${ChainKind[recipientChain] ?? recipientChain}`,
+        `Invalid recipient chain: expected BTC or Zcash, got ${
+          ChainKind[recipientChain] ?? recipientChain
+        }`,
       )
     }
 

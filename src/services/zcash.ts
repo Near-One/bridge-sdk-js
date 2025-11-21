@@ -25,7 +25,6 @@ export class ZcashService {
   }
 
   private rpc: UtxoRpcClient
-
   async decodeTransaction(txHex: string) {
     const tx = await this.rpc.call("decoderawtransaction", [txHex])
     return tx

@@ -130,7 +130,9 @@ const TransferSchema = z.object({
   id: z
     .object({
       origin_chain: ChainSchema,
-      origin_nonce: z.number().int().min(0),
+      kind: z.object({
+        Nonce: z.number().int().min(0),
+      }),
     })
     .optional()
     .nullable(),
@@ -148,12 +150,12 @@ const TransferSchema = z.object({
 
 const ApiFeeResponseSchema = z.object({
   native_token_fee: safeBigInt(),
-  gas_fee: safeBigInt().optional(),
-  protocol_fee: safeBigInt().optional(),
-  relayer_fee: safeBigInt().optional(),
+  gas_fee: safeBigInt(true).nullable().optional(),
+  protocol_fee: safeBigInt(true).nullable().optional(),
+  relayer_fee: safeBigInt(true).nullable().optional(),
   usd_fee: z.number(),
-  max_gas_fee: safeBigInt(true).nullable().optional(),
   transferred_token_fee: safeBigInt(true).nullable().optional(),
+  insufficient_utxo: z.boolean(),
 })
 
 const AllowlistedTokensResponseSchema = z.object({

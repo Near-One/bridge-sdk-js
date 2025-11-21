@@ -9,8 +9,10 @@ exports[`OmniBridgeAPI Integration Tests > findOmniTransfers > should fetch tran
     "finalised": null,
     "finalised_on_near": null,
     "id": {
+      "kind": {
+        "Nonce": 1,
+      },
       "origin_chain": "Near",
-      "origin_nonce": 1,
     },
     "initialized": {
       "NearReceipt": {
@@ -70,8 +72,10 @@ exports[`OmniBridgeAPI Integration Tests > getTransfer > should fetch transfer d
     },
     "finalised_on_near": null,
     "id": {
+      "kind": {
+        "Nonce": 22,
+      },
       "origin_chain": "Near",
-      "origin_nonce": 22,
     },
     "initialized": {
       "NearReceipt": {
