@@ -49,7 +49,7 @@ const ADDRESSES: Record<NetworkType, ChainAddresses> = {
     eth: "0xe00c629afaccb0510995a2b95560e446a24c85b9",
     near: {
       contract: "omni.bridge.near",
-      rpcUrls: ["https://rpc.near.org"],
+      rpcUrls: ["https://free.rpc.fastnear.com"],
     },
     sol: {
       locker: "dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe",
@@ -81,7 +81,7 @@ const ADDRESSES: Record<NetworkType, ChainAddresses> = {
     eth: "0x68a86e0Ea5B1d39F385c1326e4d493526dFe4401",
     near: {
       contract: "omni.n-bridge.testnet",
-      rpcUrls: ["https://rpc.testnet.near.org"],
+      rpcUrls: ["https://test.rpc.fastnear.com"],
     },
     sol: {
       locker: "862HdJV59Vp83PbcubUnvuXc4EAXP8CDDs6LTxFpunTe",

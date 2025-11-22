@@ -1,12 +1,11 @@
 import type { Provider as SolWallet } from "@coral-xyz/anchor"
-import { Account as NearAccount } from "@near-js/accounts"
 import type { WalletSelector } from "@near-wallet-selector/core"
 import { Wallet as EthWallet } from "ethers"
 import { EvmBridgeClient } from "./clients/evm.js"
-import { NearBridgeClient } from "./clients/near.js"
-import { NearWalletSelectorBridgeClient } from "./clients/near-wallet-selector.js"
+import { NearBridgeClient } from "./clients/near-kit.js"
 import { SolanaBridgeClient } from "./clients/solana.js"
 import { addresses } from "./config.js"
+import { getClient } from "./factory.js"
 import { ChainKind, type InitTransferEvent, type OmniTransferMessage } from "./types/index.js"
 import {
   getMinimumTransferableAmount,
@@ -15,11 +14,7 @@ import {
 } from "./utils/decimals.js"
 import { getBridgedToken, getChain, isEvmChain } from "./utils/index.js"
 
-type Client =
-  | EvmBridgeClient
-  | NearBridgeClient
-  | NearWalletSelectorBridgeClient
-  | SolanaBridgeClient
+type Client = EvmBridgeClient | NearBridgeClient | SolanaBridgeClient
 
 // Type guards
 export function isSolWallet(wallet: SolWallet | WalletSelector): wallet is SolWallet {
@@ -45,7 +40,7 @@ export function isWalletSelector(wallet: SolWallet | WalletSelector): wallet is 
  * @throws If the transfer amount would be invalid after decimal normalization
  */
 export async function omniTransfer(
-  wallet: EthWallet | NearAccount | WalletSelector | SolWallet,
+  wallet: EthWallet | WalletSelector | SolWallet,
   transfer: OmniTransferMessage,
 ): Promise<string | InitTransferEvent> {
   const sourceTokenAddress = transfer.tokenAddress
@@ -151,16 +146,27 @@ export async function omniTransfer(
       )
     }
     client = new EvmBridgeClient(wallet, sourceChain)
-  } else if (wallet instanceof NearAccount) {
-    client = new NearBridgeClient(wallet)
   } else if (isSolWallet(wallet)) {
     client = new SolanaBridgeClient(wallet)
   } else if (isWalletSelector(wallet)) {
-    client = new NearWalletSelectorBridgeClient(wallet)
+    client = getClient(ChainKind.Near, wallet)
   }
 
   if (!client) {
     throw new Error("Unsupported wallet type")
+  }
+
+  // Handle NEAR client which requires signerId
+  if (client instanceof NearBridgeClient) {
+    const nearWallet = await (wallet as WalletSelector).wallet()
+    const accounts = await nearWallet.getAccounts()
+    const signerId = accounts[0]?.accountId
+
+    if (!signerId) {
+      throw new Error("No account found in NEAR wallet")
+    }
+
+    return await client.initTransfer(transfer, signerId)
   }
 
   return await client.initTransfer(transfer)

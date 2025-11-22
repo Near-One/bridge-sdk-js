@@ -25,53 +25,51 @@ The examples below assume `setNetwork("testnet")` and omit standard provider/con
 ### Deploying FROM NEAR to EVM Chains (Ethereum/Base/Arbitrum/Bnb)
 
 ```typescript
-import { ChainKind, NearBridgeClient, ProofKind } from "omni-bridge-sdk";
-import { EvmBridgeClient } from "omni-bridge-sdk";
-import { getEvmProof } from "omni-bridge-sdk/proofs/evm.js";
-import { connect } from "near-api-js";
-import { ethers } from "ethers";
+import { ChainKind, NearBridgeClient, ProofKind } from "omni-bridge-sdk"
+import { EvmBridgeClient } from "omni-bridge-sdk"
+import { getEvmProof } from "omni-bridge-sdk/proofs/evm.js"
+import { connect } from "near-api-js"
+import { ethers } from "ethers"
 
 // 1. Log metadata on NEAR to retrieve the MPC signature
 const near = await connect({
   networkId: "testnet",
-  nodeUrl: "https://rpc.testnet.near.org",
-});
-const nearAccount = await near.account("client.near");
-const nearClient = new NearBridgeClient(nearAccount);
+  nodeUrl: "https://test.rpc.fastnear.com",
+})
+const nearAccount = await near.account("client.near")
+const nearClient = new NearBridgeClient(nearAccount)
 
-const { signature, metadata_payload } = await nearClient.logMetadata("near:token.near");
+const { signature, metadata_payload } = await nearClient.logMetadata(
+  "near:token.near"
+)
 
 // 2. Deploy the wrapped token on the destination EVM chain
-const provider = new ethers.providers.Web3Provider(window.ethereum);
-const evmWallet = provider.getSigner();
-const evmClient = new EvmBridgeClient(evmWallet, ChainKind.Eth);
+const provider = new ethers.providers.Web3Provider(window.ethereum)
+const evmWallet = provider.getSigner()
+const evmClient = new EvmBridgeClient(evmWallet, ChainKind.Eth)
 
 const { txHash, tokenAddress } = await evmClient.deployToken(signature, {
   token: metadata_payload.token,
   name: metadata_payload.name,
   symbol: metadata_payload.symbol,
   decimals: metadata_payload.decimals,
-});
+})
 
 // 3. Produce an EVM Merkle proof of the deployment and bind on NEAR
-const receipt = await provider.getTransactionReceipt(txHash);
-const deployTopic = receipt.logs[0]?.topics[0];
+const receipt = await provider.getTransactionReceipt(txHash)
+const deployTopic = receipt.logs[0]?.topics[0]
 if (!deployTopic) {
-  throw new Error("Token deployment log not found");
+  throw new Error("Token deployment log not found")
 }
 
-const evmProof = await getEvmProof(txHash, deployTopic, ChainKind.Eth);
+const evmProof = await getEvmProof(txHash, deployTopic, ChainKind.Eth)
 
-await nearClient.bindToken(
-  ChainKind.Eth,
-  undefined,
-  {
-    proof_kind: ProofKind.DeployToken,
-    proof: evmProof,
-  },
-);
+await nearClient.bindToken(ChainKind.Eth, undefined, {
+  proof_kind: ProofKind.DeployToken,
+  proof: evmProof,
+})
 
-console.log(`Wrapped token deployed at ${tokenAddress}`);
+console.log(`Wrapped token deployed at ${tokenAddress}`)
 ```
 
 > [!TIP]
@@ -87,7 +85,7 @@ import { connect } from "near-api-js";
 
 const near = await connect({
   networkId: "testnet",
-  nodeUrl: "https://rpc.testnet.near.org",
+  nodeUrl: "https://test.rpc.fastnear.com",
 });
 const nearClient = new NearBridgeClient(await near.account("client.near"));
 
@@ -112,50 +110,45 @@ console.log(`Wrapped mint created at ${tokenAddress}`);
 
 `getVaa` internally polls Wormhole for up to two minutes. Repeat the call with a delay if it throws `No VAA found`.
 
-> [!NOTE]
-> `anchorProvider` must be an Anchor-compatible provider (for example `new AnchorProvider(connection, wallet, AnchorProvider.defaultOptions())`).
+> [!NOTE] > `anchorProvider` must be an Anchor-compatible provider (for example `new AnchorProvider(connection, wallet, AnchorProvider.defaultOptions())`).
 
 ### Deploying FROM EVM Chains (Ethereum/Base/Arbitrum/Bnb) TO NEAR
 
 ```typescript
-import { ChainKind, NearBridgeClient, ProofKind } from "omni-bridge-sdk";
-import { EvmBridgeClient } from "omni-bridge-sdk";
-import { getEvmProof } from "omni-bridge-sdk/proofs/evm.js";
-import { connect } from "near-api-js";
-import { ethers } from "ethers";
+import { ChainKind, NearBridgeClient, ProofKind } from "omni-bridge-sdk"
+import { EvmBridgeClient } from "omni-bridge-sdk"
+import { getEvmProof } from "omni-bridge-sdk/proofs/evm.js"
+import { connect } from "near-api-js"
+import { ethers } from "ethers"
 
 // 1. Log metadata on the source EVM chain
-const provider = new ethers.providers.Web3Provider(window.ethereum);
-const evmWallet = provider.getSigner();
-const evmClient = new EvmBridgeClient(evmWallet, ChainKind.Eth);
+const provider = new ethers.providers.Web3Provider(window.ethereum)
+const evmWallet = provider.getSigner()
+const evmClient = new EvmBridgeClient(evmWallet, ChainKind.Eth)
 
-const logTxHash = await evmClient.logMetadata("eth:0x123...");
+const logTxHash = await evmClient.logMetadata("eth:0x123...")
 
 // 2. Build a proof of the LogMetadata event
-const logReceipt = await provider.getTransactionReceipt(logTxHash);
-const logTopic = logReceipt.logs[0]?.topics[0];
+const logReceipt = await provider.getTransactionReceipt(logTxHash)
+const logTopic = logReceipt.logs[0]?.topics[0]
 if (!logTopic) {
-  throw new Error("LogMetadata event not found in receipt");
+  throw new Error("LogMetadata event not found in receipt")
 }
 
-const logMetadataProof = await getEvmProof(logTxHash, logTopic, ChainKind.Eth);
+const logMetadataProof = await getEvmProof(logTxHash, logTopic, ChainKind.Eth)
 
 // 3. Deploy the wrapped token on NEAR using the proof
 const near = await connect({
   networkId: "testnet",
-  nodeUrl: "https://rpc.testnet.near.org",
-});
-const nearAccount = await near.account("client.near");
-const nearClient = new NearBridgeClient(nearAccount);
+  nodeUrl: "https://test.rpc.fastnear.com",
+})
+const nearAccount = await near.account("client.near")
+const nearClient = new NearBridgeClient(nearAccount)
 
-await nearClient.deployToken(
-  ChainKind.Eth,
-  undefined,
-  {
-    proof_kind: ProofKind.LogMetadata,
-    proof: logMetadataProof,
-  },
-);
+await nearClient.deployToken(ChainKind.Eth, undefined, {
+  proof_kind: ProofKind.LogMetadata,
+  proof: logMetadataProof,
+})
 ```
 
 Since NEAR is the destination chain in this flow, no additional `bindToken` step is required.
@@ -178,7 +171,7 @@ const vaa = await getVaa(logTxHash, "Testnet");
 
 const near = await connect({
   networkId: "testnet",
-  nodeUrl: "https://rpc.testnet.near.org",
+  nodeUrl: "https://test.rpc.fastnear.com",
 });
 const nearClient = new NearBridgeClient(await near.account("client.near"));
 
@@ -196,7 +189,7 @@ Each deployment step can encounter different types of errors that need handling:
 
 ```typescript
 try {
-  await client.logMetadata("near:token.near");
+  await client.logMetadata("near:token.near")
 } catch (error) {
   if (error.message.includes("Token metadata not provided")) {
     // Handle missing metadata
@@ -241,12 +234,12 @@ If you run your own relayer or indexer, poll it for `ready_for_bind` (NEAR → f
 
 ```typescript
 // For EVM chains
-const evmClient = new EvmClient(wallet, ChainKind.Eth);
-const nearTokenAddress = await evmClient.factory.nearToEthToken("token.near");
+const evmClient = new EvmClient(wallet, ChainKind.Eth)
+const nearTokenAddress = await evmClient.factory.nearToEthToken("token.near")
 
 // For Solana
-const solClient = new SolanaClient(provider, wormholeProgramId);
-const isBridgedToken = await solClient.isBridgedToken(tokenPubkey);
+const solClient = new SolanaClient(provider, wormholeProgramId)
+const isBridgedToken = await solClient.isBridgedToken(tokenPubkey)
 ```
 
 ## Security Considerations
@@ -270,8 +263,8 @@ const isBridgedToken = await solClient.isBridgedToken(tokenPubkey);
 
 ```typescript
 // Check required balances on NEAR
-const { regBalance, initBalance, storage } = await client.getBalances();
-const requiredBalance = regBalance + initBalance;
+const { regBalance, initBalance, storage } = await client.getBalances()
+const requiredBalance = regBalance + initBalance
 ```
 
 ### 2. Invalid Token Metadata
@@ -279,7 +272,7 @@ const requiredBalance = regBalance + initBalance;
 ```typescript
 // Verify metadata before deployment
 if (!tokenMetadata.name || !tokenMetadata.symbol || !tokenMetadata.decimals) {
-  throw new Error("Invalid token metadata");
+  throw new Error("Invalid token metadata")
 }
 ```
 
@@ -288,43 +281,43 @@ if (!tokenMetadata.name || !tokenMetadata.symbol || !tokenMetadata.decimals) {
 ```typescript
 // Ensure signature is valid for specific chain
 if (!signature.isValidFor(ChainKind.Eth)) {
-  throw new Error("Invalid signature for chain");
+  throw new Error("Invalid signature for chain")
 }
 ```
 
 ### 4. NEAR to Foreign Chain Binding Failures
 
 ```typescript
-import { ChainKind, ProofKind } from "omni-bridge-sdk";
-import { getEvmProof } from "omni-bridge-sdk/proofs/evm.js";
-import { getVaa } from "omni-bridge-sdk/proofs/wormhole.js";
+import { ChainKind, ProofKind } from "omni-bridge-sdk"
+import { getEvmProof } from "omni-bridge-sdk/proofs/evm.js"
+import { getVaa } from "omni-bridge-sdk/proofs/wormhole.js"
 
 async function waitForDeploymentProof(
   chain: ChainKind,
   txHash: string,
-  topic?: string,
+  topic?: string
 ) {
   // Retry until the relevant proof fetch succeeds
   for (;;) {
     try {
       if (chain === ChainKind.Sol) {
-        return { vaa: await getVaa(txHash, "Testnet") };
+        return { vaa: await getVaa(txHash, "Testnet") }
       }
 
-      if (!topic) throw new Error("Missing log topic for EVM deployment proof");
-      const proof = await getEvmProof(txHash, topic, chain);
+      if (!topic) throw new Error("Missing log topic for EVM deployment proof")
+      const proof = await getEvmProof(txHash, topic, chain)
       return {
         evmProof: {
           proof_kind: ProofKind.DeployToken,
           proof,
         },
-      };
-    } catch (error) {
-      const message = (error as Error).message ?? "";
-      if (!message.includes("not found") && !message.includes("No VAA")) {
-        throw error;
       }
-      await new Promise((resolve) => setTimeout(resolve, 2_000));
+    } catch (error) {
+      const message = (error as Error).message ?? ""
+      if (!message.includes("not found") && !message.includes("No VAA")) {
+        throw error
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2_000))
     }
   }
 }
@@ -349,13 +342,13 @@ async function waitForDeploymentProof(
 ```typescript
 interface MPCSignature {
   big_r: {
-    affine_point: string;
-  };
+    affine_point: string
+  }
   s: {
-    scalar: string;
-  };
-  recovery_id: number;
-  toBytes(forEvm?: boolean): Uint8Array;
+    scalar: string
+  }
+  recovery_id: number
+  toBytes(forEvm?: boolean): Uint8Array
 }
 ```
 
@@ -363,33 +356,33 @@ interface MPCSignature {
 
 ```typescript
 interface TokenMetadata {
-  token: string;
-  name: string;
-  symbol: string;
-  decimals: number;
+  token: string
+  name: string
+  symbol: string
+  decimals: number
 }
 
 interface TokenDeployment {
-  id: string;
-  tokenAddress: OmniAddress;
-  sourceChain: ChainKind;
-  destinationChain: ChainKind;
+  id: string
+  tokenAddress: OmniAddress
+  sourceChain: ChainKind
+  destinationChain: ChainKind
   status:
     | "pending"
     | "ready_for_finalize"
     | "finalized"
     | "ready_for_bind"
-    | "completed";
+    | "completed"
   proof?: {
-    proof_kind: ProofKind;
-    vaa: string;
-  };
+    proof_kind: ProofKind
+    vaa: string
+  }
   metadata?: {
-    nearAddress: string;
-    tokenAddress: OmniAddress;
-    emitterAddress: OmniAddress;
-  };
-  deploymentTx?: string;
-  bindTx?: string;
+    nearAddress: string
+    tokenAddress: OmniAddress
+    emitterAddress: OmniAddress
+  }
+  deploymentTx?: string
+  bindTx?: string
 }
 ```
