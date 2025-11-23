@@ -242,7 +242,7 @@ const server = setupServer(
   }),
 
   // OmniBridge API for real relayer monitoring
-  http.get("https://testnet.api.bridge.nearone.org/api/v2/transfers/transfer", ({ request }) => {
+  http.get("https://testnet.api.bridge.nearone.org/api/v3/transfers/transfer", ({ request }) => {
     const url = new URL(request.url)
     const txHash = url.searchParams.get("transaction_hash")
     

@@ -697,7 +697,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
     it("should wait for and find Bitcoin transaction signing", async () => {
       // Set up specific mock for this test
       server.use(
-        http.get("https://testnet.api.bridge.nearone.org/api/v2/transfers/transfer", ({ request }) => {
+        http.get("https://testnet.api.bridge.nearone.org/api/v3/transfers/transfer", ({ request }) => {
           const url = new URL(request.url)
           const transactionHash = url.searchParams.get("transaction_hash")
 
@@ -748,7 +748,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
     it("should use default parameters when not specified", async () => {
       // Set up specific mock for this test
       server.use(
-        http.get("https://testnet.api.bridge.nearone.org/api/v2/transfers/transfer", ({ request }) => {
+        http.get("https://testnet.api.bridge.nearone.org/api/v3/transfers/transfer", ({ request }) => {
           const url = new URL(request.url)
           const transactionHash = url.searchParams.get("transaction_hash")
 
@@ -797,7 +797,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
     it("should timeout after max attempts", async () => {
       // Set up specific mock for this test that returns empty array for the nonexistent pending ID
       server.use(
-        http.get("https://testnet.api.bridge.nearone.org/api/v2/transfers/transfer", ({ request }) => {
+        http.get("https://testnet.api.bridge.nearone.org/api/v3/transfers/transfer", ({ request }) => {
           const url = new URL(request.url)
           const transactionHash = url.searchParams.get("transaction_hash")
 
@@ -822,7 +822,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
 
     it("should handle OmniBridge API errors", async () => {
       server.use(
-        http.get("https://testnet.api.bridge.nearone.org/api/v2/transfers/transfer", () => {
+        http.get("https://testnet.api.bridge.nearone.org/api/v3/transfers/transfer", () => {
           return new HttpResponse("Server Error", { status: 500 })
         })
       )
@@ -882,7 +882,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
     it("should execute complete Bitcoin withdrawal flow", async () => {
       // Set up specific mock for this test with correct transaction hash mapping
       server.use(
-        http.get("https://testnet.api.bridge.nearone.org/api/v2/transfers/transfer", ({ request }) => {
+        http.get("https://testnet.api.bridge.nearone.org/api/v3/transfers/transfer", ({ request }) => {
           const url = new URL(request.url)
           const transactionHash = url.searchParams.get("transaction_hash")
 
