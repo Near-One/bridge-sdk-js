@@ -141,7 +141,8 @@ const TransferSchema = z.object({
         }),
       ]),
     })
-    .optional(),
+    .optional()
+    .nullable(),
   initialized: z.union([z.null(), TransactionSchema]),
   signed: z.union([z.null(), TransactionSchema]),
   fast_finalised_on_near: z.union([z.null(), TransactionSchema]),
