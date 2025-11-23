@@ -2,7 +2,7 @@ import { z } from "zod"
 import { getNetwork } from "./config.js"
 import type { OmniAddress } from "./types/index.js"
 
-const ChainSchema = z.enum(["Eth", "Near", "Sol", "Arb", "Base", "Bnb"])
+const ChainSchema = z.enum(["Eth", "Near", "Sol", "Arb", "Base", "Bnb", "Btc", "Zcash"])
 export type Chain = z.infer<typeof ChainSchema>
 
 const UtxoChainParamSchema = z.enum(["btc", "zcash"])
