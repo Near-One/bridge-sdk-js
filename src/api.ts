@@ -161,6 +161,7 @@ const ApiFeeResponseSchema = z.object({
   protocol_fee: safeBigInt(true).nullable().optional(),
   usd_fee: z.number(),
   transferred_token_fee: z.string().nullable().optional(),
+  min_withdraw_amount: z.string().nullable().optional(),
   insufficient_utxo: z.boolean(),
 })
 
