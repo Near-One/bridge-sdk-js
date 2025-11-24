@@ -387,7 +387,7 @@ describe("NearBridgeClient", () => {
         destination_nonce: "1",
         transfer_id: {
           origin_chain: ChainKind.Near,
-          origin_nonce: BigInt(1),
+          origin_nonce: "1",
         },
         token_address: mockTokenOmniAddress,
         amount: "1000000000000000000",
@@ -397,12 +397,6 @@ describe("NearBridgeClient", () => {
     }
 
     const mockFeeRecipient = "fee-recipient.near"
-
-    // biome-ignore lint/suspicious/noExplicitAny: TS will complain that `toJSON()` does not exist on BigInt
-    // biome-ignore lint/complexity/useLiteralKeys: TS will complain that `toJSON()` does not exist on BigInt
-    ;(BigInt.prototype as any)["toJSON"] = function () {
-      return this.toString()
-    }
 
     beforeEach(() => {
       mockTransactionBuilder.send = vi.fn().mockResolvedValue({
@@ -587,7 +581,7 @@ describe("NearBridgeClient", () => {
       amount_to_send: "900000000000000000000000",
       transfer_id: {
         origin_chain: ChainKind.Eth,
-        origin_nonce: 123n,
+        origin_nonce: "123",
       },
       recipient: "recipient.near",
       fee: {

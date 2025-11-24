@@ -469,17 +469,7 @@ export class NearBridgeClient {
    * Parse a SignTransferEvent from JSON string
    */
   parseSignTransferEvent(json: string): SignTransferEvent {
-    const parsed = JSON.parse(json, (key, value) => {
-      if (key === "origin_nonce") {
-        if (typeof value === "string" && /^\d+$/.test(value)) {
-          return BigInt(value)
-        }
-        if (typeof value === "number") {
-          return BigInt(value)
-        }
-      }
-      return value
-    })
+    const parsed = JSON.parse(json)
     const signedEvent = parsed.SignTransferEvent as SignTransferEvent
     signedEvent.signature = new MPCSignature(
       parsed.SignTransferEvent.signature.big_r,
@@ -505,7 +495,7 @@ export class NearBridgeClient {
     const args: SignTransferArgs = {
       transfer_id: {
         origin_chain: ChainKind[getChain(initTransferEvent.transfer_message.sender)],
-        origin_nonce: BigInt(initTransferEvent.transfer_message.origin_nonce),
+        origin_nonce: initTransferEvent.transfer_message.origin_nonce.toString(),
       },
       fee_recipient: feeRecipient,
       fee: {
@@ -927,7 +917,7 @@ export class NearBridgeClient {
         target_btc_address: recipientAddress,
         input: plan.inputs,
         output: plan.outputs,
-        ...(maxGasFee > 0n && { max_gas_fee: maxGasFee }),
+        ...(maxGasFee > 0n && { max_gas_fee: maxGasFee.toString() }),
       },
     }
 
@@ -939,7 +929,7 @@ export class NearBridgeClient {
         {
           transfer_id: {
             origin_chain: ChainKind[getChain(initTransferEvent.transfer_message.sender)],
-            origin_nonce: BigInt(initTransferEvent.transfer_message.origin_nonce),
+            origin_nonce: initTransferEvent.transfer_message.origin_nonce.toString(),
           },
           msg: JSON.stringify(msg),
         },
@@ -1257,7 +1247,16 @@ export class NearBridgeClient {
     const transferArgs = {
       receiver_id: this.lockerAddress,
       amount: args.amount_to_send,
-      msg: JSON.stringify(args),
+      msg: JSON.stringify({
+        ...args,
+        transfer_id: {
+          ...args.transfer_id,
+          origin_nonce:
+            typeof args.transfer_id.origin_nonce === "bigint"
+              ? args.transfer_id.origin_nonce.toString()
+              : args.transfer_id.origin_nonce,
+        },
+      }),
     }
 
     // Chain the ft_transfer_call
