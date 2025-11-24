@@ -1,5 +1,13 @@
 # omni-bridge-sdk
 
+## 0.22.0
+
+### Minor Changes
+
+- 44bf1f8: Update API client to v3 endpoints
+
+  Migrates all API endpoints from v2 to v3 per OpenAPI specification. Transfer schema now uses `id.kind` structure supporting both Nonce and Utxo variants. Transfer message amounts and fees are now string type.
+
 ## 0.21.1
 
 ### Patch Changes
