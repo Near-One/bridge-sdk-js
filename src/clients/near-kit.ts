@@ -179,17 +179,6 @@ export class NearBridgeClient {
     this.lockerAddress = lockerAddress
     this.defaultSignerId = options.defaultSignerId
 
-    // Configure BigInt serialization for JSON.stringify
-    // biome-ignore lint/suspicious/noExplicitAny: TS will complain that `toJSON()` does not exist on BigInt
-    // biome-ignore lint/complexity/useLiteralKeys: TS will complain that `toJSON()` does not exist on BigInt
-    ;(BigInt.prototype as any)["toJSON"] = function () {
-      const maxSafe = BigInt(Number.MAX_SAFE_INTEGER)
-      if (this <= maxSafe) {
-        return Number(this)
-      }
-      return this.toString()
-    }
-
     // Initialize Bitcoin service
     this.bitcoinService = new BitcoinService(addresses.btc.apiUrl, addresses.btc.network, {
       url: addresses.btc.rpcUrl,
@@ -938,7 +927,7 @@ export class NearBridgeClient {
         target_btc_address: recipientAddress,
         input: plan.inputs,
         output: plan.outputs,
-        max_gas_fee: maxGasFee,
+        ...(maxGasFee > 0n && { max_gas_fee: maxGasFee }),
       },
     }
 
