@@ -2,7 +2,7 @@ import { z } from "zod"
 import { getNetwork } from "./config.js"
 import type { OmniAddress } from "./types/index.js"
 
-const ChainSchema = z.enum(["Eth", "Near", "Sol", "Arb", "Base", "Bnb"])
+const ChainSchema = z.enum(["Eth", "Near", "Sol", "Arb", "Base", "Bnb", "Btc", "Zcash"])
 export type Chain = z.infer<typeof ChainSchema>
 
 const UtxoChainParamSchema = z.enum(["btc", "zcash"])
@@ -93,13 +93,12 @@ const TransactionSchema = z
 
 const TransferMessageSchema = z.object({
   token: z.string(),
-  amount: safeBigInt(),
+  amount: z.string(),
   sender: z.string(),
   recipient: z.string(),
   fee: z.object({
-    fee: safeBigInt(),
-    native_fee: safeBigInt(),
-    max_gas_fee: safeBigInt().optional(),
+    fee: z.string(),
+    native_fee: z.string(),
   }),
   msg: z.string().nullable(),
 })
@@ -123,16 +122,24 @@ const UtxoTransferSchema = z.object({
   relayer_fee: z.string(),
   protocol_fee: z.string(),
   relayer_account_id: z.string(),
-  sender: z.string().nullable(),
+  sender: z.union([z.string(), z.null()]),
 })
 
 const TransferSchema = z.object({
   id: z
     .object({
       origin_chain: ChainSchema,
-      kind: z.object({
-        Nonce: z.number().int().min(0),
-      }),
+      kind: z.union([
+        z.object({
+          Nonce: z.number().int().min(0),
+        }),
+        z.object({
+          Utxo: z.object({
+            tx_hash: z.string(),
+            vout: z.number().int(),
+          }),
+        }),
+      ]),
     })
     .optional()
     .nullable(),
@@ -152,9 +159,8 @@ const ApiFeeResponseSchema = z.object({
   native_token_fee: safeBigInt(),
   gas_fee: safeBigInt(true).nullable().optional(),
   protocol_fee: safeBigInt(true).nullable().optional(),
-  relayer_fee: safeBigInt(true).nullable().optional(),
   usd_fee: z.number(),
-  transferred_token_fee: safeBigInt(true).nullable().optional(),
+  transferred_token_fee: z.string().nullable().optional(),
   insufficient_utxo: z.boolean(),
 })
 
@@ -290,7 +296,7 @@ export class OmniBridgeAPI {
       params.transaction_hash = options.transactionHash
     }
 
-    const url = this.buildUrl("/api/v2/transfers/transfer/status", params)
+    const url = this.buildUrl("/api/v3/transfers/transfer/status", params)
     return this.fetchWithValidation(url, z.array(GetStatusResponseV2Schema))
   }
 
@@ -300,7 +306,7 @@ export class OmniBridgeAPI {
     tokenAddress: OmniAddress,
     amount: string | bigint,
   ): Promise<ApiFeeResponse> {
-    const url = this.buildUrl("/api/v2/transfer-fee", {
+    const url = this.buildUrl("/api/v3/transfer-fee", {
       sender,
       recipient,
       token: tokenAddress,
@@ -321,7 +327,7 @@ export class OmniBridgeAPI {
       params.transaction_hash = options.transactionHash
     }
 
-    const url = this.buildUrl("/api/v2/transfers/transfer", params)
+    const url = this.buildUrl("/api/v3/transfers/transfer", params)
     return this.fetchWithValidation(url, z.array(TransferSchema))
   }
 
@@ -336,12 +342,12 @@ export class OmniBridgeAPI {
     if (params.sender) urlParams.sender = params.sender
     if (params.transaction_id) urlParams.transaction_id = params.transaction_id
 
-    const url = this.buildUrl("/api/v2/transfers", urlParams)
+    const url = this.buildUrl("/api/v3/transfers", urlParams)
     return this.fetchWithValidation(url, z.array(TransferSchema))
   }
 
   async getAllowlistedTokens(): Promise<Record<string, OmniAddress>> {
-    const url = this.buildUrl("/api/v2/transfer-fee/allowlisted-tokens")
+    const url = this.buildUrl("/api/v3/transfer-fee/allowlisted-tokens")
     const response = await this.fetchWithValidation(url, AllowlistedTokensResponseSchema)
     return response.allowlisted_tokens as Record<string, OmniAddress>
   }
@@ -364,7 +370,7 @@ export class OmniBridgeAPI {
       body.extra_msg = extraMsg
     }
 
-    const url = this.buildUrl("/api/v2/utxo/get_user_deposit_address")
+    const url = this.buildUrl("/api/v3/utxo/get_user_deposit_address")
     return this.fetchWithValidation(url, UtxoDepositAddressResponseSchema, {
       method: "POST",
       headers: {

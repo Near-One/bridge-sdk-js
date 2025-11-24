@@ -31,12 +31,12 @@ const mockTransfer = {
   claimed: null,
   transfer_message: {
     token: "token.near",
-    amount: 1000000,
+    amount: "1000000",
     sender: "sender.near",
     recipient: "recipient.near",
     fee: {
-      fee: 1000,
-      native_fee: 2000,
+      fee: "1000",
+      native_fee: "2000",
     },
     msg: "test transfer",
   },
@@ -46,32 +46,22 @@ const mockTransfer = {
 
 const normalizedTransfer = {
   ...mockTransfer,
-  transfer_message: {
-    ...mockTransfer.transfer_message,
-    amount: BigInt(mockTransfer.transfer_message.amount),
-    fee: {
-      fee: BigInt(mockTransfer.transfer_message.fee.fee),
-      native_fee: BigInt(mockTransfer.transfer_message.fee.native_fee),
-    },
-  },
 }
 
 const mockFee = {
   native_token_fee: 5000,
   gas_fee: null,
   protocol_fee: null,
-  relayer_fee: 2000,
   usd_fee: 1.5,
-  transferred_token_fee: 500,
+  transferred_token_fee: "500",
   insufficient_utxo: false,
 }
 const normalizedFee = {
   native_token_fee: BigInt(5000),
   gas_fee: null,
   protocol_fee: null,
-  relayer_fee: BigInt(2000),
   usd_fee: 1.5,
-  transferred_token_fee: BigInt(500),
+  transferred_token_fee: "500",
   insufficient_utxo: false,
 }
 
@@ -90,22 +80,22 @@ const mockBtcAddress = {
 }
 
 const restHandlers = [
-  http.get(`${BASE_URL}/api/v2/transfers/transfer/status`, () => {
+  http.get(`${BASE_URL}/api/v3/transfers/transfer/status`, () => {
     return HttpResponse.json(["Initialized"])
   }),
-  http.get(`${BASE_URL}/api/v2/transfers/transfer`, () => {
+  http.get(`${BASE_URL}/api/v3/transfers/transfer`, () => {
     return HttpResponse.json([mockTransfer])
   }),
-  http.get(`${BASE_URL}/api/v2/transfer-fee`, () => {
+  http.get(`${BASE_URL}/api/v3/transfer-fee`, () => {
     return HttpResponse.json(mockFee)
   }),
-  http.get(`${BASE_URL}/api/v2/transfers`, () => {
+  http.get(`${BASE_URL}/api/v3/transfers`, () => {
     return HttpResponse.json([mockTransfer])
   }),
-  http.get(`${BASE_URL}/api/v2/transfer-fee/allowlisted-tokens`, () => {
+  http.get(`${BASE_URL}/api/v3/transfer-fee/allowlisted-tokens`, () => {
     return HttpResponse.json(mockAllowlistedTokens)
   }),
-  http.post(`${BASE_URL}/api/v2/utxo/get_user_deposit_address`, () => {
+  http.post(`${BASE_URL}/api/v3/utxo/get_user_deposit_address`, () => {
     return HttpResponse.json(mockBtcAddress)
   }),
 ]
@@ -129,7 +119,7 @@ describe("OmniBridgeAPI", () => {
 
     it("should handle 404 error", async () => {
       server.use(
-        http.get(`${BASE_URL}/api/v2/transfers/transfer/status`, () => {
+        http.get(`${BASE_URL}/api/v3/transfers/transfer/status`, () => {
           return new HttpResponse(null, { status: 404 })
         }),
       )
@@ -153,7 +143,7 @@ describe("OmniBridgeAPI", () => {
 
     it("should handle missing parameters", async () => {
       server.use(
-        http.get(`${BASE_URL}/api/v2/transfer-fee`, () => {
+        http.get(`${BASE_URL}/api/v3/transfer-fee`, () => {
           return new HttpResponse(null, { status: 400 })
         }),
       )
@@ -206,7 +196,7 @@ describe("OmniBridgeAPI", () => {
 
     it("should handle API errors", async () => {
       server.use(
-        http.get(`${BASE_URL}/api/v2/transfer-fee/allowlisted-tokens`, () => {
+        http.get(`${BASE_URL}/api/v3/transfer-fee/allowlisted-tokens`, () => {
           return new HttpResponse(null, { status: 500 })
         }),
       )
@@ -244,7 +234,7 @@ describe("OmniBridgeAPI", () => {
 
     it("should handle API errors", async () => {
       server.use(
-        http.post(`${BASE_URL}/api/v2/utxo/get_user_deposit_address`, () => {
+        http.post(`${BASE_URL}/api/v3/utxo/get_user_deposit_address`, () => {
           return new HttpResponse(null, { status: 404 })
         }),
       )

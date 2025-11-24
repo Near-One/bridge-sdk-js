@@ -23,10 +23,10 @@ exports[`OmniBridgeAPI Integration Tests > findOmniTransfers > should fetch tran
     },
     "signed": null,
     "transfer_message": {
-      "amount": 10000n,
+      "amount": "10000",
       "fee": {
-        "fee": 20n,
-        "native_fee": 10n,
+        "fee": "20",
+        "native_fee": "10",
       },
       "msg": "",
       "recipient": "base:0xcf6462b9fce5af3e6c660c83453eca18ff468773",
@@ -87,10 +87,10 @@ exports[`OmniBridgeAPI Integration Tests > getTransfer > should fetch transfer d
     },
     "signed": null,
     "transfer_message": {
-      "amount": 1000000000000000000000n,
+      "amount": "1000000000000000000000",
       "fee": {
-        "fee": 0n,
-        "native_fee": 3483371056966369000000n,
+        "fee": "0",
+        "native_fee": "3483371056966369000000",
       },
       "msg": "",
       "recipient": "base:0xd51c5283b8727206bf9be2b2db4e5673efaf519c",

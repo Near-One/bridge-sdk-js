@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import { OmniBridgeAPI } from "../../src/api.js"
 import { setNetwork } from "../../src/config.js"
-import { ChainKind, type OmniAddress } from "../../src/types/index.js"
-import { omniAddress } from "../../src/utils/index.js"
+import type { OmniAddress } from "../../src/types/index.js"
 
 describe("OmniBridgeAPI Integration Tests", () => {
   let api: OmniBridgeAPI
@@ -14,14 +13,8 @@ describe("OmniBridgeAPI Integration Tests", () => {
 
   describe("getFee", () => {
     it("should fetch real fee information", { timeout: 10000 }, async () => {
-      const sender: OmniAddress = omniAddress(
-        ChainKind.Near,
-        "bridge-sender.near"
-      )
-      const recipient: OmniAddress = omniAddress(
-        ChainKind.Eth,
-        "0x000000F8637F1731D906643027c789EFA60BfE11"
-      )
+      const sender: OmniAddress = "near:bridge-sender.near"
+      const recipient: OmniAddress = "eth:0x000000F8637F1731D906643027c789EFA60BfE11"
       const tokenAddress: OmniAddress = "near:warp.near"
 
       const fee = await api.getFee(sender, recipient, tokenAddress, "1000000")
@@ -46,21 +39,17 @@ describe("OmniBridgeAPI Integration Tests", () => {
         expect(fee.protocol_fee).toEqual(expect.any(BigInt))
         expect(fee.protocol_fee >= 0n).toBe(true)
       }
-      if (fee.relayer_fee !== undefined && fee.relayer_fee !== null) {
-        expect(fee.relayer_fee).toEqual(expect.any(BigInt))
-        expect(fee.relayer_fee >= 0n).toBe(true)
-      }
       if (fee.transferred_token_fee !== undefined && fee.transferred_token_fee !== null) {
-        expect(fee.transferred_token_fee).toEqual(expect.any(BigInt))
-        expect(fee.transferred_token_fee >= 0n).toBe(true)
+        expect(fee.transferred_token_fee).toEqual(expect.any(String))
+        expect(BigInt(fee.transferred_token_fee) >= 0n).toBe(true)
       }
       // Check the new insufficient_utxo field
       expect(fee.insufficient_utxo).toEqual(expect.any(Boolean))
     })
 
     it("should handle real API errors gracefully", async () => {
-      const sender: OmniAddress = omniAddress(ChainKind.Eth, "invalid")
-      const recipient: OmniAddress = omniAddress(ChainKind.Sol, "invalid")
+      const sender: OmniAddress = "eth:invalid"
+      const recipient: OmniAddress = "sol:invalid"
       const tokenAddress: OmniAddress = "near:invalid"
 
       await expect(
@@ -70,10 +59,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
 
     it("should return proper APIError message for invalid sender", async () => {
       const invalidSender: OmniAddress = "eth:sender.address"
-      const recipient: OmniAddress = omniAddress(
-        ChainKind.Eth,
-        "0x000000F8637F1731D906643027c789EFA60BfE11"
-      )
+      const recipient: OmniAddress = "eth:0x000000F8637F1731D906643027c789EFA60BfE11"
       const tokenAddress: OmniAddress = "near:warp.near"
 
       try {
@@ -168,10 +154,11 @@ describe("OmniBridgeAPI Integration Tests", () => {
         const transfer = transfers[0]
         expect(transfer).toEqual({
           id: {
-            origin_chain: expect.stringMatching(/^(Eth|Near|Sol|Arb|Base)$/),
-            kind: {
-              Nonce: expect.any(Number),
-            },
+            origin_chain: expect.stringMatching(/^(Eth|Near|Sol|Arb|Base|Bnb|Btc|Zcash)$/),
+            kind: expect.toBeOneOf([
+              { Nonce: expect.any(Number) },
+              { Utxo: expect.objectContaining({ tx_hash: expect.any(String), vout: expect.any(Number) }) },
+            ]),
           },
           initialized: expect.any(Object),
           claimed: expect.toBeOneOf([expect.anything(), undefined, null]), // null or transaction object
@@ -194,14 +181,14 @@ describe("OmniBridgeAPI Integration Tests", () => {
           finalised: expect.toBeOneOf([expect.anything(), undefined, null]), // null or transaction object
           transfer_message: {
             token: expect.any(String),
-            amount: expect.any(BigInt),
+            amount: expect.any(String),
             sender: expect.any(String),
             recipient: expect.any(String),
             fee: {
-              fee: expect.any(BigInt),
-              native_fee: expect.any(BigInt),
+              fee: expect.any(String),
+              native_fee: expect.any(String),
             },
-            msg: expect.any(String),
+            msg: expect.toBeOneOf([expect.any(String), null]),
           },
           updated_fee: expect.any(Array),
           utxo_transfer: expect.toBeOneOf([expect.anything(), null]),
@@ -310,6 +297,123 @@ describe("OmniBridgeAPI Integration Tests", () => {
         // Transaction might not exist in testnet, which is expected
         expect(error).toBeInstanceOf(Error)
       }
+    })
+  })
+
+  describe("V3 API specific features", () => {
+    it("should return transfer with proper id.kind.Nonce structure", async () => {
+      const transfers = await api.getTransfer({
+        originChain: "Near",
+        originNonce: 22,
+      })
+
+      expect(transfers.length).toBeGreaterThan(0)
+      const transfer = transfers[0]
+      if (!transfer) throw new Error("Expected transfer to be defined")
+
+      // Verify v3 id structure
+      expect(transfer.id).toBeDefined()
+      expect(transfer.id?.origin_chain).toBe("Near")
+      expect(transfer.id?.kind).toHaveProperty("Nonce")
+      expect(transfer.id?.kind).toEqual({ Nonce: 22 })
+    })
+
+    it("should return string amounts and fees in transfer_message", async () => {
+      const transfers = await api.getTransfer({
+        originChain: "Near",
+        originNonce: 22,
+      })
+
+      expect(transfers.length).toBeGreaterThan(0)
+      const transfer = transfers[0]
+      if (!transfer) throw new Error("Expected transfer to be defined")
+
+      // Verify transfer_message uses strings
+      expect(transfer.transfer_message).toBeDefined()
+      if (transfer.transfer_message) {
+        expect(typeof transfer.transfer_message.amount).toBe("string")
+        expect(typeof transfer.transfer_message.fee.fee).toBe("string")
+        expect(typeof transfer.transfer_message.fee.native_fee).toBe("string")
+
+        // Verify they're valid numeric strings
+        expect(BigInt(transfer.transfer_message.amount)).toBeGreaterThanOrEqual(
+          0n
+        )
+        expect(BigInt(transfer.transfer_message.fee.fee)).toBeGreaterThanOrEqual(
+          0n
+        )
+        expect(
+          BigInt(transfer.transfer_message.fee.native_fee)
+        ).toBeGreaterThanOrEqual(0n)
+      }
+    })
+
+    it("should return fee response with BigInt native_token_fee and string transferred_token_fee", async () => {
+      const sender: OmniAddress = "near:bridge-sender.near"
+      const recipient: OmniAddress = "eth:0x000000F8637F1731D906643027c789EFA60BfE11"
+      const tokenAddress: OmniAddress = "near:warp.near"
+
+      const fee = await api.getFee(sender, recipient, tokenAddress, "1000000")
+
+      // native_token_fee should be converted to BigInt by safeBigInt
+      expect(typeof fee.native_token_fee).toBe("bigint")
+      expect(fee.native_token_fee).toBeGreaterThanOrEqual(0n)
+
+      // transferred_token_fee should remain a string (or null)
+      if (fee.transferred_token_fee !== null && fee.transferred_token_fee !== undefined) {
+        expect(typeof fee.transferred_token_fee).toBe("string")
+      }
+    })
+
+    it("should return array of status strings", async () => {
+      const status = await api.getTransferStatus({
+        originChain: "Near",
+        originNonce: 22,
+      })
+
+      // v3 returns array of status strings
+      expect(Array.isArray(status)).toBe(true)
+      expect(status.length).toBeGreaterThan(0)
+      expect(typeof status[0]).toBe("string")
+      expect([
+        "Initialized",
+        "Signed",
+        "FastFinalisedOnNear",
+        "FinalisedOnNear",
+        "FastFinalised",
+        "Finalised",
+        "Claimed",
+      ]).toContain(status[0])
+    })
+
+    it("should handle transfers with transaction_hash parameter", async () => {
+      const txId = "DQM4d3B6Jxr4qnvGay4bpZ7aTQQogpUgQxVLAVWk5doF"
+      const transfers = await api.getTransfer({ transactionHash: txId })
+
+      expect(Array.isArray(transfers)).toBe(true)
+      expect(transfers.length).toBeGreaterThan(0)
+
+      // Verify structure
+      const transfer = transfers[0]
+      expect(transfer).toHaveProperty("id")
+      expect(transfer).toHaveProperty("transfer_message")
+      expect(transfer).toHaveProperty("updated_fee")
+    })
+
+    it("should validate fee response has no relayer_fee field", async () => {
+      const sender: OmniAddress = "near:bridge-sender.near"
+      const recipient: OmniAddress = "eth:0x000000F8637F1731D906643027c789EFA60BfE11"
+      const tokenAddress: OmniAddress = "near:warp.near"
+
+      const fee = await api.getFee(sender, recipient, tokenAddress, "1000000")
+
+      // v3 should not have relayer_fee field
+      expect(fee).not.toHaveProperty("relayer_fee")
+
+      // Should have these required fields
+      expect(fee).toHaveProperty("native_token_fee")
+      expect(fee).toHaveProperty("usd_fee")
+      expect(fee).toHaveProperty("insufficient_utxo")
     })
   })
 })
