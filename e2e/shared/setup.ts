@@ -55,7 +55,7 @@ export const TEST_CONFIG: TestConfig = {
   },
 }
 
-export async function createNearAccount(): Promise<Near> {
+export async function createNearKitInstance(): Promise<Near> {
   const { near } = TEST_CONFIG.networks
 
   // Use environment variable in CI, fallback to keystore file locally
@@ -121,14 +121,14 @@ export async function createSolanaProvider(): Promise<AnchorProvider> {
 }
 
 export interface TestAccountsSetup {
-  nearAccount: Near
+  nearKitInstance: Near
   ethWallet: ethers.Wallet
   solanaProvider: AnchorProvider
 }
 
 export async function setupTestAccounts(): Promise<TestAccountsSetup> {
   return {
-    nearAccount: await createNearAccount(),
+    nearKitInstance: await createNearKitInstance(),
     ethWallet: await createEthereumWallet(),
     solanaProvider: await createSolanaProvider(),
   }

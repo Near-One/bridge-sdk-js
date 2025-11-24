@@ -3,10 +3,18 @@ import { NearBridgeClient } from "../src/clients/near-kit.js"
 import { SolanaBridgeClient } from "../src/clients/solana.js"
 import { setNetwork } from "../src/config.js"
 import { getVaa } from "../src/proofs/wormhole.js"
-import { ChainKind, type OmniTransferMessage, ProofKind } from "../src/types/index.js"
+import {
+  ChainKind,
+  type OmniTransferMessage,
+  ProofKind,
+} from "../src/types/index.js"
 import { omniAddress } from "../src/utils/index.js"
 import { SOL_TO_NEAR_ROUTES, TIMEOUTS } from "./shared/fixtures.js"
-import { TEST_CONFIG, type TestAccountsSetup, setupTestAccounts } from "./shared/setup.js"
+import {
+  TEST_CONFIG,
+  type TestAccountsSetup,
+  setupTestAccounts,
+} from "./shared/setup.js"
 
 describe("SOL to NEAR E2E Transfer Tests (Manual Flow)", () => {
   let testAccounts: TestAccountsSetup
@@ -20,12 +28,14 @@ describe("SOL to NEAR E2E Transfer Tests (Manual Flow)", () => {
     // Setup test accounts and clients
     testAccounts = await setupTestAccounts()
     solanaClient = new SolanaBridgeClient(testAccounts.solanaProvider)
-    nearClient = new NearBridgeClient(testAccounts.nearAccount, undefined, {
+    nearClient = new NearBridgeClient(testAccounts.nearKitInstance, undefined, {
       defaultSignerId: TEST_CONFIG.networks.near.accountId,
     })
 
     console.log("🚀 Test setup complete:")
-    console.log(`  SOL Address: ${testAccounts.solanaProvider.publicKey.toString()}`)
+    console.log(
+      `  SOL Address: ${testAccounts.solanaProvider.publicKey.toString()}`
+    )
     console.log(`  NEAR Account: ${TEST_CONFIG.networks.near.accountId}`)
   })
 
@@ -86,7 +96,7 @@ describe("SOL to NEAR E2E Transfer Tests (Manual Flow)", () => {
         undefined, // signerId (uses defaultSignerId)
         vaa, // Wormhole VAA
         undefined, // No EVM proof needed for SOL
-        ProofKind.InitTransfer,
+        ProofKind.InitTransfer
       )
 
       console.log("✓ Transfer finalized on NEAR!")
@@ -103,6 +113,6 @@ describe("SOL to NEAR E2E Transfer Tests (Manual Flow)", () => {
       console.log("  3. ✓ Finalized on NEAR")
       console.log(`✅ ${route.name} test completed!`)
     },
-    TIMEOUTS.FULL_E2E_FLOW,
+    TIMEOUTS.FULL_E2E_FLOW
   )
 })

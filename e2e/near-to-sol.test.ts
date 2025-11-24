@@ -5,7 +5,11 @@ import { setNetwork } from "../src/config.js"
 import { ChainKind, type OmniTransferMessage } from "../src/types/index.js"
 import { omniAddress } from "../src/utils/index.js"
 import { NEAR_TO_SOL_ROUTES, TIMEOUTS } from "./shared/fixtures.js"
-import { TEST_CONFIG, type TestAccountsSetup, setupTestAccounts } from "./shared/setup.js"
+import {
+  TEST_CONFIG,
+  type TestAccountsSetup,
+  setupTestAccounts,
+} from "./shared/setup.js"
 
 describe("NEAR to SOL E2E Transfer Tests (Manual Flow)", () => {
   let testAccounts: TestAccountsSetup
@@ -18,14 +22,16 @@ describe("NEAR to SOL E2E Transfer Tests (Manual Flow)", () => {
 
     // Setup test accounts and clients
     testAccounts = await setupTestAccounts()
-    nearClient = new NearBridgeClient(testAccounts.nearAccount, undefined, {
+    nearClient = new NearBridgeClient(testAccounts.nearKitInstance, undefined, {
       defaultSignerId: TEST_CONFIG.networks.near.accountId,
     })
     solanaClient = new SolanaBridgeClient(testAccounts.solanaProvider)
 
     console.log("🚀 Test setup complete:")
     console.log(`  NEAR Account: ${TEST_CONFIG.networks.near.accountId}`)
-    console.log(`  SOL Address: ${testAccounts.solanaProvider.publicKey.toString()}`)
+    console.log(
+      `  SOL Address: ${testAccounts.solanaProvider.publicKey.toString()}`
+    )
   })
 
   test.each(NEAR_TO_SOL_ROUTES)(
@@ -57,7 +63,10 @@ describe("NEAR to SOL E2E Transfer Tests (Manual Flow)", () => {
 
       console.log("✓ Transfer initiated on NEAR!")
       console.log(`  Origin Nonce: ${initResult.transfer_message.origin_nonce}`)
-      console.log("  Transfer Message:", JSON.stringify(initResult.transfer_message, null, 2))
+      console.log(
+        "  Transfer Message:",
+        JSON.stringify(initResult.transfer_message, null, 2)
+      )
 
       // Validate initiation
       expect(initResult).toHaveProperty("transfer_message")
@@ -82,7 +91,7 @@ describe("NEAR to SOL E2E Transfer Tests (Manual Flow)", () => {
       // Use the signature and message payload from the sign result
       const finalizeResult = await solanaClient.finalizeTransfer(
         signResult.message_payload,
-        signResult.signature,
+        signResult.signature
       )
 
       console.log("✓ Transfer finalized on Solana!")
@@ -99,6 +108,6 @@ describe("NEAR to SOL E2E Transfer Tests (Manual Flow)", () => {
       console.log("  3. ✓ Finalized on SOL")
       console.log(`✅ ${route.name} test completed!`)
     },
-    TIMEOUTS.FULL_E2E_FLOW,
+    TIMEOUTS.FULL_E2E_FLOW
   )
 })
