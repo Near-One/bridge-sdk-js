@@ -161,22 +161,25 @@ export class NearBridgeClient {
   public zcashService?: ZcashService
   private readonly utxoServices: Partial<Record<UtxoChain, UtxoChainService>> = {}
   private readonly near: Near
-  private readonly lockerAddress: string
+  private readonly bridgeAddress: string
   private readonly defaultSignerId: string | undefined
 
   /**
    * Creates a new NEAR bridge client instance
    * @param near - Near instance from near-kit (configured with network and credentials)
-   * @param lockerAddress - Address of the token locker contract
+   * @param bridgeAddress - Address of the token locker contract
    * @param options - Optional configuration (e.g., zcashApiKey, defaultSignerId)
    */
   constructor(
     near: Near,
-    lockerAddress: string = addresses.near.contract,
-    private readonly options: { zcashApiKey?: string; defaultSignerId?: string } = {},
+    bridgeAddress: string = addresses.near.contract,
+    private readonly options: {
+      zcashApiKey?: string
+      defaultSignerId?: string
+    } = {},
   ) {
     this.near = near
-    this.lockerAddress = lockerAddress
+    this.bridgeAddress = bridgeAddress
     this.defaultSignerId = options.defaultSignerId
 
     // Initialize Bitcoin service
@@ -198,7 +201,7 @@ export class NearBridgeClient {
    * Get the bridge contract ID (locker address)
    */
   get bridgeContractId(): string {
-    return this.lockerAddress
+    return this.bridgeAddress
   }
 
   /**
@@ -241,7 +244,7 @@ export class NearBridgeClient {
 
     const outcome = await this.near
       .transaction(signer)
-      .functionCall(this.lockerAddress, "log_metadata", args, {
+      .functionCall(this.bridgeAddress, "log_metadata", args, {
         gas: GAS.LOG_METADATA,
         attachedDeposit: DEPOSIT.LOG_METADATA,
       })
@@ -297,14 +300,14 @@ export class NearBridgeClient {
 
     // Retrieve required deposit dynamically
     const deployDepositStr = await this.near.view<string>(
-      this.lockerAddress,
+      this.bridgeAddress,
       "required_balance_for_deploy_token",
       {},
     )
 
     const tx = await this.near
       .transaction(signer)
-      .functionCall(this.lockerAddress, "deploy_token", serializedArgs, {
+      .functionCall(this.bridgeAddress, "deploy_token", serializedArgs, {
         gas: GAS.DEPLOY_TOKEN,
         attachedDeposit: Amount.yocto(BigInt(deployDepositStr)),
       })
@@ -361,14 +364,14 @@ export class NearBridgeClient {
 
     // Retrieve required deposit dynamically
     const bindDepositStr = await this.near.view<string>(
-      this.lockerAddress,
+      this.bridgeAddress,
       "required_balance_for_bind_token",
       {},
     )
 
     const tx = await this.near
       .transaction(signer)
-      .functionCall(this.lockerAddress, "bind_token", serializedArgs, {
+      .functionCall(this.bridgeAddress, "bind_token", serializedArgs, {
         gas: GAS.BIND_TOKEN,
         attachedDeposit: Amount.yocto(BigInt(bindDepositStr)),
       })
@@ -406,7 +409,7 @@ export class NearBridgeClient {
       await this.near
         .transaction(signer)
         .functionCall(
-          this.lockerAddress,
+          this.bridgeAddress,
           "storage_deposit",
           {},
           {
@@ -439,7 +442,7 @@ export class NearBridgeClient {
     }
 
     const args: InitTransferMessageArgs = {
-      receiver_id: this.lockerAddress,
+      receiver_id: this.bridgeAddress,
       amount: transfer.amount.toString(),
       memo: null,
       msg: JSON.stringify(initTransferMessage),
@@ -506,7 +509,7 @@ export class NearBridgeClient {
 
     const outcome = await this.near
       .transaction(signer)
-      .functionCall(this.lockerAddress, "sign_transfer", args, {
+      .functionCall(this.bridgeAddress, "sign_transfer", args, {
         gas: GAS.SIGN_TRANSFER,
         attachedDeposit: DEPOSIT.SIGN_TRANSFER,
       })
@@ -584,7 +587,7 @@ export class NearBridgeClient {
 
     // Retrieve required deposit dynamically
     const finDepositStr = await this.near.view<string>(
-      this.lockerAddress,
+      this.bridgeAddress,
       "required_balance_for_fin_transfer",
       {},
     )
@@ -592,7 +595,7 @@ export class NearBridgeClient {
 
     const tx = await this.near
       .transaction(signer)
-      .functionCall(this.lockerAddress, "fin_transfer", serializedArgs, {
+      .functionCall(this.bridgeAddress, "fin_transfer", serializedArgs, {
         gas: GAS.FIN_TRANSFER,
         attachedDeposit: `${finDeposit} yocto`,
       })
@@ -609,12 +612,12 @@ export class NearBridgeClient {
     try {
       const [regBalanceStr, initBalanceStr, finBalanceStr, bindBalanceStr, storage] =
         await Promise.all([
-          this.near.view<string>(this.lockerAddress, "required_balance_for_account", {}),
-          this.near.view<string>(this.lockerAddress, "required_balance_for_init_transfer", {}),
-          this.near.view<string>(this.lockerAddress, "required_balance_for_fin_transfer", {}),
-          this.near.view<string>(this.lockerAddress, "required_balance_for_bind_token", {}),
+          this.near.view<string>(this.bridgeAddress, "required_balance_for_account", {}),
+          this.near.view<string>(this.bridgeAddress, "required_balance_for_init_transfer", {}),
+          this.near.view<string>(this.bridgeAddress, "required_balance_for_fin_transfer", {}),
+          this.near.view<string>(this.bridgeAddress, "required_balance_for_bind_token", {}),
           this.near.view<{ total: string; available: string } | null>(
-            this.lockerAddress,
+            this.bridgeAddress,
             "storage_balance_of",
             { account_id: accountId },
           ),
@@ -700,7 +703,7 @@ export class NearBridgeClient {
         recipient_id: signer,
         post_actions: [
           {
-            receiver_id: this.lockerAddress,
+            receiver_id: this.bridgeAddress,
             amount,
             msg: JSON.stringify({
               recipient: recipientId,
@@ -756,7 +759,9 @@ export class NearBridgeClient {
 
     const tx = await this.near
       .transaction(signer)
-      .functionCall(connector, "verify_deposit", args, { gas: GAS.VERIFY_DEPOSIT })
+      .functionCall(connector, "verify_deposit", args, {
+        gas: GAS.VERIFY_DEPOSIT,
+      })
       .send({ waitUntil: "FINAL" })
 
     return tx.transaction.hash
@@ -924,7 +929,7 @@ export class NearBridgeClient {
     const tx = await this.near
       .transaction(signer)
       .functionCall(
-        this.lockerAddress,
+        this.bridgeAddress,
         "submit_transfer_to_utxo_chain_connector",
         {
           transfer_id: {
@@ -1029,7 +1034,9 @@ export class NearBridgeClient {
         if (attempt === maxAttempts) {
           const seconds = (maxAttempts * delayMs) / 1000
           throw new Error(
-            `${chainLabel}: Transaction signing not found after ${maxAttempts} attempts (${seconds}s). ${String(error)}`,
+            `${chainLabel}: Transaction signing not found after ${maxAttempts} attempts (${seconds}s). ${String(
+              error,
+            )}`,
           )
         }
       }
@@ -1160,7 +1167,7 @@ export class NearBridgeClient {
   private async storageDepositForToken(tokenAddress: string, signerId: string): Promise<string> {
     const signer = this.getSignerId(signerId)
     const storage = await this.near.view<string | null>(tokenAddress, "storage_balance_of", {
-      account_id: this.lockerAddress,
+      account_id: this.bridgeAddress,
     })
 
     if (storage === null) {
@@ -1168,7 +1175,7 @@ export class NearBridgeClient {
         tokenAddress,
         "storage_balance_bounds",
         {
-          account_id: this.lockerAddress,
+          account_id: this.bridgeAddress,
         },
       )
       const requiredAmount = BigInt(bounds.min)
@@ -1179,7 +1186,7 @@ export class NearBridgeClient {
           tokenAddress,
           "storage_deposit",
           {
-            account_id: this.lockerAddress,
+            account_id: this.bridgeAddress,
           },
           {
             gas: GAS.STORAGE_DEPOSIT,
@@ -1199,7 +1206,7 @@ export class NearBridgeClient {
    */
   async getRequiredBalanceForFastTransfer(): Promise<bigint> {
     const balanceStr = await this.near.view<string>(
-      this.lockerAddress,
+      this.bridgeAddress,
       "required_balance_for_fast_transfer",
       {},
     )
@@ -1218,13 +1225,12 @@ export class NearBridgeClient {
     const storageDepositAmount = BigInt(args.storage_deposit_amount ?? 0)
     const totalRequiredBalance = requiredBalance + storageDepositAmount
 
-    const storage = await this.near.view<{ total: string; available: string } | null>(
-      this.lockerAddress,
-      "storage_balance_of",
-      {
-        account_id: signer,
-      },
-    )
+    const storage = await this.near.view<{
+      total: string
+      available: string
+    } | null>(this.bridgeAddress, "storage_balance_of", {
+      account_id: signer,
+    })
 
     const existingBalance = storage?.available ? BigInt(storage.available) : BigInt(0)
     const neededAmount = totalRequiredBalance - existingBalance
@@ -1234,7 +1240,7 @@ export class NearBridgeClient {
 
     if (neededAmount > 0) {
       tx = tx.functionCall(
-        this.lockerAddress,
+        this.bridgeAddress,
         "storage_deposit",
         {},
         {
@@ -1245,7 +1251,7 @@ export class NearBridgeClient {
     }
 
     const transferArgs = {
-      receiver_id: this.lockerAddress,
+      receiver_id: this.bridgeAddress,
       amount: args.amount_to_send,
       msg: JSON.stringify({
         ...args,
@@ -1306,7 +1312,7 @@ export class NearBridgeClient {
     }
 
     // Get token decimals and calculate amount to send
-    const tokenDecimals = await getTokenDecimals(this.lockerAddress, omniTokenAddress)
+    const tokenDecimals = await getTokenDecimals(this.bridgeAddress, omniTokenAddress)
     if (!tokenDecimals) {
       throw new Error(`Token ${omniTokenAddress} is not registered on NEAR`)
     }

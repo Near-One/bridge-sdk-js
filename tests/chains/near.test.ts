@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Near } from "near-kit"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NearBridgeClient } from "../../src/clients/near-kit.js"
 import {
   ChainKind,
@@ -22,7 +22,7 @@ describe("NearBridgeClient", () => {
     send: ReturnType<typeof vi.fn>
   }
   let client: NearBridgeClient
-  const mockLockerAddress = "test.near"
+  const mockBridgeAddress = "test.near"
   const mockTxHash = "mock-tx-hash"
   const mockTokenAddress = "test-token.near"
   const mockTokenOmniAddress: OmniAddress = `near:${mockTokenAddress}`
@@ -54,14 +54,14 @@ describe("NearBridgeClient", () => {
     } as unknown as Near
 
     // Create client instance with defaultSignerId
-    client = new NearBridgeClient(mockNear, mockLockerAddress, {
+    client = new NearBridgeClient(mockNear, mockBridgeAddress, {
       defaultSignerId: mockSignerId,
     })
   })
 
   describe("constructor", () => {
     it("should create instance with provided near instance and locker address", () => {
-      const client = new NearBridgeClient(mockNear, mockLockerAddress)
+      const client = new NearBridgeClient(mockNear, mockBridgeAddress)
       expect(client).toBeInstanceOf(NearBridgeClient)
     })
 
@@ -81,7 +81,11 @@ describe("NearBridgeClient", () => {
         prefix: "test",
         token: "test-token.near",
       },
-      signature: new MPCSignature({ affine_point: "mock-r" }, { scalar: "mock-s" }, 0),
+      signature: new MPCSignature(
+        { affine_point: "mock-r" },
+        { scalar: "mock-s" },
+        0
+      ),
     }
 
     beforeEach(() => {
@@ -93,7 +97,9 @@ describe("NearBridgeClient", () => {
         receipts_outcome: [
           {
             outcome: {
-              logs: [`{"LogMetadataEvent": ${JSON.stringify(mockLogMetadataEvent)}}`],
+              logs: [
+                `{"LogMetadataEvent": ${JSON.stringify(mockLogMetadataEvent)}}`,
+              ],
             },
           },
         ],
@@ -101,7 +107,9 @@ describe("NearBridgeClient", () => {
     })
 
     it("should throw error if token address is not on NEAR", async () => {
-      await expect(client.logMetadata("eth:0x123")).rejects.toThrow("Token address must be on NEAR")
+      await expect(client.logMetadata("eth:0x123")).rejects.toThrow(
+        "Token address must be on NEAR"
+      )
     })
 
     it("should call transaction builder with correct arguments", async () => {
@@ -110,7 +118,7 @@ describe("NearBridgeClient", () => {
 
       expect(mockNear.transaction).toHaveBeenCalledWith(mockSignerId)
       expect(mockTransactionBuilder.functionCall).toHaveBeenCalledWith(
-        mockLockerAddress,
+        mockBridgeAddress,
         "log_metadata",
         { token_id: "test-token.near" },
         {
@@ -118,7 +126,9 @@ describe("NearBridgeClient", () => {
           attachedDeposit: "1 yocto",
         }
       )
-      expect(mockTransactionBuilder.send).toHaveBeenCalledWith({ waitUntil: "FINAL" })
+      expect(mockTransactionBuilder.send).toHaveBeenCalledWith({
+        waitUntil: "FINAL",
+      })
     })
 
     it("should return parsed LogMetadataEvent from transaction logs", async () => {
@@ -142,7 +152,7 @@ describe("NearBridgeClient", () => {
 
       const tokenAddress = "near:test-token.near"
       await expect(client.logMetadata(tokenAddress)).rejects.toThrow(
-        "LogMetadataEvent not found in transaction logs",
+        "LogMetadataEvent not found in transaction logs"
       )
     })
   })
@@ -160,14 +170,14 @@ describe("NearBridgeClient", () => {
       const txHash = await client.deployToken(destinationChain, mockVaa)
 
       expect(mockNear.view).toHaveBeenCalledWith(
-        mockLockerAddress,
+        mockBridgeAddress,
         "required_balance_for_deploy_token",
-        {},
+        {}
       )
 
       expect(mockNear.transaction).toHaveBeenCalledWith(mockSignerId)
       expect(mockTransactionBuilder.functionCall).toHaveBeenCalledWith(
-        mockLockerAddress,
+        mockBridgeAddress,
         "deploy_token",
         expect.any(Uint8Array),
         {
@@ -200,14 +210,14 @@ describe("NearBridgeClient", () => {
 
     it("should throw error if neither VAA nor EVM proof is provided", async () => {
       await expect(client.bindToken(ChainKind.Eth)).rejects.toThrow(
-        "Must provide either VAA or EVM proof",
+        "Must provide either VAA or EVM proof"
       )
     })
 
     it("should throw error if EVM proof is provided for non-EVM chain", async () => {
-      await expect(client.bindToken(ChainKind.Near, undefined, mockEvmProof)).rejects.toThrow(
-        "EVM proof is only valid for Ethereum",
-      )
+      await expect(
+        client.bindToken(ChainKind.Near, undefined, mockEvmProof)
+      ).rejects.toThrow("EVM proof is only valid for Ethereum")
     })
 
     it("should call bindToken with VAA correctly", async () => {
@@ -215,14 +225,14 @@ describe("NearBridgeClient", () => {
       const txHash = await client.bindToken(sourceChain, mockVaa)
 
       expect(mockNear.view).toHaveBeenCalledWith(
-        mockLockerAddress,
+        mockBridgeAddress,
         "required_balance_for_bind_token",
-        {},
+        {}
       )
 
       expect(mockNear.transaction).toHaveBeenCalledWith(mockSignerId)
       expect(mockTransactionBuilder.functionCall).toHaveBeenCalledWith(
-        mockLockerAddress,
+        mockBridgeAddress,
         "bind_token",
         expect.any(Uint8Array),
         expect.objectContaining({
@@ -235,17 +245,21 @@ describe("NearBridgeClient", () => {
 
     it("should call bindToken with EVM proof correctly", async () => {
       const sourceChain = ChainKind.Eth
-      const txHash = await client.bindToken(sourceChain, undefined, mockEvmProof)
+      const txHash = await client.bindToken(
+        sourceChain,
+        undefined,
+        mockEvmProof
+      )
 
       expect(mockNear.view).toHaveBeenCalledWith(
-        mockLockerAddress,
+        mockBridgeAddress,
         "required_balance_for_bind_token",
-        {},
+        {}
       )
 
       expect(mockNear.transaction).toHaveBeenCalledWith(mockSignerId)
       expect(mockTransactionBuilder.functionCall).toHaveBeenCalledWith(
-        mockLockerAddress,
+        mockBridgeAddress,
         "bind_token",
         expect.any(Uint8Array),
         expect.objectContaining({
@@ -286,24 +300,26 @@ describe("NearBridgeClient", () => {
       // Mock storage balance calls
       mockNear.view = vi
         .fn()
-        .mockImplementation((_contractId: string, methodName: string, _args: unknown) => {
-          if (methodName === "storage_balance_of") {
-            return Promise.resolve({
-              total: "1000000000000000000000000",
-              available: "500000000000000000000000",
-            })
+        .mockImplementation(
+          (_contractId: string, methodName: string, _args: unknown) => {
+            if (methodName === "storage_balance_of") {
+              return Promise.resolve({
+                total: "1000000000000000000000000",
+                available: "500000000000000000000000",
+              })
+            }
+            if (methodName.includes("required_balance_for")) {
+              return Promise.resolve("1000000000000000000000")
+            }
+            if (methodName === "storage_balance_bounds") {
+              return Promise.resolve({
+                min: "1000000000000000000000",
+                max: "2000000000000000000000",
+              })
+            }
+            return Promise.resolve("1000000000000000000000000")
           }
-          if (methodName.includes("required_balance_for")) {
-            return Promise.resolve("1000000000000000000000")
-          }
-          if (methodName === "storage_balance_bounds") {
-            return Promise.resolve({
-              min: "1000000000000000000000",
-              max: "2000000000000000000000",
-            })
-          }
-          return Promise.resolve("1000000000000000000000000")
-        })
+        )
 
       // Mock successful initTransfer
       mockTransactionBuilder.send = vi.fn().mockResolvedValue({
@@ -311,7 +327,11 @@ describe("NearBridgeClient", () => {
         receipts_outcome: [
           {
             outcome: {
-              logs: [`{"InitTransferEvent": ${JSON.stringify(mockInitTransferEvent)}}`],
+              logs: [
+                `{"InitTransferEvent": ${JSON.stringify(
+                  mockInitTransferEvent
+                )}}`,
+              ],
             },
           },
         ],
@@ -324,7 +344,7 @@ describe("NearBridgeClient", () => {
         tokenAddress: "eth:0x123" as OmniAddress,
       }
       await expect(client.initTransfer(invalidTransfer)).rejects.toThrow(
-        "Token address must be on NEAR",
+        "Token address must be on NEAR"
       )
     })
 
@@ -358,7 +378,7 @@ describe("NearBridgeClient", () => {
       })
 
       await expect(client.initTransfer(mockTransfer)).rejects.toThrow(
-        "InitTransferEvent not found in transaction logs",
+        "InitTransferEvent not found in transaction logs"
       )
     })
   })
@@ -381,7 +401,11 @@ describe("NearBridgeClient", () => {
     }
 
     const mockSignTransferEvent: SignTransferEvent = {
-      signature: new MPCSignature({ affine_point: "mock-r" }, { scalar: "mock-s" }, 0),
+      signature: new MPCSignature(
+        { affine_point: "mock-r" },
+        { scalar: "mock-s" },
+        0
+      ),
       message_payload: {
         prefix: PayloadType.TransferMessage,
         destination_nonce: "1",
@@ -404,7 +428,11 @@ describe("NearBridgeClient", () => {
         receipts_outcome: [
           {
             outcome: {
-              logs: [`{"SignTransferEvent": ${JSON.stringify(mockSignTransferEvent)}}`],
+              logs: [
+                `{"SignTransferEvent": ${JSON.stringify(
+                  mockSignTransferEvent
+                )}}`,
+              ],
             },
           },
         ],
@@ -412,11 +440,14 @@ describe("NearBridgeClient", () => {
     })
 
     it("should call sign_transfer with correct arguments", async () => {
-      const result = await client.signTransfer(mockInitTransferEvent, mockFeeRecipient)
+      const result = await client.signTransfer(
+        mockInitTransferEvent,
+        mockFeeRecipient
+      )
 
       expect(mockNear.transaction).toHaveBeenCalledWith(mockSignerId)
       expect(mockTransactionBuilder.functionCall).toHaveBeenCalledWith(
-        mockLockerAddress,
+        mockBridgeAddress,
         "sign_transfer",
         expect.any(Object),
         expect.objectContaining({
@@ -424,7 +455,9 @@ describe("NearBridgeClient", () => {
           attachedDeposit: "1 yocto",
         })
       )
-      expect(mockTransactionBuilder.send).toHaveBeenCalledWith({ waitUntil: "FINAL" })
+      expect(mockTransactionBuilder.send).toHaveBeenCalledWith({
+        waitUntil: "FINAL",
+      })
       expect(result).toEqual(mockSignTransferEvent)
     })
 
@@ -440,9 +473,9 @@ describe("NearBridgeClient", () => {
         ],
       })
 
-      await expect(client.signTransfer(mockInitTransferEvent, mockFeeRecipient)).rejects.toThrow(
-        "SignTransferEvent not found in transaction logs",
-      )
+      await expect(
+        client.signTransfer(mockInitTransferEvent, mockFeeRecipient)
+      ).rejects.toThrow("SignTransferEvent not found in transaction logs")
     })
   })
 
@@ -469,7 +502,12 @@ describe("NearBridgeClient", () => {
 
     it("should throw error if neither VAA nor EVM proof is provided", async () => {
       await expect(
-        client.finalizeTransfer(mockToken, mockAccount, mockStorageDeposit, ChainKind.Near),
+        client.finalizeTransfer(
+          mockToken,
+          mockAccount,
+          mockStorageDeposit,
+          ChainKind.Near
+        )
       ).rejects.toThrow("Must provide either VAA or EVM proof")
     })
 
@@ -482,8 +520,8 @@ describe("NearBridgeClient", () => {
           ChainKind.Near,
           undefined, // signerId
           undefined, // vaa
-          mockEvmProof,
-        ),
+          mockEvmProof
+        )
       ).rejects.toThrow("EVM proof is only valid for Ethereum")
     })
 
@@ -494,25 +532,27 @@ describe("NearBridgeClient", () => {
         mockStorageDeposit,
         ChainKind.Sol,
         undefined, // signerId
-        mockVaa,
+        mockVaa
       )
 
       expect(mockNear.view).toHaveBeenCalledWith(
-        mockLockerAddress,
+        mockBridgeAddress,
         "required_balance_for_fin_transfer",
-        {},
+        {}
       )
 
       expect(mockNear.transaction).toHaveBeenCalledWith(mockSignerId)
       expect(mockTransactionBuilder.functionCall).toHaveBeenCalledWith(
-        mockLockerAddress,
+        mockBridgeAddress,
         "fin_transfer",
         expect.any(Object),
         expect.objectContaining({
           gas: "300 Tgas",
         })
       )
-      expect(mockTransactionBuilder.send).toHaveBeenCalledWith({ waitUntil: "FINAL" })
+      expect(mockTransactionBuilder.send).toHaveBeenCalledWith({
+        waitUntil: "FINAL",
+      })
 
       expect(txHash.transaction.hash).toBe(mockTxHash)
     })
@@ -525,25 +565,27 @@ describe("NearBridgeClient", () => {
         ChainKind.Eth,
         undefined, // signerId
         undefined, // vaa
-        mockEvmProof,
+        mockEvmProof
       )
 
       expect(mockNear.view).toHaveBeenCalledWith(
-        mockLockerAddress,
+        mockBridgeAddress,
         "required_balance_for_fin_transfer",
-        {},
+        {}
       )
 
       expect(mockNear.transaction).toHaveBeenCalledWith(mockSignerId)
       expect(mockTransactionBuilder.functionCall).toHaveBeenCalledWith(
-        mockLockerAddress,
+        mockBridgeAddress,
         "fin_transfer",
         expect.any(Object),
         expect.objectContaining({
           gas: "300 Tgas",
         })
       )
-      expect(mockTransactionBuilder.send).toHaveBeenCalledWith({ waitUntil: "FINAL" })
+      expect(mockTransactionBuilder.send).toHaveBeenCalledWith({
+        waitUntil: "FINAL",
+      })
 
       expect(txHash.transaction.hash).toBe(mockTxHash)
     })
@@ -558,7 +600,7 @@ describe("NearBridgeClient", () => {
         undefined, // signerId
         mockVaa,
         undefined, // evmProof
-        customProofKind,
+        customProofKind
       )
 
       expect(txHash.transaction.hash).toBe(mockTxHash)
@@ -569,7 +611,14 @@ describe("NearBridgeClient", () => {
       mockTransactionBuilder.send = vi.fn().mockRejectedValue(error)
 
       await expect(
-        client.finalizeTransfer(mockToken, mockAccount, mockStorageDeposit, ChainKind.Sol, undefined, mockVaa),
+        client.finalizeTransfer(
+          mockToken,
+          mockAccount,
+          mockStorageDeposit,
+          ChainKind.Sol,
+          undefined,
+          mockVaa
+        )
       ).rejects.toThrow("NEAR finalize transfer error")
     })
   })
@@ -596,7 +645,7 @@ describe("NearBridgeClient", () => {
     beforeEach(() => {
       // Mock getRequiredBalanceForFastTransfer
       vi.spyOn(client, "getRequiredBalanceForFastTransfer").mockResolvedValue(
-        BigInt("1000000000000000000000000"),
+        BigInt("1000000000000000000000000")
       )
 
       // Mock provider.callFunction for storage_balance_of
@@ -618,11 +667,11 @@ describe("NearBridgeClient", () => {
 
       expect(client.getRequiredBalanceForFastTransfer).toHaveBeenCalled()
       expect(mockNear.view).toHaveBeenCalledWith(
-        mockLockerAddress,
+        mockBridgeAddress,
         "storage_balance_of",
         {
           account_id: mockSignerId,
-        },
+        }
       )
 
       // Should chain storage_deposit and ft_transfer_call in single transaction
@@ -630,7 +679,7 @@ describe("NearBridgeClient", () => {
       expect(mockTransactionBuilder.functionCall).toHaveBeenCalledTimes(2)
       expect(mockTransactionBuilder.functionCall).toHaveBeenNthCalledWith(
         1,
-        mockLockerAddress,
+        mockBridgeAddress,
         "storage_deposit",
         {},
         expect.objectContaining({
@@ -663,7 +712,7 @@ describe("NearBridgeClient", () => {
       expect(mockTransactionBuilder.functionCall).toHaveBeenCalledTimes(2)
       expect(mockTransactionBuilder.functionCall).toHaveBeenNthCalledWith(
         1,
-        mockLockerAddress,
+        mockBridgeAddress,
         "storage_deposit",
         {},
         expect.objectContaining({
@@ -701,7 +750,7 @@ describe("NearBridgeClient", () => {
       expect(mockTransactionBuilder.functionCall).toHaveBeenCalledTimes(2)
       expect(mockTransactionBuilder.functionCall).toHaveBeenNthCalledWith(
         1,
-        mockLockerAddress,
+        mockBridgeAddress,
         "storage_deposit",
         {},
         expect.objectContaining({
@@ -726,18 +775,20 @@ describe("NearBridgeClient", () => {
       const error = new Error("NEAR fast finalize transfer error")
       mockTransactionBuilder.send = vi.fn().mockRejectedValue(error)
 
-      await expect(client.fastFinTransfer(mockFastFinTransferArgs)).rejects.toThrow(
-        "NEAR fast finalize transfer error",
-      )
+      await expect(
+        client.fastFinTransfer(mockFastFinTransferArgs)
+      ).rejects.toThrow("NEAR fast finalize transfer error")
     })
 
     it("should handle errors from getRequiredBalanceForFastTransfer", async () => {
       const error = new Error("Failed to get required balance")
-      vi.spyOn(client, "getRequiredBalanceForFastTransfer").mockRejectedValue(error)
-
-      await expect(client.fastFinTransfer(mockFastFinTransferArgs)).rejects.toThrow(
-        "Failed to get required balance",
+      vi.spyOn(client, "getRequiredBalanceForFastTransfer").mockRejectedValue(
+        error
       )
+
+      await expect(
+        client.fastFinTransfer(mockFastFinTransferArgs)
+      ).rejects.toThrow("Failed to get required balance")
     })
   })
 
@@ -787,8 +838,12 @@ describe("NearBridgeClient", () => {
 
     beforeEach(() => {
       // Mock UTXO methods
-      vi.spyOn(client, "getUtxoAvailableOutputs").mockResolvedValue(mockUtxos as any)
-      vi.spyOn(client, "getUtxoBridgeConfig").mockResolvedValue(mockBitcoinConfig as any)
+      vi.spyOn(client, "getUtxoAvailableOutputs").mockResolvedValue(
+        mockUtxos as any
+      )
+      vi.spyOn(client, "getUtxoBridgeConfig").mockResolvedValue(
+        mockBitcoinConfig as any
+      )
       vi.spyOn(client as any, "buildUtxoWithdrawalPlan").mockReturnValue({
         inputs: [
           {
@@ -823,7 +878,9 @@ describe("NearBridgeClient", () => {
         expect.any(Object),
         expect.any(Object)
       )
-      expect(mockTransactionBuilder.send).toHaveBeenCalledWith({ waitUntil: "FINAL" })
+      expect(mockTransactionBuilder.send).toHaveBeenCalledWith({
+        waitUntil: "FINAL",
+      })
       expect(result).toBe(mockTxHash)
     })
 
@@ -849,7 +906,7 @@ describe("NearBridgeClient", () => {
       }
 
       await expect(client.submitBitcoinTransfer(invalidEvent)).rejects.toThrow(
-        'Malformed recipient address: "invalid-address"',
+        'Malformed recipient address: "invalid-address"'
       )
     })
 
@@ -862,7 +919,7 @@ describe("NearBridgeClient", () => {
       }
 
       await expect(client.submitBitcoinTransfer(invalidEvent)).rejects.toThrow(
-        'Malformed recipient address: "btc:"',
+        'Malformed recipient address: "btc:"'
       )
     })
 
@@ -875,7 +932,7 @@ describe("NearBridgeClient", () => {
       }
 
       await expect(client.submitBitcoinTransfer(invalidEvent)).rejects.toThrow(
-        "Failed to parse transfer message:",
+        "Failed to parse transfer message:"
       )
     })
 
@@ -887,8 +944,10 @@ describe("NearBridgeClient", () => {
         },
       }
 
-      await expect(client.submitBitcoinTransfer(lowAmountEvent)).rejects.toThrow(
-        "Transfer amount (900000) must be greater than withdrawal fee (1000000)",
+      await expect(
+        client.submitBitcoinTransfer(lowAmountEvent)
+      ).rejects.toThrow(
+        "Transfer amount (900000) must be greater than withdrawal fee (1000000)"
       )
     })
 
@@ -902,7 +961,7 @@ describe("NearBridgeClient", () => {
       }
 
       await expect(client.submitBitcoinTransfer(highFeeEvent)).rejects.toThrow(
-        "Max gas fee (6000000) plus withdrawal fee (1000000) cannot exceed transfer amount (4900000)",
+        "Max gas fee (6000000) plus withdrawal fee (1000000) cannot exceed transfer amount (4900000)"
       )
     })
 
@@ -983,24 +1042,26 @@ describe("NearBridgeClient", () => {
       // Mock storage balance calls
       mockNear.view = vi
         .fn()
-        .mockImplementation((_contractId: string, methodName: string, _args: unknown) => {
-          if (methodName === "storage_balance_of") {
-            return Promise.resolve({
-              total: "1000000000000000000000000",
-              available: "500000000000000000000000",
-            })
+        .mockImplementation(
+          (_contractId: string, methodName: string, _args: unknown) => {
+            if (methodName === "storage_balance_of") {
+              return Promise.resolve({
+                total: "1000000000000000000000000",
+                available: "500000000000000000000000",
+              })
+            }
+            if (methodName.includes("required_balance_for")) {
+              return Promise.resolve("1000000000000000000000")
+            }
+            if (methodName === "storage_balance_bounds") {
+              return Promise.resolve({
+                min: "1000000000000000000000",
+                max: "2000000000000000000000",
+              })
+            }
+            return Promise.resolve("1000000000000000000000000")
           }
-          if (methodName.includes("required_balance_for")) {
-            return Promise.resolve("1000000000000000000000")
-          }
-          if (methodName === "storage_balance_bounds") {
-            return Promise.resolve({
-              min: "1000000000000000000000",
-              max: "2000000000000000000000",
-            })
-          }
-          return Promise.resolve("1000000000000000000000000")
-        })
+        )
 
       // Mock successful initTransfer
       mockTransactionBuilder.send = vi.fn().mockResolvedValue({
@@ -1008,7 +1069,11 @@ describe("NearBridgeClient", () => {
         receipts_outcome: [
           {
             outcome: {
-              logs: [`{"InitTransferEvent": ${JSON.stringify(mockInitTransferEvent)}}`],
+              logs: [
+                `{"InitTransferEvent": ${JSON.stringify(
+                  mockInitTransferEvent
+                )}}`,
+              ],
             },
           },
         ],
@@ -1040,7 +1105,8 @@ describe("NearBridgeClient", () => {
       expect(mockTransactionBuilder.send).toHaveBeenCalled()
 
       // Verify the message contains MaxGasFee by checking functionCall args
-      const functionCallArgs = (mockTransactionBuilder.functionCall as any).mock.calls[0]
+      const functionCallArgs = (mockTransactionBuilder.functionCall as any).mock
+        .calls[0]
       const argsObj = functionCallArgs[2] // Third parameter is the args object
       if (typeof argsObj.msg === "string") {
         const msgArg = JSON.parse(argsObj.msg)
