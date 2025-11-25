@@ -2,4 +2,4 @@
 "omni-bridge-sdk": patch
 ---
 
-Add min_withdraw_amount field to ApiFeeResponse
+Add min_amount field to ApiFeeResponse
