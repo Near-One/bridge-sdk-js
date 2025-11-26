@@ -411,19 +411,24 @@ describe("NearBridgeClient", () => {
 
     const mockFeeRecipient = "fee-recipient.near"
 
-    // biome-ignore lint/suspicious/noExplicitAny: TS will complain that `toJSON()` does not exist on BigInt
-    // biome-ignore lint/complexity/useLiteralKeys: TS will complain that `toJSON()` does not exist on BigInt
-    ;(BigInt.prototype as any)["toJSON"] = function () {
-      return this.toString()
-    }
-
     beforeEach(() => {
       mockWallet.signAndSendTransaction = vi.fn().mockResolvedValue({
         transaction: { hash: mockTxHash },
         receipts_outcome: [
           {
             outcome: {
-              logs: [`{"SignTransferEvent": ${JSON.stringify(mockSignTransferEvent)}}`],
+              logs: [
+                `{"SignTransferEvent": ${JSON.stringify({
+                  ...mockSignTransferEvent,
+                  message_payload: {
+                    ...mockSignTransferEvent.message_payload,
+                    transfer_id: {
+                      ...mockSignTransferEvent.message_payload.transfer_id,
+                      origin_nonce: mockSignTransferEvent.message_payload.transfer_id.origin_nonce.toString(),
+                    },
+                  },
+                })}}`,
+              ],
             },
           },
         ],

@@ -177,19 +177,6 @@ export class NearBridgeClient {
     if (lockerAddress) {
       this.lockerAddress = lockerAddress
     }
-    // Configure BigInt serialization for JSON.stringify
-    // biome-ignore lint/suspicious/noExplicitAny: TS will complain that `toJSON()` does not exist on BigInt
-    // biome-ignore lint/complexity/useLiteralKeys: TS will complain that `toJSON()` does not exist on BigInt
-    ;(BigInt.prototype as any)["toJSON"] = function () {
-      // The contract can't accept `origin_nonce` as a string, so we have to serialize it as a number.
-      // However, this can cause precision loss if the number is too large. We'll check if it's safe to convert
-      // and if not, we'll serialize it as a string and the contract will have to handle it.
-      const maxSafe = BigInt(Number.MAX_SAFE_INTEGER)
-      if (this <= maxSafe) {
-        return Number(this)
-      }
-      return this.toString()
-    }
 
     // Initialize Bitcoin service
     this.bitcoinService = new BitcoinService(addresses.btc.apiUrl, addresses.btc.network, {
@@ -524,7 +511,13 @@ export class NearBridgeClient {
       actions: [
         actionCreators.functionCall(
           "sign_transfer",
-          args,
+          {
+            ...args,
+            transfer_id: {
+              ...args.transfer_id,
+              origin_nonce: args.transfer_id.origin_nonce.toString(),
+            },
+          },
           GAS.SIGN_TRANSFER,
           DEPOSIT.SIGN_TRANSFER,
         ),
@@ -967,9 +960,15 @@ export class NearBridgeClient {
           {
             transfer_id: {
               origin_chain: ChainKind[getChain(initTransferEvent.transfer_message.sender)],
-              origin_nonce: BigInt(initTransferEvent.transfer_message.origin_nonce),
+              origin_nonce: initTransferEvent.transfer_message.origin_nonce,
             },
-            msg: JSON.stringify(msg),
+            msg: JSON.stringify({
+              ...msg,
+              Withdraw: {
+                ...msg.Withdraw,
+                max_gas_fee: msg.Withdraw.max_gas_fee?.toString(),
+              },
+            }),
           },
           GAS.SUBMIT_BTC_TRANSFER,
           BigInt(0),
@@ -1285,7 +1284,13 @@ export class NearBridgeClient {
     const transferArgs = {
       receiver_id: this.lockerAddress,
       amount: args.amount_to_send,
-      msg: JSON.stringify(args),
+      msg: JSON.stringify({
+        ...args,
+        transfer_id: {
+          ...args.transfer_id,
+          origin_nonce: args.transfer_id.origin_nonce.toString(),
+        },
+      }),
     }
 
     // Execute the fast finalize transfer
