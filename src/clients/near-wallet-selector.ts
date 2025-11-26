@@ -151,7 +151,7 @@ export class NearWalletSelectorBridgeClient {
           type: "FunctionCall",
           params: {
             methodName: "log_metadata",
-            args: Buffer.from(JSON.stringify(args)),
+            args,
             gas: GAS.LOG_METADATA.toString(),
             deposit: DEPOSIT.LOG_METADATA.toString(),
           },
@@ -357,11 +357,9 @@ export class NearWalletSelectorBridgeClient {
             type: "FunctionCall",
             params: {
               methodName: "storage_deposit",
-              args: Buffer.from(
-                JSON.stringify({
-                  account_id: this.lockerAddress,
-                }),
-              ),
+              args: {
+                account_id: this.lockerAddress,
+              },
               gas: GAS.STORAGE_DEPOSIT.toString(),
               deposit: requiredAmount.toString(),
             },
@@ -384,7 +382,7 @@ export class NearWalletSelectorBridgeClient {
             type: "FunctionCall",
             params: {
               methodName: "storage_deposit",
-              args: Buffer.from(JSON.stringify({})),
+              args: {},
               gas: GAS.STORAGE_DEPOSIT.toString(),
               deposit: neededAmount.toString(),
             },
@@ -462,7 +460,7 @@ export class NearWalletSelectorBridgeClient {
           type: "FunctionCall",
           params: {
             methodName: "ft_transfer_call",
-            args: Buffer.from(JSON.stringify(args)),
+            args,
             gas: GAS.INIT_TRANSFER.toString(),
             deposit: DEPOSIT.INIT_TRANSFER.toString(),
           },
@@ -516,18 +514,6 @@ export class NearWalletSelectorBridgeClient {
     initTransferEvent: InitTransferEvent,
     feeRecipient: AccountId,
   ): Promise<SignTransferEvent> {
-    // biome-ignore lint/suspicious/noExplicitAny: TS will complain that `toJSON()` does not exist on BigInt
-    // biome-ignore lint/complexity/useLiteralKeys: TS will complain that `toJSON()` does not exist on BigInt
-    ;(BigInt.prototype as any)["toJSON"] = function () {
-      // The contract can't accept `origin_nonce` as a string, so we have to serialize it as a number.
-      // However, this can cause precision loss if the number is too large. We'll check if it's safe to convert
-      // and if not, we'll serialize it as a string and the contract will have to handle it.
-      const maxSafe = BigInt(Number.MAX_SAFE_INTEGER)
-      if (this <= maxSafe) {
-        return Number(this)
-      }
-      return this.toString()
-    }
     const args: SignTransferArgs = {
       transfer_id: {
         origin_chain: ChainKind[getChain(initTransferEvent.transfer_message.sender)],
@@ -548,7 +534,7 @@ export class NearWalletSelectorBridgeClient {
           type: "FunctionCall",
           params: {
             methodName: "sign_transfer",
-            args: Buffer.from(JSON.stringify(args)),
+            args,
             gas: GAS.SIGN_TRANSFER.toString(),
             deposit: DEPOSIT.SIGN_TRANSFER.toString(),
           },
@@ -813,7 +799,7 @@ export class NearWalletSelectorBridgeClient {
             type: "FunctionCall",
             params: {
               methodName: "storage_deposit",
-              args: Buffer.from(JSON.stringify({})),
+              args: {},
               gas: GAS.STORAGE_DEPOSIT.toString(),
               deposit: neededAmount.toString(),
             },
@@ -835,7 +821,7 @@ export class NearWalletSelectorBridgeClient {
           type: "FunctionCall",
           params: {
             methodName: "ft_transfer_call",
-            args: Buffer.from(JSON.stringify(transferArgs)),
+            args: transferArgs,
             gas: GAS.FAST_FIN_TRANSFER.toString(),
             deposit: DEPOSIT.INIT_TRANSFER.toString(),
           },
