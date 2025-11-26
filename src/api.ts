@@ -123,6 +123,7 @@ const UtxoTransferSchema = z.object({
   protocol_fee: z.string(),
   relayer_account_id: z.string(),
   sender: z.union([z.string(), z.null()]),
+  btc_pending_id: z.string().optional(),
 })
 
 const TransferSchema = z.object({

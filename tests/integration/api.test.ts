@@ -286,6 +286,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
                 protocol_fee: expect.any(String),
                 relayer_account_id: expect.any(String),
                 sender: expect.toBeOneOf([expect.any(String), null]),
+                btc_pending_id: expect.toBeOneOf([expect.any(String), undefined]),
               })
             }
           }
