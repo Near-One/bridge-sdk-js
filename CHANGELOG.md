@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.22.1
+
+### Patch Changes
+
+- ac27d4f: Add min_amount field to ApiFeeResponse
+
 ## 0.22.0
 
 ### Minor Changes
