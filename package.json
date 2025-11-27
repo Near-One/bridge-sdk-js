@@ -44,7 +44,7 @@
     "@scure/btc-signer": "^2.0.1",
     "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.4",
-    "@wormhole-foundation/sdk": "^3.11.0",
+    "@wormhole-foundation/sdk": "^4.0.2",
     "@zorsh/zorsh": "^0.4.0",
     "ethers": "^6.15.0",
     "merkletreejs": "^0.6.0",
