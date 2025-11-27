@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.22.3
+
+### Patch Changes
+
+- 2abc0ac: feat(api): add btc_pending_id field to utxo_transfer API schema
+
 ## 0.22.2
 
 ### Patch Changes
