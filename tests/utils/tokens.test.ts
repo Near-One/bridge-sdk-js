@@ -3,15 +3,15 @@ import { ChainKind, type OmniAddress } from "../../src/types/index.js"
 import { getBridgedToken } from "../../src/utils/index.js"
 import { parseOriginChain } from "../../src/utils/tokens.js"
 
-// Mock @near-js/client
-vi.mock("@near-js/client", () => ({
-  getProviderByNetwork: vi.fn(),
-  view: vi.fn(),
-  createRpcClientWrapper: vi.fn(() => ({})),
+// Mock near-kit
+const mockNearView = vi.fn()
+vi.mock("near-kit", () => ({
+  Near: class {
+    view = mockNearView
+  },
 }))
 
-// Import the mocked function
-import { view } from "@near-js/client"
+// Near is mocked
 
 // Define token mapping with proper types
 type ChainMapping = {
@@ -48,13 +48,11 @@ describe("Token Resolution", () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    // Mock the view function to simulate contract responses using proper vitest syntax
-    const mockView = vi.mocked(view)
+    // Mock the view function to simulate contract responses
+    mockNearView.mockImplementation(async (_contractId: string, method: string, args: any) => {
+      if (method !== "get_bridged_token") return null
 
-    // @ts-ignore mock params
-    mockView.mockImplementation(async (params: unknown) => {
-      const chain = (params as { args: { chain: string } }).args?.chain
-      const address = (params as { args: { address: string } }).args?.address
+      const { chain, address } = args
 
       if (!chain || !address) return null
 
@@ -72,14 +70,13 @@ describe("Token Resolution", () => {
     it("resolves a token from NEAR to ETH", async () => {
       const result = await getBridgedToken("near:wrap.testnet", ChainKind.Eth)
       expect(result).toBe("eth:0xa2e932310e7294451d8417aa9b2e647e67df3288")
-      expect(view).toHaveBeenCalledWith(
-        expect.objectContaining({
-          method: "get_bridged_token",
-          args: {
-            chain: "Eth",
-            address: "near:wrap.testnet",
-          },
-        }),
+      expect(mockNearView).toHaveBeenCalledWith(
+        expect.any(String),
+        "get_bridged_token",
+        {
+          chain: "Eth",
+          address: "near:wrap.testnet",
+        },
       )
     })
 

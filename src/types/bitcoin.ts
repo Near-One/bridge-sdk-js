@@ -57,7 +57,7 @@ export interface InitBtcTransferMsg {
      * If specified, the bridge will not process withdrawals with a fee exceeding this value.
      * Optional. Must be a positive integer if provided.
      */
-    max_gas_fee?: bigint
+    max_gas_fee?: string
   }
 }
 

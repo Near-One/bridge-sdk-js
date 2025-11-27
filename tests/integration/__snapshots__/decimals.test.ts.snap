@@ -7,4 +7,4 @@ exports[`getTokenDecimals integration > fetches decimals for JLU token on Solana
 }
 `;
 
-exports[`getTokenDecimals integration > handles invalid token addresses 1`] = `[Error: Exceeded 1 providers to execute request]`;
+exports[`getTokenDecimals integration > handles invalid token addresses 1`] = `[FunctionCallError: Contract call failed: omni-locker.testnet.get_token_decimals - wasm execution failed with error: HostError(GuestPanic { panic_msg: "Failed to deserialize input from JSON." })]`;

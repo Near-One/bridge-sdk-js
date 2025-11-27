@@ -8,7 +8,7 @@ export enum PayloadType {
 
 export interface TransferId {
   origin_chain: number | string // u8 in rust
-  origin_nonce: bigint
+  origin_nonce: bigint | string
 }
 
 // bridge deposit structure for evm chains

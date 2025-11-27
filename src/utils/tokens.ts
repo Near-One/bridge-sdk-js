@@ -1,5 +1,5 @@
-import { createRpcClientWrapper, view } from "@near-js/client"
-import { addresses } from "../config.js"
+import { Near } from "near-kit"
+import { addresses, getNetwork } from "../config.js"
 import { ChainKind, type OmniAddress } from "../types/index.js"
 
 const CHAIN_PATTERNS: Record<string, ChainKind> = {
@@ -77,14 +77,9 @@ export async function getBridgedToken(
   tokenAddress: OmniAddress,
   destinationChain: ChainKind,
 ): Promise<OmniAddress | null> {
-  const rpcProvider = createRpcClientWrapper(addresses.near.rpcUrls)
-  return await view<OmniAddress>({
-    account: addresses.near.contract,
-    method: "get_bridged_token",
-    args: {
-      chain: ChainKind[destinationChain].toString(),
-      address: tokenAddress,
-    },
-    deps: { rpcProvider },
+  const near = new Near({ network: getNetwork() })
+  return await near.view<OmniAddress>(addresses.near.contract, "get_bridged_token", {
+    chain: ChainKind[destinationChain].toString(),
+    address: tokenAddress,
   })
 }

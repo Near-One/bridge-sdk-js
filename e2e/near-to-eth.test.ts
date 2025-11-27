@@ -1,11 +1,15 @@
 import { beforeAll, describe, expect, test } from "bun:test"
 import { EvmBridgeClient } from "../src/clients/evm.js"
-import { NearBridgeClient } from "../src/clients/near.js"
+import { NearBridgeClient } from "../src/clients/near-kit.js"
 import { setNetwork } from "../src/config.js"
 import { ChainKind, type OmniTransferMessage } from "../src/types/index.js"
 import { omniAddress } from "../src/utils/index.js"
 import { NEAR_TO_ETH_ROUTES, TIMEOUTS } from "./shared/fixtures.js"
-import { type TestAccountsSetup, setupTestAccounts } from "./shared/setup.js"
+import {
+  TEST_CONFIG,
+  type TestAccountsSetup,
+  setupTestAccounts,
+} from "./shared/setup.js"
 
 describe("NEAR to ETH E2E Transfer Tests (Manual Flow)", () => {
   let testAccounts: TestAccountsSetup
@@ -18,11 +22,13 @@ describe("NEAR to ETH E2E Transfer Tests (Manual Flow)", () => {
 
     // Setup test accounts and clients
     testAccounts = await setupTestAccounts()
-    nearClient = new NearBridgeClient(testAccounts.nearAccount)
+    nearClient = new NearBridgeClient(testAccounts.nearKitInstance, undefined, {
+      defaultSignerId: TEST_CONFIG.networks.near.accountId,
+    })
     ethClient = new EvmBridgeClient(testAccounts.ethWallet, ChainKind.Eth)
 
     console.log("🚀 Test setup complete:")
-    console.log(`  NEAR Account: ${testAccounts.nearAccount.accountId}`)
+    console.log(`  NEAR Account: ${TEST_CONFIG.networks.near.accountId}`)
     console.log(`  ETH Address: ${testAccounts.ethWallet.address}`)
   })
 
@@ -53,7 +59,10 @@ describe("NEAR to ETH E2E Transfer Tests (Manual Flow)", () => {
 
       console.log("✓ Transfer initiated on NEAR!")
       console.log(`  Origin Nonce: ${initResult.transfer_message.origin_nonce}`)
-      console.log("  Transfer Message:", JSON.stringify(initResult.transfer_message, null, 2))
+      console.log(
+        "  Transfer Message:",
+        JSON.stringify(initResult.transfer_message, null, 2)
+      )
 
       // Validate initiation
       expect(initResult).toHaveProperty("transfer_message")
@@ -78,7 +87,7 @@ describe("NEAR to ETH E2E Transfer Tests (Manual Flow)", () => {
       // Use the signature and message payload from the sign result
       const finalizeResult = await ethClient.finalizeTransfer(
         signResult.message_payload,
-        signResult.signature,
+        signResult.signature
       )
 
       console.log("✓ Transfer finalized on Ethereum!")
@@ -95,6 +104,6 @@ describe("NEAR to ETH E2E Transfer Tests (Manual Flow)", () => {
       console.log("  3. ✓ Finalized on ETH")
       console.log(`✅ ${route.name} test completed!`)
     },
-    TIMEOUTS.FULL_E2E_FLOW,
+    TIMEOUTS.FULL_E2E_FLOW
   )
 })
