@@ -3,7 +3,7 @@
 ![Status](https://img.shields.io/badge/Status-Beta-blue)
 ![Stability](https://img.shields.io/badge/Stability-Pre--Release-yellow)
 
-A TypeScript SDK for seamless cross-chain token transfers using the Omni Bridge protocol. The Omni Bridge provides secure and efficient cross-chain communication and asset transfers between NEAR, Ethereum, Arbitrum, Base, BNB and Solana. For detailed information about the Omni Bridge protocol and its capabilities, please visit the [Omni Bridge Repository](https://github.com/Near-one/omni-bridge). 
+A TypeScript SDK for seamless cross-chain token transfers using the [Omni Bridge](https://github.com/Near-one/omni-bridge) protocol.
 
 
 > [!IMPORTANT]  
