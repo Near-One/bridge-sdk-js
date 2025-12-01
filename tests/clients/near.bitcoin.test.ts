@@ -1131,7 +1131,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
           REAL_TEST_DATA.withdrawAddress,
           BigInt(1) // 1 satoshi, well below minimum of 20000
         )
-      ).rejects.toThrow(/Net withdrawal amount .* \(after fees\) is below minimum withdrawal amount 20000/)
+      ).rejects.toThrow(/Amount .* is too small|Net withdrawal amount .* \(after fees\) is below minimum withdrawal amount/)
 
       // Test with amount just below minimum
       await expect(

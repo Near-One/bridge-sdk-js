@@ -786,24 +786,50 @@ export class NearBridgeClient {
     // Calculate bridge fee from the total amount
     const bridgeFee = calculateBridgeFee(config.withdraw_bridge_fee, amount)
 
-    // Amount available for withdrawal after bridge fee
-    const withdrawAmount = amount - bridgeFee
+    // Amount available after bridge fee (this must cover both recipient amount and miner fee)
+    const availableBudget = amount - bridgeFee
 
-    const plan: UtxoWithdrawalPlan = this.buildUtxoWithdrawalPlan(
+    if (availableBudget <= 0n) {
+      throw new Error(`Amount ${amount} is too small to cover bridge fee of ${bridgeFee}`)
+    }
+
+    // Build initial plan to discover the miner fee
+    // We use availableBudget as a starting point to get fee estimate
+    let plan: UtxoWithdrawalPlan = this.buildUtxoWithdrawalPlan(
       chain,
       utxos,
-      withdrawAmount,
+      availableBudget,
       targetAddress,
       config,
     )
 
-    // Net amount the recipient will receive after all fees
-    const netAmount = withdrawAmount - plan.fee
+    // Now we know the miner fee, calculate the actual recipient amount
+    const recipientAmount = availableBudget - plan.fee
+
+    if (recipientAmount <= 0n) {
+      throw new Error(
+        `Amount ${amount} is too small to cover fees (bridge fee: ${bridgeFee}, miner fee: ${plan.fee})`,
+      )
+    }
+
+    // Rebuild plan with the correct recipient amount
+    // (The fee should be similar, but UTXO selection might differ slightly)
+    plan = this.buildUtxoWithdrawalPlan(chain, utxos, recipientAmount, targetAddress, config)
+
+    // Verify the final plan still fits within budget
+    if (recipientAmount + plan.fee > availableBudget) {
+      throw new Error(
+        `Transaction fees exceed available budget. Available: ${availableBudget}, needed: ${recipientAmount + plan.fee}`,
+      )
+    }
+
+    // Final net amount the recipient will receive
+    const netAmount = recipientAmount
 
     // Validate the net amount meets minimum requirements
     if (netAmount < BigInt(config.min_withdraw_amount)) {
       throw new Error(
-        `Net withdrawal amount ${netAmount} (after fees) is below minimum withdrawal amount ${config.min_withdraw_amount}`,
+        `Net withdrawal amount ${netAmount} (after fees) is below minimum withdrawal amount ${config.min_withdraw_amount}. Total fees: bridge fee ${bridgeFee} + miner fee ${plan.fee}.`,
       )
     }
 
@@ -815,7 +841,7 @@ export class NearBridgeClient {
       },
     }
 
-    // Use the specified amount as total (fees are already subtracted in the plan)
+    // Send the specified amount (includes all fees)
     const totalAmount = amount
 
     const tx = await this.near
