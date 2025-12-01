@@ -663,7 +663,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
       const result = await client.initUtxoWithdrawal(
         ChainKind.Btc,
         REAL_TEST_DATA.withdrawAddress,
-        BigInt(20000),
+        BigInt(30000), // Increased to account for fees while meeting minimum
       )
 
       expect(result.pendingId).toBe("override_pending")
@@ -1093,10 +1093,11 @@ describe("NearBridgeClient Bitcoin Methods", () => {
 
       mockTransactionBuilder.send.mockResolvedValueOnce(mockResult)
 
-      // Test with amount that meets minimum requirement (min_withdraw_amount is "20000")
+      // Test with amount that meets minimum requirement after fees are deducted
+      // (min_withdraw_amount is "20000", but we need to send more to account for fees)
       const result = await client.initUtxoWithdrawal(ChainKind.Btc,
         REAL_TEST_DATA.withdrawAddress,
-        BigInt(20000) // Use minimum withdrawal amount
+        BigInt(30000) // Send enough so that after fees, net amount >= 20000
       )
 
       expect(result.pendingId).toBe("min_amount_test")
@@ -1130,7 +1131,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
           REAL_TEST_DATA.withdrawAddress,
           BigInt(1) // 1 satoshi, well below minimum of 20000
         )
-      ).rejects.toThrow(/Amount 1 is below minimum withdrawal amount 20000/)
+      ).rejects.toThrow(/Net withdrawal amount .* \(after fees\) is below minimum withdrawal amount 20000/)
 
       // Test with amount just below minimum
       await expect(
@@ -1138,7 +1139,7 @@ describe("NearBridgeClient Bitcoin Methods", () => {
           REAL_TEST_DATA.withdrawAddress,
           BigInt(19999) // Just below minimum of 20000
         )
-      ).rejects.toThrow(/Amount 19999 is below minimum withdrawal amount 20000/)
+      ).rejects.toThrow(/Net withdrawal amount .* \(after fees\) is below minimum withdrawal amount 20000/)
     })
   })
 

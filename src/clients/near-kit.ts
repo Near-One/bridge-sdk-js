@@ -778,24 +778,34 @@ export class NearBridgeClient {
     const { connector, token } = this.getUtxoConnector(chain)
     const config = await this.getUtxoBridgeConfig(chain)
 
-    if (amount < BigInt(config.min_withdraw_amount)) {
-      throw new Error(
-        `Amount ${amount} is below minimum withdrawal amount ${config.min_withdraw_amount}`,
-      )
-    }
-
     const utxos = await this.getUtxoAvailableOutputs(chain)
     if (!utxos.length) {
       throw new Error(`${chainLabel}: No UTXOs available for transaction`)
     }
 
+    // Calculate bridge fee from the total amount
+    const bridgeFee = calculateBridgeFee(config.withdraw_bridge_fee, amount)
+
+    // Amount available for withdrawal after bridge fee
+    const withdrawAmount = amount - bridgeFee
+
     const plan: UtxoWithdrawalPlan = this.buildUtxoWithdrawalPlan(
       chain,
       utxos,
-      amount,
+      withdrawAmount,
       targetAddress,
       config,
     )
+
+    // Net amount the recipient will receive after all fees
+    const netAmount = withdrawAmount - plan.fee
+
+    // Validate the net amount meets minimum requirements
+    if (netAmount < BigInt(config.min_withdraw_amount)) {
+      throw new Error(
+        `Net withdrawal amount ${netAmount} (after fees) is below minimum withdrawal amount ${config.min_withdraw_amount}`,
+      )
+    }
 
     const msg: InitBtcTransferMsg = {
       Withdraw: {
@@ -805,8 +815,8 @@ export class NearBridgeClient {
       },
     }
 
-    const bridgeFee = calculateBridgeFee(config.withdraw_bridge_fee, amount)
-    const totalAmount = amount + plan.fee + bridgeFee
+    // Use the specified amount as total (fees are already subtracted in the plan)
+    const totalAmount = amount
 
     const tx = await this.near
       .transaction(signer)

@@ -502,10 +502,12 @@ describe("Bitcoin Integration Tests", () => {
 
       mockTransactionBuilder.send = vi.fn().mockResolvedValue(mockInitResult)
 
+      // Use amount higher than minimum to account for fees
+      // (minWithdrawAmount is 20000, but we need to send more so net amount after fees >= 20000)
       const result = await client.initUtxoWithdrawal(
         ChainKind.Btc,
         REAL_WITHDRAWAL_DATA.realWithdrawAddress,
-        BigInt(REAL_WITHDRAWAL_DATA.minWithdrawAmount),
+        BigInt(30000),
       )
 
       expect(result.pendingId).toBe("real_pending_btc_withdrawal_123")
@@ -676,18 +678,19 @@ describe("Bitcoin Integration Tests", () => {
           REAL_WITHDRAWAL_DATA.realWithdrawAddress,
           belowMinimum,
         ),
-      ).rejects.toThrow(/Amount \d+ is below minimum withdrawal amount/)
+      ).rejects.toThrow(/Net withdrawal amount \d+ \(after fees\) is below minimum withdrawal amount/)
 
-      // Test with valid amount at the minimum
-      const validAmount = BigInt(config.min_withdraw_amount)
-      
+      // Test with valid amount that exceeds minimum after fees are deducted
+      // (Need to send more than min_withdraw_amount to account for fees)
+      const validAmount = BigInt(config.min_withdraw_amount) + BigInt(5000) // Add buffer for fees
+
       const mockInitResult = {
         transaction: { hash: "test_tx" },
         receipts_outcome: [
           { outcome: { logs: ['EVENT_JSON:{"standard":"nep297","version":"1.0.0","event":"generate_btc_pending_info","data":[{"btc_pending_id":"test_pending"}]}'] } }
         ],
       }
-      
+
       mockTransactionBuilder.send = vi.fn().mockResolvedValue(mockInitResult)
 
       const result = await client.initUtxoWithdrawal(
