@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.22.6
+
+### Patch Changes
+
+- 20a1d12: chore(deps): bump near-kit from 0.3.0 to 0.5.3
+
 ## 0.22.5
 
 ### Patch Changes
