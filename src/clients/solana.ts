@@ -426,10 +426,7 @@ export class SolanaBridgeClient {
     const USED_NONCES_PER_ACCOUNT = 1024
     const nonceGroup = payload.destinationNonce.div(new BN(USED_NONCES_PER_ACCOUNT))
     const [usedNonces] = PublicKey.findProgramAddressSync(
-      [
-        new TextEncoder().encode("used_nonces"),
-        new Uint8Array(new BN(nonceGroup.toString()).toArray("le", 8)),
-      ],
+      [new TextEncoder().encode("used_nonces"), new Uint8Array(nonceGroup.toArray("le", 8))],
       this.program.programId,
     )
 
