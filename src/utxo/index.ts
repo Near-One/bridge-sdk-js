@@ -1,4 +1,3 @@
-import { Buffer } from "node:buffer"
 import { sha256 } from "@noble/hashes/sha2.js"
 import { hex } from "@scure/base"
 import { MerkleTree } from "merkletreejs"
@@ -88,13 +87,14 @@ export function buildBitcoinMerkleProof(txids: string[], targetTxid: string) {
     throw new Error("Transaction not found in block")
   }
 
-  const leaves = txids.map((id) => Buffer.from(hex.decode(id)))
-  const tree = new MerkleTree(leaves, sha256, { isBitcoinTree: true })
+  const leaves = txids.map((id) => hex.decode(id))
+  // MerkleTree types expect Buffer but work with Uint8Array at runtime
+  const tree = new MerkleTree(leaves as unknown as Buffer[], sha256, { isBitcoinTree: true })
   const targetLeaf = leaves[targetIndex]
   if (!targetLeaf) {
     throw new Error("Target leaf not found")
   }
-  const proof = tree.getProof(targetLeaf, targetIndex)
+  const proof = tree.getProof(targetLeaf as unknown as Buffer, targetIndex)
 
   return {
     index: targetIndex,
