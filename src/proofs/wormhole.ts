@@ -1,3 +1,4 @@
+import { hex } from "@scure/base"
 import { serialize, wormhole } from "@wormhole-foundation/sdk"
 import evm from "@wormhole-foundation/sdk/evm"
 import solana from "@wormhole-foundation/sdk/solana"
@@ -9,5 +10,5 @@ export async function getVaa(txHash: string, network: "Mainnet" | "Testnet" | "D
     throw new Error("No VAA found")
   }
   const serialized = serialize(result)
-  return Buffer.from(serialized).toString("hex")
+  return hex.encode(serialized)
 }

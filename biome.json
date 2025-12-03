@@ -27,6 +27,25 @@
             "forceJsExtensions": true
           }
         }
+      },
+      "style": {
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "paths": {
+              "node:buffer": "Use Uint8Array and TextEncoder instead of Node.js Buffer for browser compatibility",
+              "node:crypto": "Use @noble/hashes or Web Crypto API for browser compatibility",
+              "node:fs": "Node.js fs module is not available in browsers",
+              "node:path": "Node.js path module is not available in browsers",
+              "node:os": "Node.js os module is not available in browsers",
+              "buffer": "Use Uint8Array and TextEncoder instead of Node.js Buffer for browser compatibility",
+              "crypto": "Use @noble/hashes or Web Crypto API for browser compatibility",
+              "fs": "Node.js fs module is not available in browsers",
+              "path": "Node.js path module is not available in browsers",
+              "os": "Node.js os module is not available in browsers"
+            }
+          }
+        }
       }
     }
   },

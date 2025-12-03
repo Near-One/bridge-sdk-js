@@ -89,34 +89,34 @@ export class SolanaBridgeClient {
 
   private wormholeBridgeId(): [PublicKey, number] {
     return PublicKey.findProgramAddressSync(
-      [Buffer.from("Bridge", "utf-8")],
+      [new TextEncoder().encode("Bridge")],
       this.wormholeProgramId,
     )
   }
 
   private wormholeFeeCollectorId(): [PublicKey, number] {
     return PublicKey.findProgramAddressSync(
-      [Buffer.from("fee_collector", "utf-8")],
+      [new TextEncoder().encode("fee_collector")],
       this.wormholeProgramId,
     )
   }
 
   private wormholeSequenceId(): [PublicKey, number] {
     return PublicKey.findProgramAddressSync(
-      [Buffer.from("Sequence", "utf-8"), this.config()[0].toBuffer()],
+      [new TextEncoder().encode("Sequence"), this.config()[0].toBuffer()],
       this.wormholeProgramId,
     )
   }
 
-  private static tokenSeedBytes(token: string): Buffer {
-    const tokenBytes = Buffer.from(token, "utf-8")
+  private static tokenSeedBytes(token: string): Uint8Array {
+    const tokenBytes = new TextEncoder().encode(token)
     if (tokenBytes.length > 32) {
       // Mirror Anchor program logic: hash addresses longer than 32 bytes
-      return Buffer.from(sha256(tokenBytes))
+      return sha256(tokenBytes)
     }
 
-    const padded = Buffer.alloc(32)
-    tokenBytes.copy(padded)
+    const padded = new Uint8Array(32)
+    padded.set(tokenBytes)
     return padded
   }
 
@@ -161,7 +161,7 @@ export class SolanaBridgeClient {
     const tokenProgram = await this.getTokenProgramForMint(tokenPublicKey)
 
     const [metadata] = PublicKey.findProgramAddressSync(
-      [Buffer.from("metadata", "utf-8"), MPL_PROGRAM_ID.toBuffer(), tokenPublicKey.toBuffer()],
+      [new TextEncoder().encode("metadata"), MPL_PROGRAM_ID.toBuffer(), tokenPublicKey.toBuffer()],
       MPL_PROGRAM_ID,
     )
     const [vault] = this.vaultId(tokenPublicKey)
@@ -215,7 +215,7 @@ export class SolanaBridgeClient {
   ): Promise<{ txHash: string; tokenAddress: string }> {
     const [mint] = this.wrappedMintId(payload.token)
     const [metadata] = PublicKey.findProgramAddressSync(
-      [Buffer.from("metadata", "utf-8"), MPL_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+      [new TextEncoder().encode("metadata"), MPL_PROGRAM_ID.toBuffer(), mint.toBuffer()],
       MPL_PROGRAM_ID,
     )
 
@@ -427,8 +427,8 @@ export class SolanaBridgeClient {
     const nonceGroup = payload.destinationNonce.div(new BN(USED_NONCES_PER_ACCOUNT))
     const [usedNonces] = PublicKey.findProgramAddressSync(
       [
-        Buffer.from("used_nonces", "utf-8"),
-        Buffer.from(new BN(nonceGroup.toString()).toArray("le", 8)),
+        new TextEncoder().encode("used_nonces"),
+        new Uint8Array(new BN(nonceGroup.toString()).toArray("le", 8)),
       ],
       this.program.programId,
     )
