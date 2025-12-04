@@ -304,6 +304,9 @@ export class NearBridgeClient {
       "required_balance_for_deploy_token",
       {},
     )
+    if (!deployDepositStr) {
+      throw new Error("Failed to retrieve required deposit for deploy_token")
+    }
 
     const tx = await this.near
       .transaction(signer)
@@ -368,6 +371,9 @@ export class NearBridgeClient {
       "required_balance_for_bind_token",
       {},
     )
+    if (!bindDepositStr) {
+      throw new Error("Failed to retrieve required deposit for bind_token")
+    }
 
     const tx = await this.near
       .transaction(signer)
@@ -591,6 +597,9 @@ export class NearBridgeClient {
       "required_balance_for_fin_transfer",
       {},
     )
+    if (!finDepositStr) {
+      throw new Error("Failed to retrieve required deposit for fin_transfer")
+    }
     const finDeposit = BigInt(finDepositStr) + storageDepositAmount
 
     const tx = await this.near
@@ -622,6 +631,10 @@ export class NearBridgeClient {
             { account_id: accountId },
           ),
         ])
+
+      if (!regBalanceStr || !initBalanceStr || !finBalanceStr || !bindBalanceStr) {
+        throw new Error("Failed to retrieve required balance information")
+      }
 
       // Convert storage balance to bigint
       let convertedStorage = null
@@ -722,6 +735,9 @@ export class NearBridgeClient {
     const depositAddress = await this.near.view<string>(connector, "get_user_deposit_address", {
       deposit_msg: depositMsg,
     })
+    if (!depositAddress) {
+      throw new Error("Failed to retrieve deposit address")
+    }
 
     return {
       depositAddress,
@@ -1091,7 +1107,7 @@ export class NearBridgeClient {
   async getUtxoAvailableOutputs(chain: UtxoChain): Promise<UTXO[]> {
     const { connector } = this.getUtxoConnector(chain)
     const result = await this.near.view<Record<string, UTXO>>(connector, "get_utxos_paged", {})
-    const utxos = result
+    const utxos = result ?? {}
     return Object.entries(utxos).map(([key, utxo]) => {
       const parts = key.split("@")
       const txid = parts[0]
@@ -1107,7 +1123,11 @@ export class NearBridgeClient {
 
   async getUtxoBridgeConfig(chain: UtxoChain): Promise<BtcConnectorConfig> {
     const { connector } = this.getUtxoConnector(chain)
-    return await this.near.view<BtcConnectorConfig>(connector, "get_config", {})
+    const config = await this.near.view<BtcConnectorConfig>(connector, "get_config", {})
+    if (!config) {
+      throw new Error("Failed to retrieve UTXO bridge config")
+    }
+    return config
   }
 
   private buildUtxoWithdrawalPlan(
@@ -1170,7 +1190,7 @@ export class NearBridgeClient {
       account_id: this.bridgeAddress,
     })
 
-    if (storage === null) {
+    if (storage === null || storage === undefined) {
       const bounds = await this.near.view<{ min: string; max: string }>(
         tokenAddress,
         "storage_balance_bounds",
@@ -1178,6 +1198,9 @@ export class NearBridgeClient {
           account_id: this.bridgeAddress,
         },
       )
+      if (!bounds) {
+        throw new Error("Failed to retrieve storage balance bounds")
+      }
       const requiredAmount = BigInt(bounds.min)
 
       const tx = await this.near
@@ -1197,7 +1220,8 @@ export class NearBridgeClient {
 
       return tx.transaction.hash
     }
-    return storage
+    // Storage already exists, no deposit needed
+    return ""
   }
 
   /**
@@ -1210,6 +1234,9 @@ export class NearBridgeClient {
       "required_balance_for_fast_transfer",
       {},
     )
+    if (!balanceStr) {
+      throw new Error("Failed to retrieve required balance for fast transfer")
+    }
     return BigInt(balanceStr)
   }
 

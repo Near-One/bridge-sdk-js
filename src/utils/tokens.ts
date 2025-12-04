@@ -78,8 +78,9 @@ export async function getBridgedToken(
   destinationChain: ChainKind,
 ): Promise<OmniAddress | null> {
   const near = new Near({ network: getNetwork() })
-  return await near.view<OmniAddress>(addresses.near.contract, "get_bridged_token", {
+  const result = await near.view<OmniAddress>(addresses.near.contract, "get_bridged_token", {
     chain: ChainKind[destinationChain].toString(),
     address: tokenAddress,
   })
+  return result ?? null
 }
