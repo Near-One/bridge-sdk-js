@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.23.1
+
+### Patch Changes
+
+- 8a72552: fix: remove Node.js Buffer usage for browser compatibility
+
 ## 0.23.0
 
 ### Minor Changes
