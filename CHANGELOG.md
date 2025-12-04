@@ -1,10 +1,23 @@
 # omni-bridge-sdk
 
+## 0.24.0
+
+### Minor Changes
+
+- 9b287f2: Migrate NEAR client implementation from near-js to near-kit library. This unifies client implementations and eliminates the need for separate wallet selector clients. The new implementation provides a more modern, type-safe API with human-readable gas and deposit units.
+
+### Patch Changes
+
+- b1459d8: chore(deps): bump @wormhole-foundation/sdk from 4.0.2 to 4.1.0
+- 1692457: chore(deps): bump @near-wallet-selector/core from 10.1.2 to 10.1.3
+- 0a540be: chore(deps): bump ethers from 6.15.0 to 6.16.0
+
 ## 0.23.0
 
 ### Minor Changes
 
 - Stable release based on 0.22.3 for partners requiring the pre-near-kit implementation. This release uses the original near-js library. Partners experiencing instability with 0.22.4+ should use this version.
+
 ## 0.22.6
 
 ### Patch Changes
