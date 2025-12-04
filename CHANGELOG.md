@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.23.0
+
+### Minor Changes
+
+- Stable release based on 0.22.3 for partners requiring the pre-near-kit implementation. This release uses the original near-js library. Partners experiencing instability with 0.22.4+ should use this version.
+
 ## 0.22.3
 
 ### Patch Changes
