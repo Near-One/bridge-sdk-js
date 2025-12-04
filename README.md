@@ -3,7 +3,8 @@
 ![Status](https://img.shields.io/badge/Status-Beta-blue)
 ![Stability](https://img.shields.io/badge/Stability-Pre--Release-yellow)
 
-A TypeScript SDK for seamless cross-chain token transfers using the Omni Bridge protocol.
+A TypeScript SDK for seamless cross-chain token transfers using the [Omni Bridge](https://github.com/Near-one/omni-bridge) protocol.
+
 
 > [!IMPORTANT]  
 > This SDK is in beta and approaching production readiness. While core functionality is stable, some features may still change. We recommend thorough testing before using in production environments.

@@ -1,13 +1,21 @@
 import { beforeAll, describe, expect, test } from "bun:test"
 import { ethers } from "ethers"
 import { EvmBridgeClient } from "../src/clients/evm.js"
-import { NearBridgeClient } from "../src/clients/near.js"
+import { NearBridgeClient } from "../src/clients/near-kit.js"
 import { setNetwork } from "../src/config.js"
 import { getEvmProof } from "../src/proofs/evm.js"
-import { ChainKind, type OmniTransferMessage, ProofKind } from "../src/types/index.js"
+import {
+  ChainKind,
+  type OmniTransferMessage,
+  ProofKind,
+} from "../src/types/index.js"
 import { omniAddress } from "../src/utils/index.js"
 import { ETH_TO_NEAR_ROUTES, TIMEOUTS } from "./shared/fixtures.js"
-import { type TestAccountsSetup, setupTestAccounts } from "./shared/setup.js"
+import {
+  TEST_CONFIG,
+  type TestAccountsSetup,
+  setupTestAccounts,
+} from "./shared/setup.js"
 
 describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
   let testAccounts: TestAccountsSetup
@@ -21,11 +29,13 @@ describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
     // Setup test accounts and clients
     testAccounts = await setupTestAccounts()
     ethClient = new EvmBridgeClient(testAccounts.ethWallet, ChainKind.Eth)
-    nearClient = new NearBridgeClient(testAccounts.nearAccount)
+    nearClient = new NearBridgeClient(testAccounts.nearKitInstance, undefined, {
+      defaultSignerId: TEST_CONFIG.networks.near.accountId,
+    })
 
     console.log("🚀 Test setup complete:")
     console.log(`  ETH Address: ${testAccounts.ethWallet.address}`)
-    console.log(`  NEAR Account: ${testAccounts.nearAccount.accountId}`)
+    console.log(`  NEAR Account: ${TEST_CONFIG.networks.near.accountId}`)
   })
 
   test.each(ETH_TO_NEAR_ROUTES)(
@@ -50,7 +60,10 @@ describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
       console.log("  Fee: 0 (manual flow)")
 
       // Step 1: Initiate transfer on Ethereum (with permanent approval)
-      const transactionHash = await ethClient.initTransfer(transferMessage, true)
+      const transactionHash = await ethClient.initTransfer(
+        transferMessage,
+        true
+      )
 
       console.log("✓ Transfer initiated on Ethereum!")
       console.log(`  Transaction Hash: ${transactionHash}`)
@@ -61,7 +74,9 @@ describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
 
       // Step 2: Get the InitTransfer event from the transaction
       console.log("\n🔍 Step 2: Extracting transfer event from transaction...")
-      const transferEvent = await ethClient.getInitTransferEvent(transactionHash)
+      const transferEvent = await ethClient.getInitTransferEvent(
+        transactionHash
+      )
 
       console.log("✓ Transfer event extracted!")
       console.log(`  Origin Nonce: ${transferEvent.originNonce}`)
@@ -84,7 +99,11 @@ describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
         "InitTransfer(address,address,uint64,uint128,uint128,uint128,string,string)"
       const INIT_TRANSFER_TOPIC = ethers.id(initTransferSignature)
 
-      const proof = await getEvmProof(transactionHash, INIT_TRANSFER_TOPIC, ChainKind.Eth)
+      const proof = await getEvmProof(
+        transactionHash,
+        INIT_TRANSFER_TOPIC,
+        ChainKind.Eth
+      )
 
       console.log("✓ EVM proof generated!")
       console.log("  Proof length:", proof.proof.length)
@@ -94,7 +113,7 @@ describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
       expect(proof.proof.length).toBeGreaterThan(0)
 
       // Step 4: Wait for transaction to be finalized
-      const shouldWaitForLightClient = process.env.FULL_E2E_TEST === "true"
+      const shouldWaitForLightClient = process.env["FULL_E2E_TEST"] === "true"
 
       if (shouldWaitForLightClient) {
         console.log("\n⏳ Step 4: Waiting for light client (30 mins)...")
@@ -110,8 +129,9 @@ describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
           route.recipient,
           BigInt(0),
           ChainKind.Eth,
+          undefined, // signerId (uses defaultSignerId)
           undefined, // No VAA needed for EVM
-          { proof_kind: ProofKind.InitTransfer, proof }, // EVM proof required
+          { proof_kind: ProofKind.InitTransfer, proof } // EVM proof required
         )
 
         console.log("✓ Transfer finalized on NEAR!")
@@ -132,7 +152,7 @@ describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
       } else {
         console.log("\n⚡ Step 4: Skipping light client wait and finalization")
         console.log(
-          "   Set FULL_E2E_TEST=true to run complete flow including 30min wait + finalization",
+          "   Set FULL_E2E_TEST=true to run complete flow including 30min wait + finalization"
         )
 
         console.log("\n🎯 Partial transfer flow completed successfully!")
@@ -144,6 +164,6 @@ describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
         console.log(`✅ ${route.name} proof generation test completed!`)
       }
     },
-    TIMEOUTS.FULL_E2E_FLOW,
+    TIMEOUTS.FULL_E2E_FLOW
   )
 })

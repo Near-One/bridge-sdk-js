@@ -5,6 +5,25 @@
 ### Minor Changes
 
 - Stable release based on 0.22.3 for partners requiring the pre-near-kit implementation. This release uses the original near-js library. Partners experiencing instability with 0.22.4+ should use this version.
+## 0.22.6
+
+### Patch Changes
+
+- 20a1d12: chore(deps): bump near-kit from 0.3.0 to 0.5.3
+
+## 0.22.5
+
+### Patch Changes
+
+- 9be1fe7: fix: remove Node.js Buffer usage for browser compatibility
+
+## 0.22.4
+
+### Patch Changes
+
+- f8fd681: Migrate NEAR client implementation from near-js to near-kit library. This change is fully backwards compatible and unifies client implementations, eliminating the need for separate wallet selector clients. It also fixes borsh-serialization issues that users experienced with wallet selector integrations. The new implementation provides a more modern, type-safe API with human-readable gas and deposit units for better developer experience.
+- 6d14960: chore(deps): bump @zorsh/zorsh from 0.3.3 to 0.4.0
+- 274b725: chore(deps): bump @wormhole-foundation/sdk from 3.11.0 to 4.0.2
 
 ## 0.22.3
 

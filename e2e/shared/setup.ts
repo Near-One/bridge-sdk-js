@@ -1,11 +1,9 @@
-import os from "node:os"
-import path from "node:path"
 import { AnchorProvider, Wallet, setProvider } from "@coral-xyz/anchor"
-import { Account } from "@near-js/accounts"
-import { createRpcClientWrapper, getSignerFromKeystore } from "@near-js/client"
-import { UnencryptedFileSystemKeyStore } from "@near-js/keystores-node"
 import { Connection, Keypair } from "@solana/web3.js"
 import { ethers } from "ethers"
+import { Near } from "near-kit"
+import os from "node:os"
+import path from "node:path"
 
 export interface TestConfig {
   timeout: number
@@ -37,52 +35,59 @@ export const TEST_CONFIG: TestConfig = {
       accountId: "omni-sdk-test.testnet",
       networkId: "testnet",
       contractId: "v1.signer-prod.testnet",
-      rpcUrl: "https://rpc.testnet.near.org",
+      rpcUrl: "https://test.rpc.fastnear.com",
       credentialsPath: path.join(os.homedir(), ".near-credentials"),
     },
     ethereum: {
       rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
       chainId: 11155111, // Sepolia
-      privateKey: process.env.ETH_PRIVATE_KEY,
+      ...(process.env["ETH_PRIVATE_KEY"] && {
+        privateKey: process.env["ETH_PRIVATE_KEY"],
+      }),
     },
     solana: {
       rpcUrl: "https://api.devnet.solana.com",
-      commitment: "confirmed",
-      privateKey: process.env.SOL_PRIVATE_KEY,
+      commitment: "confirmed" as const,
+      ...(process.env["SOL_PRIVATE_KEY"] && {
+        privateKey: process.env["SOL_PRIVATE_KEY"],
+      }),
     },
   },
 }
 
-export async function createNearAccount(): Promise<Account> {
+export async function createNearKitInstance(): Promise<Near> {
   const { near } = TEST_CONFIG.networks
 
   // Use environment variable in CI, fallback to keystore file locally
-  const privateKey = process.env.NEAR_PRIVATE_KEY
+  const privateKey = process.env["NEAR_PRIVATE_KEY"]
+
   if (privateKey) {
     // CI environment - use private key from environment
-    const { InMemoryKeyStore } = await import("@near-js/keystores")
-    const { KeyPair } = await import("@near-js/crypto")
-    const keyStore = new InMemoryKeyStore()
-    // biome-ignore lint/suspicious/noExplicitAny: NEAR KeyPair typing issue
-    const keyPair = KeyPair.fromString(privateKey as any)
-    await keyStore.setKey(near.networkId, near.accountId, keyPair)
-    const signer = await getSignerFromKeystore(near.accountId, near.networkId, keyStore)
-    const provider = createRpcClientWrapper([near.rpcUrl])
-    return new Account(near.accountId, provider, signer)
+    return new Near({
+      network: near.networkId,
+      privateKey: privateKey as `ed25519:${string}`,
+      defaultSignerId: near.accountId,
+      rpcUrl: near.rpcUrl,
+    })
   }
 
-  // Local development - use keystore file
-  const keyStore = new UnencryptedFileSystemKeyStore(near.credentialsPath)
-  const signer = await getSignerFromKeystore(near.accountId, near.networkId, keyStore)
-  const provider = createRpcClientWrapper([near.rpcUrl])
-  return new Account(near.accountId, provider, signer)
+  // Local development - use FileKeyStore
+  const { FileKeyStore } = await import("near-kit/keys/file")
+  return new Near({
+    network: near.networkId,
+    keyStore: new FileKeyStore(near.credentialsPath, near.networkId),
+    defaultSignerId: near.accountId,
+    rpcUrl: near.rpcUrl,
+  })
 }
 
 export async function createEthereumWallet(): Promise<ethers.Wallet> {
   const { ethereum } = TEST_CONFIG.networks
 
   if (!ethereum.privateKey) {
-    throw new Error("ETH_PRIVATE_KEY environment variable required for Ethereum tests")
+    throw new Error(
+      "ETH_PRIVATE_KEY environment variable required for Ethereum tests"
+    )
   }
 
   const provider = new ethers.JsonRpcProvider(ethereum.rpcUrl)
@@ -93,11 +98,15 @@ export async function createSolanaProvider(): Promise<AnchorProvider> {
   const { solana } = TEST_CONFIG.networks
 
   if (!solana.privateKey) {
-    throw new Error("SOL_PRIVATE_KEY environment variable required for Solana tests")
+    throw new Error(
+      "SOL_PRIVATE_KEY environment variable required for Solana tests"
+    )
   }
 
   // Convert private key from base58 string to Keypair
-  const privateKeyBytes = Uint8Array.from(Buffer.from(solana.privateKey, "base64"))
+  const privateKeyBytes = Uint8Array.from(
+    Buffer.from(solana.privateKey, "base64")
+  )
   const keypair = Keypair.fromSecretKey(privateKeyBytes)
 
   const connection = new Connection(solana.rpcUrl, solana.commitment)
@@ -112,14 +121,14 @@ export async function createSolanaProvider(): Promise<AnchorProvider> {
 }
 
 export interface TestAccountsSetup {
-  nearAccount: Account
+  nearKitInstance: Near
   ethWallet: ethers.Wallet
   solanaProvider: AnchorProvider
 }
 
 export async function setupTestAccounts(): Promise<TestAccountsSetup> {
   return {
-    nearAccount: await createNearAccount(),
+    nearKitInstance: await createNearKitInstance(),
     ethWallet: await createEthereumWallet(),
     solanaProvider: await createSolanaProvider(),
   }
