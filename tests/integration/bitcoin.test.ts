@@ -440,6 +440,9 @@ describe("Bitcoin Integration Tests", () => {
     })
 
     it("should handle unconfirmed Bitcoin transactions", async () => {
+      // Mock bridge config fetch
+      mockNear.view = vi.fn().mockResolvedValue(mockRealBtcConfig)
+
       const mockDepositArgs: BtcDepositArgs = {
         deposit_msg: { recipient_id: REAL_WITHDRAWAL_DATA.testAccount },
       }
@@ -725,7 +728,7 @@ describe("Bitcoin Integration Tests", () => {
           REAL_WITHDRAWAL_DATA.realDepositVout,
           mockDepositArgs
         )
-      ).rejects.toThrow(/UTXO RPC request failed/)
+      ).rejects.toThrow(/Failed to retrieve UTXO bridge config/)
     })
 
     it("should handle NEAR contract failures", async () => {
