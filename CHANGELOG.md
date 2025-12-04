@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.24.2
+
+### Patch Changes
+
+- 1dd7181: chore(deps): bump @near-wallet-selector/core from 10.1.3 to 10.1.4
+
 ## 0.24.1
 
 ### Patch Changes
