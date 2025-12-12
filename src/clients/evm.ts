@@ -129,6 +129,13 @@ export class EvmBridgeClient {
         throw new Error(`Factory address not configured for chain ${chain}`)
     }
 
+    // Validate that the bridge address is not a zero address
+    if (bridgeAddress === "0x0000000000000000000000000000000000000000") {
+      throw new Error(
+        `Bridge contract address not configured for ${ChainKind[chain]}. Please configure the address using setConfig() before using the client.`,
+      )
+    }
+
     this.factory = new ethers.Contract(
       bridgeAddress,
       BRIDGE_TOKEN_FACTORY_ABI,
