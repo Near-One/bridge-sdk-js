@@ -51,6 +51,7 @@ export function parseOriginChain(nearAddress: string): ChainKind | null {
     if (nearAddress.startsWith("base-")) return ChainKind.Base
     if (nearAddress.startsWith("arb-")) return ChainKind.Arb
     if (nearAddress.startsWith("bnb-")) return ChainKind.Bnb
+    if (nearAddress.startsWith("pol-")) return ChainKind.Pol
     if (nearAddress.includes("factory.bridge")) return ChainKind.Eth
   }
 

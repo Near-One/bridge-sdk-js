@@ -5,6 +5,7 @@ export type ChainAddresses = {
   base: string
   bnb: string
   eth: string
+  pol: string
   near: {
     contract: string
     rpcUrls: string[]
@@ -47,6 +48,7 @@ const ADDRESSES: Record<NetworkType, ChainAddresses> = {
     base: "0xd025b38762B4A4E36F0Cde483b86CB13ea00D989",
     bnb: "0x073C8a225c8Cf9d3f9157F5C1a1DbE02407f5720",
     eth: "0xe00c629afaccb0510995a2b95560e446a24c85b9",
+    pol: "0x0000000000000000000000000000000000000000", // TODO: Add mainnet address
     near: {
       contract: "omni.bridge.near",
       rpcUrls: ["https://free.rpc.fastnear.com"],
@@ -79,6 +81,7 @@ const ADDRESSES: Record<NetworkType, ChainAddresses> = {
     base: "0xa56b860017152cD296ad723E8409Abd6e5D86d4d",
     bnb: "0x7Fd1E9F9ed48ebb64476ba9E06e5F1a90e31DA74",
     eth: "0x68a86e0Ea5B1d39F385c1326e4d493526dFe4401",
+    pol: "0x0000000000000000000000000000000000000000", // TODO: Add testnet address
     near: {
       contract: "omni.n-bridge.testnet",
       rpcUrls: ["https://test.rpc.fastnear.com"],
@@ -169,6 +172,9 @@ export const addresses = {
   },
   get eth() {
     return getConfig().eth
+  },
+  get pol() {
+    return getConfig().pol
   },
   get near() {
     return getConfig().near
