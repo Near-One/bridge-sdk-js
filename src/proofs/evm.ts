@@ -37,14 +37,14 @@ const RPC_URLS: Record<"mainnet" | "testnet", Record<EVMChainKind, string>> = {
     [ChainKind.Base]: "https://mainnet.base.org",
     [ChainKind.Arb]: "https://arb1.arbitrum.io/rpc",
     [ChainKind.Bnb]: "https://bsc-rpc.publicnode.com",
-    [ChainKind.Pol]: "https://polygon-rpc.com",
+    [ChainKind.Pol]: "https://polygon-bor-rpc.publicnode.com",
   },
   testnet: {
     [ChainKind.Eth]: "https://ethereum-sepolia.publicnode.com",
     [ChainKind.Base]: "https://sepolia.base.org",
     [ChainKind.Arb]: "https://sepolia-rollup.arbitrum.io/rpc",
     [ChainKind.Bnb]: "https://bsc-testnet-rpc.publicnode.com",
-    [ChainKind.Pol]: "https://rpc-amoy.polygon.technology",
+    [ChainKind.Pol]: "https://polygon-amoy-bor-rpc.publicnode.com",
   },
 }
 
