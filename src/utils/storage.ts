@@ -13,6 +13,7 @@ const OmniAddressSchema = b.enum({
   Bnb: b.array(b.u8(), 20),
   Btc: b.string(),
   Zcash: b.string(),
+  Pol: b.array(b.u8(), 20),
 })
 
 /**
@@ -97,6 +98,8 @@ function parseOmniAddress(token: string) {
       return { Base: decodeHex(address) }
     case "bnb":
       return { Bnb: decodeHex(address) }
+    case "pol":
+      return { Pol: decodeHex(address) }
     case "btc":
       return { Btc: address }
     case "zcash":

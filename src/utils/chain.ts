@@ -1,10 +1,15 @@
 import type { OmniAddress } from "../types/index.js"
 import { ChainKind } from "../types/index.js"
 
-type ChainPrefix = "eth" | "near" | "sol" | "arb" | "base" | "bnb" | "btc" | "zec"
+type ChainPrefix = "eth" | "near" | "sol" | "arb" | "base" | "bnb" | "btc" | "zec" | "pol"
 
 // Type helpers for EVM chains
-export type EVMChainKind = ChainKind.Eth | ChainKind.Base | ChainKind.Arb | ChainKind.Bnb
+export type EVMChainKind =
+  | ChainKind.Eth
+  | ChainKind.Base
+  | ChainKind.Arb
+  | ChainKind.Bnb
+  | ChainKind.Pol
 
 /**
  * Checks if a given chain is an EVM-compatible chain
@@ -16,7 +21,8 @@ export function isEvmChain(chain: ChainKind): chain is EVMChainKind {
     chain === ChainKind.Eth ||
     chain === ChainKind.Base ||
     chain === ChainKind.Arb ||
-    chain === ChainKind.Bnb
+    chain === ChainKind.Bnb ||
+    chain === ChainKind.Pol
   )
 }
 
@@ -39,6 +45,7 @@ export const getChain = (addr: OmniAddress): ChainKind => {
     bnb: ChainKind.Bnb,
     btc: ChainKind.Btc,
     zec: ChainKind.Zcash,
+    pol: ChainKind.Pol,
   } as const
 
   return chainMapping[prefix]
