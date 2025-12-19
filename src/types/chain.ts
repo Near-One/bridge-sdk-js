@@ -9,6 +9,7 @@ export enum ChainKind {
   Bnb = 5,
   Btc = 6,
   Zcash = 7,
+  Pol = 8,
 }
 
 export const ChainKindSchema = b.nativeEnum(ChainKind)

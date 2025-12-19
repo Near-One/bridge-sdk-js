@@ -11,3 +11,4 @@ export type OmniAddress =
   | `btc:${string}`
   | `bnb:${string}`
   | `zec:${string}`
+  | `pol:${string}`
