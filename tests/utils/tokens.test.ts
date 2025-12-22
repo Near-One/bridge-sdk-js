@@ -137,6 +137,12 @@ describe("Token Resolution", () => {
       expect(parseOriginChain("bnb-0x123456789abcdef.omdep.near")).toBe(ChainKind.Bnb)
     })
 
+    it("returns correct chain for prefixed omft.near tokens", () => {
+      expect(parseOriginChain("sol-3ZLekZYq2qkZiSpnSvabjit34tUkjSwD1JFuW9as9wBG.omft.near")).toBe(
+        ChainKind.Sol,
+      )
+    })
+
     it("returns correct chain for prefixed omnidep.testnet tokens", () => {
       expect(
         parseOriginChain("sol-FUfkKBMpZ74vdWmPjjLpmuekqVkBMjbHqHedVGdSv929.omnidep.testnet"),
