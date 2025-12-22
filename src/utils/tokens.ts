@@ -5,7 +5,7 @@ import { ChainKind, type OmniAddress } from "../types/index.js"
 const CHAIN_PATTERNS: Record<string, ChainKind> = {
   "nbtc.bridge.near": ChainKind.Btc,
   "eth.bridge.near": ChainKind.Eth,
-  "sol.omdep.near": ChainKind.Sol,
+  "sol.omft.near": ChainKind.Sol,
   "base.omdep.near": ChainKind.Base,
   "arb.omdep.near": ChainKind.Arb,
   "bnb.omdep.near": ChainKind.Bnb,

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest"
 import { ChainKind, type OmniAddress } from "../../src/types/index.js"
 import { getBridgedToken } from "../../src/utils/index.js"
 import { parseOriginChain } from "../../src/utils/tokens.js"
@@ -49,7 +49,7 @@ describe("Token Resolution", () => {
     vi.clearAllMocks()
 
     // Mock the view function to simulate contract responses using proper vitest syntax
-    const mockView = vi.mocked(view)
+    const mockView = view as unknown as Mock
 
     // @ts-ignore mock params
     mockView.mockImplementation(async (params: unknown) => {
@@ -113,7 +113,7 @@ describe("Token Resolution", () => {
     it("returns correct chain for exact matches", () => {
       expect(parseOriginChain("nbtc.bridge.near")).toBe(ChainKind.Btc)
       expect(parseOriginChain("eth.bridge.near")).toBe(ChainKind.Eth)
-      expect(parseOriginChain("sol.omdep.near")).toBe(ChainKind.Sol)
+      expect(parseOriginChain("sol.omft.near")).toBe(ChainKind.Sol)
       expect(parseOriginChain("base.omdep.near")).toBe(ChainKind.Base)
       expect(parseOriginChain("arb.omdep.near")).toBe(ChainKind.Arb)
       expect(parseOriginChain("bnb.omdep.near")).toBe(ChainKind.Bnb)
