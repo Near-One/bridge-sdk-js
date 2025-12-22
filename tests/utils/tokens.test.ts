@@ -110,7 +110,7 @@ describe("Token Resolution", () => {
     it("returns correct chain for exact matches", () => {
       expect(parseOriginChain("nbtc.bridge.near")).toBe(ChainKind.Btc)
       expect(parseOriginChain("eth.bridge.near")).toBe(ChainKind.Eth)
-      expect(parseOriginChain("sol.omdep.near")).toBe(ChainKind.Sol)
+      expect(parseOriginChain("sol.omft.near")).toBe(ChainKind.Sol)
       expect(parseOriginChain("base.omdep.near")).toBe(ChainKind.Base)
       expect(parseOriginChain("arb.omdep.near")).toBe(ChainKind.Arb)
       expect(parseOriginChain("bnb.omdep.near")).toBe(ChainKind.Bnb)
