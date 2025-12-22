@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.23.2
+
+### Patch Changes
+
+- d08ed04: Update sol.omdep.near to sol.omft.near (legacy)
+
 ## 0.23.1
 
 ### Patch Changes
