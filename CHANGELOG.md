@@ -1,5 +1,11 @@
 # omni-bridge-sdk
 
+## 0.23.3
+
+### Patch Changes
+
+- 19ed7c9: Add omft.near suffix pattern for future SPL token migrations
+
 ## 0.23.2
 
 ### Patch Changes
