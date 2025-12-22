@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - feat/add-omft-suffix-legacy
     paths:
       - ".changeset/**"
       - ".github/workflows/changesets.yaml"
