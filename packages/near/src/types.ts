@@ -347,3 +347,6 @@ export interface UtxoConnectorConfig {
   min_change_amount?: string
   max_withdrawal_input_number?: number
 }
+
+// Re-export UTXO from core for convenience
+export type { UTXO } from "@omni-bridge/core"

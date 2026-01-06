@@ -63,6 +63,7 @@ export {
   type TokenDecimals,
   type TransferParams,
   type U128,
+  type UTXO,
   type UtxoChain,
   type ValidatedTransfer,
 } from "./types.js"

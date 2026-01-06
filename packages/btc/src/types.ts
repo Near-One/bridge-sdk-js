@@ -4,16 +4,8 @@
 
 import type { ChainKind } from "@omni-bridge/core"
 
-/**
- * Raw UTXO as received from wallet or external source
- */
-export interface UTXO {
-  txid: string
-  vout: number
-  balance: bigint | number | string
-  tx_bytes?: Uint8Array | number[]
-  path?: string
-}
+// Re-export UTXO from core for convenience
+export type { UTXO } from "@omni-bridge/core"
 
 /**
  * Normalized UTXO for internal processing

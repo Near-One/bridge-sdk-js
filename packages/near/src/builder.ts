@@ -23,6 +23,7 @@ import {
   GAS,
   ProofKind,
   type TransferId,
+  type UTXO,
   type UtxoConnectorConfig,
   type UtxoDepositFinalizationParams,
   type UtxoWithdrawalInitParams,
@@ -186,6 +187,32 @@ export interface NearBuilder {
    * @returns The connector configuration
    */
   getUtxoConnectorConfig(chain: "btc" | "zcash"): Promise<UtxoConnectorConfig>
+
+  /**
+   * Get available UTXOs from the connector contract.
+   *
+   * @param chain - The UTXO chain ("btc" or "zcash")
+   * @returns Array of available UTXOs for withdrawal
+   */
+  getUtxoAvailableOutputs(chain: "btc" | "zcash"): Promise<UTXO[]>
+
+  /**
+   * Get the nBTC/nZEC token balance for an account.
+   *
+   * @param chain - The UTXO chain ("btc" or "zcash")
+   * @param accountId - NEAR account to check balance for
+   * @returns Token balance in satoshis/zatoshis
+   */
+  getUtxoTokenBalance(chain: "btc" | "zcash", accountId: string): Promise<bigint>
+
+  /**
+   * Calculate the bridge fee for a UTXO withdrawal.
+   *
+   * @param chain - The UTXO chain ("btc" or "zcash")
+   * @param amount - Withdrawal amount in satoshis/zatoshis
+   * @returns Bridge fee amount
+   */
+  calculateUtxoWithdrawalFee(chain: "btc" | "zcash", amount: bigint): Promise<bigint>
 }
 
 /**
@@ -678,6 +705,60 @@ class NearBuilderImpl implements NearBuilder {
     }
 
     return config
+  }
+
+  async getUtxoAvailableOutputs(chain: "btc" | "zcash"): Promise<UTXO[]> {
+    const near = this.getNearClient()
+    const connector = this.getUtxoConnectorAddress(chain)
+
+    interface RawUtxoEntry {
+      vout: number
+      balance: string
+      path?: string
+      tx_bytes?: number[]
+    }
+
+    const result = await near.view<Record<string, RawUtxoEntry>>(connector, "get_utxos_paged", {})
+    const utxos = result ?? {}
+
+    return Object.entries(utxos).map(([key, utxo]) => {
+      const parts = key.split("@")
+      const txid = parts[0]
+      if (!txid) {
+        throw new Error(`Invalid UTXO key format: ${key}`)
+      }
+      return {
+        txid,
+        vout: utxo.vout,
+        balance: BigInt(utxo.balance),
+        path: utxo.path,
+        tx_bytes: utxo.tx_bytes,
+      }
+    })
+  }
+
+  async getUtxoTokenBalance(chain: "btc" | "zcash", accountId: string): Promise<bigint> {
+    const near = this.getNearClient()
+    const token = this.getUtxoTokenAddress(chain)
+
+    const balance = await near.view<string>(token, "ft_balance_of", {
+      account_id: accountId,
+    })
+
+    return BigInt(balance ?? "0")
+  }
+
+  async calculateUtxoWithdrawalFee(chain: "btc" | "zcash", amount: bigint): Promise<bigint> {
+    const config = await this.getUtxoConnectorConfig(chain)
+    const feeConfig = config.withdraw_bridge_fee
+
+    // Basis point denominator: 1 basis point = 0.01%, so 10000 = 100%
+    const MAX_RATIO = 10000n
+    const feeRate = BigInt(feeConfig.fee_rate)
+    const feeMin = BigInt(feeConfig.fee_min)
+
+    const percentageFee = (amount * feeRate) / MAX_RATIO
+    return percentageFee > feeMin ? percentageFee : feeMin
   }
 
   private getNearClient(): Near {

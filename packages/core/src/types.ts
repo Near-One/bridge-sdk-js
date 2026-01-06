@@ -39,6 +39,27 @@ export type Fee = bigint
 // UTXO chain subset
 export type UtxoChain = ChainKind.Btc | ChainKind.Zcash
 
+// =============================================================================
+// UTXO TYPES (shared between @omni-bridge/btc and @omni-bridge/near)
+// =============================================================================
+
+/**
+ * Unspent Transaction Output (UTXO) for Bitcoin/Zcash operations.
+ * Used for both fetching available outputs and building withdrawal plans.
+ */
+export interface UTXO {
+  /** Transaction ID */
+  txid: string
+  /** Output index in the transaction */
+  vout: number
+  /** Balance in satoshis/zatoshis (flexible input types for convenience) */
+  balance: bigint | number | string
+  /** Raw transaction bytes (optional, for signing) */
+  tx_bytes?: Uint8Array | number[] | undefined
+  /** HD derivation path (optional, for hardware wallets) */
+  path?: string | undefined
+}
+
 // Transfer parameters (input from consumer)
 export interface TransferParams {
   token: OmniAddress

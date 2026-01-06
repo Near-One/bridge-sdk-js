@@ -40,6 +40,7 @@ export {
   StorageDepositActionSchema,
   type TransferFee,
   type TransferId,
+  type UTXO,
   // UTXO types
   type UtxoBridgeFee,
   type UtxoConnectorConfig,
