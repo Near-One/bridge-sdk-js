@@ -13,4 +13,10 @@ export {
   type TokenMetadata,
   type TransferPayload,
 } from "./builder.js"
+export {
+  type EvmInitTransferEvent,
+  getInitTransferTopic,
+  type LogEntry,
+  parseInitTransferEvent,
+} from "./events.js"
 export { type EvmProof, getEvmProof } from "./proof.js"

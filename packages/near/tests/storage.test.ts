@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { calculateStorageAccountId } from "./storage.js"
+import { calculateStorageAccountId } from "../src/storage.js"
 
 describe("calculateStorageAccountId", () => {
   it("verify known storage account ID", () => {
