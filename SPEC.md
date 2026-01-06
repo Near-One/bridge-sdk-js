@@ -12,6 +12,7 @@ The current SDK (`src/`) was designed for frontend use cases where wallets sign 
 4. **Tight coupling** - Transaction building is coupled to signing/execution, can't get one without the other
 
 The current implementation lives in:
+
 - `src/client.ts` - Main `omniTransfer()` entry point
 - `src/factory.ts` - Creates chain-specific clients based on wallet type
 - `src/clients/evm.ts` - EVM client (ethers-based, signs immediately)
@@ -23,6 +24,7 @@ The pattern in all clients is: validate → build transaction → sign → broad
 ### What Success Looks Like
 
 A backend consumer can:
+
 ```typescript
 const validated = await bridge.validateTransfer(params)
 const unsignedTx = await evm.buildTransfer(validated)
@@ -46,40 +48,40 @@ A multi-package SDK redesign that separates transaction building from execution.
 
 ## Design Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| RPC data fetching | Fresh every time | Simple, always accurate, no cache invalidation |
-| Multi-step transactions | Separate functions | `buildApproval()` and `buildTransfer()` are independent |
-| Intents support | Out of scope | Higher-level concern, consumers build on top |
-| Error handling | Throw exceptions | Standard JS pattern with typed errors |
-| Proof handling | Include in chain packages | EVM proofs in `@omni-bridge/evm`, etc. |
-| NEAR storage deposits | SDK fetches balance | Convenience for consumers |
-| RPC configuration | Defaults with override | SDK has public RPC URLs, consumer can provide client |
-| Package namespace | `@omni-bridge/*` | Chain-agnostic branding |
-| EVM chain selection | Inferred from ValidatedTransfer | `sourceChain` determines which network |
-| Gas estimation | Document only | Keep SDK simple, consumers estimate themselves |
-| Retry behavior | 3x with exponential backoff | Built-in reliability for RPC calls |
-| Solana program IDs | In core config | Not a consumer concern |
-| Type exports | Export everything | SDK consumers need types for wrappers |
-| Network configuration | Factory pattern | `createBridge({ network })` returns configured instance |
-| Address validation | Strict | Throw on invalid checksum/format |
-| Token lookup | Optional | SDK fetches bridged token if not provided |
-| Versioning | Lockstep | All packages share version number |
-| Logging | Silent | Consumers add their own observability |
-| UTXO operations | Separate `@omni-bridge/btc` package | Clean separation |
-| Umbrella package | Yes, `@omni-bridge/sdk` | Convenience for full-stack apps |
-| Custom RPC | Public defaults | Consumer can override with own client |
-| Unregistered tokens | Throw error | Registration is separate flow |
-| Node.js version | 20+ | Current LTS |
-| Browser support | Universal | Use Node APIs, bundlers handle polyfills |
-| Caching | None | Stateless SDK, consumers cache at their level |
-| Token registration | Include | Anyone can deploy tokens, not operator-only |
-| Fast finalization | Include | Relayers are SDK consumers too |
-| MPC signing | Include | Part of transfer finalization flow |
-| API client | Expose publicly | Consumers may want direct API access |
-| Unsigned tx format | Library-agnostic plain objects | SDK returns intent, shims convert to library-specific types |
-| Shim pattern | Optional helpers per library | `toNearKitTransaction()`, `toViemRequest()`, etc. |
-| Nonce/block hash | Consumer responsibility | SDK doesn't fetch; shims or consumers handle it |
+| Decision                | Choice                              | Rationale                                                   |
+| ----------------------- | ----------------------------------- | ----------------------------------------------------------- |
+| RPC data fetching       | Fresh every time                    | Simple, always accurate, no cache invalidation              |
+| Multi-step transactions | Separate functions                  | `buildApproval()` and `buildTransfer()` are independent     |
+| Intents support         | Out of scope                        | Higher-level concern, consumers build on top                |
+| Error handling          | Throw exceptions                    | Standard JS pattern with typed errors                       |
+| Proof handling          | Include in chain packages           | EVM proofs in `@omni-bridge/evm`, etc.                      |
+| NEAR storage deposits   | SDK fetches balance                 | Convenience for consumers                                   |
+| RPC configuration       | Defaults with override              | SDK has public RPC URLs, consumer can provide client        |
+| Package namespace       | `@omni-bridge/*`                    | Chain-agnostic branding                                     |
+| EVM chain selection     | Inferred from ValidatedTransfer     | `sourceChain` determines which network                      |
+| Gas estimation          | Document only                       | Keep SDK simple, consumers estimate themselves              |
+| Retry behavior          | 3x with exponential backoff         | Built-in reliability for RPC calls                          |
+| Solana program IDs      | In core config                      | Not a consumer concern                                      |
+| Type exports            | Export everything                   | SDK consumers need types for wrappers                       |
+| Network configuration   | Factory pattern                     | `createBridge({ network })` returns configured instance     |
+| Address validation      | Strict                              | Throw on invalid checksum/format                            |
+| Token lookup            | Optional                            | SDK fetches bridged token if not provided                   |
+| Versioning              | Lockstep                            | All packages share version number                           |
+| Logging                 | Silent                              | Consumers add their own observability                       |
+| UTXO operations         | Separate `@omni-bridge/btc` package | Clean separation                                            |
+| Umbrella package        | Yes, `@omni-bridge/sdk`             | Convenience for full-stack apps                             |
+| Custom RPC              | Public defaults                     | Consumer can override with own client                       |
+| Unregistered tokens     | Throw error                         | Registration is separate flow                               |
+| Node.js version         | 20+                                 | Current LTS                                                 |
+| Browser support         | Universal                           | Use Node APIs, bundlers handle polyfills                    |
+| Caching                 | None                                | Stateless SDK, consumers cache at their level               |
+| Token registration      | Include                             | Anyone can deploy tokens, not operator-only                 |
+| Fast finalization       | Include                             | Relayers are SDK consumers too                              |
+| MPC signing             | Include                             | Part of transfer finalization flow                          |
+| API client              | Expose publicly                     | Consumers may want direct API access                        |
+| Unsigned tx format      | Library-agnostic plain objects      | SDK returns intent, shims convert to library-specific types |
+| Shim pattern            | Optional helpers per library        | `toNearKitTransaction()`, `toViemRequest()`, etc.           |
+| Nonce/block hash        | Consumer responsibility             | SDK doesn't fetch; shims or consumers handle it             |
 
 ---
 
@@ -88,6 +90,7 @@ A multi-package SDK redesign that separates transaction building from execution.
 The SDK returns **library-agnostic unsigned transactions** - plain objects describing the intent (recipient, data, value, actions) without any library-specific types or signing context.
 
 **Why?**
+
 - NEAR transactions require `nonce`, `blockHash`, `publicKey` that are access-key-specific and time-sensitive
 - Nonces can go stale between build and send (especially with concurrent transactions)
 - Consumers use different libraries (viem vs ethers, near-kit vs near-api-js)
@@ -108,12 +111,12 @@ The SDK returns **library-agnostic unsigned transactions** - plain objects descr
                                                      └─────────────────────┘
 ```
 
-| Chain | SDK Returns | Available Shims |
-|-------|-------------|-----------------|
-| EVM | `EvmUnsignedTransaction` | `toViemRequest()`, `toEthersRequest()` |
-| NEAR | `NearUnsignedTransaction` | `toNearKitTransaction()`, `toNearApiJsTransaction()` |
-| Solana | `SolanaUnsignedTransaction` | `toSolanaTransaction()`, `toSolanaInstructions()` |
-| BTC | `BtcUnsignedTransaction` | (consumers handle directly) |
+| Chain  | SDK Returns                 | Available Shims                                      |
+| ------ | --------------------------- | ---------------------------------------------------- |
+| EVM    | `EvmUnsignedTransaction`    | `toViemRequest()`, `toEthersRequest()`               |
+| NEAR   | `NearUnsignedTransaction`   | `toNearKitTransaction()`, `toNearApiJsTransaction()` |
+| Solana | `SolanaUnsignedTransaction` | `toSolanaTransaction()`, `toSolanaInstructions()`    |
+| BTC    | `BtcUnsignedTransaction`    | (consumers handle directly)                          |
 
 Shims that need RPC access (like `toNearKitTransaction`) take a client instance as a parameter. The SDK itself never makes RPC calls for nonces or block hashes.
 
@@ -145,8 +148,8 @@ The foundation package. Types, validation, configuration, and API client.
 
 ```typescript
 export interface BridgeConfig {
-  network: 'mainnet' | 'testnet'
-  rpcUrls?: Partial<Record<ChainKind, string>>  // Override defaults
+  network: "mainnet" | "testnet"
+  rpcUrls?: Partial<Record<ChainKind, string>> // Override defaults
 }
 
 export function createBridge(config: BridgeConfig): Bridge
@@ -155,7 +158,10 @@ export interface Bridge {
   readonly network: Network
   validateTransfer(params: TransferParams): Promise<ValidatedTransfer>
   getTokenDecimals(token: OmniAddress): Promise<TokenDecimals>
-  getBridgedToken(token: OmniAddress, destChain: ChainKind): Promise<OmniAddress | null>
+  getBridgedToken(
+    token: OmniAddress,
+    destChain: ChainKind
+  ): Promise<OmniAddress | null>
   api: BridgeAPI
 }
 ```
@@ -188,7 +194,7 @@ export type OmniAddress =
 
 export interface TransferParams {
   token: OmniAddress
-  amount: bigint           // Always BigInt, consumer converts from string
+  amount: bigint // Always BigInt, consumer converts from string
   fee: bigint
   nativeFee: bigint
   sender: OmniAddress
@@ -203,7 +209,7 @@ export interface ValidatedTransfer {
   normalizedAmount: bigint
   normalizedFee: bigint
   contractAddress: string
-  bridgedToken?: OmniAddress  // Looked up if not provided
+  bridgedToken?: OmniAddress // Looked up if not provided
 }
 
 // Unsigned transaction types - library-agnostic plain objects
@@ -224,18 +230,29 @@ export interface NearUnsignedTransaction {
 }
 
 export type NearAction =
-  | { type: 'FunctionCall'; methodName: string; args: Uint8Array; gas: bigint; deposit: bigint }
-  | { type: 'Transfer'; amount: bigint }
-  | { type: 'DeployContract'; code: Uint8Array }
-  | { type: 'CreateAccount' }
-  | { type: 'DeleteAccount'; beneficiaryId: string }
-  | { type: 'AddKey'; publicKey: string; permission: NearAccessKeyPermission }
-  | { type: 'DeleteKey'; publicKey: string }
-  | { type: 'Stake'; amount: bigint; publicKey: string }
+  | {
+      type: "FunctionCall"
+      methodName: string
+      args: Uint8Array
+      gas: bigint
+      deposit: bigint
+    }
+  | { type: "Transfer"; amount: bigint }
+  | { type: "DeployContract"; code: Uint8Array }
+  | { type: "CreateAccount" }
+  | { type: "DeleteAccount"; beneficiaryId: string }
+  | { type: "AddKey"; publicKey: string; permission: NearAccessKeyPermission }
+  | { type: "DeleteKey"; publicKey: string }
+  | { type: "Stake"; amount: bigint; publicKey: string }
 
 export type NearAccessKeyPermission =
-  | { type: 'FullAccess' }
-  | { type: 'FunctionCall'; receiverId: string; methodNames: string[]; allowance?: bigint }
+  | { type: "FullAccess" }
+  | {
+      type: "FunctionCall"
+      receiverId: string
+      methodNames: string[]
+      allowance?: bigint
+    }
 
 export interface SolanaUnsignedTransaction {
   feePayer: string
@@ -258,10 +275,16 @@ export interface BtcUnsignedTransaction {
 
 ```typescript
 // Throws on validation failure (strict address validation, amount checks, etc.)
-export async function validateTransfer(params: TransferParams): Promise<ValidatedTransfer>
+export async function validateTransfer(
+  params: TransferParams
+): Promise<ValidatedTransfer>
 
 // Utility
-export function normalizeAmount(amount: bigint, fromDecimals: number, toDecimals: number): bigint
+export function normalizeAmount(
+  amount: bigint,
+  fromDecimals: number,
+  toDecimals: number
+): bigint
 ```
 
 ### API Client (Exposed)
@@ -270,9 +293,15 @@ export function normalizeAmount(amount: bigint, fromDecimals: number, toDecimals
 export class BridgeAPI {
   constructor(network: Network)
 
-  getTransferStatus(params: { nonce?: string; txHash?: string }): Promise<TransferStatus>
+  getTransferStatus(params: {
+    nonce?: string
+    txHash?: string
+  }): Promise<TransferStatus>
   findTransfers(params: FindTransfersParams): Promise<Transfer[]>
-  getBridgedToken(token: OmniAddress, destChain: ChainKind): Promise<OmniAddress | null>
+  getBridgedToken(
+    token: OmniAddress,
+    destChain: ChainKind
+  ): Promise<OmniAddress | null>
   getTokenDecimals(token: OmniAddress): Promise<TokenDecimals | null>
 }
 ```
@@ -292,7 +321,7 @@ Builds unsigned EVM transactions. Returns library-agnostic objects with optional
 
 ```typescript
 export interface EvmBuilderConfig {
-  network: 'mainnet' | 'testnet'
+  network: "mainnet" | "testnet"
 }
 
 export function createEvmBuilder(config: EvmBuilderConfig): EvmBuilder
@@ -300,41 +329,61 @@ export function createEvmBuilder(config: EvmBuilderConfig): EvmBuilder
 export interface EvmBuilder {
   // Transfers - returns library-agnostic type
   buildTransfer(validated: ValidatedTransfer): EvmUnsignedTransaction
-  buildApproval(token: `0x${string}`, spender: `0x${string}`, amount: bigint): EvmUnsignedTransaction
+  buildApproval(
+    token: `0x${string}`,
+    spender: `0x${string}`,
+    amount: bigint
+  ): EvmUnsignedTransaction
 
   // Finalization
-  buildFinalization(payload: TransferMessagePayload, signature: Uint8Array): EvmUnsignedTransaction
+  buildFinalization(
+    payload: TransferMessagePayload,
+    signature: Uint8Array
+  ): EvmUnsignedTransaction
 
   // Token registration (anyone can call)
   buildLogMetadata(token: `0x${string}`): EvmUnsignedTransaction
-  buildDeployToken(signature: Uint8Array, metadata: TokenMetadata): EvmUnsignedTransaction
+  buildDeployToken(
+    signature: Uint8Array,
+    metadata: TokenMetadata
+  ): EvmUnsignedTransaction
 
   // Proofs (requires RPC access)
   fetchProof(client: EvmRpcClient, txHash: `0x${string}`): Promise<EvmProof>
-  
+
   // Allowance check (requires RPC access)
-  checkAllowance(client: EvmRpcClient, token: `0x${string}`, owner: `0x${string}`): Promise<bigint>
+  checkAllowance(
+    client: EvmRpcClient,
+    token: `0x${string}`,
+    owner: `0x${string}`
+  ): Promise<bigint>
 }
 
 // RPC client interface - consumers provide their own
 export interface EvmRpcClient {
   call(params: { to: string; data: string }): Promise<string>
   getTransactionReceipt(hash: string): Promise<TransactionReceipt>
-  getProof(address: string, storageKeys: string[], blockNumber: bigint): Promise<EthProof>
+  getProof(
+    address: string,
+    storageKeys: string[],
+    blockNumber: bigint
+  ): Promise<EthProof>
 }
 ```
 
 ### Shims
 
 ```typescript
-import type { TransactionRequest } from 'viem'
-import type { TransactionRequest as EthersTransactionRequest } from 'ethers'
+import type { TransactionRequest } from "viem"
+import type { TransactionRequest as EthersTransactionRequest } from "ethers"
 
 // Convert to viem-compatible format
 export function toViemRequest(tx: EvmUnsignedTransaction): TransactionRequest
 
-// Convert to ethers-compatible format  
-export function toEthersRequest(tx: EvmUnsignedTransaction): EthersTransactionRequest
+// Convert to ethers-compatible format
+export function toEthersRequest(
+  tx: EvmUnsignedTransaction
+): EthersTransactionRequest
 ```
 
 ### Usage with Shims
@@ -366,7 +415,7 @@ Builds unsigned NEAR transactions as library-agnostic action lists. Shims conver
 
 ```typescript
 export interface NearBuilderConfig {
-  network: 'mainnet' | 'testnet'
+  network: "mainnet" | "testnet"
 }
 
 export function createNearBuilder(config: NearBuilderConfig): NearBuilder
@@ -385,29 +434,44 @@ export interface NearBuilder {
   buildBindToken(proof: Uint8Array, signerId: string): NearUnsignedTransaction
 
   // MPC Signing (for outbound transfers)
-  buildSignTransfer(transferId: TransferId, feeRecipient: string, signerId: string): NearUnsignedTransaction
+  buildSignTransfer(
+    transferId: TransferId,
+    feeRecipient: string,
+    signerId: string
+  ): NearUnsignedTransaction
 
   // Fast finalization (for relayers)
   buildFastFinTransfer(params: FastFinTransferParams): NearUnsignedTransaction
 
   // Storage balance check (requires RPC)
-  getRequiredStorageDeposit(client: NearRpcClient, accountId: string): Promise<bigint>
+  getRequiredStorageDeposit(
+    client: NearRpcClient,
+    accountId: string
+  ): Promise<bigint>
 }
 
 // RPC client interface - consumers provide their own
 export interface NearRpcClient {
-  query<T>(params: { request_type: string; account_id: string; method_name?: string; args_base64?: string }): Promise<T>
+  query<T>(params: {
+    request_type: string
+    account_id: string
+    method_name?: string
+    args_base64?: string
+  }): Promise<T>
 }
 ```
 
 ### Shims
 
 ```typescript
-import type { Near, TransactionBuilder } from 'near-kit'
-import type { Transaction } from '@near-js/transactions'
+import type { Near, TransactionBuilder } from "near-kit"
+import type { Transaction } from "@near-js/transactions"
 
 // Convert to near-kit TransactionBuilder (handles nonce/blockHash automatically)
-export function toNearKitTransaction(client: Near, unsigned: NearUnsignedTransaction): TransactionBuilder
+export function toNearKitTransaction(
+  client: Near,
+  unsigned: NearUnsignedTransaction
+): TransactionBuilder
 
 // Convert to near-api-js Transaction (requires additional params)
 export function toNearApiJsTransaction(
@@ -436,12 +500,12 @@ await tx.send()
 ### Why This Pattern?
 
 NEAR transactions require `publicKey`, `nonce`, and `blockHash` fields that are:
+
 1. **Access-key specific** - nonce is per-key, not per-account
 2. **Time-sensitive** - nonce can go stale with concurrent transactions
 3. **Signing-context dependent** - you need to know which key signs before building
 
 By returning just `{ signerId, receiverId, actions }`, the SDK stays stateless and consumers handle timing-sensitive fields at send time via their chosen library.
-```
 
 ---
 
@@ -458,7 +522,7 @@ Builds unsigned Solana transactions as library-agnostic instruction lists.
 
 ```typescript
 export interface SolanaBuilderConfig {
-  network: 'mainnet' | 'testnet'
+  network: "mainnet" | "testnet"
 }
 
 export function createSolanaBuilder(config: SolanaBuilderConfig): SolanaBuilder
@@ -468,11 +532,19 @@ export interface SolanaBuilder {
   buildTransfer(validated: ValidatedTransfer): SolanaUnsignedTransaction
 
   // Finalization
-  buildFinalization(payload: TransferMessagePayload, signature: Uint8Array, payer: string): SolanaUnsignedTransaction
+  buildFinalization(
+    payload: TransferMessagePayload,
+    signature: Uint8Array,
+    payer: string
+  ): SolanaUnsignedTransaction
 
   // Token registration
   buildLogMetadata(token: string, payer: string): SolanaUnsignedTransaction
-  buildDeployToken(signature: Uint8Array, metadata: TokenMetadata, payer: string): SolanaUnsignedTransaction
+  buildDeployToken(
+    signature: Uint8Array,
+    metadata: TokenMetadata,
+    payer: string
+  ): SolanaUnsignedTransaction
 
   // PDA utilities
   derivePDAs(): SolanaPDAs
@@ -482,8 +554,8 @@ export interface SolanaBuilder {
 ### Shims
 
 ```typescript
-import type { Transaction, TransactionInstruction } from '@solana/web3.js'
-import type { Connection } from '@solana/web3.js'
+import type { Transaction, TransactionInstruction } from "@solana/web3.js"
+import type { Connection } from "@solana/web3.js"
 
 // Convert to @solana/web3.js Transaction (fetches recent blockhash)
 export async function toSolanaTransaction(
@@ -492,17 +564,19 @@ export async function toSolanaTransaction(
 ): Promise<Transaction>
 
 // Convert to raw instructions (for custom transaction building)
-export function toSolanaInstructions(unsigned: SolanaUnsignedTransaction): TransactionInstruction[]
+export function toSolanaInstructions(
+  unsigned: SolanaUnsignedTransaction
+): TransactionInstruction[]
 ```
 
 ### Usage with Shims
 
 ```typescript
-import { createSolanaBuilder, toSolanaTransaction } from '@omni-bridge/solana'
-import { Connection, sendAndConfirmTransaction } from '@solana/web3.js'
+import { createSolanaBuilder, toSolanaTransaction } from "@omni-bridge/solana"
+import { Connection, sendAndConfirmTransaction } from "@solana/web3.js"
 
-const solBuilder = createSolanaBuilder({ network: 'mainnet' })
-const connection = new Connection('https://api.mainnet-beta.solana.com')
+const solBuilder = createSolanaBuilder({ network: "mainnet" })
+const connection = new Connection("https://api.mainnet-beta.solana.com")
 
 // Build library-agnostic transaction
 const unsigned = solBuilder.buildTransfer(validated)
@@ -511,7 +585,6 @@ const unsigned = solBuilder.buildTransfer(validated)
 const tx = await toSolanaTransaction(connection, unsigned)
 tx.sign(keypair)
 await sendAndConfirmTransaction(connection, tx, [keypair])
-```
 ```
 
 ---
@@ -529,8 +602,8 @@ UTXO chain operations (Bitcoin, Zcash).
 
 ```typescript
 export interface BtcBuilderConfig {
-  network: 'mainnet' | 'testnet'
-  chain: 'btc' | 'zcash'
+  network: "mainnet" | "testnet"
+  chain: "btc" | "zcash"
 }
 
 export function createBtcBuilder(config: BtcBuilderConfig): BtcBuilder
@@ -560,11 +633,11 @@ Umbrella package that re-exports everything.
 
 ```typescript
 // Re-exports everything
-export * from '@omni-bridge/core'
-export * from '@omni-bridge/evm'
-export * from '@omni-bridge/near'
-export * from '@omni-bridge/solana'
-export * from '@omni-bridge/btc'
+export * from "@omni-bridge/core"
+export * from "@omni-bridge/evm"
+export * from "@omni-bridge/near"
+export * from "@omni-bridge/solana"
+export * from "@omni-bridge/btc"
 ```
 
 ---
@@ -574,16 +647,19 @@ export * from '@omni-bridge/btc'
 ### Backend (EVM) - Full Control
 
 ```typescript
-import { createBridge, TransferParams } from '@omni-bridge/core'
-import { createEvmBuilder, toViemRequest } from '@omni-bridge/evm'
-import { createPublicClient, createWalletClient, http } from 'viem'
-import { privateKeyToAccount } from 'viem/accounts'
-import { mainnet } from 'viem/chains'
+import { createBridge, TransferParams } from "@omni-bridge/core"
+import { createEvmBuilder, toViemRequest } from "@omni-bridge/evm"
+import { createPublicClient, createWalletClient, http } from "viem"
+import { privateKeyToAccount } from "viem/accounts"
+import { mainnet } from "viem/chains"
 
-const bridge = createBridge({ network: 'mainnet' })
-const evm = createEvmBuilder({ network: 'mainnet' })
+const bridge = createBridge({ network: "mainnet" })
+const evm = createEvmBuilder({ network: "mainnet" })
 
-async function initiateTransfer(params: TransferParams, temporalKey: `0x${string}`) {
+async function initiateTransfer(
+  params: TransferParams,
+  temporalKey: `0x${string}`
+) {
   // 1. Validate (SDK handles decimal normalization, fee checks, etc.)
   const validated = await bridge.validateTransfer(params)
 
@@ -595,11 +671,19 @@ async function initiateTransfer(params: TransferParams, temporalKey: `0x${string
 
   // 4. Check approval (consumer's responsibility)
   const publicClient = createPublicClient({ chain: mainnet, transport: http() })
-  const tokenAddress = params.token.split(':')[1] as `0x${string}`
-  const allowance = await evm.checkAllowance(publicClient, tokenAddress, temporalKey)
-  
+  const tokenAddress = params.token.split(":")[1] as `0x${string}`
+  const allowance = await evm.checkAllowance(
+    publicClient,
+    tokenAddress,
+    temporalKey
+  )
+
   if (allowance < params.amount + params.fee) {
-    const approvalUnsigned = evm.buildApproval(tokenAddress, validated.contractAddress, params.amount + params.fee)
+    const approvalUnsigned = evm.buildApproval(
+      tokenAddress,
+      validated.contractAddress,
+      params.amount + params.fee
+    )
     // Sign and send approval with toViemRequest(approvalUnsigned)...
   }
 
@@ -611,7 +695,11 @@ async function initiateTransfer(params: TransferParams, temporalKey: `0x${string
 
   // 6. Sign and send
   const account = privateKeyToAccount(temporalKey)
-  const walletClient = createWalletClient({ account, chain: mainnet, transport: http() })
+  const walletClient = createWalletClient({
+    account,
+    chain: mainnet,
+    transport: http(),
+  })
 
   return walletClient.sendTransaction({
     ...txRequest,
@@ -623,12 +711,12 @@ async function initiateTransfer(params: TransferParams, temporalKey: `0x${string
 ### Frontend (EVM) - Minimal Wrapper
 
 ```typescript
-import { createBridge } from '@omni-bridge/core'
-import { createEvmBuilder, toViemRequest } from '@omni-bridge/evm'
-import { useWalletClient } from 'wagmi'
+import { createBridge } from "@omni-bridge/core"
+import { createEvmBuilder, toViemRequest } from "@omni-bridge/evm"
+import { useWalletClient } from "wagmi"
 
-const bridge = createBridge({ network: 'mainnet' })
-const evm = createEvmBuilder({ network: 'mainnet' })
+const bridge = createBridge({ network: "mainnet" })
+const evm = createEvmBuilder({ network: "mainnet" })
 
 async function transfer(params: TransferParams) {
   const { data: walletClient } = useWalletClient()
@@ -644,13 +732,13 @@ async function transfer(params: TransferParams) {
 ### Backend (NEAR) - Using near-kit
 
 ```typescript
-import { createBridge } from '@omni-bridge/core'
-import { createNearBuilder, toNearKitTransaction } from '@omni-bridge/near'
-import { Near } from 'near-kit'
+import { createBridge } from "@omni-bridge/core"
+import { createNearBuilder, toNearKitTransaction } from "@omni-bridge/near"
+import { Near } from "near-kit"
 
-const bridge = createBridge({ network: 'mainnet' })
-const nearBuilder = createNearBuilder({ network: 'mainnet' })
-const near = new Near({ network: 'mainnet', privateKey: '...' })
+const bridge = createBridge({ network: "mainnet" })
+const nearBuilder = createNearBuilder({ network: "mainnet" })
+const near = new Near({ network: "mainnet", privateKey: "..." })
 
 async function initiateTransfer(params: TransferParams) {
   // 1. Validate
@@ -759,6 +847,7 @@ export class ProofError extends OmniBridgeError {
 ## Retry Behavior
 
 All RPC calls automatically retry 3 times with exponential backoff:
+
 - Attempt 1: immediate
 - Attempt 2: 1 second delay
 - Attempt 3: 2 second delay
@@ -806,6 +895,7 @@ Monorepo tooling: bun workspaces with lockstep versioning via changesets.
 ### What to Reuse from Current Codebase
 
 These can be adapted (logic is correct, just needs decoupling from wallet):
+
 - `src/utils/decimals.ts` - Decimal normalization logic, move to core
 - `src/api.ts` - Bridge API client, move to core
 - `src/config.ts` - Contract addresses and network config, move to core
@@ -814,11 +904,13 @@ These can be adapted (logic is correct, just needs decoupling from wallet):
 - `src/proofs/wormhole.ts` - Wormhole VAA fetching, may need rework
 
 These need rework to return library-agnostic unsigned transaction types:
-- `src/clients/evm.ts` - Extract ABI encoding logic, return `{ to, data, value, chainId }` 
+
+- `src/clients/evm.ts` - Extract ABI encoding logic, return `{ to, data, value, chainId }`
 - `src/clients/near-kit.ts` - Extract action building logic, return `{ signerId, receiverId, actions }`
 - `src/clients/solana.ts` - Extract instruction building logic, return `{ feePayer, instructions }`
 
 Shims are new code that convert library-agnostic types to library-specific types:
+
 - `toViemRequest()` / `toEthersRequest()` - trivial type mapping for EVM
 - `toNearKitTransaction()` - applies actions to a TransactionBuilder, which handles nonce/blockHash
 - `toNearApiJsTransaction()` - requires consumer to provide nonce/blockHash/publicKey
@@ -829,6 +921,7 @@ Shims are new code that convert library-agnostic types to library-specific types
 Dependencies flow: `core` → chain packages → `sdk`
 
 Recommended order:
+
 1. **core** first - types, config, validation, API client (no chain deps)
 2. **evm** second - simplest chain, good template for others
 3. **near** third - more complex (storage deposits, multiple operations)
@@ -876,6 +969,7 @@ bun run test           # All tests must pass
 #### 1. Unit Tests (fast, no network)
 
 For pure functions and deterministic output:
+
 - `normalizeAmount()` - decimal conversion edge cases (0 decimals, 18 decimals, overflow)
 - Address validation - checksums, format parsing, invalid input handling
 - ABI encoding - output matches expected bytes for known inputs
@@ -886,6 +980,7 @@ These live in `packages/*/tests/` alongside the source code.
 #### 2. E2E Tests (real testnet transactions)
 
 The `e2e/` directory has existing end-to-end tests that perform real transfers on testnet:
+
 - `e2e/eth-to-near.test.ts` - ETH → NEAR transfers
 - `e2e/near-to-eth.test.ts` - NEAR → ETH transfers
 - `e2e/near-to-sol.test.ts` - NEAR → Solana transfers
@@ -894,12 +989,14 @@ The `e2e/` directory has existing end-to-end tests that perform real transfers o
 These tests currently use the old SDK (ethers, near-kit, Anchor). **Update them to use the new packages.** If the e2e tests pass with the new SDK, the implementation is correct.
 
 The pattern should change from:
+
 ```typescript
 // OLD: SDK signs and broadcasts
 const txHash = await ethClient.initTransfer(transferMessage)
 ```
 
 To:
+
 ```typescript
 // NEW: SDK builds, consumer signs
 const validated = await bridge.validateTransfer(params)
@@ -910,6 +1007,7 @@ const txHash = await walletClient.sendTransaction(unsignedTx)
 ### Testnet Configuration
 
 Already configured in `.env`:
+
 ```bash
 ETH_PRIVATE_KEY=...      # Funded on Sepolia
 SOL_PRIVATE_KEY=...      # Funded on Solana devnet
@@ -932,6 +1030,7 @@ Set `FULL_E2E_TEST=true` to run complete flows including finalization (takes 30+
 ### Acceptance Criteria Per Package
 
 **@omni-bridge/core**
+
 - [ ] `createBridge({ network })` returns configured instance
 - [ ] `validateTransfer()` throws `ValidationError` for invalid inputs
 - [ ] `validateTransfer()` returns `ValidatedTransfer` for valid inputs
@@ -939,6 +1038,7 @@ Set `FULL_E2E_TEST=true` to run complete flows including finalization (takes 30+
 - [ ] `BridgeAPI` class is exported and functional
 
 **@omni-bridge/evm**
+
 - [ ] `createEvmBuilder({ network })` returns configured instance
 - [ ] `buildTransfer()` returns `EvmUnsignedTransaction` with correct ABI-encoded data
 - [ ] `buildApproval()` returns correct ERC20 approve calldata
@@ -947,6 +1047,7 @@ Set `FULL_E2E_TEST=true` to run complete flows including finalization (takes 30+
 - [ ] Output works with viem's `sendTransaction()` after shim conversion
 
 **@omni-bridge/near**
+
 - [ ] `createNearBuilder({ network })` returns configured instance
 - [ ] `buildTransfer()` returns `NearUnsignedTransaction` with correct actions
 - [ ] `toNearKitTransaction()` applies actions to TransactionBuilder correctly
@@ -954,6 +1055,7 @@ Set `FULL_E2E_TEST=true` to run complete flows including finalization (takes 30+
 - [ ] Actions can be used with any NEAR signing library
 
 **@omni-bridge/solana**
+
 - [ ] `createSolanaBuilder({ network })` returns configured instance
 - [ ] `buildTransfer()` returns `SolanaUnsignedTransaction` with correct instructions
 - [ ] `toSolanaTransaction()` creates valid Transaction with fetched blockhash
@@ -961,6 +1063,7 @@ Set `FULL_E2E_TEST=true` to run complete flows including finalization (takes 30+
 - [ ] PDA derivation matches on-chain program expectations
 
 **@omni-bridge/btc**
+
 - [ ] `createBtcBuilder({ network, chain })` returns configured instance
 - [ ] `selectUtxos()` correctly selects UTXOs for target amount
 - [ ] `buildWithdrawalPlan()` returns valid transaction structure
