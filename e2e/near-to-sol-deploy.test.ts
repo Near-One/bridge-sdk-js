@@ -96,8 +96,8 @@ describe("NEAR → SOL token deployment (shim PDA derivation)", () => {
         wrappedMintAddress = expectedMint.toString()
       } catch (error: unknown) {
         const message = (error as Error).message ?? ""
-        // Token may already be deployed
-        expect(message).toMatch(/already deployed|already in use/i)
+        // Token may already be deployed - AccountNotSystemOwned occurs when metadata PDA exists
+        expect(message).toMatch(/already deployed|already in use|AccountNotSystemOwned/i)
         console.log(
           "Solana deploy_token indicates already deployed:",
           message,
