@@ -244,8 +244,8 @@ const fee = await api.getFee(
 const validated = await bridge.validateTransfer({
   token: "near:wrap.near",
   amount: 1000000000000000000000000n,
-  fee: BigInt(fee.transferred_token_fee),
-  nativeFee: BigInt(fee.native_token_fee),
+  fee: BigInt(fee.transferred_token_fee ?? "0"),
+  nativeFee: fee.native_token_fee ?? 0n,
   sender: "near:alice.near",
   recipient: "eth:0x1234...",
 })

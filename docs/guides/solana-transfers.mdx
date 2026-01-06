@@ -182,8 +182,8 @@ const fee = await api.getFee(
 const validated = await bridge.validateTransfer({
   token: "sol:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
   amount: 1000000n,
-  fee: BigInt(fee.transferred_token_fee),
-  nativeFee: BigInt(fee.native_token_fee),
+  fee: BigInt(fee.transferred_token_fee ?? "0"),
+  nativeFee: fee.native_token_fee ?? 0n,
   sender: `sol:${payer.toBase58()}`,
   recipient: "near:recipient.near",
 })
