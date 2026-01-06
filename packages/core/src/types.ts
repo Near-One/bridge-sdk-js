@@ -68,12 +68,16 @@ export interface TokenDecimals {
 }
 
 // Unsigned transaction types for each chain
+
+/**
+ * EVM unsigned transaction - compatible with both viem and ethers v6.
+ * Can be passed directly to walletClient.sendTransaction() or signer.sendTransaction()
+ */
 export interface EvmUnsignedTransaction {
-  type: "evm"
-  chainId: number
   to: `0x${string}`
   data: `0x${string}`
   value: bigint
+  chainId: number
 }
 
 export interface NearAction {

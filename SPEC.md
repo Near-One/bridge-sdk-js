@@ -111,12 +111,12 @@ The SDK returns **library-agnostic unsigned transactions** - plain objects descr
                                                      └─────────────────────┘
 ```
 
-| Chain  | SDK Returns                 | Available Shims                                          |
+| Chain  | SDK Returns                 | Notes                                                    |
 | ------ | --------------------------- | -------------------------------------------------------- |
-| EVM    | `EvmUnsignedTransaction`    | `toViemRequest()`, `toEthersRequest()`                   |
-| NEAR   | `NearUnsignedTransaction`   | `toNearKitTransaction()`, `toNearApiJsActions()`, `sendWithNearApiJs()` |
-| Solana | `SolanaUnsignedTransaction` | `toSolanaTransaction()`, `toSolanaInstructions()`        |
-| BTC    | `BtcUnsignedTransaction`    | (consumers handle directly)                              |
+| EVM    | `EvmUnsignedTransaction`    | Directly compatible with viem and ethers v6             |
+| NEAR   | `NearUnsignedTransaction`   | Use `toNearKitTransaction()` or `sendWithNearApiJs()`   |
+| Solana | `TransactionInstruction[]`  | Native @solana/web3.js instructions                     |
+| BTC    | `BtcUnsignedTransaction`    | Consumers handle signing directly                       |
 
 Shims that need RPC access (like `toNearKitTransaction`) take a client instance as a parameter. The SDK itself never makes RPC calls for nonces or block hashes.
 
@@ -212,17 +212,17 @@ export interface ValidatedTransfer {
   bridgedToken?: OmniAddress // Looked up if not provided
 }
 
-// Unsigned transaction types - library-agnostic plain objects
-// These represent "intent" only - no nonce, block hash, or key material
-// Shims convert these to library-specific types
+// Unsigned transaction types
 
+// EVM - directly compatible with viem/ethers, no shims needed
 export interface EvmUnsignedTransaction {
-  chainId: number
   to: `0x${string}`
   data: `0x${string}`
   value: bigint
+  chainId: number
 }
 
+// NEAR - use shims to convert to near-kit or near-api-js format
 export interface NearUnsignedTransaction {
   signerId: string
   receiverId: string
@@ -310,12 +310,12 @@ export class BridgeAPI {
 
 ## `@omni-bridge/evm`
 
-Builds unsigned EVM transactions. Returns library-agnostic objects with optional shims for viem/ethers.
+Builds unsigned EVM transactions. Returns objects directly compatible with viem and ethers v6 - no shims needed.
 
 ### Dependencies
 
 - `@omni-bridge/core`
-- `viem` (for ABI encoding only, not for transaction types)
+- `viem` (for ABI encoding only)
 
 ### Factory
 
@@ -327,77 +327,77 @@ export interface EvmBuilderConfig {
 export function createEvmBuilder(config: EvmBuilderConfig): EvmBuilder
 
 export interface EvmBuilder {
-  // Transfers - returns library-agnostic type
+  // Transfers
   buildTransfer(validated: ValidatedTransfer): EvmUnsignedTransaction
   buildApproval(
     token: `0x${string}`,
     spender: `0x${string}`,
     amount: bigint
   ): EvmUnsignedTransaction
+  buildMaxApproval(token: `0x${string}`, spender: `0x${string}`): EvmUnsignedTransaction
 
   // Finalization
   buildFinalization(
-    payload: TransferMessagePayload,
-    signature: Uint8Array
+    payload: TransferPayload,
+    signature: Uint8Array,
+    chainId: number
   ): EvmUnsignedTransaction
 
-  // Token registration (anyone can call)
-  buildLogMetadata(token: `0x${string}`): EvmUnsignedTransaction
+  // Token registration
+  buildLogMetadata(token: `0x${string}`, bridgeAddress: `0x${string}`, chainId: number): EvmUnsignedTransaction
   buildDeployToken(
     signature: Uint8Array,
-    metadata: TokenMetadata
+    metadata: TokenMetadata,
+    bridgeAddress: `0x${string}`,
+    chainId: number
   ): EvmUnsignedTransaction
-
-  // Proofs (requires RPC access)
-  fetchProof(client: EvmRpcClient, txHash: `0x${string}`): Promise<EvmProof>
-
-  // Allowance check (requires RPC access)
-  checkAllowance(
-    client: EvmRpcClient,
-    token: `0x${string}`,
-    owner: `0x${string}`
-  ): Promise<bigint>
 }
 
-// RPC client interface - consumers provide their own
-export interface EvmRpcClient {
-  call(params: { to: string; data: string }): Promise<string>
-  getTransactionReceipt(hash: string): Promise<TransactionReceipt>
-  getProof(
-    address: string,
-    storageKeys: string[],
-    blockNumber: bigint
-  ): Promise<EthProof>
+// Transaction type - directly usable with viem and ethers
+interface EvmUnsignedTransaction {
+  to: `0x${string}`
+  data: `0x${string}`
+  value: bigint
+  chainId: number
 }
 ```
 
-### Shims
+### Usage with viem
 
 ```typescript
-import type { TransactionRequest } from "viem"
-import type { TransactionRequest as EthersTransactionRequest } from "ethers"
+import { createBridge } from '@omni-bridge/core'
+import { createEvmBuilder } from '@omni-bridge/evm'
+import { createWalletClient, http } from 'viem'
+import { mainnet } from 'viem/chains'
 
-// Convert to viem-compatible format
-export function toViemRequest(tx: EvmUnsignedTransaction): TransactionRequest
-
-// Convert to ethers-compatible format
-export function toEthersRequest(
-  tx: EvmUnsignedTransaction
-): EthersTransactionRequest
-```
-
-### Usage with Shims
-
-```typescript
-import { createEvmBuilder, toViemRequest } from '@omni-bridge/evm'
-import { createWalletClient } from 'viem'
-
+const bridge = createBridge({ network: 'mainnet' })
 const evm = createEvmBuilder({ network: 'mainnet' })
-const unsigned = evm.buildTransfer(validated)
 
-// Convert to viem format and send
-const walletClient = createWalletClient({ ... })
-await walletClient.sendTransaction(toViemRequest(unsigned))
+const validated = await bridge.validateTransfer(params)
+const tx = evm.buildTransfer(validated)
+
+// Pass directly to viem - no conversion needed
+const walletClient = createWalletClient({ chain: mainnet, transport: http() })
+await walletClient.sendTransaction(tx)
+```
+
+### Usage with ethers v6
+
+```typescript
+import { createBridge } from '@omni-bridge/core'
+import { createEvmBuilder } from '@omni-bridge/evm'
+import { Wallet, JsonRpcProvider } from 'ethers'
+
+const bridge = createBridge({ network: 'mainnet' })
+const evm = createEvmBuilder({ network: 'mainnet' })
+
+const validated = await bridge.validateTransfer(params)
+const tx = evm.buildTransfer(validated)
+
+// Pass directly to ethers - no conversion needed
+const provider = new JsonRpcProvider('https://...')
+const wallet = new Wallet(privateKey, provider)
+await wallet.sendTransaction(tx)
 ```
 
 ---
@@ -558,80 +558,101 @@ The builder handles view calls (like `getRequiredStorageDeposit()`) internally u
 
 ## `@omni-bridge/solana`
 
-Builds unsigned Solana transactions as library-agnostic instruction lists.
+Builds Solana transaction instructions using Anchor. Unlike NEAR, Solana has a single library ecosystem (@solana/web3.js + Anchor), so no shim pattern is needed. The builder returns `TransactionInstruction[]` directly.
 
 ### Dependencies
 
 - `@omni-bridge/core`
 - `@coral-xyz/anchor` (for IDL-based instruction encoding)
+- `@solana/web3.js`
+- `@solana/spl-token`
 
 ### Factory
 
 ```typescript
+import type { Connection, PublicKey, TransactionInstruction } from "@solana/web3.js"
+
 export interface SolanaBuilderConfig {
   network: "mainnet" | "testnet"
+  connection: Connection  // Required for account lookups
 }
 
 export function createSolanaBuilder(config: SolanaBuilderConfig): SolanaBuilder
 
 export interface SolanaBuilder {
-  // Transfers - returns library-agnostic type
-  buildTransfer(validated: ValidatedTransfer): SolanaUnsignedTransaction
+  // Transfers - returns instructions, consumer builds Transaction
+  buildTransfer(validated: ValidatedTransfer, payer: PublicKey): Promise<TransactionInstruction[]>
 
   // Finalization
   buildFinalization(
     payload: TransferMessagePayload,
-    signature: Uint8Array,
-    payer: string
-  ): SolanaUnsignedTransaction
+    signature: MPCSignature,
+    payer: PublicKey
+  ): Promise<TransactionInstruction[]>
 
   // Token registration
-  buildLogMetadata(token: string, payer: string): SolanaUnsignedTransaction
+  buildLogMetadata(token: PublicKey, payer: PublicKey): Promise<TransactionInstruction[]>
   buildDeployToken(
-    signature: Uint8Array,
+    signature: MPCSignature,
     metadata: TokenMetadata,
-    payer: string
-  ): SolanaUnsignedTransaction
+    payer: PublicKey
+  ): Promise<TransactionInstruction[]>
 
-  // PDA utilities
-  derivePDAs(): SolanaPDAs
+  // PDA derivation (pure, no RPC needed)
+  deriveConfig(): PublicKey
+  deriveAuthority(): PublicKey
+  deriveWrappedMint(token: string): PublicKey
+  deriveVault(mint: PublicKey): PublicKey
+  deriveSolVault(): PublicKey
 }
 ```
 
-### Shims
+### Why Instructions Instead of Transactions?
+
+Unlike EVM/NEAR where we return library-agnostic objects, Solana returns native `TransactionInstruction[]` because:
+
+1. **Single library ecosystem** - Everyone uses @solana/web3.js, no competing libraries
+2. **RPC required anyway** - Account lookups (token program, bridged status) need a Connection
+3. **Consumer controls blockhash** - Can use durable nonces, set priority fees, etc.
+4. **Batching** - Consumer can combine multiple operations into one transaction
+
+### Usage
 
 ```typescript
-import type { Transaction, TransactionInstruction } from "@solana/web3.js"
-import type { Connection } from "@solana/web3.js"
+import { createBridge } from "@omni-bridge/core"
+import { createSolanaBuilder } from "@omni-bridge/solana"
+import { Connection, Transaction, sendAndConfirmTransaction, Keypair } from "@solana/web3.js"
 
-// Convert to @solana/web3.js Transaction (fetches recent blockhash)
-export async function toSolanaTransaction(
-  connection: Connection,
-  unsigned: SolanaUnsignedTransaction
-): Promise<Transaction>
+const bridge = createBridge({ network: "mainnet" })
+const connection = new Connection("https://api.mainnet-beta.solana.com")
+const solBuilder = createSolanaBuilder({ network: "mainnet", connection })
 
-// Convert to raw instructions (for custom transaction building)
-export function toSolanaInstructions(
-  unsigned: SolanaUnsignedTransaction
-): TransactionInstruction[]
+async function initiateTransfer(params: TransferParams, keypair: Keypair) {
+  // 1. Validate
+  const validated = await bridge.validateTransfer(params)
+
+  // 2. Build instructions
+  const instructions = await solBuilder.buildTransfer(validated, keypair.publicKey)
+
+  // 3. Create transaction with recent blockhash
+  const { blockhash } = await connection.getLatestBlockhash()
+  const tx = new Transaction({ recentBlockhash: blockhash, feePayer: keypair.publicKey })
+  tx.add(...instructions)
+
+  // 4. Sign and send
+  return sendAndConfirmTransaction(connection, tx, [keypair])
+}
 ```
 
-### Usage with Shims
+### PDA Derivation
+
+The builder exposes PDA derivation methods for consumers who need addresses without building transactions:
 
 ```typescript
-import { createSolanaBuilder, toSolanaTransaction } from "@omni-bridge/solana"
-import { Connection, sendAndConfirmTransaction } from "@solana/web3.js"
-
-const solBuilder = createSolanaBuilder({ network: "mainnet" })
-const connection = new Connection("https://api.mainnet-beta.solana.com")
-
-// Build library-agnostic transaction
-const unsigned = solBuilder.buildTransfer(validated)
-
-// Convert to web3.js Transaction (fetches blockhash) and send
-const tx = await toSolanaTransaction(connection, unsigned)
-tx.sign(keypair)
-await sendAndConfirmTransaction(connection, tx, [keypair])
+const config = solBuilder.deriveConfig()
+const authority = solBuilder.deriveAuthority()
+const wrappedMint = solBuilder.deriveWrappedMint("near:wrap.near")
+const vault = solBuilder.deriveVault(someMintPubkey)
 ```
 
 ---
@@ -695,7 +716,7 @@ export * from "@omni-bridge/btc"
 
 ```typescript
 import { createBridge, TransferParams } from "@omni-bridge/core"
-import { createEvmBuilder, toViemRequest } from "@omni-bridge/evm"
+import { createEvmBuilder } from "@omni-bridge/evm"
 import { createPublicClient, createWalletClient, http } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
 import { mainnet } from "viem/chains"
@@ -705,53 +726,32 @@ const evm = createEvmBuilder({ network: "mainnet" })
 
 async function initiateTransfer(
   params: TransferParams,
-  temporalKey: `0x${string}`
+  privateKey: `0x${string}`
 ) {
   // 1. Validate (SDK handles decimal normalization, fee checks, etc.)
   const validated = await bridge.validateTransfer(params)
 
-  // 2. Build unsigned transaction (library-agnostic)
-  const unsigned = evm.buildTransfer(validated)
+  // 2. Build unsigned transaction
+  const tx = evm.buildTransfer(validated)
 
-  // 3. Convert to viem format
-  const txRequest = toViemRequest(unsigned)
-
-  // 4. Check approval (consumer's responsibility)
+  // 3. Check approval if needed
   const publicClient = createPublicClient({ chain: mainnet, transport: http() })
   const tokenAddress = params.token.split(":")[1] as `0x${string}`
-  const allowance = await evm.checkAllowance(
-    publicClient,
-    tokenAddress,
-    temporalKey
-  )
+  
+  // ... check allowance and send approval if needed ...
 
-  if (allowance < params.amount + params.fee) {
-    const approvalUnsigned = evm.buildApproval(
-      tokenAddress,
-      validated.contractAddress,
-      params.amount + params.fee
-    )
-    // Sign and send approval with toViemRequest(approvalUnsigned)...
-  }
+  // 4. Estimate gas
+  const account = privateKeyToAccount(privateKey)
+  const gas = await publicClient.estimateGas({ ...tx, account: account.address })
 
-  // 5. Estimate gas (consumer controls this)
-  const gas = await publicClient.estimateGas({
-    ...txRequest,
-    account: temporalKey,
-  })
-
-  // 6. Sign and send
-  const account = privateKeyToAccount(temporalKey)
+  // 5. Sign and send - tx is directly compatible with viem
   const walletClient = createWalletClient({
     account,
     chain: mainnet,
     transport: http(),
   })
 
-  return walletClient.sendTransaction({
-    ...txRequest,
-    gas,
-  })
+  return walletClient.sendTransaction({ ...tx, gas })
 }
 ```
 
@@ -759,7 +759,7 @@ async function initiateTransfer(
 
 ```typescript
 import { createBridge } from "@omni-bridge/core"
-import { createEvmBuilder, toViemRequest } from "@omni-bridge/evm"
+import { createEvmBuilder } from "@omni-bridge/evm"
 import { useWalletClient } from "wagmi"
 
 const bridge = createBridge({ network: "mainnet" })
@@ -769,10 +769,11 @@ async function transfer(params: TransferParams) {
   const { data: walletClient } = useWalletClient()
 
   const validated = await bridge.validateTransfer(params)
-  const unsigned = evm.buildTransfer(validated)
+  const tx = evm.buildTransfer(validated)
 
   // wagmi handles gas estimation, signing, sending
-  return walletClient.sendTransaction(toViemRequest(unsigned))
+  // tx is directly compatible - no conversion needed
+  return walletClient.sendTransaction(tx)
 }
 ```
 
@@ -960,9 +961,8 @@ These need rework to return library-agnostic unsigned transaction types:
 
 Shims are new code that convert library-agnostic types to library-specific types:
 
-- `toViemRequest()` / `toEthersRequest()` - trivial type mapping for EVM
-- `toNearKitTransaction()` - applies actions to a TransactionBuilder, which handles nonce/blockHash
-- `toSolanaTransaction()` - creates Transaction from instructions, fetches blockhash
+- `toNearKitTransaction()` - applies actions to a near-kit TransactionBuilder
+- `sendWithNearApiJs()` - sends via @near-js/accounts Account
 
 ### Build Order
 

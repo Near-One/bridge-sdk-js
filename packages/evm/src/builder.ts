@@ -125,7 +125,6 @@ class EvmBuilderImpl implements EvmBuilder {
     }
 
     return {
-      type: "evm",
       chainId,
       to: validated.contractAddress as Address,
       data: data as Hex,
@@ -141,7 +140,6 @@ class EvmBuilderImpl implements EvmBuilder {
     })
 
     return {
-      type: "evm",
       chainId: 0, // Consumer should set appropriate chainId
       to: token,
       data: data as Hex,
@@ -178,7 +176,6 @@ class EvmBuilderImpl implements EvmBuilder {
     // Get bridge address for the destination chain
     // Consumer needs to provide this based on chainId
     return {
-      type: "evm",
       chainId,
       to: "0x0000000000000000000000000000000000000000" as Address, // Consumer must override
       data: data as Hex,
@@ -198,7 +195,6 @@ class EvmBuilderImpl implements EvmBuilder {
     })
 
     return {
-      type: "evm",
       chainId,
       to: bridgeAddress,
       data: data as Hex,
@@ -227,7 +223,6 @@ class EvmBuilderImpl implements EvmBuilder {
     })
 
     return {
-      type: "evm",
       chainId,
       to: bridgeAddress,
       data: data as Hex,

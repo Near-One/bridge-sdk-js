@@ -8,7 +8,7 @@ I'm continuing work on an SDK v2 rewrite. Please read this handoff document comp
 The SPEC is at /home/ricky/bridge-sdk-js/SPEC.md
 The AGENTS.md has repo-specific instructions at /home/ricky/bridge-sdk-js/AGENTS.md
 
-Start by reading those files and the completed packages to understand the patterns, then implement @omni-bridge/near next.
+Start by reading those files and the completed packages to understand the patterns, then implement @omni-bridge/solana next.
 ```
 
 ---
@@ -47,47 +47,64 @@ Fully implemented with:
 - `proof.ts` - getEvmProof() for Merkle Patricia Trie proof generation
 - Uses `viem` instead of `ethers`
 
+### 4. `@omni-bridge/near` (packages/near/)
+Fully implemented with:
+- `builder.ts` - NearBuilder with all transfer, finalization, and token registration methods
+- `shims.ts` - `toNearKitTransaction()`, `toNearApiJsActions()`, `sendWithNearApiJs()`
+- `types.ts` - Borsh schemas for proof serialization (FinTransferArgsSchema, etc.)
+- Uses `near-kit` for shims and `@near-js/accounts` + `@near-js/transactions` for near-api-js support
+- View calls handled internally (getRequiredStorageDeposit, isTokenStorageRegistered)
+- README.md with usage examples
+
 ---
 
 ## What Remains
 
-### 4. `@omni-bridge/near` (packages/near/)
-**Dependencies:** `@omni-bridge/core`, `near-kit`
-
-Needs to implement:
-```typescript
-interface NearBuilder {
-  buildTransfer(validated: ValidatedTransfer, signerId: string): Promise<Transaction>
-  buildStorageDeposit(signerId: string, amount: bigint): Promise<Transaction>
-  getRequiredStorageDeposit(signerId: string): Promise<bigint>
-  buildFinalization(params: FinalizationParams): Promise<Transaction>
-  buildLogMetadata(token: string, signerId: string): Promise<Transaction>
-  buildDeployToken(proof: Uint8Array, signerId: string): Promise<Transaction>
-  buildBindToken(proof: Uint8Array, signerId: string): Promise<Transaction>
-  buildSignTransfer(transferId: TransferId, feeRecipient: string, signerId: string): Promise<Transaction>
-  buildFastFinTransfer(params: FastFinTransferParams, signerId: string): Promise<Transaction>
-}
-```
-
-**Reference:** See `src/clients/near-kit.ts` for existing implementation patterns
-
 ### 5. `@omni-bridge/solana` (packages/solana/)
-**Dependencies:** `@omni-bridge/core`, `@coral-xyz/anchor`, `@solana/web3.js`
 
-Needs to implement:
+**Dependencies:** `@omni-bridge/core`, `@coral-xyz/anchor`, `@solana/web3.js`, `@solana/spl-token`
+
+**Key difference from NEAR:** Solana only has one library ecosystem (@solana/web3.js + Anchor), so no shim pattern needed. The builder requires a `Connection` for RPC calls (checking token programs, bridged status, etc.) and returns `TransactionInstruction[]` that consumers add to a `Transaction`.
+
+**Approach:**
 ```typescript
+interface SolanaBuilderConfig {
+  network: "mainnet" | "testnet"
+  connection: Connection  // Required - needed for account lookups
+}
+
 interface SolanaBuilder {
-  buildTransfer(validated: ValidatedTransfer, payer: string): Promise<SolanaUnsignedTransaction>
-  buildFinalization(payload: TransferMessagePayload, signature: Uint8Array, payer: string): Promise<SolanaUnsignedTransaction>
-  buildLogMetadata(token: string, payer: string): Promise<SolanaUnsignedTransaction>
-  buildDeployToken(signature: Uint8Array, metadata: TokenMetadata, payer: string): Promise<SolanaUnsignedTransaction>
-  derivePDAs(): SolanaPDAs
+  // Returns instructions - consumer builds Transaction, sets blockhash, signs
+  buildTransfer(validated: ValidatedTransfer, payer: PublicKey): Promise<TransactionInstruction[]>
+  buildFinalization(payload: TransferMessagePayload, signature: MPCSignature, payer: PublicKey): Promise<TransactionInstruction[]>
+  buildLogMetadata(token: PublicKey, payer: PublicKey): Promise<TransactionInstruction[]>
+  buildDeployToken(signature: MPCSignature, metadata: TokenMetadata, payer: PublicKey): Promise<TransactionInstruction[]>
+  
+  // PDA derivation (pure, no RPC)
+  deriveConfig(): PublicKey
+  deriveAuthority(): PublicKey
+  deriveWrappedMint(token: string): PublicKey
+  deriveVault(mint: PublicKey): PublicKey
 }
 ```
 
-**Reference:** See `src/clients/solana.ts` for existing implementation
+**Why instructions instead of full Transaction?**
+- Consumer controls blockhash fetching (can use durable nonces, etc.)
+- Consumer can batch multiple operations into one transaction
+- Consumer handles signing with their wallet/keypair
+- Anchor's `.instruction()` method returns `TransactionInstruction` directly
+
+**Reference:** See `src/clients/solana.ts` for:
+- PDA derivation patterns (SEEDS constants, findProgramAddressSync)
+- Account resolution logic (isBridgedToken, getTokenProgramForMint)
+- Anchor method building pattern
+
+**Key files to copy:**
+- `src/types/solana/bridge_token_factory_shim.json` - Anchor IDL
+- `src/types/solana/bridge_token_factory_shim.ts` - TypeScript types for IDL
 
 ### 6. `@omni-bridge/btc` (packages/btc/)
+
 **Dependencies:** `@omni-bridge/core`, `@scure/btc-signer`
 
 Needs to implement:
@@ -103,6 +120,7 @@ interface BtcBuilder {
 **Reference:** See `src/utxo/index.ts` and `src/services/bitcoin.ts`
 
 ### 7. `@omni-bridge/sdk` (packages/sdk/)
+
 Update to properly re-export from all packages:
 ```typescript
 export * from "@omni-bridge/core"
@@ -124,18 +142,21 @@ packages/{name}/
 │   ├── builder.ts    # Main builder class
 │   └── ...
 ├── package.json
-└── tsconfig.json
+├── tsconfig.json
+└── README.md         # Usage examples
 ```
 
 ### Factory Pattern
 Each package exposes a `create{Name}Builder(config)` function that returns a builder interface.
 
-### Unsigned Transactions
-All `build*` methods return unsigned transaction objects (defined in `@omni-bridge/core/types.ts`):
-- `EvmUnsignedTransaction` - { type: "evm", chainId, to, data, value }
-- `NearUnsignedTransaction` - { type: "near", signerId, receiverId, actions }
-- `SolanaUnsignedTransaction` - { type: "solana", feePayer, instructions }
-- `BtcUnsignedTransaction` - { type: "btc", inputs, outputs }
+### Chain-Specific Patterns
+
+| Chain  | Pattern | Why |
+|--------|---------|-----|
+| EVM    | Returns `EvmUnsignedTransaction` (plain object) | Multiple libraries (viem, ethers), stateless encoding |
+| NEAR   | Returns `NearUnsignedTransaction` + shims | Two libraries (near-kit, near-api-js), nonce is per-key |
+| Solana | Returns `TransactionInstruction[]`, requires Connection | One library, needs RPC for account lookups |
+| BTC    | Returns `BtcUnsignedTransaction` (inputs/outputs) | UTXO model, consumer handles signing |
 
 ### Import Style
 - Use `.js` extensions in imports (Biome rule)
@@ -159,24 +180,10 @@ bunx biome check --write packages/{name}/src/  # Auto-fix lint issues
 ## Existing Source Files (for reference)
 
 Key files from the old SDK that can be adapted:
-- `src/clients/near-kit.ts` - NEAR client (adapt to return unsigned)
-- `src/clients/solana.ts` - Solana client (adapt to return unsigned)
+- `src/clients/solana.ts` - Solana client (adapt to return instructions)
 - `src/utxo/index.ts` - UTXO utilities
 - `src/services/bitcoin.ts` - Bitcoin service
-- `src/types/` - Type definitions
-
----
-
-## Git Commits So Far
-
-```
-c5ef03a feat(evm): implement @omni-bridge/evm package
-333ec0c chore: remove tsbuildinfo files from git tracking
-571099d chore: add tsbuildinfo to gitignore
-9875494 feat(core): implement @omni-bridge/core package
-2f3a9e7 feat: setup bun monorepo workspace for SDK v2
-71459c2 initial spec
-```
+- `src/types/solana/` - Anchor IDL and types
 
 ---
 
@@ -184,12 +191,12 @@ c5ef03a feat(evm): implement @omni-bridge/evm package
 
 1. **Don't modify old src/, tests/, e2e/ files** - They have pre-existing lint issues that shouldn't be fixed as part of this work
 
-2. **near-kit returns Transaction type** - The NEAR package should return near-kit's native `Transaction` type, not a custom wrapper
+2. **Solana needs Connection** - Unlike NEAR which can do view calls internally, Solana account lookups need a Connection passed in
 
-3. **Solana uses Anchor IDL** - Keep the existing Anchor pattern for instruction building
+3. **Anchor IDL is required** - Copy the IDL JSON and TypeScript types from `src/types/solana/`
 
 4. **Decimal normalization is critical** - Always use the utilities from `@omni-bridge/core/utils/decimals.ts`
 
-5. **Gas constants matter** - Preserve gas limit constants from existing clients
+5. **PDA seeds come from IDL constants** - Don't hardcode, extract from `BRIDGE_TOKEN_FACTORY_IDL.constants`
 
 6. **Commit style** - Use Conventional Commits, one-line messages
