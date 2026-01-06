@@ -4,8 +4,10 @@
 
 import {
   EVM_CHAIN_IDS,
+  type EvmChainKind,
   type EvmUnsignedTransaction,
   getAddress,
+  getAddresses,
   getChainPrefix,
   isEvmChain,
   type Network,
@@ -16,6 +18,7 @@ import { BRIDGE_TOKEN_FACTORY_ABI, ERC20_ABI } from "./abi.js"
 
 export interface EvmBuilderConfig {
   network: Network
+  chain: EvmChainKind
 }
 
 export interface TokenMetadata {
@@ -40,43 +43,44 @@ export interface TransferPayload {
  */
 export interface EvmBuilder {
   /**
+   * The chain ID for this builder's configured chain
+   */
+  readonly chainId: number
+
+  /**
+   * The bridge contract address for this builder's configured chain
+   */
+  readonly bridgeAddress: Address
+
+  /**
    * Build an unsigned transfer transaction
    */
   buildTransfer(validated: ValidatedTransfer): EvmUnsignedTransaction
 
   /**
-   * Build an ERC20 approval transaction
+   * Build an ERC20 approval transaction for the bridge contract
    */
-  buildApproval(token: Address, spender: Address, amount: bigint): EvmUnsignedTransaction
+  buildApproval(token: Address, amount: bigint): EvmUnsignedTransaction
 
   /**
-   * Build a max approval transaction (type alias for convenience)
+   * Build a max approval transaction for the bridge contract
    */
-  buildMaxApproval(token: Address, spender: Address): EvmUnsignedTransaction
+  buildMaxApproval(token: Address): EvmUnsignedTransaction
 
   /**
    * Build a finalization transaction
    */
-  buildFinalization(
-    payload: TransferPayload,
-    signature: Uint8Array,
-    chainId: number,
-  ): EvmUnsignedTransaction
+  buildFinalization(payload: TransferPayload, signature: Uint8Array): EvmUnsignedTransaction
 
   /**
    * Build a log metadata transaction
    */
-  buildLogMetadata(token: Address, bridgeAddress: Address, chainId: number): EvmUnsignedTransaction
+  buildLogMetadata(token: Address): EvmUnsignedTransaction
 
   /**
    * Build a deploy token transaction
    */
-  buildDeployToken(
-    signature: Uint8Array,
-    metadata: TokenMetadata,
-    bridgeAddress: Address,
-    chainId: number,
-  ): EvmUnsignedTransaction
+  buildDeployToken(signature: Uint8Array, metadata: TokenMetadata): EvmUnsignedTransaction
 }
 
 const NATIVE_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000" as Address
@@ -85,12 +89,52 @@ function isNativeToken(tokenAddress: Address): boolean {
   return tokenAddress.toLowerCase() === NATIVE_TOKEN_ADDRESS.toLowerCase()
 }
 
+/**
+ * Get the bridge address for an EVM chain
+ */
+function getBridgeAddress(network: Network, chain: EvmChainKind): Address {
+  const addresses = getAddresses(network)
+  const prefix = getChainPrefix(chain)
+  const chainAddresses = addresses[prefix as keyof typeof addresses]
+  if (!chainAddresses || !("bridge" in chainAddresses)) {
+    throw new Error(`No bridge address found for chain ${prefix} on ${network}`)
+  }
+  return chainAddresses.bridge as Address
+}
+
+/**
+ * Get the chain ID for an EVM chain
+ */
+function getChainId(network: Network, chain: EvmChainKind): number {
+  const prefix = getChainPrefix(chain)
+  const chainId = EVM_CHAIN_IDS[network][prefix]
+  if (chainId === undefined) {
+    throw new Error(`Chain ID not found for ${prefix} on ${network}`)
+  }
+  return chainId
+}
+
 class EvmBuilderImpl implements EvmBuilder {
-  constructor(private readonly network: Network) {}
+  readonly chainId: number
+  readonly bridgeAddress: Address
+  private readonly chain: EvmChainKind
+
+  constructor(config: EvmBuilderConfig) {
+    this.chain = config.chain
+    this.chainId = getChainId(config.network, config.chain)
+    this.bridgeAddress = getBridgeAddress(config.network, config.chain)
+  }
 
   buildTransfer(validated: ValidatedTransfer): EvmUnsignedTransaction {
     if (!isEvmChain(validated.sourceChain)) {
       throw new Error(`Source chain ${validated.sourceChain} is not an EVM chain`)
+    }
+
+    // Verify the validated transfer matches our configured chain
+    if (validated.sourceChain !== this.chain) {
+      throw new Error(
+        `ValidatedTransfer source chain (${validated.sourceChain}) does not match builder chain (${this.chain})`,
+      )
     }
 
     const tokenAddress = getAddress(validated.params.token) as Address
@@ -117,45 +161,34 @@ class EvmBuilderImpl implements EvmBuilder {
       ? validated.params.amount + validated.params.nativeFee
       : validated.params.nativeFee
 
-    // Get chain ID
-    const chainPrefix = getChainPrefix(validated.sourceChain)
-    const chainId = EVM_CHAIN_IDS[this.network][chainPrefix]
-    if (chainId === undefined) {
-      throw new Error(`Chain ID not found for ${chainPrefix} on ${this.network}`)
-    }
-
     return {
-      chainId,
-      to: validated.contractAddress as Address,
+      chainId: this.chainId,
+      to: this.bridgeAddress,
       data: data as Hex,
       value,
     }
   }
 
-  buildApproval(token: Address, spender: Address, amount: bigint): EvmUnsignedTransaction {
+  buildApproval(token: Address, amount: bigint): EvmUnsignedTransaction {
     const data = encodeFunctionData({
       abi: ERC20_ABI,
       functionName: "approve",
-      args: [spender, amount],
+      args: [this.bridgeAddress, amount],
     })
 
     return {
-      chainId: 0, // Consumer should set appropriate chainId
+      chainId: this.chainId,
       to: token,
       data: data as Hex,
       value: 0n,
     }
   }
 
-  buildMaxApproval(token: Address, spender: Address): EvmUnsignedTransaction {
-    return this.buildApproval(token, spender, maxUint256)
+  buildMaxApproval(token: Address): EvmUnsignedTransaction {
+    return this.buildApproval(token, maxUint256)
   }
 
-  buildFinalization(
-    payload: TransferPayload,
-    signature: Uint8Array,
-    chainId: number,
-  ): EvmUnsignedTransaction {
+  buildFinalization(payload: TransferPayload, signature: Uint8Array): EvmUnsignedTransaction {
     const data = encodeFunctionData({
       abi: BRIDGE_TOKEN_FACTORY_ABI,
       functionName: "finTransfer",
@@ -173,21 +206,15 @@ class EvmBuilderImpl implements EvmBuilder {
       ],
     })
 
-    // Get bridge address for the destination chain
-    // Consumer needs to provide this based on chainId
     return {
-      chainId,
-      to: "0x0000000000000000000000000000000000000000" as Address, // Consumer must override
+      chainId: this.chainId,
+      to: this.bridgeAddress,
       data: data as Hex,
       value: 0n,
     }
   }
 
-  buildLogMetadata(
-    token: Address,
-    bridgeAddress: Address,
-    chainId: number,
-  ): EvmUnsignedTransaction {
+  buildLogMetadata(token: Address): EvmUnsignedTransaction {
     const data = encodeFunctionData({
       abi: BRIDGE_TOKEN_FACTORY_ABI,
       functionName: "logMetadata",
@@ -195,19 +222,14 @@ class EvmBuilderImpl implements EvmBuilder {
     })
 
     return {
-      chainId,
-      to: bridgeAddress,
+      chainId: this.chainId,
+      to: this.bridgeAddress,
       data: data as Hex,
       value: 0n,
     }
   }
 
-  buildDeployToken(
-    signature: Uint8Array,
-    metadata: TokenMetadata,
-    bridgeAddress: Address,
-    chainId: number,
-  ): EvmUnsignedTransaction {
+  buildDeployToken(signature: Uint8Array, metadata: TokenMetadata): EvmUnsignedTransaction {
     const data = encodeFunctionData({
       abi: BRIDGE_TOKEN_FACTORY_ABI,
       functionName: "deployToken",
@@ -223,8 +245,8 @@ class EvmBuilderImpl implements EvmBuilder {
     })
 
     return {
-      chainId,
-      to: bridgeAddress,
+      chainId: this.chainId,
+      to: this.bridgeAddress,
       data: data as Hex,
       value: 0n,
     }
@@ -244,5 +266,5 @@ function bytesToHex(bytes: Uint8Array): string {
  * Create an EVM transaction builder
  */
 export function createEvmBuilder(config: EvmBuilderConfig): EvmBuilder {
-  return new EvmBuilderImpl(config.network)
+  return new EvmBuilderImpl(config)
 }

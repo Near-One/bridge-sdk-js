@@ -1,7 +1,8 @@
 import { beforeAll, describe, expect, test } from "bun:test"
-import { ChainKind, createBridge, getAddresses } from "@omni-bridge/core"
+import { ChainKind, createBridge } from "@omni-bridge/core"
 import {
   createEvmBuilder,
+  ERC20_ABI,
   getEvmProof,
   getInitTransferTopic,
   parseInitTransferEvent,
@@ -42,9 +43,8 @@ describe("ETH to NEAR E2E Transfer Tests (New SDK)", () => {
 
       // Create builders
       const bridge = createBridge({ network: "testnet" })
-      const evmBuilder = createEvmBuilder({ network: "testnet" })
+      const evmBuilder = createEvmBuilder({ network: "testnet", chain: ChainKind.Eth })
       const nearBuilder = createNearBuilder({ network: "testnet" })
-      const addresses = getAddresses("testnet")
 
       // Create viem clients
       const account = privateKeyToAccount(ethPrivateKey)
@@ -76,19 +76,17 @@ describe("ETH to NEAR E2E Transfer Tests (New SDK)", () => {
       // Step 2: Check and build approval if needed
       console.log("\nStep 2: Checking token approval...")
       const tokenAddress = route.token.address.split(":")[1] as Hex
-      const bridgeAddress = addresses.eth.bridge as Hex
 
-      const { ERC20_ABI } = await import("@omni-bridge/evm")
       const allowance = await publicClient.readContract({
         address: tokenAddress,
         abi: ERC20_ABI,
         functionName: "allowance",
-        args: [account.address, bridgeAddress],
+        args: [account.address, evmBuilder.bridgeAddress],
       })
 
       if (allowance < validated.params.amount) {
         console.log("  Approving tokens...")
-        const approvalTx = evmBuilder.buildMaxApproval(tokenAddress, bridgeAddress)
+        const approvalTx = evmBuilder.buildMaxApproval(tokenAddress)
         const approvalHash = await walletClient.sendTransaction(approvalTx)
         await publicClient.waitForTransactionReceipt({ hash: approvalHash })
         console.log(`  Approval tx: ${approvalHash}`)

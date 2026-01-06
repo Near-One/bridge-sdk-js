@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, test } from "bun:test"
-import { ChainKind, createBridge, getAddresses } from "@omni-bridge/core"
+import { ChainKind, createBridge } from "@omni-bridge/core"
 import { createEvmBuilder, type TransferPayload } from "@omni-bridge/evm"
 import {
   createNearBuilder,
@@ -37,10 +37,8 @@ describe("NEAR to ETH E2E Transfer Tests (Manual Flow)", () => {
       // Create builders
       const bridge = createBridge({ network: "testnet" })
       const nearBuilder = createNearBuilder({ network: "testnet" })
-      const evmBuilder = createEvmBuilder({ network: "testnet" })
+      const evmBuilder = createEvmBuilder({ network: "testnet", chain: ChainKind.Eth })
 
-      // Get addresses
-      const addresses = getAddresses("testnet")
       const signerId = TEST_CONFIG.networks.near.accountId
       const ethRecipient = ethWallet.address
 
@@ -155,14 +153,8 @@ describe("NEAR to ETH E2E Transfer Tests (Manual Flow)", () => {
         feeRecipient: signEvent.message_payload.fee_recipient ?? "",
       }
 
-      const finalizeTx = evmBuilder.buildFinalization(
-        transferPayload,
-        signatureBytes,
-        TEST_CONFIG.networks.ethereum.chainId,
-      )
-
-      // Override the 'to' address with the bridge contract
-      finalizeTx.to = addresses.eth.bridge as `0x${string}`
+      // Builder now has bridge address configured
+      const finalizeTx = evmBuilder.buildFinalization(transferPayload, signatureBytes)
 
       // Send the transaction
       const txResponse = await ethWallet.sendTransaction({
