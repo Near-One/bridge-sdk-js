@@ -3,8 +3,6 @@ title: ETH → NEAR Transfer
 description: Complete example of bridging tokens from Ethereum to NEAR
 ---
 
-This example demonstrates a complete flow for bridging USDC from Ethereum to NEAR Protocol.
-
 ## Overview
 
 <Steps>
@@ -94,17 +92,23 @@ async function bridgeEthToNear() {
 
   const pollStatus = async () => {
     for (let i = 0; i < 60; i++) {
-      const transfers = await api.getTransfer({ transactionHash: transferHash })
-      const transfer = transfers[0]
+      const statuses = await api.getTransferStatus({ transactionHash: transferHash })
+      const latestStatus = statuses[statuses.length - 1]
 
-      if (transfer?.finalized) {
+      if (latestStatus === "Finalised" || latestStatus === "Claimed") {
         console.log("Transfer finalized!")
-        console.log("  Origin:", transfer.origin)
-        console.log("  Destination:", transfer.destination)
+        const transfers = await api.getTransfer({ transactionHash: transferHash })
+        const transfer = transfers[0]
+        if (transfer?.initialized?.EVMLog) {
+          console.log("  Origin TX:", transfer.initialized.EVMLog.transaction_hash)
+        }
+        if (transfer?.finalised?.NearReceipt) {
+          console.log("  Destination TX:", transfer.finalised.NearReceipt.transaction_hash)
+        }
         return transfer
       }
 
-      console.log(`  Status: ${transfer?.status ?? "pending"}...`)
+      console.log(`  Status: ${latestStatus ?? "pending"}...`)
       await new Promise((r) => setTimeout(r, 10000))
     }
     throw new Error("Transfer not finalized in time")
@@ -164,12 +168,12 @@ async function bridgeEthToNear() {
   console.log("Waiting for finalization on NEAR...")
 
   for (let i = 0; i < 60; i++) {
-    const transfers = await api.getTransfer({ transactionHash: transferResponse.hash })
-    const transfer = transfers[0]
+    const statuses = await api.getTransferStatus({ transactionHash: transferResponse.hash })
+    const latestStatus = statuses[statuses.length - 1]
 
-    if (transfer?.finalized) {
+    if (latestStatus === "Finalised" || latestStatus === "Claimed") {
       console.log("Transfer finalized!")
-      return transfer
+      return
     }
 
     await new Promise((r) => setTimeout(r, 10000))

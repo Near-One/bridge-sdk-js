@@ -3,8 +3,6 @@ title: Solana Bridge
 description: Complete example of bridging tokens to and from Solana
 ---
 
-This example demonstrates bridging tokens between Solana and other chains using the `@omni-bridge/solana` package.
-
 ## Overview
 
 The Solana builder returns native `TransactionInstruction[]` that work directly with `@solana/web3.js`.
@@ -93,15 +91,15 @@ async function bridgeSolanaToNear() {
   console.log("Waiting for finalization on NEAR...")
 
   for (let i = 0; i < 60; i++) {
-    const transfers = await api.getTransfer({ transactionHash: signature })
-    const transfer = transfers[0]
+    const statuses = await api.getTransferStatus({ transactionHash: signature })
+    const latestStatus = statuses[statuses.length - 1]
 
-    if (transfer?.finalized) {
+    if (latestStatus === "Finalised" || latestStatus === "Claimed") {
       console.log("Transfer finalized on NEAR!")
-      return transfer
+      return
     }
 
-    console.log(`  Status: ${transfer?.status ?? "pending"}...`)
+    console.log(`  Status: ${latestStatus ?? "pending"}...`)
     await new Promise((r) => setTimeout(r, 10000))
   }
 }

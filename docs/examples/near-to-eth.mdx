@@ -3,8 +3,6 @@ title: NEAR → ETH Transfer
 description: Complete example of bridging tokens from NEAR to Ethereum
 ---
 
-This example demonstrates bridging tokens from NEAR Protocol to Ethereum, including storage deposit handling and using the shim functions.
-
 ## Overview
 
 <Steps>
@@ -94,18 +92,24 @@ async function bridgeNearToEth() {
   console.log("Waiting for finalization on Ethereum...")
 
   for (let i = 0; i < 60; i++) {
-    const transfers = await api.getTransfer({
+    const statuses = await api.getTransferStatus({
       transactionHash: result.transaction.hash,
     })
-    const transfer = transfers[0]
+    const latestStatus = statuses[statuses.length - 1]
 
-    if (transfer?.finalized) {
+    if (latestStatus === "Finalised" || latestStatus === "Claimed") {
       console.log("Transfer finalized on Ethereum!")
-      console.log("  ETH TX:", transfer.destination?.transactionHash)
+      const transfers = await api.getTransfer({
+        transactionHash: result.transaction.hash,
+      })
+      const transfer = transfers[0]
+      if (transfer?.finalised?.EVMLog) {
+        console.log("  ETH TX:", transfer.finalised.EVMLog.transaction_hash)
+      }
       return transfer
     }
 
-    console.log(`  Status: ${transfer?.status ?? "pending"}...`)
+    console.log(`  Status: ${latestStatus ?? "pending"}...`)
     await new Promise((r) => setTimeout(r, 15000))
   }
 }
@@ -177,14 +181,14 @@ async function bridgeNearToEth() {
   console.log("Waiting for finalization on Ethereum...")
 
   for (let i = 0; i < 60; i++) {
-    const transfers = await api.getTransfer({
+    const statuses = await api.getTransferStatus({
       transactionHash: result.transaction.hash,
     })
-    const transfer = transfers[0]
+    const latestStatus = statuses[statuses.length - 1]
 
-    if (transfer?.finalized) {
+    if (latestStatus === "Finalised" || latestStatus === "Claimed") {
       console.log("Transfer finalized on Ethereum!")
-      return transfer
+      return
     }
 
     await new Promise((r) => setTimeout(r, 15000))
