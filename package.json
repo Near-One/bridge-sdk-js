@@ -11,7 +11,7 @@
     "clean": "tsc --build --clean && rm -rf packages/*/dist",
     "test": "vitest",
     "lint": "biome check --write .",
-    "typecheck": "tsc --build --noEmit",
+    "typecheck": "tsc --build",
     "prepublishOnly": "bun run build",
     "lefthook": "lefthook install",
     "check-exports": "bun run --filter '*' check-exports",
