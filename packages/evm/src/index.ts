@@ -1,4 +1,14 @@
-// @omni-bridge/evm - EVM transaction builder
-// Builds unsigned transactions for Ethereum-family chains
+/**
+ * @omni-bridge/evm
+ *
+ * EVM transaction builder for Omni Bridge SDK
+ * Builds unsigned transactions for Ethereum-family chains
+ */
 
-export {}
+export { BRIDGE_TOKEN_FACTORY_ABI, ERC20_ABI } from "./abi.js"
+export {
+  createEvmBuilder,
+  type EvmBuilder,
+  type EvmBuilderConfig,
+} from "./builder.js"
+export { type EvmProof, getEvmProof } from "./proof.js"

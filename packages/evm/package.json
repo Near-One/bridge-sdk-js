@@ -20,6 +20,9 @@
   },
   "dependencies": {
     "@omni-bridge/core": "workspace:*",
+    "@ethereumjs/mpt": "^10.1.0",
+    "@ethereumjs/rlp": "^10.1.0",
+    "@ethereumjs/util": "^10.1.0",
     "viem": "^2.30.6"
   },
   "devDependencies": {
