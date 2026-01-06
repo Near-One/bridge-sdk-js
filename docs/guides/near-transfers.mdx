@@ -33,21 +33,25 @@ NEAR transactions require runtime context (nonce, block hash) that the SDK doesn
     ```
   </Tab>
 
-  <Tab title="near-api-js">
+  <Tab title="@near-js/*">
     ```typescript
     import { sendWithNearApiJs } from "@omni-bridge/near"
-    import { connect } from "near-api-js"
+    import { Account } from "@near-js/accounts"
+    import { JsonRpcProvider } from "@near-js/providers"
+    import { InMemoryKeyStore } from "@near-js/keystores"
+    import { KeyPair } from "@near-js/crypto"
+    import { InMemorySigner } from "@near-js/signers"
 
-    const near = await connect({
-      networkId: "mainnet",
-      nodeUrl: "https://rpc.mainnet.near.org",
-    })
-    const account = await near.account("alice.near")
+    const keyStore = new InMemoryKeyStore()
+    await keyStore.setKey("mainnet", "alice.near", KeyPair.fromString("ed25519:..."))
+    const provider = new JsonRpcProvider({ url: "https://rpc.mainnet.near.org" })
+    const signer = new InMemorySigner(keyStore)
+    const account = new Account({ accountId: "alice.near", provider, signer })
 
     // Build unsigned transaction
     const unsigned = nearBuilder.buildTransfer(validated, "alice.near")
 
-    // Send with near-api-js
+    // Send with @near-js/accounts
     const result = await sendWithNearApiJs(account, unsigned)
     ```
   </Tab>
@@ -138,25 +142,25 @@ NEAR transactions require runtime context (nonce, block hash) that the SDK doesn
     ```
   </Tab>
 
-  <Tab title="near-api-js">
+  <Tab title="@near-js/*">
     ```typescript
     import { createBridge } from "@omni-bridge/core"
     import { createNearBuilder, sendWithNearApiJs } from "@omni-bridge/near"
-    import { connect, keyStores } from "near-api-js"
+    import { Account } from "@near-js/accounts"
+    import { JsonRpcProvider } from "@near-js/providers"
+    import { InMemoryKeyStore } from "@near-js/keystores"
+    import { KeyPair } from "@near-js/crypto"
+    import { InMemorySigner } from "@near-js/signers"
 
     // Setup
     const bridge = createBridge({ network: "mainnet" })
     const nearBuilder = createNearBuilder({ network: "mainnet" })
 
-    const keyStore = new keyStores.InMemoryKeyStore()
-    // Add your key to keyStore...
-
-    const near = await connect({
-      networkId: "mainnet",
-      nodeUrl: "https://rpc.mainnet.near.org",
-      keyStore,
-    })
-    const account = await near.account("alice.near")
+    const keyStore = new InMemoryKeyStore()
+    await keyStore.setKey("mainnet", "alice.near", KeyPair.fromString("ed25519:..."))
+    const provider = new JsonRpcProvider({ url: "https://rpc.mainnet.near.org" })
+    const signer = new InMemorySigner(keyStore)
+    const account = new Account({ accountId: "alice.near", provider, signer })
     const signerId = account.accountId
 
     // Check and pay storage deposit if needed

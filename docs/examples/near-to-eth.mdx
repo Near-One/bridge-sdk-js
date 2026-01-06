@@ -117,10 +117,14 @@ async function bridgeNearToEth() {
 bridgeNearToEth().catch(console.error)
 ```
 
-```typescript near-api-js
+```typescript @near-js/*
 import { createBridge, ChainKind, BridgeAPI } from "@omni-bridge/core"
 import { createNearBuilder, sendWithNearApiJs } from "@omni-bridge/near"
-import { connect, keyStores, KeyPair } from "near-api-js"
+import { Account } from "@near-js/accounts"
+import { JsonRpcProvider } from "@near-js/providers"
+import { InMemoryKeyStore } from "@near-js/keystores"
+import { KeyPair } from "@near-js/crypto"
+import { InMemorySigner } from "@near-js/signers"
 
 // Configuration
 const WRAPPED_USDC = "near:usdc.bridge.near"
@@ -133,21 +137,17 @@ async function bridgeNearToEth() {
   const nearBuilder = createNearBuilder({ network: "mainnet" })
   const api = new BridgeAPI("mainnet")
 
-  // Setup near-api-js
-  const keyStore = new keyStores.InMemoryKeyStore()
+  // Setup @near-js/*
+  const keyStore = new InMemoryKeyStore()
   await keyStore.setKey(
     "mainnet",
     "alice.near",
     KeyPair.fromString("ed25519:...")
   )
 
-  const nearConnection = await connect({
-    networkId: "mainnet",
-    keyStore,
-    nodeUrl: "https://rpc.mainnet.near.org",
-  })
-
-  const account = await nearConnection.account("alice.near")
+  const provider = new JsonRpcProvider({ url: "https://rpc.mainnet.near.org" })
+  const signer = new InMemorySigner(keyStore)
+  const account = new Account({ accountId: "alice.near", provider, signer })
   const signerId = "alice.near"
 
   // 2. Check and handle storage deposit
@@ -245,8 +245,8 @@ The SDK provides shim functions to convert `NearUnsignedTransaction` to library-
 | Function | Library | Description |
 |----------|---------|-------------|
 | `toNearKitTransaction()` | near-kit | Returns a TransactionBuilder for chaining |
-| `toNearApiJsActions()` | near-api-js | Converts to Action[] for signAndSendTransaction |
-| `sendWithNearApiJs()` | near-api-js | One-liner to convert and send |
+| `toNearApiJsActions()` | @near-js/* | Converts to Action[] for signAndSendTransaction |
+| `sendWithNearApiJs()` | @near-js/* | One-liner to convert and send |
 
 ```typescript
 import {
@@ -258,14 +258,14 @@ import {
 // near-kit: chainable API
 await toNearKitTransaction(near, tx).send({ waitUntil: "FINAL" })
 
-// near-api-js: get actions for manual handling
+// @near-js/*: get actions for manual handling
 const actions = toNearApiJsActions(tx)
 await account.signAndSendTransaction({
   receiverId: tx.receiverId,
   actions,
 })
 
-// near-api-js: convenience wrapper
+// @near-js/*: convenience wrapper
 await sendWithNearApiJs(account, tx)
 ```
 

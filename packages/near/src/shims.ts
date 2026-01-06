@@ -47,14 +47,21 @@ export function toNearKitTransaction(near: Near, unsigned: NearUnsignedTransacti
  * handles nonce, blockHash, and signing automatically.
  *
  * @param unsigned - Library-agnostic unsigned transaction from the SDK
- * @returns Array of Action objects for use with near-api-js
+ * @returns Array of Action objects for use with @near-js/accounts
  *
  * @example
  * ```typescript
- * import { connect } from 'near-api-js'
+ * import { Account } from '@near-js/accounts'
+ * import { JsonRpcProvider } from '@near-js/providers'
+ * import { InMemoryKeyStore } from '@near-js/keystores'
+ * import { KeyPair } from '@near-js/crypto'
+ * import { InMemorySigner } from '@near-js/signers'
  *
- * const near = await connect({ networkId: 'mainnet', keyStore, nodeUrl })
- * const account = await near.account(unsigned.signerId)
+ * const keyStore = new InMemoryKeyStore()
+ * await keyStore.setKey('mainnet', 'alice.near', KeyPair.fromString('ed25519:...'))
+ * const provider = new JsonRpcProvider({ url: 'https://rpc.mainnet.near.org' })
+ * const signer = new InMemorySigner(keyStore)
+ * const account = new Account({ accountId: 'alice.near', provider, signer })
  *
  * const actions = toNearApiJsActions(unsigned)
  * const result = await account.signAndSendTransaction({
@@ -84,10 +91,17 @@ export function toNearApiJsActions(unsigned: NearUnsignedTransaction): Action[] 
  *
  * @example
  * ```typescript
- * import { connect } from 'near-api-js'
+ * import { Account } from '@near-js/accounts'
+ * import { JsonRpcProvider } from '@near-js/providers'
+ * import { InMemoryKeyStore } from '@near-js/keystores'
+ * import { KeyPair } from '@near-js/crypto'
+ * import { InMemorySigner } from '@near-js/signers'
  *
- * const near = await connect({ networkId: 'mainnet', keyStore, nodeUrl })
- * const account = await near.account('alice.near')
+ * const keyStore = new InMemoryKeyStore()
+ * await keyStore.setKey('mainnet', 'alice.near', KeyPair.fromString('ed25519:...'))
+ * const provider = new JsonRpcProvider({ url: 'https://rpc.mainnet.near.org' })
+ * const signer = new InMemorySigner(keyStore)
+ * const account = new Account({ accountId: 'alice.near', provider, signer })
  *
  * const unsigned = builder.buildTransfer(validated, 'alice.near')
  * const result = await sendWithNearApiJs(account, unsigned)

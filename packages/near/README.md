@@ -40,20 +40,23 @@ const result = await toNearKitTransaction(near, unsigned).send()
 console.log("TX:", result.transaction.hash)
 ```
 
-## Using near-api-js
+## Using @near-js/*
 
 ```typescript
 import { createNearBuilder, sendWithNearApiJs } from "@omni-bridge/near"
-import { connect, keyStores } from "near-api-js"
+import { Account } from "@near-js/accounts"
+import { JsonRpcProvider } from "@near-js/providers"
+import { InMemoryKeyStore } from "@near-js/keystores"
+import { KeyPair } from "@near-js/crypto"
+import { InMemorySigner } from "@near-js/signers"
 
 const nearBuilder = createNearBuilder({ network: "mainnet" })
 
-const near = await connect({
-  networkId: "mainnet",
-  keyStore: new keyStores.InMemoryKeyStore(),
-  nodeUrl: "https://rpc.mainnet.near.org",
-})
-const account = await near.account("alice.near")
+const keyStore = new InMemoryKeyStore()
+await keyStore.setKey("mainnet", "alice.near", KeyPair.fromString("ed25519:..."))
+const provider = new JsonRpcProvider({ url: "https://rpc.mainnet.near.org" })
+const signer = new InMemorySigner(keyStore)
+const account = new Account({ accountId: "alice.near", provider, signer })
 
 const unsigned = nearBuilder.buildTransfer(validated, "alice.near")
 const result = await sendWithNearApiJs(account, unsigned)
@@ -95,7 +98,7 @@ await builder.isTokenStorageRegistered(tokenId)
 // near-kit
 toNearKitTransaction(near, unsigned)  // Returns TransactionBuilder
 
-// near-api-js
+// @near-js/*
 toNearApiJsActions(unsigned)          // Returns Action[]
 sendWithNearApiJs(account, unsigned)  // Sends and returns result
 ```

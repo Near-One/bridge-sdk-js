@@ -19,7 +19,7 @@ npm install @omni-bridge/core @omni-bridge/evm
 
 ## How It Works
 
-The SDK is a **transaction builder** — it handles all the bridge protocol complexity (validation, encoding, fee calculation) and gives you back unsigned transactions. You then sign and broadcast using whatever library you prefer (viem, ethers, near-api-js, etc.).
+The SDK is a **transaction builder** — it handles all the bridge protocol complexity (validation, encoding, fee calculation) and gives you back unsigned transactions. You then sign and broadcast using whatever library you prefer (viem, ethers, @near-js/*, etc.).
 
 This design gives you full control over signing, gas estimation, and transaction management. Whether you're building a frontend wallet integration or a backend service with your own key management, the SDK fits your architecture.
 
@@ -31,7 +31,7 @@ Every cross-chain transfer follows the same pattern:
 
 2. **Build** — Pass the validated transfer to a chain-specific builder (like `evm.buildTransfer()`). You get back an unsigned transaction — a plain object with `to`, `data`, `value`, etc.
 
-3. **Sign & Send** — Use your preferred library to sign and broadcast. The unsigned transaction format is designed to work directly with viem, ethers v6, near-kit, near-api-js, and @solana/web3.js.
+3. **Sign & Send** — Use your preferred library to sign and broadcast. The unsigned transaction format is designed to work directly with viem, ethers v6, near-kit, @near-js/*, and @solana/web3.js.
 
 ```typescript
 // 1. Validate
@@ -145,7 +145,7 @@ const unsigned = nearBuilder.buildTransfer(validated, "alice.near")
 const result = await toNearKitTransaction(near, unsigned).send()
 ```
 
-Using near-api-js instead? There's a shim for that too:
+Using @near-js/* instead? There's a shim for that too:
 
 ```typescript
 import { sendWithNearApiJs } from "@omni-bridge/near"
@@ -237,7 +237,7 @@ const fee = await api.getFee(sender, recipient, token, amount)
 const validated = await bridge.validateTransfer({
   // ...
   fee: BigInt(fee.transferred_token_fee ?? "0"),
-  nativeFee: fee.native_token_fee,
+  nativeFee: fee.native_token_fee ?? 0n,
 })
 ```
 

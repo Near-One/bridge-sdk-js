@@ -1,6 +1,6 @@
 ---
 title: NEAR Shims
-description: Convert SDK transactions for near-kit and near-api-js
+description: Convert SDK transactions for near-kit and @near-js/*
 ---
 
 ## Import
@@ -58,7 +58,7 @@ const result = await toNearKitTransaction(near, unsigned).send()
 
 ## toNearApiJsActions
 
-Converts actions to near-api-js format.
+Converts actions to @near-js/transactions format.
 
 ### Signature
 
@@ -83,7 +83,7 @@ await account.signAndSendTransaction({
 
 ## sendWithNearApiJs
 
-Helper that sends a transaction using near-api-js.
+Helper that sends a transaction using @near-js/accounts.
 
 ### Signature
 
@@ -97,7 +97,7 @@ function sendWithNearApiJs(
 ### Parameters
 
 <ResponseField name="account" type="Account" required>
-  A near-api-js `Account` instance.
+  A @near-js/accounts `Account` instance.
 </ResponseField>
 
 <ResponseField name="unsigned" type="NearUnsignedTransaction" required>
@@ -107,15 +107,18 @@ function sendWithNearApiJs(
 ### Example
 
 ```typescript
-import { connect } from "near-api-js"
+import { Account } from "@near-js/accounts"
+import { JsonRpcProvider } from "@near-js/providers"
+import { InMemoryKeyStore } from "@near-js/keystores"
+import { KeyPair } from "@near-js/crypto"
+import { InMemorySigner } from "@near-js/signers"
 import { sendWithNearApiJs } from "@omni-bridge/near"
 
-const near = await connect({
-  networkId: "mainnet",
-  nodeUrl: "https://rpc.mainnet.near.org",
-  keyStore,
-})
-const account = await near.account("alice.near")
+const keyStore = new InMemoryKeyStore()
+await keyStore.setKey("mainnet", "alice.near", KeyPair.fromString("ed25519:..."))
+const provider = new JsonRpcProvider({ url: "https://rpc.mainnet.near.org" })
+const signer = new InMemorySigner(keyStore)
+const account = new Account({ accountId: "alice.near", provider, signer })
 
 const unsigned = nearBuilder.buildTransfer(validated, "alice.near")
 const result = await sendWithNearApiJs(account, unsigned)
