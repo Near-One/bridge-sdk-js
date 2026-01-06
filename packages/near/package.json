@@ -21,7 +21,9 @@
   "dependencies": {
     "@near-js/accounts": "^2.5.1",
     "@near-js/transactions": "^2.5.1",
+    "@noble/hashes": "^1.4.0",
     "@omni-bridge/core": "workspace:*",
+    "@scure/base": "^1.2.1",
     "@zorsh/zorsh": "^0.4.0",
     "near-kit": "^0.7.0"
   },

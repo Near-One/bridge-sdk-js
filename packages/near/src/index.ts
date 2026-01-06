@@ -12,6 +12,10 @@ export {
   toNearKitTransaction,
 } from "./shims.js"
 export {
+  calculateStorageAccountId,
+  type TransferMessageForStorage,
+} from "./storage.js"
+export {
   // Schemas for Borsh serialization
   BindTokenArgsSchema,
   ChainKindSchema,
