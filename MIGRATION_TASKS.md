@@ -78,7 +78,14 @@ export function parseInitTransferEvent(
 
 ---
 
-## Task 2: Add Zcash Support to BTC Package
+## Task 2: Add Zcash Support to BTC Package ✅ COMPLETE
+
+### Status
+Implemented in `packages/btc/`. The package now supports both Bitcoin and Zcash:
+- `packages/btc/src/zcash.ts` - ZIP-317 fee calculation and address encoding
+- `packages/btc/src/types.ts` - `BtcBuilderConfig` with `chain: "btc" | "zcash"` option
+- `packages/btc/src/builder.ts` - Uses appropriate fee calculator based on chain
+- Tests in `packages/btc/tests/zcash.test.ts`
 
 ### Context
 The `packages/btc/` package currently only supports Bitcoin. Zcash is another UTXO chain supported by the bridge with different:
@@ -143,7 +150,13 @@ export interface BtcBuilderConfig {
 
 ---
 
-## Task 3: Add Wormhole VAA Fetching
+## Task 3: Add Wormhole VAA Fetching ✅ COMPLETE
+
+### Status
+Implemented in `packages/core/src/wormhole.ts` (chose Option C - core package).
+- `getWormholeVaa()` function exported from `@omni-bridge/core`
+- Handles 120-second timeout for VAA availability
+- Returns hex-encoded VAA string for NEAR consumption
 
 ### Context
 For Solana transfers, the bridge uses Wormhole for cross-chain messaging. After a transfer is initiated on Solana, a Verifiable Action Approval (VAA) must be fetched from the Wormhole guardians. This VAA is then used to finalize the transfer on NEAR.
@@ -223,7 +236,19 @@ export async function getWormholeVaa(
 
 ---
 
-## Task 4: Add UTXO Deposit Address Helper
+## Task 4: Add UTXO Deposit Address Helper ✅ COMPLETE
+
+### Status
+Implemented in multiple locations:
+- `packages/core/src/bridge.ts` - `Bridge.getUtxoDepositAddress()` for getting deposit addresses
+- `packages/core/src/api.ts` - `BridgeAPI.getUtxoDepositAddress()` REST API integration
+- `packages/near/src/builder.ts` - UTXO finalization methods:
+  - `buildUtxoDepositFinalization()` - builds `verify_deposit` transaction
+  - `buildUtxoWithdrawalInit()` - builds `ft_transfer_call` to initiate withdrawal
+  - `buildUtxoWithdrawalVerify()` - builds `btc_verify_withdraw` transaction
+  - `getUtxoConnectorAddress()` / `getUtxoTokenAddress()` - address helpers
+  - `getUtxoConnectorConfig()` - fetch connector configuration
+- Tests in `packages/near/tests/utxo.test.ts`
 
 ### Context
 To deposit BTC/Zcash into the bridge, users send to a deterministic address derived from their recipient info. This address is computed by the NEAR bridge connector contract.
@@ -497,12 +522,12 @@ export * from "@omni-bridge/solana"
 ## Priority Order
 
 1. **Task 1: EVM Event Parsing** - ✅ COMPLETE
-2. **Task 2: Zcash Support** - Completes UTXO coverage
-3. **Task 3: Wormhole VAA** - Needed for Solana→NEAR
-4. **Task 4: UTXO Deposit Address** - Needed for BTC/Zcash deposits
+2. **Task 2: Zcash Support** - ✅ COMPLETE
+3. **Task 3: Wormhole VAA** - ✅ COMPLETE
+4. **Task 4: UTXO Deposit Address** - ✅ COMPLETE
 5. **Task 7: E2E Tests** - ✅ COMPLETE
 6. **Task 6: Type Completeness** - Ensures nothing missing
-7. **Task 5: Storage Account ID** - Low priority, only if relayers need it
+7. **Task 5: Storage Account ID** - ✅ COMPLETE (in `packages/near/src/storage.ts`)
 8. **Task 8: Dependencies** - Cleanup
 9. **Task 9: Umbrella Exports** - Final verification
 

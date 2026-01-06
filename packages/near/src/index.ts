@@ -40,6 +40,15 @@ export {
   StorageDepositActionSchema,
   type TransferFee,
   type TransferId,
+  // UTXO types
+  type UtxoBridgeFee,
+  type UtxoConnectorConfig,
+  type UtxoDepositFinalizationParams,
+  type UtxoDepositMsg,
+  type UtxoPostAction,
+  type UtxoWithdrawalInitParams,
+  type UtxoWithdrawalOutput,
+  type UtxoWithdrawalVerifyParams,
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
 } from "./types.js"

@@ -23,6 +23,10 @@ import {
   GAS,
   ProofKind,
   type TransferId,
+  type UtxoConnectorConfig,
+  type UtxoDepositFinalizationParams,
+  type UtxoWithdrawalInitParams,
+  type UtxoWithdrawalVerifyParams,
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
 } from "./types.js"
@@ -127,6 +131,61 @@ export interface NearBuilder {
    * @returns Unsigned transaction for storage_deposit
    */
   buildTokenStorageDeposit(tokenId: string, signerId: string): Promise<NearUnsignedTransaction>
+
+  // ===========================================================================
+  // UTXO METHODS (BTC/Zcash)
+  // ===========================================================================
+
+  /**
+   * Build a transaction to finalize a UTXO deposit on NEAR.
+   * This calls `verify_deposit` on the BTC/Zcash connector contract.
+   *
+   * @param params - Deposit finalization parameters including proof data
+   * @returns Unsigned transaction for verify_deposit
+   */
+  buildUtxoDepositFinalization(params: UtxoDepositFinalizationParams): NearUnsignedTransaction
+
+  /**
+   * Build a transaction to initiate a UTXO withdrawal from NEAR.
+   * This calls `ft_transfer_call` on the nBTC/nZEC token to the connector.
+   *
+   * @param params - Withdrawal parameters including target address and UTXO plan
+   * @returns Unsigned transaction for ft_transfer_call
+   */
+  buildUtxoWithdrawalInit(params: UtxoWithdrawalInitParams): NearUnsignedTransaction
+
+  /**
+   * Build a transaction to verify a UTXO withdrawal on NEAR.
+   * This calls `btc_verify_withdraw` on the connector after broadcasting.
+   *
+   * @param params - Verification parameters including merkle proof
+   * @returns Unsigned transaction for btc_verify_withdraw
+   */
+  buildUtxoWithdrawalVerify(params: UtxoWithdrawalVerifyParams): NearUnsignedTransaction
+
+  /**
+   * Get the UTXO connector contract address for a chain.
+   *
+   * @param chain - The UTXO chain ("btc" or "zcash")
+   * @returns The connector contract address
+   */
+  getUtxoConnectorAddress(chain: "btc" | "zcash"): string
+
+  /**
+   * Get the UTXO token contract address for a chain.
+   *
+   * @param chain - The UTXO chain ("btc" or "zcash")
+   * @returns The token contract address (nBTC or nZEC)
+   */
+  getUtxoTokenAddress(chain: "btc" | "zcash"): string
+
+  /**
+   * Get the UTXO connector configuration from the contract.
+   *
+   * @param chain - The UTXO chain ("btc" or "zcash")
+   * @returns The connector configuration
+   */
+  getUtxoConnectorConfig(chain: "btc" | "zcash"): Promise<UtxoConnectorConfig>
 }
 
 /**
@@ -483,6 +542,142 @@ class NearBuilderImpl implements NearBuilder {
       receiverId: tokenId,
       actions: [action],
     }
+  }
+
+  // ===========================================================================
+  // UTXO METHODS (BTC/Zcash)
+  // ===========================================================================
+
+  buildUtxoDepositFinalization(params: UtxoDepositFinalizationParams): NearUnsignedTransaction {
+    const connector = this.getUtxoConnectorAddress(params.chain)
+
+    // Build deposit_msg for the contract (convert bigint amounts to strings)
+    const depositMsg = {
+      recipient_id: params.depositMsg.recipient_id,
+      post_actions: params.depositMsg.post_actions?.map((action) => ({
+        receiver_id: action.receiver_id,
+        amount: action.amount.toString(),
+        memo: action.memo,
+        msg: action.msg,
+        gas: action.gas?.toString(),
+      })),
+      extra_msg: params.depositMsg.extra_msg,
+    }
+
+    const args = {
+      deposit_msg: depositMsg,
+      tx_bytes: params.txBytes,
+      vout: params.vout,
+      tx_block_blockhash: params.txBlockBlockhash,
+      tx_index: params.txIndex,
+      merkle_proof: params.merkleProof,
+    }
+
+    const action: NearAction = {
+      type: "FunctionCall",
+      methodName: "verify_deposit",
+      args: encodeArgs(args),
+      gas: GAS.UTXO_VERIFY_DEPOSIT,
+      deposit: 0n,
+    }
+
+    return {
+      type: "near",
+      signerId: params.signerId,
+      receiverId: connector,
+      actions: [action],
+    }
+  }
+
+  buildUtxoWithdrawalInit(params: UtxoWithdrawalInitParams): NearUnsignedTransaction {
+    const token = this.getUtxoTokenAddress(params.chain)
+    const connector = this.getUtxoConnectorAddress(params.chain)
+
+    // Build the withdrawal message
+    const withdrawMsg = {
+      Withdraw: {
+        target_btc_address: params.targetAddress,
+        input: params.inputs,
+        output: params.outputs,
+        ...(params.maxGasFee !== undefined && { max_gas_fee: params.maxGasFee.toString() }),
+      },
+    }
+
+    const args = {
+      receiver_id: connector,
+      amount: params.totalAmount.toString(),
+      msg: JSON.stringify(withdrawMsg),
+    }
+
+    const action: NearAction = {
+      type: "FunctionCall",
+      methodName: "ft_transfer_call",
+      args: encodeArgs(args),
+      gas: GAS.UTXO_INIT_WITHDRAWAL,
+      deposit: DEPOSIT.ONE_YOCTO,
+    }
+
+    return {
+      type: "near",
+      signerId: params.signerId,
+      receiverId: token,
+      actions: [action],
+    }
+  }
+
+  buildUtxoWithdrawalVerify(params: UtxoWithdrawalVerifyParams): NearUnsignedTransaction {
+    const connector = this.getUtxoConnectorAddress(params.chain)
+
+    const args = {
+      tx_proof: {
+        block_height: params.blockHeight,
+        merkle: params.merkle,
+        pos: params.pos,
+      },
+    }
+
+    const action: NearAction = {
+      type: "FunctionCall",
+      methodName: "btc_verify_withdraw",
+      args: encodeArgs(args),
+      gas: GAS.UTXO_VERIFY_WITHDRAWAL,
+      deposit: DEPOSIT.ONE_YOCTO,
+    }
+
+    return {
+      type: "near",
+      signerId: params.signerId,
+      receiverId: connector,
+      actions: [action],
+    }
+  }
+
+  getUtxoConnectorAddress(chain: "btc" | "zcash"): string {
+    const addresses = getAddresses(this.network)
+    if (chain === "btc") {
+      return addresses.btc.btcConnector
+    }
+    return addresses.zcash.zcashConnector
+  }
+
+  getUtxoTokenAddress(chain: "btc" | "zcash"): string {
+    const addresses = getAddresses(this.network)
+    if (chain === "btc") {
+      return addresses.btc.btcToken
+    }
+    return addresses.zcash.zcashToken
+  }
+
+  async getUtxoConnectorConfig(chain: "btc" | "zcash"): Promise<UtxoConnectorConfig> {
+    const near = this.getNearClient()
+    const connector = this.getUtxoConnectorAddress(chain)
+
+    const config = await near.view<UtxoConnectorConfig>(connector, "get_config", {})
+    if (!config) {
+      throw new Error(`Failed to retrieve ${chain.toUpperCase()} connector config`)
+    }
+
+    return config
   }
 
   private getNearClient(): Near {
