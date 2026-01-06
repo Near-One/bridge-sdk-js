@@ -207,14 +207,15 @@ const txHash = "0x..."
 // Poll for completion
 async function waitForTransfer(hash: string) {
   while (true) {
-    const [status] = await api.getTransferStatus({
+    const statuses = await api.getTransferStatus({
       transactionHash: hash
     })
+    const latestStatus = statuses[statuses.length - 1]
 
-    console.log(`Status: ${status?.status}`)
+    console.log(`Status: ${latestStatus}`)
 
-    if (status?.status === "Finalised" || status?.status === "Claimed") {
-      return status
+    if (latestStatus === "Finalised" || latestStatus === "Claimed") {
+      return latestStatus
     }
 
     await new Promise(r => setTimeout(r, 15000))
