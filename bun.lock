@@ -57,6 +57,7 @@
       "version": "0.0.1",
       "dependencies": {
         "@omni-bridge/core": "workspace:*",
+        "@zorsh/zorsh": "^0.4.0",
         "near-kit": "^0.6.1",
       },
       "devDependencies": {
