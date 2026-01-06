@@ -18,6 +18,10 @@ export const GAS = {
   SIGN_TRANSFER: BigInt(parseGas("300 Tgas")),
   STORAGE_DEPOSIT: BigInt(parseGas("10 Tgas")),
   FAST_FIN_TRANSFER: BigInt(parseGas("300 Tgas")),
+  // UTXO-specific gas constants
+  UTXO_VERIFY_DEPOSIT: BigInt(parseGas("300 Tgas")),
+  UTXO_INIT_WITHDRAWAL: BigInt(parseGas("100 Tgas")),
+  UTXO_VERIFY_WITHDRAWAL: BigInt(parseGas("5 Tgas")),
 } as const
 
 // Deposit constants
@@ -229,4 +233,117 @@ export interface LogMetadataEvent {
     token: string
   }
   signature: MPCSignature
+}
+
+// =============================================================================
+// UTXO (BTC/Zcash) TYPES
+// =============================================================================
+
+/**
+ * Post-action to execute after UTXO deposit is finalized on NEAR.
+ * Used for automatic bridging to other chains.
+ */
+export interface UtxoPostAction {
+  receiver_id: string
+  amount: bigint
+  memo?: string
+  msg: string
+  gas?: bigint
+}
+
+/**
+ * Deposit message for UTXO deposits
+ */
+export interface UtxoDepositMsg {
+  recipient_id: string
+  post_actions?: UtxoPostAction[]
+  extra_msg?: string
+}
+
+/**
+ * Arguments for finalizing a UTXO deposit on NEAR
+ */
+export interface UtxoDepositFinalizationParams {
+  /** The UTXO chain (BTC or Zcash) */
+  chain: "btc" | "zcash"
+  /** Deposit message matching what was used to generate the address */
+  depositMsg: UtxoDepositMsg
+  /** Raw transaction bytes */
+  txBytes: number[]
+  /** Output index in the transaction */
+  vout: number
+  /** Block hash containing the transaction */
+  txBlockBlockhash: string
+  /** Transaction index in the block */
+  txIndex: number
+  /** Merkle proof for transaction inclusion */
+  merkleProof: string[]
+  /** Signer account ID */
+  signerId: string
+}
+
+/**
+ * Output structure for UTXO withdrawal plan
+ */
+export interface UtxoWithdrawalOutput {
+  value: number
+  script_pubkey: string
+}
+
+/**
+ * Parameters for initiating a UTXO withdrawal from NEAR
+ */
+export interface UtxoWithdrawalInitParams {
+  /** The UTXO chain (BTC or Zcash) */
+  chain: "btc" | "zcash"
+  /** Target BTC/Zcash address */
+  targetAddress: string
+  /** UTXO inputs in "txid:vout" format */
+  inputs: string[]
+  /** Transaction outputs */
+  outputs: UtxoWithdrawalOutput[]
+  /** Total amount to transfer (including fees) */
+  totalAmount: bigint
+  /** Optional maximum gas fee in satoshis/zatoshis */
+  maxGasFee?: bigint
+  /** Signer account ID */
+  signerId: string
+}
+
+/**
+ * Parameters for verifying a UTXO withdrawal on NEAR
+ */
+export interface UtxoWithdrawalVerifyParams {
+  /** The UTXO chain (BTC or Zcash) */
+  chain: "btc" | "zcash"
+  /** Block height of the transaction */
+  blockHeight: number
+  /** Merkle proof hashes */
+  merkle: string[]
+  /** Position in the merkle tree */
+  pos: number
+  /** Signer account ID */
+  signerId: string
+}
+
+/**
+ * Bridge fee configuration from UTXO connector
+ */
+export interface UtxoBridgeFee {
+  fee_min: string
+  fee_rate: number
+  protocol_fee_rate: number
+}
+
+/**
+ * UTXO connector configuration (from get_config)
+ */
+export interface UtxoConnectorConfig {
+  change_address: string
+  deposit_bridge_fee: UtxoBridgeFee
+  withdraw_bridge_fee: UtxoBridgeFee
+  min_deposit_amount: string
+  min_withdraw_amount: string
+  min_change_amount?: string
+  max_withdrawal_input_number?: number
 }
