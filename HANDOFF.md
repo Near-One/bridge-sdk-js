@@ -8,7 +8,7 @@ I'm continuing work on an SDK v2 rewrite. Please read this handoff document comp
 The SPEC is at /home/ricky/bridge-sdk-js/SPEC.md
 The AGENTS.md has repo-specific instructions at /home/ricky/bridge-sdk-js/AGENTS.md
 
-Start by reading those files and the completed packages to understand the patterns, then implement @omni-bridge/solana next.
+Start by reading those files and the completed packages to understand the patterns, then implement @omni-bridge/btc next.
 ```
 
 ---
@@ -56,78 +56,115 @@ Fully implemented with:
 - View calls handled internally (getRequiredStorageDeposit, isTokenStorageRegistered)
 - README.md with usage examples
 
+### 5. `@omni-bridge/solana` (packages/solana/)
+Fully implemented with:
+- `builder.ts` - SolanaBuilder with buildTransfer, buildFinalization, buildLogMetadata, buildDeployToken
+- `types.ts` - Solana-specific types (SolanaTokenMetadata, SolanaTransferMessagePayload, SolanaMPCSignature)
+- `idl.json` / `idl.ts` - Anchor IDL and TypeScript types
+- PDA derivation methods: deriveConfig, deriveAuthority, deriveWrappedMint, deriveVault, deriveSolVault
+- Connection is optional - uses public RPC endpoints by default
+- Returns `TransactionInstruction[]` for consumer to build Transaction
+- README.md with usage examples
+
 ---
 
 ## What Remains
 
-### 5. `@omni-bridge/solana` (packages/solana/)
+### 6. `@omni-bridge/btc` (packages/btc/)
 
-**Dependencies:** `@omni-bridge/core`, `@coral-xyz/anchor`, `@solana/web3.js`, `@solana/spl-token`
+**Dependencies:** `@omni-bridge/core`, `@scure/btc-signer`, `@scure/base`, `merkletreejs`
 
-**Key difference from NEAR:** Solana only has one library ecosystem (@solana/web3.js + Anchor), so no shim pattern needed. The builder requires a `Connection` for RPC calls (checking token programs, bridged status, etc.) and returns `TransactionInstruction[]` that consumers add to a `Transaction`.
+**Key difference from other chains:** Bitcoin uses UTXO model, not account model. The builder focuses on:
+1. UTXO selection for withdrawals
+2. Deposit proof generation (Merkle proofs)
+3. Transaction planning (inputs/outputs)
 
 **Approach:**
 ```typescript
-interface SolanaBuilderConfig {
+interface BtcBuilderConfig {
   network: "mainnet" | "testnet"
-  connection: Connection  // Required - needed for account lookups
+  apiUrl?: string  // Optional - uses public Blockstream API by default
 }
 
-interface SolanaBuilder {
-  // Returns instructions - consumer builds Transaction, sets blockhash, signs
-  buildTransfer(validated: ValidatedTransfer, payer: PublicKey): Promise<TransactionInstruction[]>
-  buildFinalization(payload: TransferMessagePayload, signature: MPCSignature, payer: PublicKey): Promise<TransactionInstruction[]>
-  buildLogMetadata(token: PublicKey, payer: PublicKey): Promise<TransactionInstruction[]>
-  buildDeployToken(signature: MPCSignature, metadata: TokenMetadata, payer: PublicKey): Promise<TransactionInstruction[]>
-  
-  // PDA derivation (pure, no RPC)
-  deriveConfig(): PublicKey
-  deriveAuthority(): PublicKey
-  deriveWrappedMint(token: string): PublicKey
-  deriveVault(mint: PublicKey): PublicKey
-}
-```
-
-**Why instructions instead of full Transaction?**
-- Consumer controls blockhash fetching (can use durable nonces, etc.)
-- Consumer can batch multiple operations into one transaction
-- Consumer handles signing with their wallet/keypair
-- Anchor's `.instruction()` method returns `TransactionInstruction` directly
-
-**Reference:** See `src/clients/solana.ts` for:
-- PDA derivation patterns (SEEDS constants, findProgramAddressSync)
-- Account resolution logic (isBridgedToken, getTokenProgramForMint)
-- Anchor method building pattern
-
-**Key files to copy:**
-- `src/types/solana/bridge_token_factory_shim.json` - Anchor IDL
-- `src/types/solana/bridge_token_factory_shim.ts` - TypeScript types for IDL
-
-### 6. `@omni-bridge/btc` (packages/btc/)
-
-**Dependencies:** `@omni-bridge/core`, `@scure/btc-signer`
-
-Needs to implement:
-```typescript
 interface BtcBuilder {
-  buildWithdrawalPlan(params: WithdrawalParams): BtcUnsignedTransaction
-  selectUtxos(available: UTXO[], targetAmount: bigint, feeRate: number): UTXO[]
-  getDepositProof(txHash: string, vout: number): Promise<DepositProof>
-  getMerkleProof(txHash: string): Promise<MerkleProof>
+  // Withdrawal planning - select UTXOs and build transaction plan
+  buildWithdrawalPlan(
+    utxos: UTXO[],
+    amount: bigint,
+    targetAddress: string,
+    changeAddress: string,
+    feeRate?: number,
+  ): BtcWithdrawalPlan
+
+  // Deposit proof generation
+  getDepositProof(txHash: string, vout: number): Promise<BtcDepositProof>
+  getMerkleProof(txHash: string): Promise<BtcMerkleProof>
+
+  // UTXO selection utilities
+  selectUtxos(utxos: NormalizedUTXO[], amount: bigint, options: UtxoSelectionOptions): UtxoSelectionResult
+
+  // Address utilities
+  addressToScriptPubkey(address: string): string
+
+  // Transaction broadcast
+  broadcastTransaction(txHex: string): Promise<string>
 }
 ```
 
-**Reference:** See `src/utxo/index.ts` and `src/services/bitcoin.ts`
+**Reference files to adapt:**
+- `src/utxo/index.ts` - UTXO selection logic (selectUtxos, linearFeeCalculator, buildBitcoinMerkleProof)
+- `src/services/bitcoin.ts` - BitcoinService (buildWithdrawalPlan, getDepositProof, getMerkleProof)
+- `src/utxo/rpc.ts` - RPC client for proof fetching
+
+**Key types to define:**
+```typescript
+interface UTXO {
+  txid: string
+  vout: number
+  balance: number | bigint
+  tx_bytes: Uint8Array | number[]
+  path?: string
+}
+
+interface BtcWithdrawalPlan {
+  inputs: string[]  // "txid:vout" format
+  outputs: { value: number; script_pubkey: string }[]
+  fee: bigint
+}
+
+interface BtcDepositProof {
+  merkle_proof: string[]
+  tx_block_blockhash: string
+  tx_bytes: number[]
+  tx_index: number
+  amount: bigint
+}
+
+interface BtcMerkleProof {
+  block_height: number
+  pos: number
+  merkle: string[]
+}
+```
+
+**Implementation notes:**
+1. Use `@scure/btc-signer` for address parsing and network config
+2. Use `merkletreejs` with `isBitcoinTree: true` for Merkle proofs
+3. Default to Blockstream API for testnet/mainnet
+4. UTXO selection uses largest-first algorithm by default
+5. Fee calculation is linear based on input/output counts
 
 ### 7. `@omni-bridge/sdk` (packages/sdk/)
 
-Update to properly re-export from all packages:
+Already set up to re-export from all packages. Once `@omni-bridge/btc` is complete, verify it builds and exports correctly.
+
+Current state:
 ```typescript
+export * from "@omni-bridge/btc"
 export * from "@omni-bridge/core"
 export * from "@omni-bridge/evm"
 export * from "@omni-bridge/near"
 export * from "@omni-bridge/solana"
-export * from "@omni-bridge/btc"
 ```
 
 ---
@@ -155,8 +192,8 @@ Each package exposes a `create{Name}Builder(config)` function that returns a bui
 |--------|---------|-----|
 | EVM    | Returns `EvmUnsignedTransaction` (plain object) | Multiple libraries (viem, ethers), stateless encoding |
 | NEAR   | Returns `NearUnsignedTransaction` + shims | Two libraries (near-kit, near-api-js), nonce is per-key |
-| Solana | Returns `TransactionInstruction[]`, requires Connection | One library, needs RPC for account lookups |
-| BTC    | Returns `BtcUnsignedTransaction` (inputs/outputs) | UTXO model, consumer handles signing |
+| Solana | Returns `TransactionInstruction[]`, optional Connection | One library, needs RPC for account lookups |
+| BTC    | Returns `BtcWithdrawalPlan` (inputs/outputs) | UTXO model, consumer handles signing |
 
 ### Import Style
 - Use `.js` extensions in imports (Biome rule)
@@ -180,10 +217,10 @@ bunx biome check --write packages/{name}/src/  # Auto-fix lint issues
 ## Existing Source Files (for reference)
 
 Key files from the old SDK that can be adapted:
-- `src/clients/solana.ts` - Solana client (adapt to return instructions)
-- `src/utxo/index.ts` - UTXO utilities
-- `src/services/bitcoin.ts` - Bitcoin service
-- `src/types/solana/` - Anchor IDL and types
+- `src/utxo/index.ts` - UTXO selection and Merkle proof utilities
+- `src/services/bitcoin.ts` - BitcoinService with withdrawal planning and proofs
+- `src/utxo/rpc.ts` - RPC client for Bitcoin/Zcash nodes
+- `src/types/bitcoin.ts` - Bitcoin-specific types
 
 ---
 
@@ -191,12 +228,25 @@ Key files from the old SDK that can be adapted:
 
 1. **Don't modify old src/, tests/, e2e/ files** - They have pre-existing lint issues that shouldn't be fixed as part of this work
 
-2. **Solana needs Connection** - Unlike NEAR which can do view calls internally, Solana account lookups need a Connection passed in
+2. **Bitcoin uses UTXO model** - Very different from account-based chains. Focus on input selection and fee calculation
 
-3. **Anchor IDL is required** - Copy the IDL JSON and TypeScript types from `src/types/solana/`
+3. **Merkle proofs for deposits** - Bitcoin deposits are verified via Merkle inclusion proofs, not transaction receipts
 
-4. **Decimal normalization is critical** - Always use the utilities from `@omni-bridge/core/utils/decimals.ts`
+4. **Fee calculation is complex** - Use linear fee calculator based on input/output counts and fee rate (sat/vB)
 
-5. **PDA seeds come from IDL constants** - Don't hardcode, extract from `BRIDGE_TOKEN_FACTORY_IDL.constants`
+5. **Address validation** - Use `@scure/btc-signer` for address parsing and script_pubkey generation
 
 6. **Commit style** - Use Conventional Commits, one-line messages
+
+---
+
+## Progress Summary
+
+| Package | Status | Notes |
+|---------|--------|-------|
+| `@omni-bridge/core` | ✅ Complete | Types, config, API, validation |
+| `@omni-bridge/evm` | ✅ Complete | Builder, ABIs, proof generation |
+| `@omni-bridge/near` | ✅ Complete | Builder, shims for near-kit/near-api-js |
+| `@omni-bridge/solana` | ✅ Complete | Builder, Anchor IDL, PDA derivation |
+| `@omni-bridge/btc` | ✅ Complete | UTXO selection, withdrawal planning, proofs |
+| `@omni-bridge/sdk` | ✅ Complete | Re-exports all packages |

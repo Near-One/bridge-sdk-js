@@ -19,8 +19,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@noble/hashes": "^1.8.0",
     "@omni-bridge/core": "workspace:*",
-    "@scure/btc-signer": "^2.0.1"
+    "@scure/base": "~2.0.0",
+    "@scure/btc-signer": "^2.0.1",
+    "merkletreejs": "^0.4.0"
   },
   "devDependencies": {
     "typescript": "^5.9.3"
