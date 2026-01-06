@@ -3,7 +3,7 @@
  */
 
 import { Near } from "near-kit"
-import { BridgeAPI, type Chain } from "./api.js"
+import { BridgeAPI, type Chain, type PostAction, type UtxoChainParam } from "./api.js"
 import { type ChainAddresses, getAddresses } from "./config.js"
 import { ValidationError } from "./errors.js"
 import {
@@ -12,6 +12,7 @@ import {
   type OmniAddress,
   type TokenDecimals,
   type TransferParams,
+  type UtxoChain,
   type ValidatedTransfer,
 } from "./types.js"
 import { getAddress, getChain, isEvmChain } from "./utils/address.js"
@@ -20,6 +21,43 @@ import { normalizeAmount, validateTransferAmount } from "./utils/decimals.js"
 export interface BridgeConfig {
   network: Network
   rpcUrls?: Partial<Record<ChainKind, string>>
+}
+
+/**
+ * Options for UTXO deposit address generation
+ */
+export interface UtxoDepositOptions {
+  /**
+   * Post-actions to execute after the deposit is finalized on NEAR.
+   * Used for automatic bridging to other chains.
+   */
+  postActions?: PostAction[]
+  /**
+   * Extra message to include in the deposit
+   */
+  extraMsg?: string
+}
+
+/**
+ * Result of UTXO deposit address generation
+ */
+export interface UtxoDepositResult {
+  /**
+   * The BTC/Zcash address to send funds to
+   */
+  address: string
+  /**
+   * The chain type
+   */
+  chain: UtxoChainParam
+  /**
+   * The recipient on NEAR
+   */
+  recipient: string
+  /**
+   * Post-actions if any were provided
+   */
+  postActions?: PostAction[]
 }
 
 /**
@@ -43,6 +81,26 @@ export interface Bridge {
    * Get bridged token on destination chain
    */
   getBridgedToken(token: OmniAddress, destChain: ChainKind): Promise<OmniAddress | null>
+
+  /**
+   * Get deposit address for UTXO chain (BTC/Zcash).
+   *
+   * To deposit BTC or Zcash into the bridge:
+   * 1. Call this method to get a deposit address
+   * 2. Send funds to the returned address
+   * 3. Wait for confirmation on the UTXO chain
+   * 4. Finalize the deposit on NEAR using the BTC builder's proof methods
+   *
+   * @param chain - The UTXO chain (ChainKind.Btc or ChainKind.Zcash)
+   * @param recipient - NEAR account ID to receive the bridged tokens
+   * @param options - Optional post-actions for automatic bridging
+   * @returns The deposit address and related info
+   */
+  getUtxoDepositAddress(
+    chain: UtxoChain,
+    recipient: string,
+    options?: UtxoDepositOptions,
+  ): Promise<UtxoDepositResult>
 
   /**
    * API client for direct access
@@ -248,6 +306,35 @@ class BridgeImpl implements Bridge {
       address: token,
     })
     return (result as OmniAddress) ?? null
+  }
+
+  async getUtxoDepositAddress(
+    chain: UtxoChain,
+    recipient: string,
+    options?: UtxoDepositOptions,
+  ): Promise<UtxoDepositResult> {
+    // Convert ChainKind to API chain param
+    const chainParam: UtxoChainParam = chain === ChainKind.Btc ? "btc" : "zcash"
+
+    // Call the API to get the deposit address
+    const response = await this.api.getUtxoDepositAddress(
+      chainParam,
+      recipient,
+      options?.postActions,
+      options?.extraMsg,
+    )
+
+    const result: UtxoDepositResult = {
+      address: response.address,
+      chain: chainParam,
+      recipient,
+    }
+
+    if (options?.postActions) {
+      result.postActions = options.postActions
+    }
+
+    return result
   }
 }
 

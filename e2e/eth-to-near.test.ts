@@ -1,151 +1,209 @@
 import { beforeAll, describe, expect, test } from "bun:test"
-import { ethers } from "ethers"
-import { EvmBridgeClient } from "../src/clients/evm.js"
-import { NearBridgeClient } from "../src/clients/near-kit.js"
-import { setNetwork } from "../src/config.js"
-import { getEvmProof } from "../src/proofs/evm.js"
-import { ChainKind, type OmniTransferMessage, ProofKind } from "../src/types/index.js"
-import { omniAddress } from "../src/utils/index.js"
+import { ChainKind, createBridge, getAddresses } from "@omni-bridge/core"
+import {
+  createEvmBuilder,
+  getEvmProof,
+  getInitTransferTopic,
+  parseInitTransferEvent,
+} from "@omni-bridge/evm"
+import { createNearBuilder, ProofKind, toNearKitTransaction } from "@omni-bridge/near"
+import type { Near } from "near-kit"
+import { createPublicClient, createWalletClient, type Hex, http } from "viem"
+import { privateKeyToAccount } from "viem/accounts"
+import { sepolia } from "viem/chains"
 import { ETH_TO_NEAR_ROUTES, TIMEOUTS } from "./shared/fixtures.js"
-import { setupTestAccounts, TEST_CONFIG, type TestAccountsSetup } from "./shared/setup.js"
+import { createNearKitInstance, TEST_CONFIG } from "./shared/setup.js"
 
-describe("ETH to NEAR E2E Transfer Tests (Manual Flow)", () => {
-  let testAccounts: TestAccountsSetup
-  let ethClient: EvmBridgeClient
-  let nearClient: NearBridgeClient
+describe("ETH to NEAR E2E Transfer Tests (New SDK)", () => {
+  let near: Near
+  let ethPrivateKey: Hex
+  const signerId = TEST_CONFIG.networks.near.accountId
 
   beforeAll(async () => {
-    // Set network to testnet for all tests
-    setNetwork("testnet")
+    // Setup near-kit instance
+    near = await createNearKitInstance()
 
-    // Setup test accounts and clients
-    testAccounts = await setupTestAccounts()
-    ethClient = new EvmBridgeClient(testAccounts.ethWallet, ChainKind.Eth)
-    nearClient = new NearBridgeClient(testAccounts.nearKitInstance, undefined, {
-      defaultSignerId: TEST_CONFIG.networks.near.accountId,
-    })
+    // Get ETH private key
+    const pk = process.env["ETH_PRIVATE_KEY"]
+    if (!pk) {
+      throw new Error("ETH_PRIVATE_KEY environment variable required")
+    }
+    ethPrivateKey = (pk.startsWith("0x") ? pk : `0x${pk}`) as Hex
 
-    console.log("🚀 Test setup complete:")
-    console.log(`  ETH Address: ${testAccounts.ethWallet.address}`)
-    console.log(`  NEAR Account: ${TEST_CONFIG.networks.near.accountId}`)
+    console.log("Test setup complete:")
+    console.log(`  ETH Address: ${privateKeyToAccount(ethPrivateKey).address}`)
+    console.log(`  NEAR Account: ${signerId}`)
   })
 
   test.each(ETH_TO_NEAR_ROUTES)(
     "should complete manual ETH to NEAR transfer: $name",
     async (route) => {
-      console.log(`\n🌉 Testing ${route.name} (Manual Flow)...`)
+      console.log(`\n Testing ${route.name} (New SDK)...`)
 
-      // Create transfer message with zero fees (manual flow)
-      const transferMessage: OmniTransferMessage = {
-        tokenAddress: route.token.address,
+      // Create builders
+      const bridge = createBridge({ network: "testnet" })
+      const evmBuilder = createEvmBuilder({ network: "testnet" })
+      const nearBuilder = createNearBuilder({ network: "testnet" })
+      const addresses = getAddresses("testnet")
+
+      // Create viem clients
+      const account = privateKeyToAccount(ethPrivateKey)
+      const publicClient = createPublicClient({
+        chain: sepolia,
+        transport: http(TEST_CONFIG.networks.ethereum.rpcUrl),
+      })
+      const walletClient = createWalletClient({
+        account,
+        chain: sepolia,
+        transport: http(TEST_CONFIG.networks.ethereum.rpcUrl),
+      })
+
+      // Step 1: Validate transfer params
+      console.log("Step 1: Validating transfer params...")
+      const validated = await bridge.validateTransfer({
+        token: route.token.address,
         amount: BigInt(route.token.testAmount),
-        recipient: omniAddress(ChainKind.Near, route.recipient),
-        fee: BigInt(0), // No relayer fee
-        nativeFee: BigInt(0), // No relayer fee
+        fee: 0n,
+        nativeFee: 0n,
+        sender: `eth:${account.address}`,
+        recipient: `near:${route.recipient}`,
+      })
+
+      console.log(`  Token: ${route.token.symbol} (${route.token.address})`)
+      console.log(`  Amount: ${validated.params.amount}`)
+      console.log(`  Recipient: ${validated.params.recipient}`)
+
+      // Step 2: Check and build approval if needed
+      console.log("\nStep 2: Checking token approval...")
+      const tokenAddress = route.token.address.split(":")[1] as Hex
+      const bridgeAddress = addresses.eth.bridge as Hex
+
+      const { ERC20_ABI } = await import("@omni-bridge/evm")
+      const allowance = await publicClient.readContract({
+        address: tokenAddress,
+        abi: ERC20_ABI,
+        functionName: "allowance",
+        args: [account.address, bridgeAddress],
+      })
+
+      if (allowance < validated.params.amount) {
+        console.log("  Approving tokens...")
+        const approvalTx = evmBuilder.buildMaxApproval(tokenAddress, bridgeAddress)
+        const approvalHash = await walletClient.sendTransaction(approvalTx)
+        await publicClient.waitForTransactionReceipt({ hash: approvalHash })
+        console.log(`  Approval tx: ${approvalHash}`)
+      } else {
+        console.log("  Already approved")
       }
 
-      console.log("📤 Step 1: Initiating ETH → NEAR transfer...")
-      console.log(`  Token: ${route.token.symbol} (${route.token.address})`)
-      console.log(`  Amount: ${route.token.testAmount}`)
-      console.log(`  From: ${route.sender}`)
-      console.log(`  To: ${transferMessage.recipient}`)
-      console.log("  Fee: 0 (manual flow)")
+      // Step 3: Build and send transfer transaction
+      console.log("\nStep 3: Initiating transfer on Ethereum...")
+      const transferTx = evmBuilder.buildTransfer(validated)
+      const txHash = await walletClient.sendTransaction(transferTx)
+      console.log(`  Transaction hash: ${txHash}`)
 
-      // Step 1: Initiate transfer on Ethereum (with permanent approval)
-      const transactionHash = await ethClient.initTransfer(transferMessage, true)
+      // Wait for confirmation
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      console.log(`  Block: ${receipt.blockNumber}`)
+      expect(receipt.status).toBe("success")
 
-      console.log("✓ Transfer initiated on Ethereum!")
-      console.log(`  Transaction Hash: ${transactionHash}`)
+      // Step 4: Parse InitTransfer event
+      console.log("\nStep 4: Parsing InitTransfer event...")
+      const initEvent = parseInitTransferEvent(receipt.logs)
+      console.log(`  Origin nonce: ${initEvent.originNonce}`)
+      console.log(`  Token: ${initEvent.tokenAddress}`)
+      console.log(`  Amount: ${initEvent.amount}`)
+      console.log(`  Recipient: ${initEvent.recipient}`)
 
-      // Validate initiation
-      expect(typeof transactionHash).toBe("string")
-      expect(transactionHash.length).toBeGreaterThan(0)
+      expect(initEvent.originNonce).toBeGreaterThan(0n)
+      expect(initEvent.amount).toBe(validated.params.amount)
 
-      // Step 2: Get the InitTransfer event from the transaction
-      console.log("\n🔍 Step 2: Extracting transfer event from transaction...")
-      const transferEvent = await ethClient.getInitTransferEvent(transactionHash)
+      // Step 5: Generate EVM proof
+      console.log("\nStep 5: Generating EVM proof...")
+      const initTransferTopic = getInitTransferTopic()
+      const proof = await getEvmProof(txHash, initTransferTopic, ChainKind.Eth, "testnet")
+      console.log(`  Proof length: ${proof.proof.length} nodes`)
+      console.log(`  Log index: ${proof.log_index}`)
 
-      console.log("✓ Transfer event extracted!")
-      console.log(`  Origin Nonce: ${transferEvent.originNonce}`)
-      console.log(`  Token: ${transferEvent.tokenAddress}`)
-      console.log(`  Amount: ${transferEvent.amount}`)
-      console.log(`  Recipient: ${transferEvent.recipient}`)
-
-      // Validate event extraction
-      expect(transferEvent).toHaveProperty("originNonce")
-      expect(transferEvent).toHaveProperty("tokenAddress")
-      expect(transferEvent).toHaveProperty("amount")
-      expect(transferEvent).toHaveProperty("recipient")
-
-      // Step 3: Generate EVM proof
-      console.log("\n🔒 Step 3: Generating EVM proof...")
-
-      // Calculate the InitTransfer event topic hash
-      // InitTransfer(address indexed sender, address indexed tokenAddress, uint64 indexed originNonce, uint128 amount, uint128 fee, uint128 nativeTokenFee, string recipient, string message)
-      const initTransferSignature =
-        "InitTransfer(address,address,uint64,uint128,uint128,uint128,string,string)"
-      const INIT_TRANSFER_TOPIC = ethers.id(initTransferSignature)
-
-      const proof = await getEvmProof(transactionHash, INIT_TRANSFER_TOPIC, ChainKind.Eth)
-
-      console.log("✓ EVM proof generated!")
-      console.log("  Proof length:", proof.proof.length)
-
-      // Validate proof generation
-      expect(proof).toHaveProperty("proof")
       expect(proof.proof.length).toBeGreaterThan(0)
 
-      // Step 4: Wait for transaction to be finalized
+      // Step 6: Check if we should wait for light client
       const shouldWaitForLightClient = process.env["FULL_E2E_TEST"] === "true"
 
       if (shouldWaitForLightClient) {
-        console.log("\n⏳ Step 4: Waiting for light client (30 mins)...")
-        await new Promise((resolve) => setTimeout(resolve, 1800000)) // Wait 30 minutes for light client
-
-        // Step 5: Finalize transfer on NEAR
-        console.log("\n🏁 Step 5: Finalizing transfer on NEAR...")
-
-        // Extract the NEAR token address (remove "eth:" prefix and use equivalent NEAR token)
-        const nearTokenId = "wrap.testnet" // The equivalent NEAR token
-        const finalizeResult = await nearClient.finalizeTransfer(
-          nearTokenId,
-          route.recipient,
-          BigInt(0),
-          ChainKind.Eth,
-          undefined, // signerId (uses defaultSignerId)
-          undefined, // No VAA needed for EVM
-          { proof_kind: ProofKind.InitTransfer, proof }, // EVM proof required
-        )
-
-        console.log("✓ Transfer finalized on NEAR!")
-        console.log(`  Finalization TX: ${finalizeResult.transaction.hash}`)
-
-        // Validate finalization
-        expect(finalizeResult).toBeDefined()
-        expect(typeof finalizeResult.transaction.hash).toBe("string") // Should be transaction hash
-        expect(finalizeResult.transaction.hash.length).toBeGreaterThan(0)
-
-        console.log("\n🎉 Full manual transfer flow completed successfully!")
-        console.log("  1. ✓ Initiated on ETH")
-        console.log("  2. ✓ Extracted event data")
-        console.log("  3. ✓ Generated EVM proof")
-        console.log("  4. ✓ Waited for light client")
-        console.log("  5. ✓ Finalized on NEAR")
-        console.log(`✅ ${route.name} test completed!`)
-      } else {
-        console.log("\n⚡ Step 4: Skipping light client wait and finalization")
+        console.log("\nStep 6: Waiting for NEAR light client to sync...")
+        console.log("  This will take approximately 30 minutes.")
         console.log(
-          "   Set FULL_E2E_TEST=true to run complete flow including 30min wait + finalization",
+          "  The light client needs to sync the Ethereum block containing our transaction.",
         )
 
-        console.log("\n🎯 Partial transfer flow completed successfully!")
-        console.log("  1. ✓ Initiated on ETH")
-        console.log("  2. ✓ Extracted event data")
-        console.log("  3. ✓ Generated EVM proof")
-        console.log("  4. ⏭️  Skipped light client wait")
-        console.log("  5. ⏭️  Skipped NEAR finalization")
-        console.log(`✅ ${route.name} proof generation test completed!`)
+        // Wait 30 minutes for light client
+        await new Promise((resolve) => setTimeout(resolve, 1800000))
+
+        // Step 7: Finalize on NEAR
+        console.log("\nStep 7: Finalizing transfer on NEAR...")
+
+        // Get the bridged token on NEAR for storage deposit
+        const nearToken = await bridge.getBridgedToken(route.token.address, ChainKind.Near)
+        if (!nearToken) {
+          throw new Error("Could not find bridged token on NEAR")
+        }
+        const tokenAccountId = nearToken.split(":")[1]!
+        console.log(`  NEAR token: ${tokenAccountId}`)
+
+        // Build finalization transaction with EVM proof
+        const finalizeTx = nearBuilder.buildFinalization({
+          sourceChain: ChainKind.Eth,
+          signerId,
+          evmProof: {
+            proof_kind: ProofKind.InitTransfer,
+            proof: {
+              log_index: proof.log_index,
+              log_entry_data: proof.log_entry_data,
+              receipt_index: proof.receipt_index,
+              receipt_data: proof.receipt_data,
+              header_data: proof.header_data,
+              proof: proof.proof,
+            },
+          },
+          storageDepositActions: [
+            {
+              token_id: tokenAccountId,
+              account_id: route.recipient,
+              storage_deposit_amount: null,
+            },
+          ],
+        })
+
+        const finalizeResult = await toNearKitTransaction(near, finalizeTx).send()
+        console.log(`  Finalization tx: ${finalizeResult.transaction.hash}`)
+
+        // Check for success
+        const hasSuccess = finalizeResult.receipts_outcome.some(
+          (r) =>
+            r.outcome.status &&
+            typeof r.outcome.status === "object" &&
+            "SuccessValue" in r.outcome.status,
+        )
+        expect(hasSuccess).toBe(true)
+
+        console.log("\n Full ETH -> NEAR transfer completed!")
+        console.log("  1. Initiated on ETH")
+        console.log("  2. Parsed InitTransfer event")
+        console.log("  3. Generated EVM proof")
+        console.log("  4. Waited for light client")
+        console.log("  5. Finalized on NEAR")
+      } else {
+        console.log("\nStep 6: Skipping light client wait (FULL_E2E_TEST not set)")
+        console.log("  Set FULL_E2E_TEST=true to run complete flow with 30min wait")
+        console.log("\n Partial test completed successfully!")
+        console.log("  1. Initiated on ETH")
+        console.log("  2. Parsed InitTransfer event")
+        console.log("  3. Generated EVM proof")
+        console.log("  Skipped: Light client wait + NEAR finalization")
       }
+
+      console.log(`\n ${route.name} test completed!`)
     },
     TIMEOUTS.FULL_E2E_FLOW,
   )

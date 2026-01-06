@@ -17,7 +17,13 @@ export {
   type UtxoDepositAddressResponse,
 } from "./api.js"
 // Bridge factory
-export { type Bridge, type BridgeConfig, createBridge } from "./bridge.js"
+export {
+  type Bridge,
+  type BridgeConfig,
+  createBridge,
+  type UtxoDepositOptions,
+  type UtxoDepositResult,
+} from "./bridge.js"
 
 // Config
 export {

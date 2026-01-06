@@ -1,88 +1,136 @@
 #!/usr/bin/env node
 
 /**
- * Bitcoin Withdrawal Example
+ * Bitcoin Withdrawal Example (New Package Structure)
  *
- * Simple example showing how to withdraw Bitcoin from NEAR using the Omni Bridge SDK.
+ * Shows how to withdraw Bitcoin from NEAR using the new @omni-bridge packages.
+ *
+ * Note: Withdrawals require:
+ * 1. nBTC balance on NEAR
+ * 2. Building the withdrawal transaction
+ * 3. Waiting for MPC signing (handled by bridge relayers)
+ * 4. Broadcasting the signed transaction
  *
  * Setup:
  * 1. Replace NEAR_ACCOUNT with your testnet account
  * 2. Replace BITCOIN_ADDRESS with your Bitcoin testnet address
- * 3. Ensure you have nBTC balance and NEAR credentials in ~/.near-credentials
+ * 3. Ensure you have nBTC balance and NEAR credentials
  *
  * Usage: bun run examples/bitcoin-withdraw.ts
  */
 
-import os from "node:os"
-import path from "node:path"
-import { Account } from "@near-js/accounts"
-import { createRpcClientWrapper, getSignerFromKeystore } from "@near-js/client"
-import { UnencryptedFileSystemKeyStore } from "@near-js/keystores-node"
-import { NearBridgeClient } from "../src/clients/near.js"
-import { addresses, setNetwork } from "../src/config.js"
-import { ChainKind } from "../src/types/chain.js"
+import { Near } from "near-kit"
+import {
+  ChainKind,
+  createBridge,
+  getAddresses,
+  type Network,
+} from "@omni-bridge/core"
+import { createBtcBuilder } from "@omni-bridge/btc"
 
 // Configuration - Replace with your values
 const NEAR_ACCOUNT = "bridge-sdk-test.testnet"
 const BITCOIN_ADDRESS = "tb1q7jn2426dwpsf3xlasazzjuwcvayjn6fhlm2vjp"
-const NETWORK = "testnet" as "testnet" | "mainnet"
-
-setNetwork(NETWORK)
+const NETWORK: Network = "testnet"
 
 async function main() {
-  console.log("🚀 Bitcoin Withdrawal Example")
+  console.log("Bitcoin Withdrawal Example (New SDK)")
   console.log(`Withdrawing from ${NEAR_ACCOUNT} to ${BITCOIN_ADDRESS}`)
 
-  // Initialize NEAR client
-  const keyStore = new UnencryptedFileSystemKeyStore(path.join(os.homedir(), ".near-credentials"))
-  const signer = await getSignerFromKeystore(NEAR_ACCOUNT, NETWORK, keyStore)
-  const nearProvider = createRpcClientWrapper(addresses.near.rpcUrls)
-  const account = new Account(NEAR_ACCOUNT, nearProvider, signer)
+  // Initialize clients
+  const bridge = createBridge({ network: NETWORK })
+  const btcBuilder = createBtcBuilder({ network: NETWORK })
+  const addresses = getAddresses(NETWORK)
+  const near = new Near({ network: NETWORK })
 
-  const bridgeClient = new NearBridgeClient(account, addresses.near.contract)
+  // Get connector config for minimum withdrawal
+  const connectorConfig = await near.view<{
+    min_withdraw_amount: string
+    change_address: string
+  }>(addresses.btc.btcConnector, "get_config", {})
 
-  // Get minimum withdrawal amount
-  const config = await bridgeClient.getUtxoBridgeConfig(ChainKind.Btc)
-  const withdrawalAmount = BigInt(config.min_withdraw_amount)
+  if (!connectorConfig) {
+    throw new Error("Failed to get connector config")
+  }
 
-  console.log(`Amount: ${withdrawalAmount} satoshis`)
+  const withdrawalAmount = BigInt(connectorConfig.min_withdraw_amount)
+  console.log(`Minimum withdrawal: ${withdrawalAmount} satoshis`)
 
+  // Get available UTXOs from the connector
+  const utxos = await near.view<Record<string, unknown>>(
+    addresses.btc.btcConnector,
+    "get_utxos_paged",
+    {},
+  )
+
+  if (!utxos || Object.keys(utxos).length === 0) {
+    console.log("No UTXOs available in bridge - try again later")
+    return
+  }
+
+  console.log(`Available UTXOs: ${Object.keys(utxos).length}`)
+
+  // Build withdrawal plan using the BTC builder
+  // This selects UTXOs and calculates fees
   try {
-    // Method 1: Automated (recommended)
-    console.log("\n⏳ Starting automated withdrawal...")
+    const normalizedUtxos = Object.entries(utxos).map(([key, utxo]) => {
+      const [txid] = key.split("@")
+      const u = utxo as { vout: number; balance: string; tx_bytes?: number[] }
+      return {
+        txid: txid!,
+        vout: u.vout,
+        balance: BigInt(u.balance),
+        tx_bytes: u.tx_bytes,
+      }
+    })
 
-    const bitcoinTxHash = await bridgeClient.executeUtxoWithdrawal(
-      ChainKind.Btc,
-      BITCOIN_ADDRESS,
+    const plan = btcBuilder.buildWithdrawalPlan(
+      normalizedUtxos,
       withdrawalAmount,
-    )
-
-    console.log("✅ Success!")
-    console.log(`Bitcoin TX: ${bitcoinTxHash}`)
-    console.log(`Explorer: https://blockstream.info/testnet/tx/${bitcoinTxHash}`)
-  } catch (_error) {
-    console.log("❌ Automated method failed, trying manual...")
-
-    // Method 2: Manual steps
-    const btcWithdrawal = await bridgeClient.initUtxoWithdrawal(
-      ChainKind.Btc,
       BITCOIN_ADDRESS,
-      withdrawalAmount,
-    )
-    console.log(`Pending ID: ${btcWithdrawal.pendingId}. NEAR TX: ${btcWithdrawal.nearTxHash}`)
-
-    console.log("⏳ Waiting for MPC signing...")
-    const nearTxHash = await bridgeClient.waitForUtxoTransactionSigning(
-      ChainKind.Btc,
-      btcWithdrawal.nearTxHash,
+      connectorConfig.change_address,
+      2, // fee rate in sat/vB
     )
 
-    console.log("⏳ Broadcasting to Bitcoin network...")
-    const bitcoinTxHash = await bridgeClient.finalizeUtxoWithdrawal(ChainKind.Btc, nearTxHash)
+    console.log("\nWithdrawal Plan:")
+    console.log(`  Inputs: ${plan.inputs.length}`)
+    console.log(`  Outputs: ${plan.outputs.length}`)
+    console.log(`  Fee: ${plan.fee} satoshis`)
 
-    console.log("✅ Manual method succeeded!")
-    console.log(`Bitcoin TX: ${bitcoinTxHash}`)
-    console.log(`Explorer: https://blockstream.info/testnet/tx/${bitcoinTxHash}`)
+    // To execute the withdrawal, you would:
+    // 1. Call ft_transfer_call on the nBTC token contract
+    // 2. Wait for MPC signing via the bridge API
+    // 3. Broadcast the signed transaction
+    //
+    // Example with near-kit (requires credentials):
+    //
+    // const nearWithCredentials = new Near({
+    //   network: NETWORK,
+    //   privateKey: "ed25519:...",
+    // })
+    //
+    // const msg = {
+    //   Withdraw: {
+    //     target_btc_address: BITCOIN_ADDRESS,
+    //     input: plan.inputs,
+    //     output: plan.outputs,
+    //   },
+    // }
+    //
+    // await nearWithCredentials
+    //   .transaction(NEAR_ACCOUNT)
+    //   .functionCall(addresses.btc.btcToken, "ft_transfer_call", {
+    //     receiver_id: addresses.btc.btcConnector,
+    //     amount: (withdrawalAmount + plan.fee + bridgeFee).toString(),
+    //     msg: JSON.stringify(msg),
+    //   }, { gas: "100 Tgas", attachedDeposit: "1 yocto" })
+    //   .send()
+
+    console.log("\nWithdrawal plan ready!")
+    console.log("To execute, call ft_transfer_call on the nBTC token contract")
+  } catch (error) {
+    console.log("Failed to build withdrawal plan:")
+    console.log((error as Error).message)
   }
 }
 

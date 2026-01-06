@@ -19,6 +19,7 @@ import type {
   UtxoSelectionOptions,
   UtxoSelectionResult,
 } from "./types.js"
+import { getZcashScript, ZCASH_DUST_THRESHOLD, zcashFeeCalculator } from "./zcash.js"
 
 /**
  * Default API URLs for Bitcoin networks
@@ -37,12 +38,22 @@ const DEFAULT_RPC_URLS = {
 } as const
 
 /**
- * Default UTXO selection options
+ * Default UTXO selection options for Bitcoin
  */
-const DEFAULT_UTXO_OPTIONS: UtxoSelectionOptions = {
+const DEFAULT_BTC_OPTIONS: UtxoSelectionOptions = {
   feeCalculator: linearFeeCalculator({ base: 10, input: 68, output: 31, rate: 1 }),
   dustThreshold: 546n,
   minChange: 1000n,
+  sort: "largest-first",
+}
+
+/**
+ * Default UTXO selection options for Zcash (ZIP-317)
+ */
+const DEFAULT_ZCASH_OPTIONS: UtxoSelectionOptions = {
+  feeCalculator: zcashFeeCalculator(),
+  dustThreshold: ZCASH_DUST_THRESHOLD,
+  minChange: ZCASH_DUST_THRESHOLD,
   sort: "largest-first",
 }
 
@@ -119,12 +130,14 @@ class BtcBuilderImpl implements BtcBuilder {
   private readonly apiUrl: string
   private readonly rpc: UtxoRpcClient
   private readonly btcNetwork: "mainnet" | "testnet"
+  private readonly chain: "btc" | "zcash"
 
   constructor(config: BtcBuilderConfig) {
     this.btcNetwork = config.network
+    this.chain = config.chain ?? "btc"
     this.apiUrl = config.apiUrl ?? DEFAULT_API_URLS[config.network]
 
-    const chainKind = config.chain === "zcash" ? ChainKind.Zcash : ChainKind.Btc
+    const chainKind = this.chain === "zcash" ? ChainKind.Zcash : ChainKind.Btc
     const rpcUrl = config.rpcUrl ?? DEFAULT_RPC_URLS[config.network]
 
     this.rpc = new UtxoRpcClient({
@@ -132,6 +145,10 @@ class BtcBuilderImpl implements BtcBuilder {
       headers: config.rpcHeaders,
       chain: chainKind,
     })
+  }
+
+  private getDefaultOptions(): UtxoSelectionOptions {
+    return this.chain === "zcash" ? DEFAULT_ZCASH_OPTIONS : DEFAULT_BTC_OPTIONS
   }
 
   buildWithdrawalPlan(
@@ -143,21 +160,25 @@ class BtcBuilderImpl implements BtcBuilder {
     overrides?: UtxoPlanOverrides,
   ): BtcWithdrawalPlan {
     if (!utxos.length) {
-      throw new Error("Bitcoin: No UTXOs available for transaction")
+      const chainName = this.chain === "zcash" ? "Zcash" : "Bitcoin"
+      throw new Error(`${chainName}: No UTXOs available for transaction`)
     }
 
     const normalized = this.normalizeUtxos(utxos)
-    const feeCalculator = this.createFeeCalculator(feeRate)
+    const defaults = this.getDefaultOptions()
+    // For Zcash, use ZIP-317 fee calculator; for Bitcoin, use linear fee based on feeRate
+    const feeCalculator =
+      this.chain === "zcash" ? defaults.feeCalculator : this.createFeeCalculator(feeRate)
 
-    const dustThreshold = overrides?.dustThreshold ?? DEFAULT_UTXO_OPTIONS.dustThreshold
-    const minChange = overrides?.minChange ?? DEFAULT_UTXO_OPTIONS.minChange ?? dustThreshold
+    const dustThreshold = overrides?.dustThreshold ?? defaults.dustThreshold
+    const minChange = overrides?.minChange ?? defaults.minChange ?? dustThreshold
 
     const selection = selectUtxosInternal(normalized, amount, {
       feeCalculator,
       dustThreshold,
       minChange,
-      maxInputs: overrides?.maxInputs ?? DEFAULT_UTXO_OPTIONS.maxInputs,
-      sort: overrides?.sort ?? DEFAULT_UTXO_OPTIONS.sort,
+      maxInputs: overrides?.maxInputs ?? defaults.maxInputs,
+      sort: overrides?.sort ?? defaults.sort,
     })
 
     const outputs = this.buildOutputs(selection, amount, targetAddress, changeAddress)
@@ -175,7 +196,7 @@ class BtcBuilderImpl implements BtcBuilder {
     options?: Partial<UtxoSelectionOptions>,
   ): UtxoSelectionResult {
     return selectUtxosInternal(utxos, amount, {
-      ...DEFAULT_UTXO_OPTIONS,
+      ...this.getDefaultOptions(),
       ...options,
     })
   }
@@ -189,6 +210,11 @@ class BtcBuilderImpl implements BtcBuilder {
   }
 
   addressToScriptPubkey(address: string): string {
+    // Use Zcash-specific encoding for Zcash addresses
+    if (this.chain === "zcash") {
+      return getZcashScript(address)
+    }
+
     try {
       const decoder = btc.Address(this.getNetwork())
       const outScript = btc.OutScript.encode(decoder.decode(address))

@@ -1,11 +1,9 @@
 import { HttpResponse, http } from "msw"
 import { setupServer } from "msw/node"
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest"
-import { OmniBridgeAPI } from "../src/api.js"
-import { setNetwork } from "../src/config.js"
+import { BridgeAPI } from "../src/api.js"
 
-setNetwork("testnet")
-const api = new OmniBridgeAPI()
+const api = new BridgeAPI("testnet")
 const BASE_URL = "https://testnet.api.bridge.nearone.org"
 
 // Mock data
@@ -105,7 +103,7 @@ beforeAll(() => server.listen())
 afterAll(() => server.close())
 afterEach(() => server.resetHandlers())
 
-describe("OmniBridgeAPI", () => {
+describe("BridgeAPI", () => {
   describe("getTransferStatus", () => {
     it("should fetch transfer status successfully", async () => {
       const status = await api.getTransferStatus({ originChain: "Eth", originNonce: 123 })
@@ -176,14 +174,14 @@ describe("OmniBridgeAPI", () => {
     })
   })
 
-  describe("findOmniTransfers", () => {
+  describe("findTransfers", () => {
     it("should fetch transfers list successfully", async () => {
-      const transfers = await api.findOmniTransfers({ sender: "near:sender.near" })
+      const transfers = await api.findTransfers({ sender: "near:sender.near" })
       expect(transfers).toEqual([normalizedTransfer])
     })
 
     it("should handle pagination parameters", async () => {
-      const transfers = await api.findOmniTransfers({
+      const transfers = await api.findTransfers({
         sender: "near:sender.near",
         limit: 10,
         offset: 5,
@@ -215,9 +213,9 @@ describe("OmniBridgeAPI", () => {
     })
   })
 
-  describe("getUtxoUserDepositAddress", () => {
+  describe("getUtxoDepositAddress", () => {
     it("should fetch BTC deposit address successfully", async () => {
-      const response = await api.getUtxoUserDepositAddress("btc", "recipient.near")
+      const response = await api.getUtxoDepositAddress("btc", "recipient.near")
       expect(response).toEqual({
         address: "tb1qssh0ejglq0v53pwrsxlhxpxw29gfu6c4ls9eyy",
       })
@@ -231,7 +229,7 @@ describe("OmniBridgeAPI", () => {
           msg: "test message",
         },
       ]
-      const response = await api.getUtxoUserDepositAddress(
+      const response = await api.getUtxoDepositAddress(
         "btc",
         "recipient.near",
         postActions,
@@ -249,7 +247,7 @@ describe("OmniBridgeAPI", () => {
         }),
       )
 
-      await expect(api.getUtxoUserDepositAddress("btc", "recipient.near")).rejects.toThrow(
+      await expect(api.getUtxoDepositAddress("btc", "recipient.near")).rejects.toThrow(
         "Resource not found",
       )
     })

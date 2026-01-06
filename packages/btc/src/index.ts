@@ -14,7 +14,6 @@ export {
 
 // RPC
 export { buildBitcoinMerkleProof, UtxoRpcClient } from "./rpc.js"
-
 // Types
 export type {
   BtcBuilderConfig,
@@ -31,3 +30,10 @@ export type {
   UtxoSelectionOptions,
   UtxoSelectionResult,
 } from "./types.js"
+// Zcash utilities
+export {
+  calculateZcashFee,
+  getZcashScript,
+  ZCASH_DUST_THRESHOLD,
+  zcashFeeCalculator,
+} from "./zcash.js"

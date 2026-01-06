@@ -35,14 +35,14 @@ Rewriting `omni-bridge-sdk` from a monolithic package into a multi-package monor
 | `@omni-bridge/btc` | ✅ Complete | UTXO selection, withdrawal planning, proofs |
 | `@omni-bridge/sdk` | ✅ Complete | Re-exports all packages |
 
-### E2E Tests - ✅ NEAR ↔ Solana Complete, NEAR → ETH Complete
+### E2E Tests - ✅ All Directions Complete
 
 | Test | Status | Notes |
 |------|--------|-------|
 | `e2e/near-to-sol.test.ts` | ✅ Passing | NEAR → Solana transfer |
 | `e2e/sol-to-near.test.ts` | ✅ Passing | Solana → NEAR transfer |
 | `e2e/near-to-eth.test.ts` | ✅ Passing | NEAR → ETH transfer |
-| `e2e/eth-to-near.test.ts` | ⏳ Pending | EVM → NEAR (requires EVM proofs) |
+| `e2e/eth-to-near.test.ts` | ✅ Passing | ETH → NEAR (uses EVM proofs + light client) |
 
 ---
 
@@ -286,15 +286,95 @@ const txResponse = await ethWallet.sendTransaction({
 await txResponse.wait()
 ```
 
+### ETH → NEAR (Verified Working)
+
+```typescript
+import { ChainKind, createBridge, getAddresses } from "@omni-bridge/core"
+import {
+  createEvmBuilder,
+  getEvmProof,
+  getInitTransferTopic,
+  parseInitTransferEvent,
+} from "@omni-bridge/evm"
+import { createNearBuilder, ProofKind, toNearKitTransaction } from "@omni-bridge/near"
+import { createPublicClient, createWalletClient, http, type Hex } from "viem"
+import { privateKeyToAccount } from "viem/accounts"
+import { sepolia } from "viem/chains"
+
+// 1. Create builders
+const bridge = createBridge({ network: "testnet" })
+const evmBuilder = createEvmBuilder({ network: "testnet" })
+const nearBuilder = createNearBuilder({ network: "testnet" })
+const addresses = getAddresses("testnet")
+
+// 2. Create viem clients
+const account = privateKeyToAccount(ethPrivateKey)
+const publicClient = createPublicClient({ chain: sepolia, transport: http() })
+const walletClient = createWalletClient({ account, chain: sepolia, transport: http() })
+
+// 3. Validate transfer
+const validated = await bridge.validateTransfer({
+  token: "eth:0x1f89e263159f541182f875ac05d773657d24eb92",
+  amount: 10n,
+  fee: 0n,
+  nativeFee: 0n,
+  sender: `eth:${account.address}`,
+  recipient: `near:${nearRecipient}`,
+})
+
+// 4. Build and send transfer on Ethereum
+const transferTx = evmBuilder.buildTransfer(validated)
+const txHash = await walletClient.sendTransaction(transferTx)
+const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+
+// 5. Parse InitTransfer event from receipt
+const initEvent = parseInitTransferEvent(receipt.logs)
+console.log(`Origin nonce: ${initEvent.originNonce}`)
+
+// 6. Generate EVM proof
+const initTransferTopic = getInitTransferTopic()
+const proof = await getEvmProof(txHash, initTransferTopic, ChainKind.Eth, "testnet")
+
+// 7. Wait for NEAR light client to sync (approximately 30 minutes)
+await new Promise((resolve) => setTimeout(resolve, 1800000))
+
+// 8. Finalize on NEAR
+const nearToken = await bridge.getBridgedToken(validated.params.token, ChainKind.Near)
+const tokenAccountId = nearToken!.split(":")[1]
+
+const finalizeTx = nearBuilder.buildFinalization({
+  sourceChain: ChainKind.Eth,
+  signerId,
+  evmProof: {
+    proof_kind: ProofKind.InitTransfer,
+    proof: {
+      log_index: proof.log_index,
+      log_entry_data: proof.log_entry_data,
+      receipt_index: proof.receipt_index,
+      receipt_data: proof.receipt_data,
+      header_data: proof.header_data,
+      proof: proof.proof,
+    },
+  },
+  storageDepositActions: [
+    { token_id: tokenAccountId, account_id: nearRecipient, storage_deposit_amount: null },
+  ],
+})
+
+await toNearKitTransaction(near, finalizeTx).send()
+```
+
 ---
 
 ## What Remains
 
-### EVM → NEAR E2E Test
+### All Core E2E Tests Complete
 
-The `e2e/eth-to-near.test.ts` test requires EVM proofs which need the light client to sync. This is more complex and requires:
-- `@omni-bridge/evm` package's `getEvmProof()` function
-- Waiting for the NEAR light client to sync the EVM block
+All four directional e2e tests are now passing:
+- NEAR → Solana ✅
+- Solana → NEAR ✅
+- NEAR → ETH ✅
+- ETH → NEAR ✅
 
 ### Potential Improvements
 
@@ -336,6 +416,7 @@ bun run typecheck
 | `e2e/near-to-sol.test.ts` | Working NEAR → Solana test |
 | `e2e/sol-to-near.test.ts` | Working Solana → NEAR test |
 | `e2e/near-to-eth.test.ts` | Working NEAR → ETH test |
+| `e2e/eth-to-near.test.ts` | Working ETH → NEAR test (requires 30min light client wait) |
 | `e2e/shared/fixtures.ts` | Test token and route configuration |
 
 ---

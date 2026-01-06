@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
-import type { OmniAddress } from "../../src/types/index.js"
-import { ChainKind } from "../../src/types/index.js"
-import { getChain, isEvmChain, omniAddress } from "../../src/utils/index.js"
+import { ChainKind, type OmniAddress } from "../src/types.js"
+import { getChain, isEvmChain, omniAddress } from "../src/utils/address.js"
 
 describe("Omni Address Utils", () => {
   describe("omniAddress", () => {
