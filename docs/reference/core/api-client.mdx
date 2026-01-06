@@ -96,8 +96,10 @@ const fee = await api.getFee(sender, recipient, token, amount)
 
 ```typescript
 interface ApiFeeResponse {
-  transferred_token_fee: string
-  native_token_fee: string
+  transferred_token_fee: string | null | undefined  // Fee in transfer token
+  native_token_fee: bigint | null                   // Fee in source chain native token
+  usd_fee: number                                   // Fee in USD
+  insufficient_utxo: boolean                        // For UTXO chains
 }
 ```
 
