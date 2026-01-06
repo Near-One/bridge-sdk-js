@@ -1,6 +1,6 @@
 {
   "name": "@omni-bridge/near",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "NEAR transaction builder for Omni Bridge",
   "type": "module",
   "main": "dist/index.js",
