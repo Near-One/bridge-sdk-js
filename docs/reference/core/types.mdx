@@ -1,0 +1,248 @@
+---
+title: Types
+description: Core types exported by @omni-bridge/core
+---
+
+# Types
+
+All core types exported by `@omni-bridge/core`.
+
+## OmniAddress
+
+Cross-chain address format with chain prefix.
+
+```typescript
+type OmniAddress =
+  | `eth:${string}`
+  | `near:${string}`
+  | `sol:${string}`
+  | `arb:${string}`
+  | `base:${string}`
+  | `bnb:${string}`
+  | `btc:${string}`
+  | `zec:${string}`
+  | `pol:${string}`
+```
+
+## ChainKind
+
+Enum representing supported chains.
+
+```typescript
+enum ChainKind {
+  Eth = 0,
+  Near = 1,
+  Sol = 2,
+  Arb = 3,
+  Base = 4,
+  Bnb = 5,
+  Btc = 6,
+  Zcash = 7,
+  Pol = 8
+}
+```
+
+## Network
+
+Network type.
+
+```typescript
+type Network = "mainnet" | "testnet"
+```
+
+## TransferParams
+
+Parameters for initiating a transfer.
+
+```typescript
+interface TransferParams {
+  token: OmniAddress
+  amount: bigint
+  fee: bigint
+  nativeFee: bigint
+  sender: OmniAddress
+  recipient: OmniAddress
+  message?: string
+}
+```
+
+## ValidatedTransfer
+
+Result of transfer validation.
+
+```typescript
+interface ValidatedTransfer {
+  params: TransferParams
+  sourceChain: ChainKind
+  destChain: ChainKind
+  normalizedAmount: bigint
+  normalizedFee: bigint
+  contractAddress: string
+  bridgedToken?: OmniAddress
+}
+```
+
+## EvmUnsignedTransaction
+
+Unsigned transaction for EVM chains.
+
+```typescript
+interface EvmUnsignedTransaction {
+  to: `0x${string}`
+  data: `0x${string}`
+  value: bigint
+  chainId: number
+}
+```
+
+## NearUnsignedTransaction
+
+Unsigned transaction for NEAR.
+
+```typescript
+interface NearUnsignedTransaction {
+  type: "near"
+  signerId: string
+  receiverId: string
+  actions: NearAction[]
+}
+
+interface NearAction {
+  type: "FunctionCall"
+  methodName: string
+  args: Uint8Array
+  gas: bigint
+  deposit: bigint
+}
+```
+
+## TokenDecimals
+
+Token decimal information.
+
+```typescript
+interface TokenDecimals {
+  decimals: number        // Decimals on foreign chain
+  origin_decimals: number // Decimals on NEAR
+}
+```
+
+## BridgeConfig
+
+Configuration for createBridge.
+
+```typescript
+interface BridgeConfig {
+  network: Network
+  rpcUrls?: Partial<Record<ChainKind, string>>
+}
+```
+
+## ChainAddresses
+
+Contract addresses for all chains.
+
+```typescript
+interface ChainAddresses {
+  eth: EvmAddresses
+  arb: EvmAddresses
+  base: EvmAddresses
+  bnb: EvmAddresses
+  pol: EvmAddresses
+  near: NearAddresses
+  sol: SolanaAddresses
+  btc: BtcAddresses
+  zcash: ZcashAddresses
+}
+
+interface EvmAddresses {
+  bridge: string
+}
+
+interface NearAddresses {
+  contract: string
+  rpcUrls: string[]
+}
+
+interface SolanaAddresses {
+  locker: string
+  wormhole: string
+  shimProgram: string
+  eventAuthority: string
+}
+```
+
+## Address Utilities
+
+Functions for working with OmniAddresses.
+
+```typescript
+// Get chain from OmniAddress
+function getChain(address: OmniAddress): ChainKind
+
+// Get raw address without prefix
+function getAddress(address: OmniAddress): string
+
+// Create OmniAddress from chain and address
+function omniAddress(chain: ChainKind, address: string): OmniAddress
+
+// Get chain prefix
+function getChainPrefix(chain: ChainKind): string
+
+// Check if chain is EVM
+function isEvmChain(chain: ChainKind): boolean
+```
+
+## Decimal Utilities
+
+Functions for decimal normalization.
+
+```typescript
+// Normalize amount between decimal systems
+function normalizeAmount(
+  amount: bigint,
+  fromDecimals: number,
+  toDecimals: number
+): bigint
+
+// Validate amount survives normalization
+function validateTransferAmount(
+  amount: bigint,
+  fee: bigint,
+  originDecimals: number,
+  destinationDecimals: number
+): void
+
+// Check if amount is valid
+function verifyTransferAmount(
+  amount: bigint,
+  fee: bigint,
+  originDecimals: number,
+  destinationDecimals: number
+): boolean
+
+// Get minimum transferable amount
+function getMinimumTransferableAmount(
+  originDecimals: number,
+  destinationDecimals: number
+): bigint
+```
+
+## Configuration Functions
+
+```typescript
+// Get contract addresses for a network
+function getAddresses(network: Network): ChainAddresses
+
+// EVM chain IDs
+const EVM_CHAIN_IDS: Record<Network, Record<string, number>>
+
+// API base URLs
+const API_BASE_URLS: Record<Network, string>
+```
+
+## Related
+
+- [OmniAddress Format](/concepts/omni-addresses)
+- [Decimal Normalization](/concepts/decimal-normalization)
+- [Errors](/reference/core/errors)

@@ -1,0 +1,185 @@
+---
+title: validateTransfer
+description: Validate transfer parameters before building a transaction
+---
+
+# validateTransfer
+
+Validates transfer parameters and returns a `ValidatedTransfer` object ready for building.
+
+## Import
+
+```typescript
+import { createBridge } from "@omni-bridge/core"
+
+const bridge = createBridge({ network: "mainnet" })
+```
+
+## Signature
+
+```typescript
+bridge.validateTransfer(params: TransferParams): Promise<ValidatedTransfer>
+```
+
+## Parameters
+
+<ResponseField name="params" type="TransferParams" required>
+  The transfer parameters to validate.
+
+  <Expandable title="TransferParams">
+    <ResponseField name="token" type="OmniAddress" required>
+      The token to transfer, in OmniAddress format (e.g., `eth:0x...`).
+    </ResponseField>
+
+    <ResponseField name="amount" type="bigint" required>
+      Amount to transfer in the token's smallest unit (e.g., wei, lamports).
+    </ResponseField>
+
+    <ResponseField name="fee" type="bigint" required>
+      Relayer fee in the transfer token. Set to `0n` for manual finalization.
+    </ResponseField>
+
+    <ResponseField name="nativeFee" type="bigint" required>
+      Relayer fee in the source chain's native token. Set to `0n` for manual finalization.
+    </ResponseField>
+
+    <ResponseField name="sender" type="OmniAddress" required>
+      Sender address in OmniAddress format.
+    </ResponseField>
+
+    <ResponseField name="recipient" type="OmniAddress" required>
+      Recipient address in OmniAddress format.
+    </ResponseField>
+
+    <ResponseField name="message" type="string">
+      Optional message or memo to include with the transfer.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Returns
+
+<ResponseField name="ValidatedTransfer" type="object">
+  A validated transfer object ready for building.
+
+  <Expandable title="ValidatedTransfer">
+    <ResponseField name="params" type="TransferParams">
+      The original transfer parameters.
+    </ResponseField>
+
+    <ResponseField name="sourceChain" type="ChainKind">
+      The source chain extracted from the sender address.
+    </ResponseField>
+
+    <ResponseField name="destChain" type="ChainKind">
+      The destination chain extracted from the recipient address.
+    </ResponseField>
+
+    <ResponseField name="normalizedAmount" type="bigint">
+      Amount normalized for decimal differences between chains.
+    </ResponseField>
+
+    <ResponseField name="normalizedFee" type="bigint">
+      Fee normalized for decimal differences between chains.
+    </ResponseField>
+
+    <ResponseField name="contractAddress" type="string">
+      The bridge contract address on the source chain.
+    </ResponseField>
+
+    <ResponseField name="bridgedToken" type="OmniAddress">
+      The token address on the destination chain (if different).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Validation Checks
+
+The method performs these validations:
+
+1. **Address format**: Sender and recipient are valid OmniAddresses
+2. **Chain compatibility**: Source and destination chains are supported
+3. **Token registration**: Token is registered on the bridge
+4. **Decimal normalization**: Amount survives conversion between chains
+5. **Minimum amount**: Amount is above the minimum for the route
+
+## Errors
+
+<ResponseField name="ValidationError" type="error">
+  Thrown when validation fails.
+
+  | Code | Description |
+  |------|-------------|
+  | `INVALID_ADDRESS` | Address format is invalid |
+  | `INVALID_CHAIN` | Chain is not supported |
+  | `TOKEN_NOT_REGISTERED` | Token is not registered on bridge |
+  | `AMOUNT_TOO_SMALL` | Amount too small after normalization |
+  | `DECIMAL_OVERFLOW` | Amount exceeds precision limits |
+</ResponseField>
+
+## Examples
+
+### Basic transfer
+
+```typescript
+const validated = await bridge.validateTransfer({
+  token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  amount: 1000000n, // 1 USDC
+  fee: 0n,
+  nativeFee: 0n,
+  sender: "eth:0x1234567890123456789012345678901234567890",
+  recipient: "near:alice.near",
+})
+
+console.log(validated.sourceChain)      // ChainKind.Eth
+console.log(validated.destChain)        // ChainKind.Near
+console.log(validated.normalizedAmount) // Scaled for NEAR decimals
+```
+
+### With relayer fees
+
+```typescript
+const api = new BridgeAPI("mainnet")
+const fee = await api.getFee(sender, recipient, token, amount)
+
+const validated = await bridge.validateTransfer({
+  token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  amount: 1000000n,
+  fee: BigInt(fee.transferred_token_fee),
+  nativeFee: BigInt(fee.native_token_fee),
+  sender: "eth:0x...",
+  recipient: "near:alice.near",
+})
+```
+
+### Error handling
+
+```typescript
+import { ValidationError } from "@omni-bridge/core"
+
+try {
+  const validated = await bridge.validateTransfer(params)
+} catch (error) {
+  if (error instanceof ValidationError) {
+    switch (error.code) {
+      case "INVALID_ADDRESS":
+        console.error("Invalid address:", error.details)
+        break
+      case "AMOUNT_TOO_SMALL":
+        console.error("Amount too small for transfer")
+        break
+      case "TOKEN_NOT_REGISTERED":
+        console.error("Token not supported")
+        break
+      default:
+        console.error("Validation failed:", error.message)
+    }
+  }
+}
+```
+
+## Related
+
+- [createBridge](/reference/core/create-bridge)
+- [Decimal Normalization](/concepts/decimal-normalization)
+- [Errors](/reference/core/errors)

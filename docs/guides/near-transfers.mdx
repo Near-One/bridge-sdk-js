@@ -1,0 +1,312 @@
+---
+title: NEAR Transfers
+description: Bridge tokens from NEAR Protocol to other chains
+---
+
+# NEAR Transfers
+
+This guide covers transferring tokens from NEAR Protocol to other supported chains.
+
+## Setup
+
+```typescript
+import { createBridge } from "@omni-bridge/core"
+import { createNearBuilder } from "@omni-bridge/near"
+
+const bridge = createBridge({ network: "mainnet" })
+const nearBuilder = createNearBuilder({ network: "mainnet" })
+```
+
+## Important: Shims Required
+
+NEAR transactions require runtime context (nonce, block hash) that the SDK doesn't fetch. The SDK returns a library-agnostic transaction object, and you use a **shim** to convert it for your preferred NEAR library.
+
+<Tabs>
+  <Tab title="near-kit">
+    ```typescript
+    import { toNearKitTransaction } from "@omni-bridge/near"
+    import { Near } from "near-kit"
+
+    const near = new Near({ network: "mainnet", privateKey: "ed25519:..." })
+
+    // Build unsigned transaction
+    const unsigned = nearBuilder.buildTransfer(validated, "alice.near")
+
+    // Convert and send with near-kit
+    const result = await toNearKitTransaction(near, unsigned).send()
+    ```
+  </Tab>
+
+  <Tab title="near-api-js">
+    ```typescript
+    import { sendWithNearApiJs } from "@omni-bridge/near"
+    import { connect } from "near-api-js"
+
+    const near = await connect({
+      networkId: "mainnet",
+      nodeUrl: "https://rpc.mainnet.near.org",
+    })
+    const account = await near.account("alice.near")
+
+    // Build unsigned transaction
+    const unsigned = nearBuilder.buildTransfer(validated, "alice.near")
+
+    // Send with near-api-js
+    const result = await sendWithNearApiJs(account, unsigned)
+    ```
+  </Tab>
+</Tabs>
+
+## Transfer Flow
+
+<Steps>
+  <Step title="Check storage deposit">
+    NEAR requires a storage deposit before transfers. Check if one is needed:
+
+    ```typescript
+    const deposit = await nearBuilder.getRequiredStorageDeposit("alice.near")
+    
+    if (deposit > 0n) {
+      const depositTx = nearBuilder.buildStorageDeposit("alice.near", deposit)
+      await toNearKitTransaction(near, depositTx).send()
+    }
+    ```
+
+    <Warning>
+      Storage deposits are **stateful**. Always check before transfers, as the required amount can change.
+    </Warning>
+  </Step>
+
+  <Step title="Validate the transfer">
+    ```typescript
+    const validated = await bridge.validateTransfer({
+      token: "near:wrap.near", // wNEAR
+      amount: 1000000000000000000000000n, // 1 wNEAR (24 decimals)
+      fee: 0n,
+      nativeFee: 0n,
+      sender: "near:alice.near",
+      recipient: "eth:0x1234...",
+    })
+    ```
+  </Step>
+
+  <Step title="Build and send the transfer">
+    ```typescript
+    const unsigned = nearBuilder.buildTransfer(validated, "alice.near")
+    const result = await toNearKitTransaction(near, unsigned).send()
+    ```
+  </Step>
+</Steps>
+
+## Complete Example
+
+<Tabs>
+  <Tab title="near-kit">
+    ```typescript
+    import { createBridge } from "@omni-bridge/core"
+    import { createNearBuilder, toNearKitTransaction } from "@omni-bridge/near"
+    import { Near } from "near-kit"
+
+    // Setup
+    const bridge = createBridge({ network: "mainnet" })
+    const nearBuilder = createNearBuilder({ network: "mainnet" })
+    const near = new Near({
+      network: "mainnet",
+      privateKey: "ed25519:...",
+    })
+
+    const signerId = "alice.near"
+
+    // Check and pay storage deposit if needed
+    const deposit = await nearBuilder.getRequiredStorageDeposit(signerId)
+    if (deposit > 0n) {
+      const depositTx = nearBuilder.buildStorageDeposit(signerId, deposit)
+      await toNearKitTransaction(near, depositTx).send()
+      console.log("Storage deposit paid")
+    }
+
+    // Validate transfer
+    const validated = await bridge.validateTransfer({
+      token: "near:wrap.near",
+      amount: 1000000000000000000000000n, // 1 wNEAR
+      fee: 0n,
+      nativeFee: 0n,
+      sender: "near:alice.near",
+      recipient: "eth:0x1234567890123456789012345678901234567890",
+    })
+
+    // Build and send
+    const unsigned = nearBuilder.buildTransfer(validated, signerId)
+    const result = await toNearKitTransaction(near, unsigned).send()
+    console.log(`Transfer result:`, result)
+    ```
+  </Tab>
+
+  <Tab title="near-api-js">
+    ```typescript
+    import { createBridge } from "@omni-bridge/core"
+    import { createNearBuilder, sendWithNearApiJs } from "@omni-bridge/near"
+    import { connect, keyStores } from "near-api-js"
+
+    // Setup
+    const bridge = createBridge({ network: "mainnet" })
+    const nearBuilder = createNearBuilder({ network: "mainnet" })
+
+    const keyStore = new keyStores.InMemoryKeyStore()
+    // Add your key to keyStore...
+
+    const near = await connect({
+      networkId: "mainnet",
+      nodeUrl: "https://rpc.mainnet.near.org",
+      keyStore,
+    })
+    const account = await near.account("alice.near")
+    const signerId = account.accountId
+
+    // Check and pay storage deposit if needed
+    const deposit = await nearBuilder.getRequiredStorageDeposit(signerId)
+    if (deposit > 0n) {
+      const depositTx = nearBuilder.buildStorageDeposit(signerId, deposit)
+      await sendWithNearApiJs(account, depositTx)
+      console.log("Storage deposit paid")
+    }
+
+    // Validate transfer
+    const validated = await bridge.validateTransfer({
+      token: "near:wrap.near",
+      amount: 1000000000000000000000000n,
+      fee: 0n,
+      nativeFee: 0n,
+      sender: `near:${signerId}`,
+      recipient: "eth:0x1234567890123456789012345678901234567890",
+    })
+
+    // Build and send
+    const unsigned = nearBuilder.buildTransfer(validated, signerId)
+    const result = await sendWithNearApiJs(account, unsigned)
+    console.log(`Transfer result:`, result)
+    ```
+  </Tab>
+</Tabs>
+
+## Token Storage Deposits
+
+Some tokens require a storage deposit on the token contract itself:
+
+```typescript
+// Check if storage is registered for a specific token
+const isRegistered = await nearBuilder.isTokenStorageRegistered("wrap.near")
+
+if (!isRegistered) {
+  const tokenDepositTx = await nearBuilder.buildTokenStorageDeposit(
+    "wrap.near",  // token contract
+    "alice.near"   // account
+  )
+  await toNearKitTransaction(near, tokenDepositTx).send()
+}
+```
+
+## Transaction Format
+
+The `NearUnsignedTransaction` returned by the builder:
+
+```typescript
+interface NearUnsignedTransaction {
+  type: "near"
+  signerId: string
+  receiverId: string
+  actions: NearAction[]
+}
+
+interface NearAction {
+  type: "FunctionCall"
+  methodName: string
+  args: Uint8Array
+  gas: bigint
+  deposit: bigint
+}
+```
+
+The shims (`toNearKitTransaction` and `sendWithNearApiJs`) handle converting this to the library-specific format and fetching the nonce and block hash at send time.
+
+## Using Relayer Fees
+
+```typescript
+import { BridgeAPI } from "@omni-bridge/core"
+
+const api = new BridgeAPI("mainnet")
+
+// Get fee quote
+const fee = await api.getFee(
+  "near:alice.near",
+  "eth:0x1234...",
+  "near:wrap.near",
+  1000000000000000000000000n
+)
+
+// Include fees in transfer
+const validated = await bridge.validateTransfer({
+  token: "near:wrap.near",
+  amount: 1000000000000000000000000n,
+  fee: BigInt(fee.transferred_token_fee),
+  nativeFee: BigInt(fee.native_token_fee),
+  sender: "near:alice.near",
+  recipient: "eth:0x1234...",
+})
+```
+
+## Gas Constants
+
+The SDK uses predefined gas values for NEAR operations:
+
+| Operation | Gas (TGas) |
+|-----------|------------|
+| Init Transfer | 300 |
+| Storage Deposit | 10 |
+| Finalize Transfer | 300 |
+| Sign Transfer | 300 |
+
+These are already configured in the builder — you don't need to specify them.
+
+## Error Handling
+
+```typescript
+import { ValidationError } from "@omni-bridge/core"
+
+try {
+  // Check storage deposit
+  const deposit = await nearBuilder.getRequiredStorageDeposit(signerId)
+  if (deposit > 0n) {
+    const tx = nearBuilder.buildStorageDeposit(signerId, deposit)
+    await toNearKitTransaction(near, tx).send()
+  }
+
+  // Validate and transfer
+  const validated = await bridge.validateTransfer(params)
+  const unsigned = nearBuilder.buildTransfer(validated, signerId)
+  await toNearKitTransaction(near, unsigned).send()
+} catch (error) {
+  if (error instanceof ValidationError) {
+    console.error(`Validation failed: ${error.code}`)
+  } else {
+    console.error(`NEAR transaction failed:`, error)
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Solana Transfers" icon="sun" href="/guides/solana-transfers">
+    Transfer from Solana
+  </Card>
+  <Card title="Storage Deposits" icon="database" href="/reference/near/storage-deposits">
+    Learn more about NEAR storage
+  </Card>
+  <Card title="Shims Reference" icon="code" href="/reference/near/shims">
+    Complete shim API
+  </Card>
+  <Card title="Tracking Transfers" icon="magnifying-glass" href="/guides/tracking-transfers">
+    Monitor transfer status
+  </Card>
+</CardGroup>

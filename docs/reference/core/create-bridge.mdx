@@ -1,0 +1,132 @@
+---
+title: createBridge
+description: Factory function to create a Bridge instance
+---
+
+# createBridge
+
+Creates a Bridge instance for validating transfers and accessing the API.
+
+## Import
+
+```typescript
+import { createBridge } from "@omni-bridge/core"
+```
+
+## Signature
+
+```typescript
+function createBridge(config: BridgeConfig): Bridge
+```
+
+## Parameters
+
+<ResponseField name="config" type="BridgeConfig" required>
+  Configuration object for the bridge.
+
+  <Expandable title="BridgeConfig">
+    <ResponseField name="network" type="'mainnet' | 'testnet'" required>
+      The network to connect to.
+    </ResponseField>
+
+    <ResponseField name="rpcUrls" type="Partial<Record<ChainKind, string>>">
+      Optional custom RPC URLs for each chain. Overrides default RPC endpoints.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Returns
+
+<ResponseField name="Bridge" type="object">
+  A Bridge instance with the following properties and methods:
+
+  <Expandable title="Bridge Interface">
+    <ResponseField name="network" type="'mainnet' | 'testnet'">
+      The network this bridge is connected to.
+    </ResponseField>
+
+    <ResponseField name="addresses" type="ChainAddresses">
+      Contract addresses for all chains.
+    </ResponseField>
+
+    <ResponseField name="api" type="BridgeAPI">
+      Direct access to the API client.
+    </ResponseField>
+
+    <ResponseField name="validateTransfer" type="function">
+      Validates and prepares a transfer for execution.
+    </ResponseField>
+
+    <ResponseField name="getTokenDecimals" type="function">
+      Gets decimal information for a token.
+    </ResponseField>
+
+    <ResponseField name="getBridgedToken" type="function">
+      Gets the bridged token address on a destination chain.
+    </ResponseField>
+
+    <ResponseField name="getUtxoDepositAddress" type="function">
+      Gets a deposit address for Bitcoin/Zcash.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Basic usage
+
+```typescript
+import { createBridge } from "@omni-bridge/core"
+
+const bridge = createBridge({ network: "mainnet" })
+
+const validated = await bridge.validateTransfer({
+  token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  amount: 1000000n,
+  fee: 0n,
+  nativeFee: 0n,
+  sender: "eth:0x...",
+  recipient: "near:alice.near",
+})
+```
+
+### With custom RPC URLs
+
+```typescript
+import { createBridge, ChainKind } from "@omni-bridge/core"
+
+const bridge = createBridge({
+  network: "mainnet",
+  rpcUrls: {
+    [ChainKind.Eth]: "https://my-custom-rpc.com",
+    [ChainKind.Near]: "https://rpc.mainnet.near.org",
+  },
+})
+```
+
+### Accessing addresses
+
+```typescript
+const bridge = createBridge({ network: "mainnet" })
+
+console.log(bridge.addresses.eth.bridge)    // EVM bridge contract
+console.log(bridge.addresses.near.contract) // NEAR contract
+console.log(bridge.addresses.sol.locker)    // Solana locker program
+```
+
+### Using the API client
+
+```typescript
+const bridge = createBridge({ network: "mainnet" })
+
+// Direct API access
+const status = await bridge.api.getTransferStatus({
+  transactionHash: "0x..."
+})
+```
+
+## Related
+
+- [validateTransfer](/reference/core/validate-transfer)
+- [BridgeAPI](/reference/core/api-client)
+- [Types](/reference/core/types)

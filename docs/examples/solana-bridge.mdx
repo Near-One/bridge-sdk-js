@@ -1,0 +1,275 @@
+---
+title: Solana Bridge
+description: Complete example of bridging tokens to and from Solana
+---
+
+# Solana Bridge
+
+This example demonstrates bridging tokens between Solana and other chains using the `@omni-bridge/solana` package.
+
+## Overview
+
+The Solana builder returns native `TransactionInstruction[]` that work directly with `@solana/web3.js`.
+
+<Steps>
+  <Step title="Setup">
+    Initialize the bridge and Solana builder with an RPC connection.
+  </Step>
+  <Step title="Validate">
+    Validate the transfer parameters.
+  </Step>
+  <Step title="Build Instructions">
+    Build the transfer instructions for your transaction.
+  </Step>
+  <Step title="Sign & Send">
+    Create a transaction, sign it, and send to the network.
+  </Step>
+</Steps>
+
+## Solana → NEAR Transfer
+
+```typescript
+import { createBridge, ChainKind, BridgeAPI } from "@omni-bridge/core"
+import { createSolanaBuilder } from "@omni-bridge/solana"
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  Transaction,
+  sendAndConfirmTransaction,
+} from "@solana/web3.js"
+import bs58 from "bs58"
+
+// Configuration
+const USDC_SOL = "sol:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" // USDC on Solana
+const SENDER = "sol:YourSolanaAddress..."
+const RECIPIENT = "near:alice.near"
+
+async function bridgeSolanaToNear() {
+  // 1. Initialize
+  const bridge = createBridge({ network: "mainnet" })
+  const connection = new Connection("https://api.mainnet-beta.solana.com")
+  const solana = createSolanaBuilder({ network: "mainnet", connection })
+  const api = new BridgeAPI("mainnet")
+
+  // Load your keypair
+  const keypair = Keypair.fromSecretKey(bs58.decode("your-secret-key..."))
+  const payer = keypair.publicKey
+
+  // 2. Validate transfer
+  const validated = await bridge.validateTransfer({
+    token: USDC_SOL,
+    amount: 100_000_000n, // 100 USDC (6 decimals)
+    fee: 0n,
+    nativeFee: 0n,
+    sender: SENDER,
+    recipient: RECIPIENT,
+  })
+
+  console.log("Validated transfer:", {
+    normalizedAmount: validated.normalizedAmount,
+    sourceChain: ChainKind[validated.sourceChain],
+    destChain: ChainKind[validated.destChain],
+  })
+
+  // 3. Build transfer instructions
+  const instructions = await solana.buildTransfer(validated, payer)
+
+  // 4. Create and send transaction
+  const transaction = new Transaction()
+  transaction.add(...instructions)
+
+  const { blockhash, lastValidBlockHeight } =
+    await connection.getLatestBlockhash()
+  transaction.recentBlockhash = blockhash
+  transaction.feePayer = payer
+
+  const signature = await sendAndConfirmTransaction(connection, transaction, [
+    keypair,
+  ])
+
+  console.log("Transfer sent:", signature)
+  console.log("Explorer:", `https://solscan.io/tx/${signature}`)
+
+  // 5. Track transfer status
+  console.log("Waiting for finalization on NEAR...")
+
+  for (let i = 0; i < 60; i++) {
+    const transfers = await api.getTransfer({ transactionHash: signature })
+    const transfer = transfers[0]
+
+    if (transfer?.finalized) {
+      console.log("Transfer finalized on NEAR!")
+      return transfer
+    }
+
+    console.log(`  Status: ${transfer?.status ?? "pending"}...`)
+    await new Promise((r) => setTimeout(r, 10000))
+  }
+}
+
+bridgeSolanaToNear().catch(console.error)
+```
+
+## Native SOL Transfer
+
+For native SOL (not wrapped tokens), use the zero address:
+
+```typescript
+import { PublicKey } from "@solana/web3.js"
+
+// Native SOL uses the default public key (all zeros)
+const NATIVE_SOL = `sol:${PublicKey.default.toBase58()}`
+
+const validated = await bridge.validateTransfer({
+  token: NATIVE_SOL,
+  amount: 1_000_000_000n, // 1 SOL (9 decimals)
+  fee: 0n,
+  nativeFee: 0n,
+  sender: `sol:${payer.toBase58()}`,
+  recipient: "near:alice.near",
+})
+
+// The SDK automatically uses initTransferSol instruction
+const instructions = await solana.buildTransfer(validated, payer)
+```
+
+## PDA Derivation
+
+The Solana builder exposes helper methods for deriving Program Derived Addresses:
+
+```typescript
+const solana = createSolanaBuilder({ network: "mainnet" })
+
+// Get PDAs for the bridge program
+const config = solana.deriveConfig()
+const authority = solana.deriveAuthority()
+const solVault = solana.deriveSolVault()
+
+// For specific tokens
+const wrappedMint = solana.deriveWrappedMint("near:usdc.bridge.near")
+const vault = solana.deriveVault(new PublicKey("...token-mint..."))
+
+console.log("Config PDA:", config.toBase58())
+console.log("Authority PDA:", authority.toBase58())
+console.log("SOL Vault PDA:", solVault.toBase58())
+```
+
+## Finalization on Solana
+
+When receiving tokens on Solana from another chain:
+
+```typescript
+import type { SolanaTransferMessagePayload, SolanaMPCSignature } from "@omni-bridge/solana"
+
+// Build finalization instructions (called by relayers or manually)
+async function finalizeOnSolana(
+  payload: SolanaTransferMessagePayload,
+  signature: SolanaMPCSignature,
+  payer: PublicKey
+) {
+  const instructions = await solana.buildFinalization(payload, signature, payer)
+
+  const transaction = new Transaction()
+  transaction.add(...instructions)
+
+  // Sign and send...
+}
+```
+
+## Token Registration
+
+Before a token can be bridged from Solana, its metadata must be logged:
+
+```typescript
+// Log token metadata (one-time operation per token)
+const tokenMint = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")
+
+const logMetadataIxs = await solana.buildLogMetadata(tokenMint, payer)
+
+const transaction = new Transaction()
+transaction.add(...logMetadataIxs)
+
+const signature = await sendAndConfirmTransaction(connection, transaction, [keypair])
+console.log("Metadata logged:", signature)
+```
+
+## Wallet Adapter Integration
+
+For frontend applications using `@solana/wallet-adapter`:
+
+```typescript
+import { useConnection, useWallet } from "@solana/wallet-adapter-react"
+import { Transaction } from "@solana/web3.js"
+
+function BridgeButton() {
+  const { connection } = useConnection()
+  const { publicKey, sendTransaction } = useWallet()
+
+  const handleBridge = async () => {
+    if (!publicKey) return
+
+    const solana = createSolanaBuilder({ network: "mainnet", connection })
+    const bridge = createBridge({ network: "mainnet" })
+
+    const validated = await bridge.validateTransfer({
+      token: "sol:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      amount: 100_000_000n,
+      fee: 0n,
+      nativeFee: 0n,
+      sender: `sol:${publicKey.toBase58()}`,
+      recipient: "near:recipient.near",
+    })
+
+    const instructions = await solana.buildTransfer(validated, publicKey)
+
+    const transaction = new Transaction()
+    transaction.add(...instructions)
+
+    const { blockhash } = await connection.getLatestBlockhash()
+    transaction.recentBlockhash = blockhash
+    transaction.feePayer = publicKey
+
+    const signature = await sendTransaction(transaction, connection)
+    console.log("Sent:", signature)
+  }
+
+  return <button onClick={handleBridge}>Bridge to NEAR</button>
+}
+```
+
+## Error Handling
+
+```typescript
+try {
+  const instructions = await solana.buildTransfer(validated, payer)
+} catch (error) {
+  if (error.message.includes("not Solana")) {
+    console.error("Source chain must be Solana for this builder")
+  } else if (error.message.includes("mint account")) {
+    console.error("Token mint not found - ensure token exists on Solana")
+  } else {
+    throw error
+  }
+}
+```
+
+## Key Differences from EVM
+
+| Aspect | EVM | Solana |
+|--------|-----|--------|
+| Return type | `EvmUnsignedTransaction` | `TransactionInstruction[]` |
+| Approval | Separate ERC20 approve tx | Not needed (uses ATAs) |
+| Gas | Specified in tx | Computed by network |
+| Accounts | Single sender | Multiple accounts in instruction |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="PDA Reference" icon="key" href="/reference/solana/pdas">
+    Understand Program Derived Addresses
+  </Card>
+  <Card title="Bitcoin Bridge" icon="bitcoin" href="/examples/bitcoin-bridge">
+    Bridge BTC to NEAR
+  </Card>
+</CardGroup>

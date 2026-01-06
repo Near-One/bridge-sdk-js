@@ -1,0 +1,198 @@
+---
+title: Errors
+description: Error types and handling in the SDK
+---
+
+# Errors
+
+The SDK exports custom error classes for different failure scenarios.
+
+## Error Classes
+
+### OmniBridgeError
+
+Base error class for all SDK errors.
+
+```typescript
+class OmniBridgeError extends Error {
+  code: string
+  details?: Record<string, unknown>
+}
+```
+
+### ValidationError
+
+Thrown when transfer validation fails.
+
+```typescript
+class ValidationError extends OmniBridgeError {
+  // Inherits code and details
+}
+```
+
+**Error Codes:**
+
+| Code | Description |
+|------|-------------|
+| `INVALID_AMOUNT` | Amount is invalid (zero, negative) |
+| `INVALID_ADDRESS` | Address format is invalid |
+| `INVALID_CHAIN` | Chain is not supported |
+| `TOKEN_NOT_REGISTERED` | Token is not registered on bridge |
+| `DECIMAL_OVERFLOW` | Amount exceeds precision limits |
+| `AMOUNT_TOO_SMALL` | Amount too small after normalization |
+| `INVALID_CHECKSUM` | Address checksum is invalid |
+
+### RpcError
+
+Thrown when RPC calls fail.
+
+```typescript
+class RpcError extends OmniBridgeError {
+  retryCount: number
+}
+```
+
+### ProofError
+
+Thrown when proof generation or verification fails.
+
+```typescript
+class ProofError extends OmniBridgeError {
+  // codes: PROOF_NOT_READY, PROOF_FETCH_FAILED
+}
+```
+
+## Error Handling
+
+### Basic error handling
+
+```typescript
+import { ValidationError, OmniBridgeError } from "@omni-bridge/core"
+
+try {
+  const validated = await bridge.validateTransfer(params)
+} catch (error) {
+  if (error instanceof ValidationError) {
+    console.error(`Validation failed: ${error.code}`)
+    console.error(`Details:`, error.details)
+  } else if (error instanceof OmniBridgeError) {
+    console.error(`Bridge error: ${error.message}`)
+  } else {
+    throw error
+  }
+}
+```
+
+### Handling specific error codes
+
+```typescript
+import { ValidationError } from "@omni-bridge/core"
+
+try {
+  const validated = await bridge.validateTransfer(params)
+} catch (error) {
+  if (error instanceof ValidationError) {
+    switch (error.code) {
+      case "INVALID_ADDRESS":
+        showError("Please enter a valid address")
+        break
+      case "AMOUNT_TOO_SMALL":
+        const min = getMinimumTransferableAmount(srcDec, dstDec)
+        showError(`Minimum amount is ${formatAmount(min)}`)
+        break
+      case "TOKEN_NOT_REGISTERED":
+        showError("This token is not supported")
+        break
+      case "INVALID_CHECKSUM":
+        showError("Address checksum is invalid")
+        break
+      default:
+        showError(error.message)
+    }
+  }
+}
+```
+
+### RPC error retry
+
+```typescript
+import { RpcError } from "@omni-bridge/core"
+
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  try {
+    return await fn()
+  } catch (error) {
+    if (error instanceof RpcError && error.retryCount < maxRetries) {
+      await new Promise(r => setTimeout(r, 1000 * error.retryCount))
+      return withRetry(fn, maxRetries)
+    }
+    throw error
+  }
+}
+```
+
+### Proof error handling
+
+```typescript
+import { ProofError } from "@omni-bridge/core"
+
+try {
+  const proof = await getEvmProof(txHash, topic, chain)
+} catch (error) {
+  if (error instanceof ProofError) {
+    if (error.code === "PROOF_NOT_READY") {
+      console.log("Proof not ready yet, retrying...")
+      await new Promise(r => setTimeout(r, 5000))
+      // Retry
+    } else if (error.code === "PROOF_FETCH_FAILED") {
+      console.error("Could not fetch proof from RPC")
+    }
+  }
+}
+```
+
+## Type Guards
+
+```typescript
+import { 
+  OmniBridgeError, 
+  ValidationError, 
+  RpcError, 
+  ProofError 
+} from "@omni-bridge/core"
+
+function handleError(error: unknown) {
+  if (error instanceof ValidationError) {
+    // Handle validation errors
+  } else if (error instanceof RpcError) {
+    // Handle RPC errors
+  } else if (error instanceof ProofError) {
+    // Handle proof errors
+  } else if (error instanceof OmniBridgeError) {
+    // Handle other SDK errors
+  } else {
+    // Handle unknown errors
+    throw error
+  }
+}
+```
+
+## Error Details
+
+Errors may include additional details:
+
+```typescript
+try {
+  await bridge.validateTransfer(params)
+} catch (error) {
+  if (error instanceof ValidationError) {
+    console.log(error.code)     // "INVALID_ADDRESS"
+    console.log(error.details)  // { address: "eth:invalid", field: "sender" }
+  }
+}
+```
+
+## Related
+
+- [validateTransfer](/reference/core/validate-transfer)
+- [Decimal Normalization](/concepts/decimal-normalization)

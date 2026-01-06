@@ -1,0 +1,270 @@
+---
+title: ETH → NEAR Transfer
+description: Complete example of bridging tokens from Ethereum to NEAR
+---
+
+# ETH to NEAR Transfer
+
+This example demonstrates a complete flow for bridging USDC from Ethereum to NEAR Protocol.
+
+## Overview
+
+<Steps>
+  <Step title="Setup">
+    Initialize the bridge and builder with your network configuration.
+  </Step>
+  <Step title="Validate">
+    Validate the transfer parameters and ensure amounts survive decimal normalization.
+  </Step>
+  <Step title="Approve">
+    Approve the bridge contract to spend your ERC20 tokens (skip for native ETH).
+  </Step>
+  <Step title="Transfer">
+    Build and send the transfer transaction.
+  </Step>
+  <Step title="Track">
+    Monitor the transfer status until finalized on NEAR.
+  </Step>
+</Steps>
+
+## Complete Example
+
+<CodeGroup>
+
+```typescript viem
+import { createBridge, ChainKind, BridgeAPI } from "@omni-bridge/core"
+import { createEvmBuilder } from "@omni-bridge/evm"
+import { createPublicClient, createWalletClient, http, parseUnits } from "viem"
+import { mainnet } from "viem/chains"
+import { privateKeyToAccount } from "viem/accounts"
+
+// Configuration
+const USDC_ETH = "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+const SENDER = "eth:0xYourAddress..."
+const RECIPIENT = "near:alice.near"
+
+async function bridgeEthToNear() {
+  // 1. Initialize
+  const bridge = createBridge({ network: "mainnet" })
+  const evm = createEvmBuilder({ network: "mainnet", chain: ChainKind.Eth })
+  const api = new BridgeAPI("mainnet")
+
+  const account = privateKeyToAccount("0x...")
+  const walletClient = createWalletClient({
+    account,
+    chain: mainnet,
+    transport: http(),
+  })
+  const publicClient = createPublicClient({
+    chain: mainnet,
+    transport: http(),
+  })
+
+  // 2. Validate transfer
+  const validated = await bridge.validateTransfer({
+    token: USDC_ETH,
+    amount: parseUnits("100", 6), // 100 USDC
+    fee: 0n,
+    nativeFee: 0n,
+    sender: SENDER,
+    recipient: RECIPIENT,
+  })
+
+  console.log("Validated transfer:", {
+    normalizedAmount: validated.normalizedAmount,
+    sourceChain: ChainKind[validated.sourceChain],
+    destChain: ChainKind[validated.destChain],
+  })
+
+  // 3. Approve bridge contract (required for ERC20)
+  const tokenAddress = USDC_ETH.split(":")[1] as `0x${string}`
+  const approvalTx = evm.buildMaxApproval(tokenAddress)
+
+  const approvalHash = await walletClient.sendTransaction(approvalTx)
+  await publicClient.waitForTransactionReceipt({ hash: approvalHash })
+  console.log("Approval confirmed:", approvalHash)
+
+  // 4. Build and send transfer
+  const transferTx = evm.buildTransfer(validated)
+
+  const transferHash = await walletClient.sendTransaction(transferTx)
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: transferHash })
+  console.log("Transfer sent:", transferHash)
+
+  // 5. Track transfer status
+  console.log("Waiting for finalization on NEAR...")
+
+  const pollStatus = async () => {
+    for (let i = 0; i < 60; i++) {
+      const transfers = await api.getTransfer({ transactionHash: transferHash })
+      const transfer = transfers[0]
+
+      if (transfer?.finalized) {
+        console.log("Transfer finalized!")
+        console.log("  Origin:", transfer.origin)
+        console.log("  Destination:", transfer.destination)
+        return transfer
+      }
+
+      console.log(`  Status: ${transfer?.status ?? "pending"}...`)
+      await new Promise((r) => setTimeout(r, 10000))
+    }
+    throw new Error("Transfer not finalized in time")
+  }
+
+  return await pollStatus()
+}
+
+bridgeEthToNear().catch(console.error)
+```
+
+```typescript ethers
+import { createBridge, ChainKind, BridgeAPI } from "@omni-bridge/core"
+import { createEvmBuilder } from "@omni-bridge/evm"
+import { ethers, parseUnits } from "ethers"
+
+// Configuration
+const USDC_ETH = "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+const SENDER = "eth:0xYourAddress..."
+const RECIPIENT = "near:alice.near"
+
+async function bridgeEthToNear() {
+  // 1. Initialize
+  const bridge = createBridge({ network: "mainnet" })
+  const evm = createEvmBuilder({ network: "mainnet", chain: ChainKind.Eth })
+  const api = new BridgeAPI("mainnet")
+
+  const provider = new ethers.JsonRpcProvider("https://eth.llamarpc.com")
+  const signer = new ethers.Wallet("0x...", provider)
+
+  // 2. Validate transfer
+  const validated = await bridge.validateTransfer({
+    token: USDC_ETH,
+    amount: parseUnits("100", 6), // 100 USDC
+    fee: 0n,
+    nativeFee: 0n,
+    sender: SENDER,
+    recipient: RECIPIENT,
+  })
+
+  // 3. Approve bridge contract
+  const tokenAddress = USDC_ETH.split(":")[1] as `0x${string}`
+  const approvalTx = evm.buildMaxApproval(tokenAddress)
+
+  const approvalResponse = await signer.sendTransaction(approvalTx)
+  await approvalResponse.wait()
+  console.log("Approval confirmed:", approvalResponse.hash)
+
+  // 4. Build and send transfer
+  const transferTx = evm.buildTransfer(validated)
+
+  const transferResponse = await signer.sendTransaction(transferTx)
+  const receipt = await transferResponse.wait()
+  console.log("Transfer sent:", transferResponse.hash)
+
+  // 5. Track transfer status
+  console.log("Waiting for finalization on NEAR...")
+
+  for (let i = 0; i < 60; i++) {
+    const transfers = await api.getTransfer({ transactionHash: transferResponse.hash })
+    const transfer = transfers[0]
+
+    if (transfer?.finalized) {
+      console.log("Transfer finalized!")
+      return transfer
+    }
+
+    await new Promise((r) => setTimeout(r, 10000))
+  }
+}
+
+bridgeEthToNear().catch(console.error)
+```
+
+</CodeGroup>
+
+## Key Points
+
+<Note>
+**Approval Required**: ERC20 tokens require approval before bridging. Use `buildMaxApproval()` for unlimited approval or `buildApproval(token, amount)` for exact amounts.
+</Note>
+
+<Warning>
+**Native ETH**: When bridging native ETH (not WETH), use the zero address `0x0000000000000000000000000000000000000000` as the token. The amount is included in the transaction `value` field automatically.
+</Warning>
+
+### Decimal Normalization
+
+The SDK automatically handles decimal differences between chains. When bridging USDC (6 decimals on Ethereum) to NEAR:
+
+```typescript
+// Input: 100 USDC = 100_000_000 (6 decimals)
+// The SDK validates this survives normalization to NEAR's precision
+const validated = await bridge.validateTransfer({
+  token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  amount: 100_000_000n, // 100 USDC
+  // ...
+})
+
+// validated.normalizedAmount contains the cross-chain safe amount
+```
+
+### Fee Options
+
+You can optionally include fees for relayer-assisted finalization:
+
+```typescript
+const validated = await bridge.validateTransfer({
+  token: USDC_ETH,
+  amount: parseUnits("100", 6),
+  fee: parseUnits("1", 6),     // 1 USDC token fee for relayer
+  nativeFee: parseUnits("0.001", 18), // 0.001 ETH for gas
+  sender: SENDER,
+  recipient: RECIPIENT,
+})
+```
+
+## Finalization
+
+Transfers are typically finalized automatically by relayers within 5-15 minutes. The bridge uses:
+
+1. **Wormhole** for cross-chain messaging
+2. **MPC signatures** for validation
+3. **Automatic relaying** when fees are provided
+
+You can also manually finalize using the NEAR builder if needed. See the [Tracking Transfers](/guides/tracking-transfers) guide for details.
+
+## Error Handling
+
+```typescript
+import { ValidationError } from "@omni-bridge/core"
+
+try {
+  const validated = await bridge.validateTransfer(params)
+} catch (error) {
+  if (error instanceof ValidationError) {
+    switch (error.code) {
+      case "TOKEN_NOT_REGISTERED":
+        console.error("Token not supported on bridge")
+        break
+      case "INVALID_AMOUNT":
+        console.error("Amount too small or doesn't survive normalization")
+        break
+      case "INVALID_ADDRESS":
+        console.error("Invalid sender or recipient address")
+        break
+    }
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="NEAR → ETH" icon="arrow-right" href="/examples/near-to-eth">
+    Bridge tokens from NEAR to Ethereum
+  </Card>
+  <Card title="Tracking Transfers" icon="magnifying-glass" href="/guides/tracking-transfers">
+    Monitor transfer status with the API
+  </Card>
+</CardGroup>

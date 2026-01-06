@@ -1,0 +1,102 @@
+---
+title: createEvmBuilder
+description: Factory function to create an EVM transaction builder
+---
+
+# createEvmBuilder
+
+Creates an EVM builder for Ethereum, Base, Arbitrum, Polygon, and BNB Chain.
+
+## Import
+
+```typescript
+import { createEvmBuilder } from "@omni-bridge/evm"
+```
+
+## Signature
+
+```typescript
+function createEvmBuilder(config: EvmBuilderConfig): EvmBuilder
+```
+
+## Parameters
+
+<ResponseField name="config" type="EvmBuilderConfig" required>
+  <Expandable title="EvmBuilderConfig">
+    <ResponseField name="network" type="'mainnet' | 'testnet'" required>
+      The network to connect to.
+    </ResponseField>
+
+    <ResponseField name="chain" type="ChainKind" required>
+      The EVM chain. One of: `ChainKind.Eth`, `ChainKind.Base`, `ChainKind.Arb`, `ChainKind.Pol`, `ChainKind.Bnb`
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Returns
+
+<ResponseField name="EvmBuilder" type="object">
+  <Expandable title="EvmBuilder Interface">
+    <ResponseField name="chainId" type="number">
+      The chain ID for this builder.
+    </ResponseField>
+
+    <ResponseField name="bridgeAddress" type="Address">
+      The bridge contract address.
+    </ResponseField>
+
+    <ResponseField name="buildTransfer" type="function">
+      Builds an unsigned transfer transaction.
+    </ResponseField>
+
+    <ResponseField name="buildApproval" type="function">
+      Builds an ERC20 approval transaction.
+    </ResponseField>
+
+    <ResponseField name="buildMaxApproval" type="function">
+      Builds an unlimited ERC20 approval.
+    </ResponseField>
+
+    <ResponseField name="buildFinalization" type="function">
+      Builds a finalization transaction.
+    </ResponseField>
+
+    <ResponseField name="buildLogMetadata" type="function">
+      Builds a token metadata logging transaction.
+    </ResponseField>
+
+    <ResponseField name="buildDeployToken" type="function">
+      Builds a token deployment transaction.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+```typescript
+import { createEvmBuilder } from "@omni-bridge/evm"
+import { ChainKind } from "@omni-bridge/core"
+
+// Ethereum
+const ethBuilder = createEvmBuilder({ 
+  network: "mainnet", 
+  chain: ChainKind.Eth 
+})
+
+// Base
+const baseBuilder = createEvmBuilder({ 
+  network: "mainnet", 
+  chain: ChainKind.Base 
+})
+
+// Arbitrum
+const arbBuilder = createEvmBuilder({ 
+  network: "mainnet", 
+  chain: ChainKind.Arb 
+})
+```
+
+## Related
+
+- [buildTransfer](/reference/evm/build-transfer)
+- [buildApproval](/reference/evm/build-approval)

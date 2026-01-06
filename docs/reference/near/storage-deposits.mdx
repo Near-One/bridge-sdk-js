@@ -1,0 +1,115 @@
+---
+title: Storage Deposits
+description: Managing NEAR storage deposits for bridge transfers
+---
+
+# Storage Deposits
+
+NEAR requires storage deposits before accounts can receive tokens. The SDK provides methods to check and pay storage deposits.
+
+## Why Storage Deposits?
+
+On NEAR, contracts charge for storage used. Before receiving bridged tokens, an account must have a storage deposit on the bridge contract.
+
+<Warning>
+  Always check storage deposits before transfers. Without sufficient storage, transfers will fail.
+</Warning>
+
+## Check Required Deposit
+
+```typescript
+const deposit = await nearBuilder.getRequiredStorageDeposit("alice.near")
+
+if (deposit > 0n) {
+  console.log(`Need to deposit ${deposit} yoctoNEAR`)
+}
+```
+
+## Pay Storage Deposit
+
+```typescript
+import { toNearKitTransaction } from "@omni-bridge/near"
+
+// Check if deposit needed
+const deposit = await nearBuilder.getRequiredStorageDeposit("alice.near")
+
+if (deposit > 0n) {
+  // Build and send deposit transaction
+  const depositTx = nearBuilder.buildStorageDeposit("alice.near", deposit)
+  await toNearKitTransaction(near, depositTx).send()
+}
+
+// Now safe to transfer
+const unsigned = nearBuilder.buildTransfer(validated, "alice.near")
+await toNearKitTransaction(near, unsigned).send()
+```
+
+## Token Storage
+
+Some tokens require storage deposits on the token contract itself:
+
+```typescript
+// Check if token storage is registered
+const isRegistered = await nearBuilder.isTokenStorageRegistered("wrap.near")
+
+if (!isRegistered) {
+  const tokenDepositTx = await nearBuilder.buildTokenStorageDeposit(
+    "wrap.near",    // token contract
+    "alice.near"     // account
+  )
+  await toNearKitTransaction(near, tokenDepositTx).send()
+}
+```
+
+## Complete Flow
+
+```typescript
+import { createBridge } from "@omni-bridge/core"
+import { createNearBuilder, toNearKitTransaction } from "@omni-bridge/near"
+import { Near } from "near-kit"
+
+const bridge = createBridge({ network: "mainnet" })
+const nearBuilder = createNearBuilder({ network: "mainnet" })
+const near = new Near({ network: "mainnet", privateKey: "..." })
+
+const signerId = "alice.near"
+
+// 1. Check bridge storage
+const bridgeDeposit = await nearBuilder.getRequiredStorageDeposit(signerId)
+if (bridgeDeposit > 0n) {
+  const tx = nearBuilder.buildStorageDeposit(signerId, bridgeDeposit)
+  await toNearKitTransaction(near, tx).send()
+}
+
+// 2. Validate transfer
+const validated = await bridge.validateTransfer({
+  token: "near:wrap.near",
+  amount: 1000000000000000000000000n,
+  fee: 0n,
+  nativeFee: 0n,
+  sender: "near:alice.near",
+  recipient: "eth:0x...",
+})
+
+// 3. Transfer
+const unsigned = nearBuilder.buildTransfer(validated, signerId)
+await toNearKitTransaction(near, unsigned).send()
+```
+
+## Storage Amounts
+
+Typical storage costs:
+
+| Operation | Storage Cost |
+|-----------|-------------|
+| Bridge registration | ~0.1 NEAR |
+| Token storage | ~0.00125 NEAR |
+
+<Note>
+  Storage deposits are one-time. Once paid, you don't need to pay again for the same account/token combination.
+</Note>
+
+## Related
+
+- [createNearBuilder](/reference/near/create-builder)
+- [NEAR Transfers Guide](/guides/near-transfers)

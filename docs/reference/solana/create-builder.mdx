@@ -1,0 +1,97 @@
+---
+title: createSolanaBuilder
+description: Factory function to create a Solana instruction builder
+---
+
+# createSolanaBuilder
+
+Creates a Solana builder for building Solana transaction instructions.
+
+## Import
+
+```typescript
+import { createSolanaBuilder } from "@omni-bridge/solana"
+```
+
+## Signature
+
+```typescript
+function createSolanaBuilder(config: SolanaBuilderConfig): SolanaBuilder
+```
+
+## Parameters
+
+<ResponseField name="config" type="SolanaBuilderConfig" required>
+  <Expandable title="SolanaBuilderConfig">
+    <ResponseField name="network" type="'mainnet' | 'testnet'" required>
+      The network to connect to.
+    </ResponseField>
+
+    <ResponseField name="connection" type="Connection">
+      Optional Solana connection. Uses public RPC if not provided.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Returns
+
+<ResponseField name="SolanaBuilder" type="object">
+  <Expandable title="SolanaBuilder Interface">
+    <ResponseField name="buildTransfer" type="function">
+      Builds transfer instructions.
+    </ResponseField>
+
+    <ResponseField name="buildFinalization" type="function">
+      Builds finalization instructions.
+    </ResponseField>
+
+    <ResponseField name="buildLogMetadata" type="function">
+      Builds metadata logging instructions.
+    </ResponseField>
+
+    <ResponseField name="buildDeployToken" type="function">
+      Builds token deployment instructions.
+    </ResponseField>
+
+    <ResponseField name="deriveConfig" type="function">
+      Derives the config PDA.
+    </ResponseField>
+
+    <ResponseField name="deriveAuthority" type="function">
+      Derives the authority PDA.
+    </ResponseField>
+
+    <ResponseField name="deriveVault" type="function">
+      Derives a token vault PDA.
+    </ResponseField>
+
+    <ResponseField name="deriveWrappedMint" type="function">
+      Derives a wrapped token mint PDA.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+```typescript
+import { createSolanaBuilder } from "@omni-bridge/solana"
+import { Connection } from "@solana/web3.js"
+
+const connection = new Connection("https://api.mainnet-beta.solana.com")
+const solana = createSolanaBuilder({ 
+  network: "mainnet",
+  connection 
+})
+
+// Build transfer instructions
+const instructions = await solana.buildTransfer(validated, payer)
+
+// Create transaction
+const tx = new Transaction()
+tx.add(...instructions)
+```
+
+## Related
+
+- [PDAs](/reference/solana/pdas)
+- [Solana Transfers Guide](/guides/solana-transfers)

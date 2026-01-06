@@ -1,0 +1,127 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Omni Bridge SDK",
+  "description": "TypeScript SDK for cross-chain token transfers via the Omni Bridge protocol. Transfer tokens between Ethereum, NEAR, Solana, Base, Arbitrum, Polygon, BNB Chain, Bitcoin, and Zcash.",
+  "colors": {
+    "primary": "#6366F1",
+    "light": "#818CF8",
+    "dark": "#4F46E5"
+  },
+  "favicon": "/images/favicon.png",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "icon": "book",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": ["introduction", "quickstart"]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/evm-transfers",
+              "guides/near-transfers",
+              "guides/solana-transfers",
+              "guides/bitcoin-transfers",
+              "guides/tracking-transfers",
+              "guides/relayer-fees"
+            ]
+          },
+          {
+            "group": "Concepts",
+            "pages": [
+              "concepts/architecture",
+              "concepts/omni-addresses",
+              "concepts/decimal-normalization",
+              "concepts/supported-chains"
+            ]
+          },
+          {
+            "group": "Examples",
+            "pages": [
+              "examples/eth-to-near",
+              "examples/near-to-eth",
+              "examples/solana-bridge",
+              "examples/bitcoin-bridge"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "icon": "code",
+        "groups": [
+          {
+            "group": "@omni-bridge/core",
+            "pages": [
+              "reference/core/create-bridge",
+              "reference/core/validate-transfer",
+              "reference/core/api-client",
+              "reference/core/types",
+              "reference/core/errors"
+            ]
+          },
+          {
+            "group": "@omni-bridge/evm",
+            "pages": [
+              "reference/evm/create-builder",
+              "reference/evm/build-transfer",
+              "reference/evm/build-approval",
+              "reference/evm/proofs"
+            ]
+          },
+          {
+            "group": "@omni-bridge/near",
+            "pages": [
+              "reference/near/create-builder",
+              "reference/near/shims",
+              "reference/near/storage-deposits"
+            ]
+          },
+          {
+            "group": "@omni-bridge/solana",
+            "pages": [
+              "reference/solana/create-builder",
+              "reference/solana/pdas"
+            ]
+          },
+          {
+            "group": "@omni-bridge/btc",
+            "pages": [
+              "reference/btc/create-builder",
+              "reference/btc/utxo-selection",
+              "reference/btc/fee-calculation"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/Near-one/omni-bridge"
+      }
+    ],
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/Near-one/omni-bridge"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/Near-one/omni-bridge",
+      "discord": "https://discord.gg/nearprotocol"
+    }
+  },
+  "contextual": {
+    "options": ["copy", "view", "chatgpt", "claude"]
+  },
+  "search": {
+    "prompt": "Search documentation..."
+  }
+}

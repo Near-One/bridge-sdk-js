@@ -1,0 +1,92 @@
+---
+title: buildApproval
+description: Build ERC20 approval transactions
+---
+
+# buildApproval
+
+Builds an unsigned ERC20 approval transaction for the bridge contract.
+
+## Signature
+
+```typescript
+builder.buildApproval(token: Address, amount: bigint): EvmUnsignedTransaction
+builder.buildMaxApproval(token: Address): EvmUnsignedTransaction
+```
+
+## Parameters
+
+<ResponseField name="token" type="Address" required>
+  The ERC20 token contract address (without chain prefix).
+</ResponseField>
+
+<ResponseField name="amount" type="bigint" required>
+  The amount to approve.
+</ResponseField>
+
+## Returns
+
+```typescript
+interface EvmUnsignedTransaction {
+  to: `0x${string}`   // Token contract address
+  data: `0x${string}` // Encoded approve() call
+  value: bigint       // Always 0n for approvals
+  chainId: number     // Chain ID
+}
+```
+
+## Examples
+
+### Approve specific amount
+
+```typescript
+const approvalTx = evm.buildApproval(
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC
+  1000000n // 1 USDC
+)
+
+await walletClient.sendTransaction(approvalTx)
+```
+
+### Approve unlimited (max approval)
+
+```typescript
+const approvalTx = evm.buildMaxApproval(
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+)
+
+await walletClient.sendTransaction(approvalTx)
+```
+
+### Full transfer flow
+
+```typescript
+// 1. Validate
+const validated = await bridge.validateTransfer({
+  token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  amount: 1000000n,
+  // ...
+})
+
+// 2. Approve
+const approvalTx = evm.buildApproval(
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  1000000n
+)
+await walletClient.sendTransaction(approvalTx)
+
+// 3. Transfer
+const transferTx = evm.buildTransfer(validated)
+await walletClient.sendTransaction(transferTx)
+```
+
+## Notes
+
+- Not needed for native ETH transfers
+- `buildMaxApproval` approves `type(uint256).max`, useful for repeated transfers
+- Always check current allowance before approving to avoid unnecessary transactions
+
+## Related
+
+- [buildTransfer](/reference/evm/build-transfer)
+- [EVM Transfers Guide](/guides/evm-transfers)

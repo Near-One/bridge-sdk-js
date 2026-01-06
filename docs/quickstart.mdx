@@ -1,0 +1,223 @@
+---
+title: Quickstart
+description: Build your first cross-chain transfer in 5 minutes
+---
+
+# Quickstart
+
+This guide walks you through your first cross-chain transfer using the Omni Bridge SDK.
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install @omni-bridge/sdk
+```
+
+```bash pnpm
+pnpm add @omni-bridge/sdk
+```
+
+```bash yarn
+yarn add @omni-bridge/sdk
+```
+
+```bash bun
+bun add @omni-bridge/sdk
+```
+</CodeGroup>
+
+Or install only the chains you need:
+
+```bash
+npm install @omni-bridge/core @omni-bridge/evm
+```
+
+## Your First Transfer
+
+Let's transfer USDC from Ethereum to NEAR. We'll use viem for signing, but the SDK works with any library.
+
+<Steps>
+  <Step title="Set up the bridge and builder">
+    ```typescript
+    import { createBridge, ChainKind } from "@omni-bridge/core"
+    import { createEvmBuilder } from "@omni-bridge/evm"
+
+    const bridge = createBridge({ network: "mainnet" })
+    const evm = createEvmBuilder({ network: "mainnet", chain: ChainKind.Eth })
+    ```
+  </Step>
+
+  <Step title="Validate the transfer">
+    ```typescript
+    const validated = await bridge.validateTransfer({
+      token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC on Ethereum
+      amount: 1000000n, // 1 USDC (6 decimals)
+      fee: 0n,
+      nativeFee: 0n,
+      sender: "eth:0xYourWalletAddress...",
+      recipient: "near:yourname.near",
+    })
+    ```
+
+    <Note>
+      The validation step checks that addresses are valid, the token is registered on the bridge, and the amount survives decimal normalization between chains.
+    </Note>
+  </Step>
+
+  <Step title="Approve the token (ERC20 only)">
+    ```typescript
+    import { createWalletClient, http } from "viem"
+    import { mainnet } from "viem/chains"
+
+    const walletClient = createWalletClient({
+      chain: mainnet,
+      transport: http(),
+      account: "0xYourWalletAddress...",
+    })
+
+    // Build and send approval
+    const approvalTx = evm.buildApproval(
+      "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      1000000n
+    )
+    await walletClient.sendTransaction(approvalTx)
+    ```
+
+    <Tip>
+      Skip this step when bridging native ETH. For repeated transfers, use `buildMaxApproval()` to approve once for unlimited transfers.
+    </Tip>
+  </Step>
+
+  <Step title="Build and send the transfer">
+    ```typescript
+    const tx = evm.buildTransfer(validated)
+    const hash = await walletClient.sendTransaction(tx)
+    console.log(`Transfer initiated: ${hash}`)
+    ```
+  </Step>
+</Steps>
+
+## Complete Example
+
+Here's the full code:
+
+<CodeGroup>
+```typescript viem
+import { createBridge, ChainKind } from "@omni-bridge/core"
+import { createEvmBuilder } from "@omni-bridge/evm"
+import { createWalletClient, http } from "viem"
+import { mainnet } from "viem/chains"
+import { privateKeyToAccount } from "viem/accounts"
+
+// Setup
+const bridge = createBridge({ network: "mainnet" })
+const evm = createEvmBuilder({ network: "mainnet", chain: ChainKind.Eth })
+
+const account = privateKeyToAccount("0x...")
+const walletClient = createWalletClient({
+  chain: mainnet,
+  transport: http(),
+  account,
+})
+
+// Validate transfer
+const validated = await bridge.validateTransfer({
+  token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  amount: 1000000n,
+  fee: 0n,
+  nativeFee: 0n,
+  sender: `eth:${account.address}`,
+  recipient: "near:yourname.near",
+})
+
+// Approve token
+const approvalTx = evm.buildApproval(
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  1000000n
+)
+await walletClient.sendTransaction(approvalTx)
+
+// Send transfer
+const tx = evm.buildTransfer(validated)
+const hash = await walletClient.sendTransaction(tx)
+console.log(`Transfer: ${hash}`)
+```
+
+```typescript ethers
+import { createBridge, ChainKind } from "@omni-bridge/core"
+import { createEvmBuilder } from "@omni-bridge/evm"
+import { ethers } from "ethers"
+
+// Setup
+const bridge = createBridge({ network: "mainnet" })
+const evm = createEvmBuilder({ network: "mainnet", chain: ChainKind.Eth })
+
+const provider = new ethers.JsonRpcProvider("https://eth.llamarpc.com")
+const signer = new ethers.Wallet("0x...", provider)
+
+// Validate transfer
+const validated = await bridge.validateTransfer({
+  token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  amount: 1000000n,
+  fee: 0n,
+  nativeFee: 0n,
+  sender: `eth:${signer.address}`,
+  recipient: "near:yourname.near",
+})
+
+// Approve token
+const approvalTx = evm.buildApproval(
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  1000000n
+)
+await signer.sendTransaction(approvalTx)
+
+// Send transfer
+const tx = evm.buildTransfer(validated)
+const receipt = await signer.sendTransaction(tx)
+console.log(`Transfer: ${receipt.hash}`)
+```
+</CodeGroup>
+
+## Using Testnet
+
+For development, use the testnet:
+
+```typescript
+const bridge = createBridge({ network: "testnet" })
+const evm = createEvmBuilder({ network: "testnet", chain: ChainKind.Eth })
+```
+
+<Warning>
+  Testnet uses Sepolia for Ethereum. Make sure your wallet is connected to the right network.
+</Warning>
+
+## Track Your Transfer
+
+Use the API client to check transfer status:
+
+```typescript
+import { BridgeAPI } from "@omni-bridge/core"
+
+const api = new BridgeAPI("mainnet")
+const status = await api.getTransferStatus({ transactionHash: hash })
+console.log(status)
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="EVM Transfers" icon="ethereum" href="/guides/evm-transfers">
+    Complete guide for Ethereum, Base, Arbitrum
+  </Card>
+  <Card title="NEAR Transfers" icon="circle-nodes" href="/guides/near-transfers">
+    Transfer from NEAR Protocol
+  </Card>
+  <Card title="Understanding Addresses" icon="at" href="/concepts/omni-addresses">
+    Learn about the OmniAddress format
+  </Card>
+  <Card title="Relayer Fees" icon="money-bill" href="/guides/relayer-fees">
+    Use relayers for automatic finalization
+  </Card>
+</CardGroup>

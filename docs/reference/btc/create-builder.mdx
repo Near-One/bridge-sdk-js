@@ -1,0 +1,118 @@
+---
+title: createBtcBuilder
+description: Factory function to create a Bitcoin/Zcash builder
+---
+
+# createBtcBuilder
+
+Creates a builder for Bitcoin and Zcash UTXO operations.
+
+## Import
+
+```typescript
+import { createBtcBuilder } from "@omni-bridge/btc"
+```
+
+## Signature
+
+```typescript
+function createBtcBuilder(config: BtcBuilderConfig): BtcBuilder
+```
+
+## Parameters
+
+<ResponseField name="config" type="BtcBuilderConfig" required>
+  <Expandable title="BtcBuilderConfig">
+    <ResponseField name="network" type="'mainnet' | 'testnet'" required>
+      The network to connect to.
+    </ResponseField>
+
+    <ResponseField name="chain" type="'btc' | 'zcash'">
+      The UTXO chain. Defaults to "btc".
+    </ResponseField>
+
+    <ResponseField name="apiUrl" type="string">
+      Optional custom Blockstream API URL.
+    </ResponseField>
+
+    <ResponseField name="rpcUrl" type="string">
+      Optional Bitcoin/Zcash RPC URL.
+    </ResponseField>
+
+    <ResponseField name="rpcHeaders" type="Record<string, string>">
+      Optional RPC authentication headers.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Returns
+
+<ResponseField name="BtcBuilder" type="object">
+  <Expandable title="BtcBuilder Interface">
+    <ResponseField name="buildWithdrawalPlan" type="function">
+      Builds a withdrawal plan from UTXOs.
+    </ResponseField>
+
+    <ResponseField name="getDepositProof" type="function">
+      Gets a deposit proof for finalization.
+    </ResponseField>
+
+    <ResponseField name="getMerkleProof" type="function">
+      Gets a Merkle proof for a transaction.
+    </ResponseField>
+
+    <ResponseField name="selectUtxos" type="function">
+      Selects UTXOs for a transaction.
+    </ResponseField>
+
+    <ResponseField name="addressToScriptPubkey" type="function">
+      Converts an address to scriptPubkey.
+    </ResponseField>
+
+    <ResponseField name="broadcastTransaction" type="function">
+      Broadcasts a signed transaction.
+    </ResponseField>
+
+    <ResponseField name="getTransactionBytes" type="function">
+      Gets raw transaction bytes.
+    </ResponseField>
+
+    <ResponseField name="getNetwork" type="function">
+      Gets the Bitcoin network object.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+### Bitcoin
+
+```typescript
+import { createBtcBuilder } from "@omni-bridge/btc"
+
+const btc = createBtcBuilder({ 
+  network: "mainnet", 
+  chain: "btc" 
+})
+
+// Get deposit proof
+const proof = await btc.getDepositProof(txHash, vout)
+
+// Broadcast transaction
+const txid = await btc.broadcastTransaction(signedTxHex)
+```
+
+### Zcash
+
+```typescript
+const zec = createBtcBuilder({ 
+  network: "mainnet", 
+  chain: "zcash" 
+})
+```
+
+## Related
+
+- [UTXO Selection](/reference/btc/utxo-selection)
+- [Fee Calculation](/reference/btc/fee-calculation)
+- [Bitcoin Transfers Guide](/guides/bitcoin-transfers)
