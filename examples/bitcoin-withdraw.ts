@@ -68,10 +68,7 @@ async function createNearInstance(): Promise<Near> {
 /**
  * Wait for MPC signing by polling the bridge API
  */
-async function waitForSigning(
-  api: BridgeAPI,
-  nearTxHash: string,
-): Promise<string> {
+async function waitForSigning(api: BridgeAPI, nearTxHash: string): Promise<string> {
   for (let attempt = 1; attempt <= SIGNING_MAX_ATTEMPTS; attempt++) {
     try {
       const transfers = await api.getTransfer({ transactionHash: nearTxHash })

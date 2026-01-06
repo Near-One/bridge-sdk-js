@@ -14,7 +14,7 @@
  *   RECIPIENT=0x... bun run examples/near-to-eth.ts
  */
 
-import { createBridge, BridgeAPI, ChainKind, type Network } from "@omni-bridge/core"
+import { BridgeAPI, ChainKind, createBridge, type Network } from "@omni-bridge/core"
 import { createNearBuilder, toNearKitTransaction } from "@omni-bridge/near"
 import { Near } from "near-kit"
 

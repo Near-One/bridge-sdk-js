@@ -17,14 +17,9 @@
  * Usage: ZCASH_API_KEY=your_key bun run examples/zcash-deposit.ts
  */
 
-import { Near } from "near-kit"
-import {
-  ChainKind,
-  createBridge,
-  getAddresses,
-  type Network,
-} from "@omni-bridge/core"
 import { createBtcBuilder } from "@omni-bridge/btc"
+import { ChainKind, createBridge, getAddresses, type Network } from "@omni-bridge/core"
+import { Near } from "near-kit"
 
 // Configuration - Replace with your values
 const NEAR_ACCOUNT = "bridge-sdk-test.testnet"
@@ -66,10 +61,7 @@ async function main() {
   // Step 1: Generate Zcash deposit address using the new Bridge API
   console.log("\nStep 1: Generate deposit address")
 
-  const depositResult = await bridge.getUtxoDepositAddress(
-    ChainKind.Zcash,
-    NEAR_ACCOUNT,
-  )
+  const depositResult = await bridge.getUtxoDepositAddress(ChainKind.Zcash, NEAR_ACCOUNT)
 
   console.log(`Send Zcash to: ${depositResult.address}`)
   console.log(`Chain: ${depositResult.chain}`)

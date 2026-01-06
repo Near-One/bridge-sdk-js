@@ -20,14 +20,9 @@
  * Usage: ZCASH_API_KEY=your_key bun run examples/zcash-withdraw.ts
  */
 
-import { Near } from "near-kit"
-import {
-  ChainKind,
-  createBridge,
-  getAddresses,
-  type Network,
-} from "@omni-bridge/core"
 import { createBtcBuilder, getZcashScript } from "@omni-bridge/btc"
+import { createBridge, getAddresses, type Network } from "@omni-bridge/core"
+import { Near } from "near-kit"
 
 // Configuration - Replace with your values
 const NEAR_ACCOUNT = "bridge-sdk-test.testnet"
@@ -45,7 +40,7 @@ async function main() {
   }
 
   // Initialize clients
-  const bridge = createBridge({ network: NETWORK })
+  const _bridge = createBridge({ network: NETWORK })
   const zcashBuilder = createBtcBuilder({
     network: NETWORK,
     chain: "zcash",

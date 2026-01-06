@@ -65,5 +65,18 @@
       "quoteStyle": "double",
       "semicolons": "asNeeded"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["examples/**/*"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off",
+            "noNonNullAssertion": "off"
+          }
+        }
+      }
+    }
+  ]
 }

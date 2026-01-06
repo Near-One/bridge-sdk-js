@@ -14,15 +14,9 @@
  *   RECIPIENT=alice.near bun run examples/solana-to-near.ts
  */
 
-import { createBridge, BridgeAPI, ChainKind, type Network } from "@omni-bridge/core"
+import { BridgeAPI, ChainKind, createBridge, type Network } from "@omni-bridge/core"
 import { createSolanaBuilder } from "@omni-bridge/solana"
-import {
-  Connection,
-  Keypair,
-  PublicKey,
-  Transaction,
-  sendAndConfirmTransaction,
-} from "@solana/web3.js"
+import { Connection, Keypair, sendAndConfirmTransaction, Transaction } from "@solana/web3.js"
 import bs58 from "bs58"
 
 // Configuration
@@ -109,7 +103,7 @@ async function main() {
   const transaction = new Transaction()
   transaction.add(...instructions)
 
-  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
+  const { blockhash } = await connection.getLatestBlockhash()
   transaction.recentBlockhash = blockhash
   transaction.feePayer = payer
 

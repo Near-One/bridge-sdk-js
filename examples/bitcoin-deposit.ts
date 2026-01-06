@@ -119,7 +119,9 @@ async function main() {
 
   // Check minimum deposit
   if (proof.amount < BigInt(config.min_deposit_amount)) {
-    console.error(`\n✗ Deposit amount ${proof.amount} is below minimum ${config.min_deposit_amount}`)
+    console.error(
+      `\n✗ Deposit amount ${proof.amount} is below minimum ${config.min_deposit_amount}`,
+    )
     return
   }
 

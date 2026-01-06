@@ -14,17 +14,11 @@
  *   RECIPIENT=alice.near bun run examples/eth-to-near.ts
  */
 
-import { createBridge, BridgeAPI, ChainKind } from "@omni-bridge/core"
+import { BridgeAPI, ChainKind, createBridge } from "@omni-bridge/core"
 import { createEvmBuilder } from "@omni-bridge/evm"
-import {
-  createPublicClient,
-  createWalletClient,
-  http,
-  parseUnits,
-  type Address,
-} from "viem"
-import { mainnet } from "viem/chains"
+import { type Address, createPublicClient, createWalletClient, http, parseUnits } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
+import { mainnet } from "viem/chains"
 
 // Configuration
 const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as Address
