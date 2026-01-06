@@ -1,7 +1,7 @@
 import { encodeAbiParameters, encodeEventTopics, parseAbiParameters } from "viem"
 import { describe, expect, it } from "vitest"
-import { BRIDGE_TOKEN_FACTORY_ABI } from "./abi.js"
-import { getInitTransferTopic, type LogEntry, parseInitTransferEvent } from "./events.js"
+import { BRIDGE_TOKEN_FACTORY_ABI } from "../src/abi.js"
+import { getInitTransferTopic, type LogEntry, parseInitTransferEvent } from "../src/events.js"
 
 describe("parseInitTransferEvent", () => {
   // Build a realistic mock log matching the InitTransfer event signature
