@@ -5,7 +5,7 @@
 import { z } from "zod"
 import { API_BASE_URLS } from "./config.js"
 import { OmniBridgeError } from "./errors.js"
-import type { Network, OmniAddress, TokenDecimals } from "./types.js"
+import type { Network, OmniAddress } from "./types.js"
 
 // API response schemas
 const ChainSchema = z.enum(["Eth", "Near", "Sol", "Arb", "Base", "Bnb", "Btc", "Zcash", "Pol"])
@@ -175,13 +175,6 @@ const UtxoDepositAddressResponseSchema = z.object({
   address: z.string(),
 })
 export type UtxoDepositAddressResponse = z.infer<typeof UtxoDepositAddressResponseSchema>
-
-const TokenDecimalsResponseSchema = z.object({
-  decimals: z.number(),
-  origin_decimals: z.number(),
-})
-
-const BridgedTokenResponseSchema = z.string().nullable()
 
 // UTXO chain parameter type
 export type UtxoChainParam = "btc" | "zcash"
@@ -357,39 +350,5 @@ export class BridgeAPI {
       },
       body: JSON.stringify(body),
     })
-  }
-
-  /**
-   * Get token decimals from the bridge
-   */
-  async getTokenDecimals(token: OmniAddress): Promise<TokenDecimals | null> {
-    const url = this.buildUrl("/api/v3/token-decimals", { token })
-    try {
-      return await this.fetchWithValidation(url, TokenDecimalsResponseSchema)
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        return null
-      }
-      throw error
-    }
-  }
-
-  /**
-   * Get the bridged token address on a destination chain
-   */
-  async getBridgedToken(token: OmniAddress, destChain: Chain): Promise<OmniAddress | null> {
-    const url = this.buildUrl("/api/v3/bridged-token", {
-      token,
-      dest_chain: destChain,
-    })
-    try {
-      const result = await this.fetchWithValidation(url, BridgedTokenResponseSchema)
-      return result as OmniAddress | null
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        return null
-      }
-      throw error
-    }
   }
 }
