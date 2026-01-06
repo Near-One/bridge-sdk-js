@@ -1,0 +1,31 @@
+{
+  "name": "@omni-bridge/sdk",
+  "version": "0.0.1",
+  "description": "Omni Bridge SDK - Umbrella package re-exporting all chain packages",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@omni-bridge/core": "workspace:*",
+    "@omni-bridge/evm": "workspace:*",
+    "@omni-bridge/near": "workspace:*",
+    "@omni-bridge/solana": "workspace:*",
+    "@omni-bridge/btc": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

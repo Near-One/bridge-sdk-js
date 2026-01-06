@@ -1,0 +1,29 @@
+{
+  "name": "@omni-bridge/solana",
+  "version": "0.0.1",
+  "description": "Solana transaction builder for Omni Bridge",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@omni-bridge/core": "workspace:*",
+    "@coral-xyz/anchor": "^0.32.1",
+    "@solana/web3.js": "^1.98.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
