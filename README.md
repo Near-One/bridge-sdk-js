@@ -232,12 +232,12 @@ const transfers = await api.findTransfers({
 To use the relayer network for automatic finalization, include the relayer fee in your transfer:
 
 ```typescript
-const fee = await api.getFee(sender, recipient, token)
+const fee = await api.getFee(sender, recipient, token, amount)
 
 const validated = await bridge.validateTransfer({
   // ...
-  fee: BigInt(fee.transferred_token_fee),
-  nativeFee: BigInt(fee.native_token_fee),
+  fee: BigInt(fee.transferred_token_fee ?? "0"),
+  nativeFee: fee.native_token_fee,
 })
 ```
 
