@@ -32,13 +32,14 @@ const zec = createBtcBuilder({ network: "mainnet", chain: "zcash" })
     Generate a unique deposit address for your NEAR recipient:
 
     ```typescript
+    import { ChainKind } from "@omni-bridge/core"
+
     const result = await bridge.getUtxoDepositAddress(
-      "btc",
+      ChainKind.Btc,
       "alice.near"  // NEAR recipient
     )
 
-    console.log(`Send BTC to: ${result.depositAddress}`)
-    console.log(`Minimum: ${result.minDeposit} satoshis`)
+    console.log(`Send BTC to: ${result.address}`)
     ```
 
     <Warning>
@@ -72,9 +73,14 @@ const zec = createBtcBuilder({ network: "mainnet", chain: "zcash" })
     // Build finalization transaction
     const finalizeTx = nearBuilder.buildUtxoDepositFinalization({
       chain: "btc",
-      txHash: "your_btc_tx_hash",
+      depositMsg: {
+        recipient_id: "alice.near",
+      },
+      txBytes: proof.tx_bytes,
       vout: 0,
-      proof,
+      txBlockBlockhash: proof.tx_block_blockhash,
+      txIndex: proof.tx_index,
+      merkleProof: proof.merkle_proof,
       signerId: "alice.near",
     })
 
@@ -97,10 +103,30 @@ Check your Bitcoin transaction on a block explorer:
 <Steps>
   <Step title="Initiate withdrawal on NEAR">
     ```typescript
+    import { type UTXO } from "@omni-bridge/core"
+
+    // First build a withdrawal plan
+    const utxos: UTXO[] = await nearBuilder.getUtxoAvailableOutputs("btc")
+    const config = await nearBuilder.getUtxoConnectorConfig("btc")
+    const withdrawAmount = 100000n // satoshis
+
+    const plan = btc.buildWithdrawalPlan(
+      utxos,
+      withdrawAmount,
+      "bc1qyourbitcoinaddress...",
+      config.change_address,
+      2 // fee rate in sat/vB
+    )
+
+    const bridgeFee = await nearBuilder.calculateUtxoWithdrawalFee("btc", withdrawAmount)
+    const totalAmount = withdrawAmount + plan.fee + bridgeFee
+
     const withdrawTx = nearBuilder.buildUtxoWithdrawalInit({
       chain: "btc",
-      recipient: "bc1qyourbitcoinaddress...",
-      amount: 100000n, // satoshis
+      targetAddress: "bc1qyourbitcoinaddress...",
+      inputs: plan.inputs,
+      outputs: plan.outputs,
+      totalAmount,
       signerId: "alice.near",
     })
 
@@ -112,20 +138,48 @@ Check your Bitcoin transaction on a block explorer:
     The bridge uses MPC (Multi-Party Computation) to sign Bitcoin transactions:
 
     ```typescript
-    // The withdrawal ID comes from the NEAR transaction
-    const withdrawalId = extractWithdrawalId(result)
+    import { BridgeAPI } from "@omni-bridge/core"
 
-    // Wait for signing (can take a few minutes)
-    const signedTx = await nearBuilder.waitForUtxoSigning(
-      "btc",
-      withdrawalId
-    )
+    const api = new BridgeAPI("mainnet")
+
+    // Poll for signed transaction
+    let signedTxHash: string | undefined
+
+    for (let i = 0; i < 60; i++) {
+      const transfers = await api.getTransfer({
+        transactionHash: result.transaction.hash,
+      })
+      const transfer = transfers[0]
+
+      if (transfer?.signed?.NearReceipt?.transaction_hash) {
+        signedTxHash = transfer.signed.NearReceipt.transaction_hash
+        break
+      }
+
+      await new Promise((r) => setTimeout(r, 5000))
+    }
     ```
   </Step>
 
   <Step title="Broadcast to Bitcoin network">
     ```typescript
-    const btcTxHash = await btc.broadcastTransaction(signedTx.txHex)
+    // Extract signed transaction from NEAR logs
+    const signedTx = await near.getTransactionStatus(
+      signedTxHash,
+      "alice.near",
+      "FINAL"
+    )
+
+    const signedLog = signedTx.receipts_outcome
+      .flatMap((r) => r.outcome.logs)
+      .find((log) => log.includes("signed_btc_transaction"))
+
+    const jsonPart = signedLog.split("EVENT_JSON:")[1]
+    const signedData = JSON.parse(jsonPart)
+    const txBytes: number[] = signedData.data[0].tx_bytes
+
+    const txHex = txBytes.map((b) => b.toString(16).padStart(2, "0")).join("")
+    const btcTxHash = await btc.broadcastTransaction(txHex)
     console.log(`Bitcoin TX: ${btcTxHash}`)
     ```
   </Step>
@@ -134,7 +188,7 @@ Check your Bitcoin transaction on a block explorer:
 ## Complete Deposit Example
 
 ```typescript
-import { createBridge } from "@omni-bridge/core"
+import { createBridge, ChainKind } from "@omni-bridge/core"
 import { createBtcBuilder } from "@omni-bridge/btc"
 import { createNearBuilder, toNearKitTransaction } from "@omni-bridge/near"
 import { Near } from "near-kit"
@@ -146,11 +200,11 @@ const nearBuilder = createNearBuilder({ network: "mainnet" })
 const near = new Near({ network: "mainnet", privateKey: "ed25519:..." })
 
 // Step 1: Get deposit address
-const { depositAddress, minDeposit } = await bridge.getUtxoDepositAddress(
-  "btc",
+const { address } = await bridge.getUtxoDepositAddress(
+  ChainKind.Btc,
   "alice.near"
 )
-console.log(`Send at least ${minDeposit} satoshis to: ${depositAddress}`)
+console.log(`Send BTC to: ${address}`)
 
 // Step 2: User sends Bitcoin externally...
 const btcTxHash = "abc123..."  // From user's wallet
@@ -161,9 +215,14 @@ const proof = await btc.getDepositProof(btcTxHash, vout)
 
 const finalizeTx = nearBuilder.buildUtxoDepositFinalization({
   chain: "btc",
-  txHash: btcTxHash,
+  depositMsg: {
+    recipient_id: "alice.near",
+  },
+  txBytes: proof.tx_bytes,
   vout,
-  proof,
+  txBlockBlockhash: proof.tx_block_blockhash,
+  txIndex: proof.tx_index,
+  merkleProof: proof.merkle_proof,
   signerId: "alice.near",
 })
 
@@ -173,15 +232,24 @@ console.log(`Deposit finalized! nBTC credited to alice.near`)
 
 ## UTXO Selection
 
-For withdrawals, the bridge automatically selects UTXOs. For advanced use cases:
+For withdrawals, the SDK automatically selects UTXOs via `buildWithdrawalPlan`. For advanced use cases:
 
 ```typescript
-// Get available UTXOs
-const utxos = await nearBuilder.getUtxoAvailableOutputs("btc")
+import { linearFeeCalculator, type NormalizedUTXO } from "@omni-bridge/btc"
 
-// Custom UTXO selection
-const selected = btc.selectUtxos(utxos, amount, {
-  feeRate: 10,  // sat/vbyte
+// Get available UTXOs and normalize them
+const utxos = await nearBuilder.getUtxoAvailableOutputs("btc")
+const normalizedUtxos: NormalizedUTXO[] = utxos.map((u) => ({
+  txid: u.txid,
+  vout: u.vout,
+  value: BigInt(u.value),
+  script_pubkey: u.script_pubkey,
+}))
+
+// Custom UTXO selection with fee calculator
+const selected = btc.selectUtxos(normalizedUtxos, amount, {
+  feeCalculator: linearFeeCalculator({ base: 10, input: 68, output: 31, rate: 15 }),
+  dustThreshold: 546n,
 })
 
 console.log(`Using ${selected.inputs.length} inputs`)
@@ -252,19 +320,36 @@ console.log({
 Zcash works identically to Bitcoin, just change the chain parameter:
 
 ```typescript
+import { ChainKind, type UTXO } from "@omni-bridge/core"
+
 const zec = createBtcBuilder({ network: "mainnet", chain: "zcash" })
 
 // Deposit
-const { depositAddress } = await bridge.getUtxoDepositAddress(
-  "zcash",
+const { address } = await bridge.getUtxoDepositAddress(
+  ChainKind.Zcash,
   "alice.near"
 )
 
 // Withdrawal
+const utxos: UTXO[] = await nearBuilder.getUtxoAvailableOutputs("zcash")
+const config = await nearBuilder.getUtxoConnectorConfig("zcash")
+
+const plan = zec.buildWithdrawalPlan(
+  utxos,
+  100000n,
+  "t1yourzcashaddress...",
+  config.change_address
+)
+
+const bridgeFee = await nearBuilder.calculateUtxoWithdrawalFee("zcash", 100000n)
+const totalAmount = 100000n + plan.fee + bridgeFee
+
 const withdrawTx = nearBuilder.buildUtxoWithdrawalInit({
   chain: "zcash",
-  recipient: "t1yourzcashaddress...",
-  amount: 100000n,
+  targetAddress: "t1yourzcashaddress...",
+  inputs: plan.inputs,
+  outputs: plan.outputs,
+  totalAmount,
   signerId: "alice.near",
 })
 ```
@@ -287,10 +372,12 @@ try {
 }
 
 try {
-  await nearBuilder.waitForUtxoSigning("btc", withdrawalId)
+  const plan = btc.buildWithdrawalPlan(utxos, amount, targetAddress, changeAddress)
 } catch (error) {
-  if (error.message.includes("timeout")) {
-    console.log("MPC signing took too long - try again later")
+  if (error.message.includes("No UTXOs")) {
+    console.log("No UTXOs available in bridge pool")
+  } else if (error.message.includes("Insufficient")) {
+    console.log("Not enough UTXOs to cover amount + fees")
   }
 }
 ```

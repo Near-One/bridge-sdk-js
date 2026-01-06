@@ -187,12 +187,14 @@ When building a UI:
 const fee = await api.getFee(sender, recipient, token, amount)
 
 // Show breakdown to user
-const receiveAmount = amount - BigInt(fee.transferred_token_fee)
+const tokenFee = BigInt(fee.transferred_token_fee ?? "0")
+const nativeFee = fee.native_token_fee ?? 0n
+const receiveAmount = amount - tokenFee
 
 console.log(`
   Sending: ${formatUnits(amount, decimals)} USDC
-  Fee: ${formatUnits(BigInt(fee.transferred_token_fee), decimals)} USDC
-  Native fee: ${formatEther(BigInt(fee.native_token_fee))} ETH
+  Fee: ${formatUnits(tokenFee, decimals)} USDC
+  Native fee: ${formatEther(nativeFee)} ETH
   Recipient receives: ${formatUnits(receiveAmount, decimals)} USDC
 `)
 ```
