@@ -21,7 +21,10 @@ The SDK is being restructured from a monolithic `src/` directory to a multi-pack
 
 ---
 
-## Task 1: Add EVM Event Parsing
+## Task 1: Add EVM Event Parsing ✅ COMPLETE
+
+### Status
+Implemented in `packages/evm/src/events.ts`. The `parseInitTransferEvent()` function parses InitTransfer events from EVM transaction receipts. Tested in `e2e/eth-to-near.test.ts`.
 
 ### Context
 When a transfer is initiated on an EVM chain, the bridge contract emits an `InitTransfer` event. This event contains critical data (nonce, amounts, recipient) needed for:
@@ -365,35 +368,28 @@ Create a checklist comparing old types to new package exports:
 
 ---
 
-## Task 7: Add Token Utility Functions
+## ~~Task 7: Add Token Utility Functions~~ (REMOVED)
 
-### Context
-The old SDK has token utility functions for working with bridge tokens. Some are missing from packages.
+**Status:** Not needed.
 
-### Reference Implementation
-- `src/utils/tokens.ts`
+- `getBridgedToken()` - Already in `packages/core/src/bridge.ts` ✅
+- `isBridgeToken()` - Zero usage in codebase, remove
+- `parseOriginChain()` - Zero usage in codebase, remove
 
-### Functions to Add
-
-```typescript
-// 1. Check if a NEAR address is a bridge token
-export function isBridgeToken(nearAddress: string): boolean
-
-// 2. Parse origin chain from NEAR token address format
-export function parseOriginChain(nearAddress: string): ChainKind | null
-```
-
-### Where to Add
-`packages/core/src/utils/tokens.ts` or `packages/near/src/utils/tokens.ts`
-
-### Implementation Notes
-- `isBridgeToken` uses regex patterns for factory addresses
-- `parseOriginChain` parses prefixes like `sol-`, `base-`, `arb-`
-- Both are pure functions, no RPC needed
+These were convenience functions that nobody actually uses. If consumers need offline token address parsing, they can build it themselves or request it as a feature.
 
 ---
 
-## Task 8: Update E2E Tests for New SDK
+## Task 7: Update E2E Tests for New SDK ✅ COMPLETE
+
+### Status
+All four e2e tests have been updated to use the new SDK packages:
+- `e2e/eth-to-near.test.ts` - Updated, uses viem + new packages
+- `e2e/near-to-eth.test.ts` - Updated, uses viem + new packages  
+- `e2e/near-to-sol.test.ts` - Updated, uses new packages
+- `e2e/sol-to-near.test.ts` - Updated, uses new packages
+
+All tests passing on testnet.
 
 ### Context
 The `e2e/` directory has end-to-end tests using the old SDK. These need to be updated to use the new packages.
@@ -500,16 +496,17 @@ export * from "@omni-bridge/solana"
 
 ## Priority Order
 
-1. **Task 1: EVM Event Parsing** - Blocks finalization flows
+1. **Task 1: EVM Event Parsing** - ✅ COMPLETE
 2. **Task 2: Zcash Support** - Completes UTXO coverage
 3. **Task 3: Wormhole VAA** - Needed for Solana→NEAR
 4. **Task 4: UTXO Deposit Address** - Needed for BTC/Zcash deposits
-5. **Task 8: E2E Tests** - Validates everything works
+5. **Task 7: E2E Tests** - ✅ COMPLETE
 6. **Task 6: Type Completeness** - Ensures nothing missing
-7. **Task 7: Token Utilities** - Nice to have
-8. **Task 5: Storage Account ID** - Low priority
-9. **Task 9: Dependencies** - Cleanup
-10. **Task 10: Umbrella Exports** - Final verification
+7. **Task 5: Storage Account ID** - Low priority, only if relayers need it
+8. **Task 8: Dependencies** - Cleanup
+9. **Task 9: Umbrella Exports** - Final verification
+
+~~Task 7 (Token Utilities)~~ - Removed, not needed
 
 ---
 
