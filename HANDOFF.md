@@ -35,14 +35,14 @@ Rewriting `omni-bridge-sdk` from a monolithic package into a multi-package monor
 | `@omni-bridge/btc` | ✅ Complete | UTXO selection, withdrawal planning, proofs |
 | `@omni-bridge/sdk` | ✅ Complete | Re-exports all packages |
 
-### E2E Tests - ✅ NEAR ↔ Solana Complete
+### E2E Tests - ✅ NEAR ↔ Solana Complete, NEAR → ETH Complete
 
 | Test | Status | Notes |
 |------|--------|-------|
 | `e2e/near-to-sol.test.ts` | ✅ Passing | NEAR → Solana transfer |
 | `e2e/sol-to-near.test.ts` | ✅ Passing | Solana → NEAR transfer |
-| `e2e/eth-to-near.test.ts` | ⏳ Pending | EVM → NEAR (lower priority) |
-| `e2e/near-to-eth.test.ts` | ⏳ Pending | NEAR → EVM (lower priority) |
+| `e2e/near-to-eth.test.ts` | ✅ Passing | NEAR → ETH transfer |
+| `e2e/eth-to-near.test.ts` | ⏳ Pending | EVM → NEAR (requires EVM proofs) |
 
 ---
 
@@ -207,18 +207,94 @@ const finalizeTx = nearBuilder.buildFinalization({
 await toNearKitTransaction(near, finalizeTx).send()
 ```
 
+### NEAR → ETH (Verified Working)
+
+```typescript
+import { ChainKind, createBridge, getAddresses } from "@omni-bridge/core"
+import { createEvmBuilder, type TransferPayload } from "@omni-bridge/evm"
+import { createNearBuilder, MPCSignature, toNearKitTransaction } from "@omni-bridge/near"
+import { ethers } from "ethers"
+
+// 1. Create builders
+const bridge = createBridge({ network: "testnet" })
+const nearBuilder = createNearBuilder({ network: "testnet" })
+const evmBuilder = createEvmBuilder({ network: "testnet" })
+const addresses = getAddresses("testnet")
+
+// 2. Validate transfer
+const validated = await bridge.validateTransfer({
+  token: "near:wrap.testnet",
+  amount: BigInt("1000000"),
+  fee: 0n,
+  nativeFee: 0n,
+  sender: `near:${signerId}`,
+  recipient: `eth:${ethAddress}`,
+})
+
+// 3. Init transfer on NEAR
+const initTx = nearBuilder.buildTransfer(validated, signerId)
+const initResult = await toNearKitTransaction(near, initTx).send()
+const initEvent = JSON.parse(
+  initResult.receipts_outcome
+    .flatMap((r) => r.outcome.logs)
+    .find((log) => log.includes("InitTransferEvent"))
+).InitTransferEvent
+
+// 4. Sign transfer on NEAR
+const signTx = nearBuilder.buildSignTransfer(
+  { origin_chain: ChainKind.Near, origin_nonce: BigInt(initEvent.transfer_message.origin_nonce) },
+  feeRecipient,
+  { fee: initEvent.transfer_message.fee.fee, native_fee: initEvent.transfer_message.fee.native_fee },
+  signerId,
+)
+const signResult = await toNearKitTransaction(near, signTx).send({ waitUntil: "FINAL" })
+const signEvent = JSON.parse(
+  signResult.receipts_outcome
+    .flatMap((r) => r.outcome.logs)
+    .find((log) => log.includes("SignTransferEvent"))
+).SignTransferEvent
+
+// 5. Finalize on Ethereum
+const mpcSignature = MPCSignature.fromRaw(signEvent.signature)
+const signatureBytes = mpcSignature.toBytes(true) // forEvm = true (adds 27 to recovery_id)
+
+// Map chain kind string to number
+let originChain = signEvent.message_payload.transfer_id.origin_chain
+if (typeof originChain === "string") {
+  originChain = ChainKind[originChain as keyof typeof ChainKind]
+}
+
+const transferPayload: TransferPayload = {
+  destinationNonce: BigInt(signEvent.message_payload.destination_nonce),
+  originChain: Number(originChain),
+  originNonce: BigInt(signEvent.message_payload.transfer_id.origin_nonce),
+  tokenAddress: signEvent.message_payload.token_address.slice(4) as `0x${string}`, // strip "eth:" prefix
+  amount: BigInt(signEvent.message_payload.amount),
+  recipient: signEvent.message_payload.recipient.slice(4) as `0x${string}`, // strip "eth:" prefix
+  feeRecipient: signEvent.message_payload.fee_recipient ?? "",
+}
+
+const finalizeTx = evmBuilder.buildFinalization(transferPayload, signatureBytes, chainId)
+finalizeTx.to = addresses.eth.bridge as `0x${string}` // Set bridge address
+
+const txResponse = await ethWallet.sendTransaction({
+  to: finalizeTx.to,
+  data: finalizeTx.data,
+  value: finalizeTx.value,
+  chainId: finalizeTx.chainId,
+})
+await txResponse.wait()
+```
+
 ---
 
 ## What Remains
 
-### Lower Priority E2E Tests
+### EVM → NEAR E2E Test
 
-1. **`e2e/eth-to-near.test.ts`** - EVM → NEAR transfer
-2. **`e2e/near-to-eth.test.ts`** - NEAR → EVM transfer
-
-These should follow similar patterns to the Solana tests but use:
-- `@omni-bridge/evm` package for EVM builders
-- EVM proofs instead of Wormhole VAAs
+The `e2e/eth-to-near.test.ts` test requires EVM proofs which need the light client to sync. This is more complex and requires:
+- `@omni-bridge/evm` package's `getEvmProof()` function
+- Waiting for the NEAR light client to sync the EVM block
 
 ### Potential Improvements
 
@@ -234,6 +310,7 @@ These should follow similar patterns to the Solana tests but use:
 # Use bun directly for e2e tests (they use bun:test)
 bun test e2e/near-to-sol.test.ts
 bun test e2e/sol-to-near.test.ts
+bun test e2e/near-to-eth.test.ts
 
 # Use vitest for unit tests
 bun run test tests/
@@ -255,8 +332,10 @@ bun run typecheck
 | `packages/near/src/types.ts` | NEAR types including MPCSignature class |
 | `packages/near/src/shims.ts` | near-kit and near-api-js adapters |
 | `packages/solana/src/builder.ts` | Solana transaction builders |
+| `packages/evm/src/builder.ts` | EVM transaction builders |
 | `e2e/near-to-sol.test.ts` | Working NEAR → Solana test |
 | `e2e/sol-to-near.test.ts` | Working Solana → NEAR test |
+| `e2e/near-to-eth.test.ts` | Working NEAR → ETH test |
 | `e2e/shared/fixtures.ts` | Test token and route configuration |
 
 ---

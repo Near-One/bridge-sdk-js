@@ -10,5 +10,7 @@ export {
   createEvmBuilder,
   type EvmBuilder,
   type EvmBuilderConfig,
+  type TokenMetadata,
+  type TransferPayload,
 } from "./builder.js"
 export { type EvmProof, getEvmProof } from "./proof.js"
