@@ -37,6 +37,7 @@
     "bn.js": "^5.2.1"
   },
   "devDependencies": {
+    "@types/bn.js": "^5.2.0",
     "typescript": "^5.9.3"
   }
 }
