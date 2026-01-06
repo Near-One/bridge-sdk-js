@@ -38,6 +38,7 @@ packages/
 ### Core Concepts
 
 **Factory Pattern**: Each chain has a builder factory:
+
 - `createBridge({ network })` → validation and API access
 - `createEvmBuilder({ network, chain })` → EVM transaction building
 - `createNearBuilder({ network })` → NEAR transaction building
@@ -45,6 +46,7 @@ packages/
 - `createBtcBuilder({ network, chain })` → Bitcoin/Zcash UTXO operations
 
 **Unsigned Transaction Types**: SDK returns library-agnostic plain objects:
+
 - `EvmUnsignedTransaction` → Compatible with viem and ethers v6 directly
 - `NearUnsignedTransaction` → Use shims: `toNearKitTransaction()` or `sendWithNearApiJs()`
 - `TransactionInstruction[]` → Native @solana/web3.js instructions
@@ -79,6 +81,7 @@ Tests use Vitest with MSW for API mocking:
 - **E2E tests**: `e2e/*.test.ts` - Real testnet transactions
 
 Run specific package tests:
+
 ```bash
 bun run test packages/core/    # Core package tests
 bun run test packages/evm/     # EVM builder tests
@@ -93,6 +96,18 @@ bun run test packages/evm/     # EVM builder tests
 - **ESM modules**: Uses Node.js ESM with `.js` extension requirement
 
 ## Workflow Rules
+
+### Documentation Updates
+
+When making changes to the SDK, always update documentation accordingly:
+
+- **Reference docs** (`docs/reference/`): Update when adding/changing public API methods, parameters, or return types
+- **Code snippets**: Ensure all code examples in docs still compile and reflect current API
+- **Package READMEs** (`packages/*/README.md`): Keep API sections in sync with actual exports
+- **Guides** (`docs/guides/`): Update when workflows or best practices change
+- **Examples** (`docs/examples/`, `examples/`): Verify examples work with any API changes
+
+Run `bun run typecheck` to catch any stale code snippets that no longer compile.
 
 ### Git and Commit Practices
 
