@@ -19,6 +19,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@near-js/accounts": "^2.5.1",
+    "@near-js/transactions": "^2.5.1",
     "@omni-bridge/core": "workspace:*",
     "@zorsh/zorsh": "^0.4.0",
     "near-kit": "^0.6.1"

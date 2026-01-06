@@ -6,7 +6,11 @@
  */
 
 export { createNearBuilder, type NearBuilder, type NearBuilderConfig } from "./builder.js"
-export { toNearKitTransaction } from "./shims.js"
+export {
+  sendWithNearApiJs,
+  toNearApiJsActions,
+  toNearKitTransaction,
+} from "./shims.js"
 export {
   // Schemas for Borsh serialization
   BindTokenArgsSchema,

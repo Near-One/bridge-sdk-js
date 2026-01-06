@@ -111,12 +111,12 @@ The SDK returns **library-agnostic unsigned transactions** - plain objects descr
                                                      └─────────────────────┘
 ```
 
-| Chain  | SDK Returns                 | Available Shims                                      |
-| ------ | --------------------------- | ---------------------------------------------------- |
-| EVM    | `EvmUnsignedTransaction`    | `toViemRequest()`, `toEthersRequest()`               |
-| NEAR   | `NearUnsignedTransaction`   | `toNearKitTransaction()`, `toNearApiJsTransaction()` |
-| Solana | `SolanaUnsignedTransaction` | `toSolanaTransaction()`, `toSolanaInstructions()`    |
-| BTC    | `BtcUnsignedTransaction`    | (consumers handle directly)                          |
+| Chain  | SDK Returns                 | Available Shims                                          |
+| ------ | --------------------------- | -------------------------------------------------------- |
+| EVM    | `EvmUnsignedTransaction`    | `toViemRequest()`, `toEthersRequest()`                   |
+| NEAR   | `NearUnsignedTransaction`   | `toNearKitTransaction()`, `toNearApiJsActions()`, `sendWithNearApiJs()` |
+| Solana | `SolanaUnsignedTransaction` | `toSolanaTransaction()`, `toSolanaInstructions()`        |
+| BTC    | `BtcUnsignedTransaction`    | (consumers handle directly)                              |
 
 Shims that need RPC access (like `toNearKitTransaction`) take a client instance as a parameter. The SDK itself never makes RPC calls for nonces or block hashes.
 
@@ -410,7 +410,7 @@ Builds unsigned NEAR transactions as library-agnostic action lists. Shims conver
 
 - `@omni-bridge/core`
 - `@zorsh/zorsh` (for Borsh serialization of args)
-- `near-kit` (for shims and gas/amount parsing)
+- `near-kit` (for shims, gas/amount parsing, and internal RPC for view calls)
 
 ### Factory
 
@@ -423,7 +423,7 @@ export function createNearBuilder(config: NearBuilderConfig): NearBuilder
 
 export interface NearBuilder {
   // Transfers - returns library-agnostic type
-  buildTransfer(validated: ValidatedTransfer): NearUnsignedTransaction
+  buildTransfer(validated: ValidatedTransfer, signerId: string): NearUnsignedTransaction
   buildStorageDeposit(signerId: string, amount: bigint): NearUnsignedTransaction
 
   // Finalization
@@ -431,34 +431,28 @@ export interface NearBuilder {
 
   // Token registration
   buildLogMetadata(token: string, signerId: string): NearUnsignedTransaction
-  buildDeployToken(proof: Uint8Array, signerId: string): NearUnsignedTransaction
-  buildBindToken(proof: Uint8Array, signerId: string): NearUnsignedTransaction
+  buildDeployToken(destinationChain: ChainKind, proverArgs: Uint8Array, signerId: string, deposit: bigint): NearUnsignedTransaction
+  buildBindToken(sourceChain: ChainKind, proverArgs: Uint8Array, signerId: string, deposit: bigint): NearUnsignedTransaction
 
   // MPC Signing (for outbound transfers)
   buildSignTransfer(
     transferId: TransferId,
     feeRecipient: string,
+    fee: { fee: string; native_fee: string },
     signerId: string
   ): NearUnsignedTransaction
 
   // Fast finalization (for relayers)
-  buildFastFinTransfer(params: FastFinTransferParams): NearUnsignedTransaction
+  buildFastFinTransfer(params: FastFinTransferParams, signerId: string): NearUnsignedTransaction
 
-  // Storage balance check (requires RPC)
-  getRequiredStorageDeposit(
-    client: NearRpcClient,
-    accountId: string
-  ): Promise<bigint>
-}
+  // View calls - builder handles RPC internally (uses public endpoints)
+  getRequiredStorageDeposit(accountId: string): Promise<bigint>
+  isTokenStorageRegistered(tokenId: string): Promise<boolean>
+  buildTokenStorageDeposit(tokenId: string, signerId: string): Promise<NearUnsignedTransaction>
 
-// RPC client interface - consumers provide their own
-export interface NearRpcClient {
-  query<T>(params: {
-    request_type: string
-    account_id: string
-    method_name?: string
-    args_base64?: string
-  }): Promise<T>
+  // Proof serialization helpers
+  serializeEvmProofArgs(args: EvmVerifyProofArgs): Uint8Array
+  serializeWormholeProofArgs(args: WormholeVerifyProofArgs): Uint8Array
 }
 ```
 
@@ -466,36 +460,84 @@ export interface NearRpcClient {
 
 ```typescript
 import type { Near, TransactionBuilder } from "near-kit"
-import type { Transaction } from "@near-js/transactions"
+import type { Account } from "@near-js/accounts"
+import type { Action } from "@near-js/transactions"
 
 // Convert to near-kit TransactionBuilder (handles nonce/blockHash automatically)
 export function toNearKitTransaction(
-  client: Near,
+  near: Near,
   unsigned: NearUnsignedTransaction
 ): TransactionBuilder
 
-// Convert to near-api-js Transaction (requires additional params)
-export function toNearApiJsTransaction(
-  unsigned: NearUnsignedTransaction,
-  params: { publicKey: PublicKey; nonce: bigint; blockHash: Uint8Array }
-): Transaction
+// Convert actions to @near-js/transactions format
+export function toNearApiJsActions(unsigned: NearUnsignedTransaction): Action[]
+
+// Send using @near-js/accounts Account (handles nonce/blockHash automatically)
+export function sendWithNearApiJs(
+  account: Account,
+  unsigned: NearUnsignedTransaction
+): Promise<FinalExecutionOutcome>
 ```
 
-### Usage with Shims
+The `toNearKitTransaction` shim takes a configured `Near` instance and applies the unsigned transaction's actions to a `TransactionBuilder`. The near-kit library handles nonce, blockHash, and signing automatically when you call `.send()`.
+
+The `sendWithNearApiJs` shim takes an `Account` from `@near-js/accounts` and sends the transaction directly. The Account handles nonce, blockHash, and signing automatically.
+
+### Usage with near-kit
 
 ```typescript
+import { createBridge } from '@omni-bridge/core'
 import { createNearBuilder, toNearKitTransaction } from '@omni-bridge/near'
 import { Near } from 'near-kit'
 
+const bridge = createBridge({ network: 'mainnet' })
 const nearBuilder = createNearBuilder({ network: 'mainnet' })
-const near = new Near({ network: 'mainnet', ... })
+const near = new Near({ network: 'mainnet', privateKey: '...' })
 
-// Build library-agnostic transaction
-const unsigned = nearBuilder.buildTransfer(validated)
+// 1. Validate transfer params
+const validated = await bridge.validateTransfer({
+  token: 'near:wrap.near',
+  amount: 1000000000000000000000000n,
+  fee: 0n,
+  nativeFee: 0n,
+  sender: 'near:alice.near',
+  recipient: 'eth:0x1234...',
+})
 
-// Convert to near-kit and send (near-kit handles nonce/blockHash/signing)
+// 2. Build library-agnostic transaction
+const unsigned = nearBuilder.buildTransfer(validated, 'alice.near')
+
+// 3. Convert to near-kit and send (near-kit handles nonce/blockHash/signing)
 const tx = toNearKitTransaction(near, unsigned)
-await tx.send()
+const result = await tx.send()
+console.log('Transaction hash:', result.transaction.hash)
+```
+
+### Usage with near-api-js
+
+```typescript
+import { createBridge } from '@omni-bridge/core'
+import { createNearBuilder, sendWithNearApiJs } from '@omni-bridge/near'
+import { connect, keyStores } from 'near-api-js'
+
+const bridge = createBridge({ network: 'mainnet' })
+const nearBuilder = createNearBuilder({ network: 'mainnet' })
+
+// Connect to NEAR
+const near = await connect({
+  networkId: 'mainnet',
+  keyStore: new keyStores.InMemoryKeyStore(),
+  nodeUrl: 'https://rpc.mainnet.near.org',
+})
+const account = await near.account('alice.near')
+
+// Validate and build
+const validated = await bridge.validateTransfer(params)
+const unsigned = nearBuilder.buildTransfer(validated, 'alice.near')
+
+// Send (Account handles nonce/blockHash/signing)
+const result = await sendWithNearApiJs(account, unsigned)
+console.log('Transaction hash:', result.transaction.hash)
 ```
 
 ### Why This Pattern?
@@ -506,7 +548,11 @@ NEAR transactions require `publicKey`, `nonce`, and `blockHash` fields that are:
 2. **Time-sensitive** - nonce can go stale with concurrent transactions
 3. **Signing-context dependent** - you need to know which key signs before building
 
-By returning just `{ signerId, receiverId, actions }`, the SDK stays stateless and consumers handle timing-sensitive fields at send time via their chosen library.
+By returning just `{ signerId, receiverId, actions }`, the SDK stays stateless. The shims + near-kit/near-api-js handle timing-sensitive fields at send time.
+
+### View Calls
+
+The builder handles view calls (like `getRequiredStorageDeposit()`) internally using public RPC endpoints. This keeps the API simple - consumers don't need to pass an RPC client for read-only operations.
 
 ---
 
@@ -739,19 +785,26 @@ import { Near } from "near-kit"
 
 const bridge = createBridge({ network: "mainnet" })
 const nearBuilder = createNearBuilder({ network: "mainnet" })
-const near = new Near({ network: "mainnet", privateKey: "..." })
+const near = new Near({ network: "mainnet", privateKey: "ed25519:..." })
 
 async function initiateTransfer(params: TransferParams) {
-  // 1. Validate
+  const signerId = "alice.near"
+
+  // 1. Check if storage deposit is needed
+  const requiredDeposit = await nearBuilder.getRequiredStorageDeposit(signerId)
+  if (requiredDeposit > 0n) {
+    const depositTx = nearBuilder.buildStorageDeposit(signerId, requiredDeposit)
+    await toNearKitTransaction(near, depositTx).send()
+  }
+
+  // 2. Validate transfer params
   const validated = await bridge.validateTransfer(params)
 
-  // 2. Build library-agnostic transaction
-  const unsigned = nearBuilder.buildTransfer(validated)
+  // 3. Build library-agnostic transaction
+  const unsigned = nearBuilder.buildTransfer(validated, signerId)
 
-  // 3. Convert to near-kit (handles nonce, blockHash, signing)
+  // 4. Convert to near-kit and send (handles nonce, blockHash, signing)
   const tx = toNearKitTransaction(near, unsigned)
-
-  // 4. Send
   return tx.send()
 }
 ```
@@ -759,35 +812,30 @@ async function initiateTransfer(params: TransferParams) {
 ### Backend (NEAR) - Using near-api-js
 
 ```typescript
-import { createBridge } from '@omni-bridge/core'
-import { createNearBuilder, toNearApiJsTransaction } from '@omni-bridge/near'
-import { connect, keyStores } from 'near-api-js'
+import { createBridge } from "@omni-bridge/core"
+import { createNearBuilder, sendWithNearApiJs } from "@omni-bridge/near"
+import { connect, keyStores } from "near-api-js"
 
-const bridge = createBridge({ network: 'mainnet' })
-const nearBuilder = createNearBuilder({ network: 'mainnet' })
+const bridge = createBridge({ network: "mainnet" })
+const nearBuilder = createNearBuilder({ network: "mainnet" })
 
 async function initiateTransfer(params: TransferParams) {
-  const validated = await bridge.validateTransfer(params)
-  const unsigned = nearBuilder.buildTransfer(validated)
+  const signerId = "alice.near"
 
   // Connect to NEAR
-  const near = await connect({ networkId: 'mainnet', keyStore: new keyStores.InMemoryKeyStore(), ... })
-  const account = await near.account(unsigned.signerId)
-
-  // Get access key info for nonce
-  const accessKey = await account.findAccessKey(unsigned.receiverId, unsigned.actions)
-  const block = await near.connection.provider.block({ finality: 'final' })
-
-  // Convert with key context
-  const tx = toNearApiJsTransaction(unsigned, {
-    publicKey: accessKey.publicKey,
-    nonce: accessKey.accessKey.nonce + 1n,
-    blockHash: block.header.hash,
+  const near = await connect({
+    networkId: "mainnet",
+    keyStore: new keyStores.InMemoryKeyStore(),
+    nodeUrl: "https://rpc.mainnet.near.org",
   })
+  const account = await near.account(signerId)
 
-  // Sign and send
-  const signedTx = await account.signTransaction(tx)
-  return near.connection.provider.sendTransaction(signedTx)
+  // Validate and build
+  const validated = await bridge.validateTransfer(params)
+  const unsigned = nearBuilder.buildTransfer(validated, signerId)
+
+  // Send (Account handles nonce, blockHash, signing)
+  return sendWithNearApiJs(account, unsigned)
 }
 ```
 
@@ -914,7 +962,6 @@ Shims are new code that convert library-agnostic types to library-specific types
 
 - `toViemRequest()` / `toEthersRequest()` - trivial type mapping for EVM
 - `toNearKitTransaction()` - applies actions to a TransactionBuilder, which handles nonce/blockHash
-- `toNearApiJsTransaction()` - requires consumer to provide nonce/blockHash/publicKey
 - `toSolanaTransaction()` - creates Transaction from instructions, fetches blockhash
 
 ### Build Order
@@ -1051,9 +1098,10 @@ Set `FULL_E2E_TEST=true` to run complete flows including finalization (takes 30+
 
 - [ ] `createNearBuilder({ network })` returns configured instance
 - [ ] `buildTransfer()` returns `NearUnsignedTransaction` with correct actions
-- [ ] `toNearKitTransaction()` applies actions to TransactionBuilder correctly
-- [ ] `toNearApiJsTransaction()` creates valid Transaction with provided key context
-- [ ] Actions can be used with any NEAR signing library
+- [ ] `getRequiredStorageDeposit()` returns correct amount via view call
+- [ ] `toNearKitTransaction()` converts to TransactionBuilder that can be sent
+- [ ] `sendWithNearApiJs()` sends via @near-js/accounts Account
+- [ ] Real transactions succeed on testnet via both shims
 
 **@omni-bridge/solana**
 
