@@ -1,4 +1,6 @@
+// biome-ignore lint/style/noRestrictedImports: e2e tests run in Node.js, not browsers
 import os from "node:os"
+// biome-ignore lint/style/noRestrictedImports: e2e tests run in Node.js, not browsers
 import path from "node:path"
 import { AnchorProvider, setProvider, Wallet } from "@coral-xyz/anchor"
 import { Connection, Keypair } from "@solana/web3.js"
@@ -41,15 +43,15 @@ export const TEST_CONFIG: TestConfig = {
     ethereum: {
       rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
       chainId: 11155111, // Sepolia
-      ...(process.env["ETH_PRIVATE_KEY"] && {
-        privateKey: process.env["ETH_PRIVATE_KEY"],
+      ...(process.env.ETH_PRIVATE_KEY && {
+        privateKey: process.env.ETH_PRIVATE_KEY,
       }),
     },
     solana: {
       rpcUrl: "https://api.devnet.solana.com",
       commitment: "confirmed" as const,
-      ...(process.env["SOL_PRIVATE_KEY"] && {
-        privateKey: process.env["SOL_PRIVATE_KEY"],
+      ...(process.env.SOL_PRIVATE_KEY && {
+        privateKey: process.env.SOL_PRIVATE_KEY,
       }),
     },
   },
@@ -59,7 +61,7 @@ export async function createNearKitInstance(): Promise<Near> {
   const { near } = TEST_CONFIG.networks
 
   // Use environment variable in CI, fallback to keystore file locally
-  const privateKey = process.env["NEAR_PRIVATE_KEY"]
+  const privateKey = process.env.NEAR_PRIVATE_KEY
 
   if (privateKey) {
     // CI environment - use private key from environment

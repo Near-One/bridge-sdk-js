@@ -25,7 +25,7 @@ describe("ETH to NEAR E2E Transfer Tests (New SDK)", () => {
     near = await createNearKitInstance()
 
     // Get ETH private key
-    const pk = process.env["ETH_PRIVATE_KEY"]
+    const pk = process.env.ETH_PRIVATE_KEY
     if (!pk) {
       throw new Error("ETH_PRIVATE_KEY environment variable required")
     }
@@ -126,7 +126,7 @@ describe("ETH to NEAR E2E Transfer Tests (New SDK)", () => {
       expect(proof.proof.length).toBeGreaterThan(0)
 
       // Step 6: Check if we should wait for light client
-      const shouldWaitForLightClient = process.env["FULL_E2E_TEST"] === "true"
+      const shouldWaitForLightClient = process.env.FULL_E2E_TEST === "true"
 
       if (shouldWaitForLightClient) {
         console.log("\nStep 6: Waiting for NEAR light client to sync...")
@@ -146,7 +146,10 @@ describe("ETH to NEAR E2E Transfer Tests (New SDK)", () => {
         if (!nearToken) {
           throw new Error("Could not find bridged token on NEAR")
         }
-        const tokenAccountId = nearToken.split(":")[1]!
+        const tokenAccountId = nearToken.split(":")[1]
+        if (!tokenAccountId) {
+          throw new Error("Invalid NEAR token address format")
+        }
         console.log(`  NEAR token: ${tokenAccountId}`)
 
         // Build finalization transaction with EVM proof
