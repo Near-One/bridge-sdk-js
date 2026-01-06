@@ -2,7 +2,7 @@
  * Storage account ID calculation for NEAR bridge transfers
  */
 
-import { sha256 } from "@noble/hashes/sha256"
+import { sha256 } from "@noble/hashes/sha2.js"
 import { base58, hex } from "@scure/base"
 import { b } from "@zorsh/zorsh"
 

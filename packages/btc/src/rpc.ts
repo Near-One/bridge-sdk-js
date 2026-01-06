@@ -2,7 +2,7 @@
  * UTXO RPC client for Bitcoin/Zcash proof generation
  */
 
-import { sha256 } from "@noble/hashes/sha2"
+import { sha256 } from "@noble/hashes/sha2.js"
 import { ChainKind } from "@omni-bridge/core"
 import { hex } from "@scure/base"
 import { MerkleTree } from "merkletreejs"

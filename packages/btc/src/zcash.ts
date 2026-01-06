@@ -2,7 +2,7 @@
  * Zcash-specific utilities for address encoding and fee calculation
  */
 
-import { sha256 } from "@noble/hashes/sha2"
+import { sha256 } from "@noble/hashes/sha2.js"
 import { createBase58check } from "@scure/base"
 import type { FeeCalculator } from "./types.js"
 

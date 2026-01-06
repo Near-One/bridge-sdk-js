@@ -29,12 +29,12 @@
   "license": "MIT",
   "author": "NEAR One",
   "dependencies": {
-    "@omni-bridge/core": "workspace:*",
     "@coral-xyz/anchor": "^0.32.1",
-    "@noble/hashes": "^1.4.0",
-    "@solana/spl-token": "^0.4.8",
+    "@noble/hashes": "^2.0.1",
+    "@omni-bridge/core": "workspace:*",
+    "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.4",
-    "bn.js": "^5.2.1"
+    "bn.js": "^5.2.2"
   },
   "devDependencies": {
     "@types/bn.js": "^5.2.0",
