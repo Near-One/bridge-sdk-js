@@ -1,9 +1,9 @@
-import { AnchorProvider, Wallet, setProvider } from "@coral-xyz/anchor"
+import os from "node:os"
+import path from "node:path"
+import { AnchorProvider, setProvider, Wallet } from "@coral-xyz/anchor"
 import { Connection, Keypair } from "@solana/web3.js"
 import { ethers } from "ethers"
 import { Near } from "near-kit"
-import os from "node:os"
-import path from "node:path"
 
 export interface TestConfig {
   timeout: number
@@ -85,9 +85,7 @@ export async function createEthereumWallet(): Promise<ethers.Wallet> {
   const { ethereum } = TEST_CONFIG.networks
 
   if (!ethereum.privateKey) {
-    throw new Error(
-      "ETH_PRIVATE_KEY environment variable required for Ethereum tests"
-    )
+    throw new Error("ETH_PRIVATE_KEY environment variable required for Ethereum tests")
   }
 
   const provider = new ethers.JsonRpcProvider(ethereum.rpcUrl)
@@ -98,15 +96,11 @@ export async function createSolanaProvider(): Promise<AnchorProvider> {
   const { solana } = TEST_CONFIG.networks
 
   if (!solana.privateKey) {
-    throw new Error(
-      "SOL_PRIVATE_KEY environment variable required for Solana tests"
-    )
+    throw new Error("SOL_PRIVATE_KEY environment variable required for Solana tests")
   }
 
   // Convert private key from base58 string to Keypair
-  const privateKeyBytes = Uint8Array.from(
-    Buffer.from(solana.privateKey, "base64")
-  )
+  const privateKeyBytes = Uint8Array.from(Buffer.from(solana.privateKey, "base64"))
   const keypair = Keypair.fromSecretKey(privateKeyBytes)
 
   const connection = new Connection(solana.rpcUrl, solana.commitment)

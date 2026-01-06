@@ -122,14 +122,16 @@ describe("Bitcoin Types", () => {
       const p2pkhInput: BitcoinInput = {
         txid: "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
         vout: 1,
-        scriptsig: "473044022012345678901234567890123456789012345678901234567890123456789012345601210212345678901234567890123456789012345678901234567890123456789012",
+        scriptsig:
+          "473044022012345678901234567890123456789012345678901234567890123456789012345601210212345678901234567890123456789012345678901234567890123456789012",
         scriptsig_asm: "OP_PUSHBYTES_71 3044022012345... OP_PUSHBYTES_33 0212345...",
         witness: [],
         is_coinbase: false,
         sequence: 4294967295,
         prevout: {
           scriptpubkey: "76a914abcdef1234567890abcdef1234567890abcdef88ac",
-          scriptpubkey_asm: "OP_DUP OP_HASH160 OP_PUSHBYTES_20 abcdef... OP_EQUALVERIFY OP_CHECKSIG",
+          scriptpubkey_asm:
+            "OP_DUP OP_HASH160 OP_PUSHBYTES_20 abcdef... OP_EQUALVERIFY OP_CHECKSIG",
           scriptpubkey_type: "p2pkh",
           scriptpubkey_address: "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2",
           value: 1000000,
@@ -172,7 +174,8 @@ describe("Bitcoin Types", () => {
         // P2PKH output
         {
           scriptpubkey: "76a914abcdef1234567890abcdef1234567890abcdef88ac",
-          scriptpubkey_asm: "OP_DUP OP_HASH160 OP_PUSHBYTES_20 abcdef... OP_EQUALVERIFY OP_CHECKSIG",
+          scriptpubkey_asm:
+            "OP_DUP OP_HASH160 OP_PUSHBYTES_20 abcdef... OP_EQUALVERIFY OP_CHECKSIG",
           scriptpubkey_type: "p2pkh",
           scriptpubkey_address: "1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2",
           value: 1000000,
@@ -188,15 +191,18 @@ describe("Bitcoin Types", () => {
         // P2SH output
         {
           scriptpubkey: "a914abcdef1234567890abcdef1234567890abcdef87",
-          scriptpubkey_asm: "OP_HASH160 OP_PUSHBYTES_20 abcdef1234567890abcdef1234567890abcdef OP_EQUAL",
+          scriptpubkey_asm:
+            "OP_HASH160 OP_PUSHBYTES_20 abcdef1234567890abcdef1234567890abcdef OP_EQUAL",
           scriptpubkey_type: "p2sh",
           scriptpubkey_address: "3GjNnwjU3h3eFRdz8gRvHHKbtoXG1VZz6s",
           value: 250000,
         },
         // OP_RETURN output (null data)
         {
-          scriptpubkey: "6a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9",
-          scriptpubkey_asm: "OP_RETURN OP_PUSHBYTES_36 aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9",
+          scriptpubkey:
+            "6a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9",
+          scriptpubkey_asm:
+            "OP_RETURN OP_PUSHBYTES_36 aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9",
           scriptpubkey_type: "op_return",
           value: 0,
         },
@@ -266,9 +272,9 @@ describe("Bitcoin Types", () => {
       expect(merkleProof.merkle).toBeInstanceOf(Array)
       expect(merkleProof.merkle.length).toBeGreaterThan(0)
       expect(merkleProof.pos).toBeGreaterThanOrEqual(0)
-      
+
       // Each merkle hash should be 64 characters (32 bytes in hex)
-      merkleProof.merkle.forEach(hash => {
+      merkleProof.merkle.forEach((hash) => {
         expect(hash).toHaveLength(64)
         expect(hash).toMatch(/^[0-9a-f]+$/i)
       })
@@ -281,7 +287,8 @@ describe("Bitcoin Types", () => {
         btc_light_client_account_id: "btc-light-client.near",
         nbtc_account_id: "nbtc.near",
         chain_signatures_account_id: "v1.signer.near",
-        chain_signatures_root_public_key: "secp256k1:3tFRbMqmoa6AAALMrEFAYCEYJCPT3FwyeAkMuLz6fwcmWfJL5FMAwOJpRAasRSXhZRp9LJ6e9U7xhNgwGaVFgtfVXj",
+        chain_signatures_root_public_key:
+          "secp256k1:3tFRbMqmoa6AAALMrEFAYCEYJCPT3FwyeAkMuLz6fwcmWfJL5FMAwOJpRAasRSXhZRp9LJ6e9U7xhNgwGaVFgtfVXj",
         change_address: "bc1qchange_address_example",
         confirmations_strategy: { "100": 1, "1000": 3, "10000": 6 },
         confirmations_delta: 0,
@@ -384,7 +391,10 @@ describe("Bitcoin Types", () => {
       const withdrawMsg: InitBtcTransferMsg = {
         Withdraw: {
           target_btc_address: "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
-          input: ["abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890:0", "fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321:1"],
+          input: [
+            "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890:0",
+            "fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321:1",
+          ],
           output: [
             {
               value: 500000,
@@ -398,7 +408,7 @@ describe("Bitcoin Types", () => {
         },
       }
 
-      expect(withdrawMsg.Withdraw.target_btc_address).toMatch(/^(bc1|tb1)/);
+      expect(withdrawMsg.Withdraw.target_btc_address).toMatch(/^(bc1|tb1)/)
       expect(withdrawMsg.Withdraw.input).toBeInstanceOf(Array)
       expect(withdrawMsg.Withdraw.output).toBeInstanceOf(Array)
       expect(withdrawMsg.Withdraw.input[0]).toMatch(/^[0-9a-f]+:\d+$/)
@@ -503,7 +513,7 @@ describe("Bitcoin Types", () => {
       const amount = 1000000 // 0.01 BTC in satoshis
       const calculatedFee = Math.max(
         parseInt(bridgeFee.fee_min),
-        Math.floor(amount * bridgeFee.fee_rate)
+        Math.floor(amount * bridgeFee.fee_rate),
       )
       const protocolFee = Math.floor(amount * bridgeFee.protocol_fee_rate)
 
@@ -523,7 +533,7 @@ describe("Bitcoin Types", () => {
       const smallAmount = 100000 // 0.001 BTC
       const calculatedFee = Math.max(
         parseInt(bridgeFee.fee_min),
-        Math.floor(smallAmount * bridgeFee.fee_rate)
+        Math.floor(smallAmount * bridgeFee.fee_rate),
       )
 
       expect(Math.floor(smallAmount * bridgeFee.fee_rate)).toBe(100) // 0.1% of 100k sats
@@ -595,12 +605,12 @@ describe("Bitcoin Types", () => {
         "", // Empty
       ]
 
-      validTxHashes.forEach(hash => {
+      validTxHashes.forEach((hash) => {
         expect(hash).toHaveLength(64)
         expect(hash).toMatch(/^[0-9a-fA-F]+$/)
       })
 
-      invalidTxHashes.forEach(hash => {
+      invalidTxHashes.forEach((hash) => {
         expect(hash.length !== 64 || !/^[0-9a-fA-F]+$/.test(hash)).toBe(true)
       })
     })

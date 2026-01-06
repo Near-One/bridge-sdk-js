@@ -24,12 +24,7 @@ describe("ZcashService buildWithdrawalPlan", () => {
     const targetAddress = "tmSiwS1U9MGa9kSDS8Ei5iqe9Tzw9uQWGW3"
     const changeAddress = "tmJoaTx3Ljpsp8dkUBaRd7egrX6UoSB9Lob"
 
-    const plan = service.buildWithdrawalPlan(
-      utxos,
-      40_000n,
-      targetAddress,
-      changeAddress,
-    )
+    const plan = service.buildWithdrawalPlan(utxos, 40_000n, targetAddress, changeAddress)
 
     expect(plan.inputs).toEqual([
       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:0",

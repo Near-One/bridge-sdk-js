@@ -3,18 +3,10 @@ import { NearBridgeClient } from "../src/clients/near-kit.js"
 import { SolanaBridgeClient } from "../src/clients/solana.js"
 import { setNetwork } from "../src/config.js"
 import { getVaa } from "../src/proofs/wormhole.js"
-import {
-  ChainKind,
-  type OmniTransferMessage,
-  ProofKind,
-} from "../src/types/index.js"
+import { ChainKind, type OmniTransferMessage, ProofKind } from "../src/types/index.js"
 import { omniAddress } from "../src/utils/index.js"
 import { TIMEOUTS } from "./shared/fixtures.js"
-import {
-  TEST_CONFIG,
-  type TestAccountsSetup,
-  setupTestAccounts,
-} from "./shared/setup.js"
+import { setupTestAccounts, TEST_CONFIG, type TestAccountsSetup } from "./shared/setup.js"
 
 describe("SOL to NEAR E2E Transfer Tests - Failure Cases (Manual Flow)", () => {
   let testAccounts: TestAccountsSetup
@@ -33,9 +25,7 @@ describe("SOL to NEAR E2E Transfer Tests - Failure Cases (Manual Flow)", () => {
     })
 
     console.log("🚀 Test setup complete:")
-    console.log(
-      `  SOL Address: ${testAccounts.solanaProvider.publicKey.toString()}`
-    )
+    console.log(`  SOL Address: ${testAccounts.solanaProvider.publicKey.toString()}`)
     console.log(`  NEAR Account: ${TEST_CONFIG.networks.near.accountId}`)
   })
 
@@ -46,10 +36,7 @@ describe("SOL to NEAR E2E Transfer Tests - Failure Cases (Manual Flow)", () => {
 
       // Create transfer message with panic-inducing message
       const transferMessage: OmniTransferMessage = {
-        tokenAddress: omniAddress(
-          ChainKind.Sol,
-          "3wQct2e43J1Z99h2RWrhPAhf6E32ZpuzEt6tgwfEAKAy"
-        ), // wNEAR on SOL
+        tokenAddress: omniAddress(ChainKind.Sol, "3wQct2e43J1Z99h2RWrhPAhf6E32ZpuzEt6tgwfEAKAy"), // wNEAR on SOL
         amount: BigInt("10"), // Small test amount
         recipient: omniAddress(ChainKind.Near, "heavenly-interest.testnet"), // Mock tocken receiver
         message: JSON.stringify({
@@ -92,9 +79,7 @@ describe("SOL to NEAR E2E Transfer Tests - Failure Cases (Manual Flow)", () => {
       expect(vaa.length).toBeGreaterThan(0)
 
       // Step 4: Attempt to finalize transfer on NEAR (should fail)
-      console.log(
-        "\n🏁 Step 4: Attempting to finalize transfer on NEAR (expecting failure)..."
-      )
+      console.log("\n🏁 Step 4: Attempting to finalize transfer on NEAR (expecting failure)...")
 
       const nearTokenId = "wrap.testnet" // The equivalent NEAR token
 
@@ -106,7 +91,7 @@ describe("SOL to NEAR E2E Transfer Tests - Failure Cases (Manual Flow)", () => {
         undefined, // signerId (uses defaultSignerId)
         vaa, // Wormhole VAA
         undefined, // No EVM proof needed for SOL
-        ProofKind.InitTransfer
+        ProofKind.InitTransfer,
       )
 
       // Get all receipts from the tx hash
@@ -114,8 +99,8 @@ describe("SOL to NEAR E2E Transfer Tests - Failure Cases (Manual Flow)", () => {
         .flatMap((receipt) => receipt.outcome.logs)
         .find((log) =>
           log.includes(
-            "Refund 10000000000000000 from heavenly-interest.testnet to omni.n-bridge.testnet"
-          )
+            "Refund 10000000000000000 from heavenly-interest.testnet to omni.n-bridge.testnet",
+          ),
         )
       expect(refundLog).toBeDefined()
 
@@ -125,6 +110,6 @@ describe("SOL to NEAR E2E Transfer Tests - Failure Cases (Manual Flow)", () => {
       console.log("  3. ✓ Finalization failed as expected")
       console.log("✅ Panic message test completed!")
     },
-    TIMEOUTS.FULL_E2E_FLOW
+    TIMEOUTS.FULL_E2E_FLOW,
   )
 })

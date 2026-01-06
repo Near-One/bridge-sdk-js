@@ -1,17 +1,17 @@
-import { PublicKey } from "@solana/web3.js"
 import { beforeAll, describe, expect, test } from "bun:test"
 import { createHash } from "node:crypto"
+import { PublicKey } from "@solana/web3.js"
 import { NearBridgeClient } from "../src/clients/near-kit.js"
 import { SolanaBridgeClient } from "../src/clients/solana.js"
 import { addresses, setNetwork } from "../src/config.js"
 import { ChainKind, MPCSignature } from "../src/types/index.js"
-import { omniAddress } from "../src/utils/index.js"
 // biome-ignore lint/correctness/useImportExtensions: JSON import requires .json extension
 import BRIDGE_TOKEN_FACTORY_IDL from "../src/types/solana/bridge_token_factory_shim.json" with {
-    type: "json"
+  type: "json",
 }
+import { omniAddress } from "../src/utils/index.js"
 import { TIMEOUTS } from "./shared/fixtures.js"
-import { TEST_CONFIG, type TestAccountsSetup, setupTestAccounts } from "./shared/setup.js"
+import { setupTestAccounts, TEST_CONFIG, type TestAccountsSetup } from "./shared/setup.js"
 
 const LONG_NEAR_TOKEN_ACCOUNT = "dbc.tokens.potlock.testnet"
 

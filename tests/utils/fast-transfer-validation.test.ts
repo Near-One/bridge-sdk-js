@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { normalizeAmount } from "../../src/utils/decimals.js"
 import type { TokenDecimals } from "../../src/utils/decimals.js"
+import { normalizeAmount } from "../../src/utils/decimals.js"
 
 /**
  * This test mimics the NEAR contract's validation logic for fast transfers.
@@ -41,7 +41,11 @@ describe("Fast transfer NEAR contract validation", () => {
 
     // What we calculate and send via ft_transfer_call
     // Must normalize separately to avoid precision loss
-    const normalizedAmount = normalizeAmount(eventAmount, decimals.decimals, decimals.origin_decimals)
+    const normalizedAmount = normalizeAmount(
+      eventAmount,
+      decimals.decimals,
+      decimals.origin_decimals,
+    )
     const normalizedFee = normalizeAmount(eventFee, decimals.decimals, decimals.origin_decimals)
     const amountToSend = normalizedAmount - normalizedFee
 
@@ -62,7 +66,11 @@ describe("Fast transfer NEAR contract validation", () => {
     const eventAmount = BigInt("1000000") // 1.0 USDC (6 decimals)
     const eventFee = BigInt("100000") // 0.1 USDC
 
-    const normalizedAmount = normalizeAmount(eventAmount, decimals.decimals, decimals.origin_decimals)
+    const normalizedAmount = normalizeAmount(
+      eventAmount,
+      decimals.decimals,
+      decimals.origin_decimals,
+    )
     const normalizedFee = normalizeAmount(eventFee, decimals.decimals, decimals.origin_decimals)
     const amountToSend = normalizedAmount - normalizedFee
 
@@ -81,7 +89,11 @@ describe("Fast transfer NEAR contract validation", () => {
     const eventAmount = BigInt("1000000000000000000000000") // 1.0 NEAR (24 decimals)
     const eventFee = BigInt("100000000000000000000000") // 0.1 NEAR
 
-    const normalizedAmount = normalizeAmount(eventAmount, decimals.decimals, decimals.origin_decimals)
+    const normalizedAmount = normalizeAmount(
+      eventAmount,
+      decimals.decimals,
+      decimals.origin_decimals,
+    )
     const normalizedFee = normalizeAmount(eventFee, decimals.decimals, decimals.origin_decimals)
     const amountToSend = normalizedAmount - normalizedFee
 
@@ -105,12 +117,16 @@ describe("Fast transfer NEAR contract validation", () => {
     const wrongAmount = normalizeAmount(
       eventAmount - eventFee,
       decimals.decimals,
-      decimals.origin_decimals
+      decimals.origin_decimals,
     )
     // = normalizeAmount(999999999999999999, 18, 8) = 99999999 (truncated)
 
     // CORRECT: normalize separately then subtract
-    const normalizedAmount = normalizeAmount(eventAmount, decimals.decimals, decimals.origin_decimals)
+    const normalizedAmount = normalizeAmount(
+      eventAmount,
+      decimals.decimals,
+      decimals.origin_decimals,
+    )
     const normalizedFee = normalizeAmount(eventFee, decimals.decimals, decimals.origin_decimals)
     const correctAmount = normalizedAmount - normalizedFee
     // = 100000000 - 0 = 100000000

@@ -70,14 +70,10 @@ describe("Token Resolution", () => {
     it("resolves a token from NEAR to ETH", async () => {
       const result = await getBridgedToken("near:wrap.testnet", ChainKind.Eth)
       expect(result).toBe("eth:0xa2e932310e7294451d8417aa9b2e647e67df3288")
-      expect(mockNearView).toHaveBeenCalledWith(
-        expect.any(String),
-        "get_bridged_token",
-        {
-          chain: "Eth",
-          address: "near:wrap.testnet",
-        },
-      )
+      expect(mockNearView).toHaveBeenCalledWith(expect.any(String), "get_bridged_token", {
+        chain: "Eth",
+        address: "near:wrap.testnet",
+      })
     })
 
     it("resolves a token from ETH to NEAR", async () => {

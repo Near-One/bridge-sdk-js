@@ -1,4 +1,4 @@
-import { http, HttpResponse } from "msw"
+import { HttpResponse, http } from "msw"
 import { setupServer } from "msw/node"
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest"
 import { OmniBridgeAPI } from "../src/api.js"
@@ -132,12 +132,22 @@ describe("OmniBridgeAPI", () => {
 
   describe("getFee", () => {
     it("should fetch fee successfully with string amount", async () => {
-      const fee = await api.getFee("near:sender.near", "near:recipient.near", "near:token.near", "1000000")
+      const fee = await api.getFee(
+        "near:sender.near",
+        "near:recipient.near",
+        "near:token.near",
+        "1000000",
+      )
       expect(fee).toEqual(normalizedFee)
     })
 
     it("should fetch fee successfully with bigint amount", async () => {
-      const fee = await api.getFee("near:sender.near", "near:recipient.near", "near:token.near", 1000000n)
+      const fee = await api.getFee(
+        "near:sender.near",
+        "near:recipient.near",
+        "near:token.near",
+        1000000n,
+      )
       expect(fee).toEqual(normalizedFee)
     })
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { normalizeAmount } from "../../src/utils/decimals.js"
 import type { TokenDecimals } from "../../src/utils/decimals.js"
+import { normalizeAmount } from "../../src/utils/decimals.js"
 
 describe("Fast transfer decimal conversion", () => {
   it("should match Rust SDK denormalize behavior for 18->6 decimals", () => {
@@ -16,7 +16,11 @@ describe("Fast transfer decimal conversion", () => {
 
     // Convert FROM origin decimals (18) TO NEAR decimals (6) by dividing
     const amountMinusFee = amount - fee
-    const amountToSend = normalizeAmount(amountMinusFee, decimals.decimals, decimals.origin_decimals)
+    const amountToSend = normalizeAmount(
+      amountMinusFee,
+      decimals.decimals,
+      decimals.origin_decimals,
+    )
 
     // 900000000000000000 (0.9 with 18 decimals) -> 900000 (0.9 with 6 decimals)
     expect(amountToSend).toBe(BigInt("900000"))

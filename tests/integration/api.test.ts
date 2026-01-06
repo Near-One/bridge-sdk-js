@@ -52,9 +52,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
       const recipient: OmniAddress = "sol:invalid"
       const tokenAddress: OmniAddress = "near:invalid"
 
-      await expect(
-        api.getFee(sender, recipient, tokenAddress, "1000000")
-      ).rejects.toThrow()
+      await expect(api.getFee(sender, recipient, tokenAddress, "1000000")).rejects.toThrow()
     })
 
     it("should return proper APIError message for invalid sender", async () => {
@@ -73,9 +71,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
           statusText?: string
         }
         expect(apiError.name).toBe("ApiError")
-        expect(apiError.message).toBe(
-          "Invalid argument: Invalid sender omni address"
-        )
+        expect(apiError.message).toBe("Invalid argument: Invalid sender omni address")
         expect(apiError.status).toBe(400)
         expect(apiError.statusText).toBe("Bad Request")
       }
@@ -93,7 +89,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
 
     it("should handle non-existent transfer", async () => {
       await expect(
-        api.getTransferStatus({ originChain: "Eth", originNonce: 999999999 })
+        api.getTransferStatus({ originChain: "Eth", originNonce: 999999999 }),
       ).rejects.toThrow("Not found")
     })
 
@@ -118,9 +114,9 @@ describe("OmniBridgeAPI Integration Tests", () => {
     })
 
     it("should handle non-existent transfer", async () => {
-      await expect(
-        api.getTransfer({ originChain: "Eth", originNonce: 999999999 })
-      ).rejects.toThrow("Not found")
+      await expect(api.getTransfer({ originChain: "Eth", originNonce: 999999999 })).rejects.toThrow(
+        "Not found",
+      )
     })
 
     it("should fetch transfer by transaction hash", async () => {
@@ -157,27 +153,20 @@ describe("OmniBridgeAPI Integration Tests", () => {
             origin_chain: expect.stringMatching(/^(Eth|Near|Sol|Arb|Base|Bnb|Btc|Zcash)$/),
             kind: expect.toBeOneOf([
               { Nonce: expect.any(Number) },
-              { Utxo: expect.objectContaining({ tx_hash: expect.any(String), vout: expect.any(Number) }) },
+              {
+                Utxo: expect.objectContaining({
+                  tx_hash: expect.any(String),
+                  vout: expect.any(Number),
+                }),
+              },
             ]),
           },
           initialized: expect.any(Object),
           claimed: expect.toBeOneOf([expect.anything(), undefined, null]), // null or transaction object
           signed: expect.toBeOneOf([expect.anything(), undefined, null]), // null or transaction object
-          fast_finalised_on_near: expect.toBeOneOf([
-            expect.anything(),
-            undefined,
-            null,
-          ]), // null or transaction object
-          finalised_on_near: expect.toBeOneOf([
-            expect.anything(),
-            undefined,
-            null,
-          ]), // null or transaction object
-          fast_finalised: expect.toBeOneOf([
-            expect.anything(),
-            undefined,
-            null,
-          ]), // null or transaction object
+          fast_finalised_on_near: expect.toBeOneOf([expect.anything(), undefined, null]), // null or transaction object
+          finalised_on_near: expect.toBeOneOf([expect.anything(), undefined, null]), // null or transaction object
+          fast_finalised: expect.toBeOneOf([expect.anything(), undefined, null]), // null or transaction object
           finalised: expect.toBeOneOf([expect.anything(), undefined, null]), // null or transaction object
           transfer_message: {
             token: expect.any(String),
@@ -198,9 +187,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
 
     it("should handle invalid sender address", async () => {
       const invalidSender = "invalid:sender.address"
-      await expect(
-        api.findOmniTransfers({ sender: invalidSender })
-      ).rejects.toThrow()
+      await expect(api.findOmniTransfers({ sender: invalidSender })).rejects.toThrow()
     })
   })
 
@@ -229,10 +216,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
 
   describe("getUtxoUserDepositAddress", () => {
     it("should fetch real BTC deposit address", async () => {
-      const response = await api.getUtxoUserDepositAddress(
-        "btc",
-        "recipient.near"
-      )
+      const response = await api.getUtxoUserDepositAddress("btc", "recipient.near")
 
       expect(response).toEqual({
         address: expect.any(String),
@@ -254,7 +238,7 @@ describe("OmniBridgeAPI Integration Tests", () => {
         "btc",
         "recipient.near",
         postActions,
-        "extra message"
+        "extra message",
       )
 
       expect(response).toEqual({
@@ -337,15 +321,9 @@ describe("OmniBridgeAPI Integration Tests", () => {
         expect(typeof transfer.transfer_message.fee.native_fee).toBe("string")
 
         // Verify they're valid numeric strings
-        expect(BigInt(transfer.transfer_message.amount)).toBeGreaterThanOrEqual(
-          0n
-        )
-        expect(BigInt(transfer.transfer_message.fee.fee)).toBeGreaterThanOrEqual(
-          0n
-        )
-        expect(
-          BigInt(transfer.transfer_message.fee.native_fee)
-        ).toBeGreaterThanOrEqual(0n)
+        expect(BigInt(transfer.transfer_message.amount)).toBeGreaterThanOrEqual(0n)
+        expect(BigInt(transfer.transfer_message.fee.fee)).toBeGreaterThanOrEqual(0n)
+        expect(BigInt(transfer.transfer_message.fee.native_fee)).toBeGreaterThanOrEqual(0n)
       }
     })
 

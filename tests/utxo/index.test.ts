@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { linearFeeCalculator, selectUtxos, type NormalizedUTXO } from "../../src/utxo/index.js"
+import { linearFeeCalculator, type NormalizedUTXO, selectUtxos } from "../../src/utxo/index.js"
 
 const feeCalculator = linearFeeCalculator({ base: 10, input: 68, output: 31, rate: 1 })
 

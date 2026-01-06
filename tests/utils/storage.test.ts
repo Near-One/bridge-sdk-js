@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import { calculateStorageAccountId } from "../../src/utils/storage.js"
 
 describe("calculateStorageAccountId", () => {
-    it("verify known storage account ID", () => {
+  it("verify known storage account ID", () => {
     const transferMessage = {
       token: "near:token.publicailab.near" as const,
       amount: 1000000000n,
@@ -194,13 +194,11 @@ describe("calculateStorageAccountId", () => {
     }
 
     // Call the function multiple times to ensure deterministic behavior
-    const results = Array.from({ length: 10 }, () => 
-      calculateStorageAccountId(transferMessage)
-    )
+    const results = Array.from({ length: 10 }, () => calculateStorageAccountId(transferMessage))
 
     // All results should be identical
     const firstResult = results[0]
-    expect(results.every(result => result === firstResult)).toBe(true)
+    expect(results.every((result) => result === firstResult)).toBe(true)
     expect(firstResult).toMatch(/^[a-f0-9]{64}$/)
   })
 })

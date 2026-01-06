@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import type { OmniAddress } from "../../src/types/index.js"
 import { ChainKind } from "../../src/types/index.js"
 import { getChain, isEvmChain, omniAddress } from "../../src/utils/index.js"
+
 describe("Omni Address Utils", () => {
   describe("omniAddress", () => {
     it("should construct valid omni addresses", () => {

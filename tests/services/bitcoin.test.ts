@@ -1,4 +1,4 @@
-import { http, HttpResponse } from "msw"
+import { HttpResponse, http } from "msw"
 import { setupServer } from "msw/node"
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest"
 import { BitcoinService } from "../../src/services/bitcoin.js"
@@ -43,9 +43,7 @@ const mockBitcoinTx: BitcoinTransaction = {
 
 const mockMerkleProof = {
   block_height: 800000,
-  merkle: [
-    "1111111111111111111111111111111111111111111111111111111111111111",
-  ],
+  merkle: ["1111111111111111111111111111111111111111111111111111111111111111"],
   pos: 0,
 }
 
@@ -71,9 +69,7 @@ const server = setupServer(
             blockhash: mockBitcoinTx.status?.block_hash,
             height: 800000,
             hex: "0200000001abcdef1234567890",
-            vout: [
-              { n: 0, value: 0.005 },
-            ],
+            vout: [{ n: 0, value: 0.005 }],
           },
         })
       }
@@ -204,7 +200,7 @@ describe("BitcoinService", () => {
 
     it("should fetch transaction details successfully", async () => {
       const tx = await service.getTransaction(mockTxHash)
-      
+
       expect(tx).toEqual(mockBitcoinTx)
       expect(tx.txid).toBe(mockTxHash)
       expect(tx.status?.confirmed).toBe(true)
@@ -213,7 +209,7 @@ describe("BitcoinService", () => {
 
     it("should throw error for invalid transaction hash", async () => {
       await expect(service.getTransaction("invalid_hash")).rejects.toThrow(
-        "Bitcoin: Failed to fetch transaction:"
+        "Bitcoin: Failed to fetch transaction:",
       )
     })
   })
@@ -223,7 +219,7 @@ describe("BitcoinService", () => {
 
     it("should fetch and decode transaction bytes", async () => {
       const bytes = await service.getTransactionBytes(mockTxHash)
-      
+
       expect(bytes).toBeInstanceOf(Uint8Array)
       expect(bytes.length).toBeGreaterThan(0)
       // First two bytes should be version (0x0200 = version 2)
@@ -238,20 +234,20 @@ describe("BitcoinService", () => {
     it("should broadcast transaction successfully", async () => {
       const txHex = "0200000001abcdef1234567890"
       const result = await service.broadcastTransaction(txHex)
-      
+
       expect(result).toBe(mockTxHash)
     })
 
     it("should throw error for invalid transaction", async () => {
       // Mock server will return error for this specific hex
       server.use(
-      http.post(`${BITCOIN_API_URL}/tx`, () => {
+        http.post(`${BITCOIN_API_URL}/tx`, () => {
           return new HttpResponse("Transaction decode failed", { status: 400 })
-        })
+        }),
       )
 
       await expect(service.broadcastTransaction("invalid_hex")).rejects.toThrow(
-        "Bitcoin: Failed to broadcast transaction: Transaction decode failed"
+        "Bitcoin: Failed to broadcast transaction: Transaction decode failed",
       )
     })
   })
@@ -286,14 +282,14 @@ describe("BitcoinService", () => {
 
     it("should throw error for invalid address", () => {
       expect(() => testnetService.addressToScriptPubkey("invalid_address")).toThrow(
-        "Bitcoin: Failed to convert address to script_pubkey"
+        "Bitcoin: Failed to convert address to script_pubkey",
       )
     })
 
     it("should throw error for wrong network address", () => {
       const mainnetAddress = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
       expect(() => testnetService.addressToScriptPubkey(mainnetAddress)).toThrow(
-        "Bitcoin: Failed to convert address to script_pubkey"
+        "Bitcoin: Failed to convert address to script_pubkey",
       )
     })
   })
@@ -326,13 +322,7 @@ describe("BitcoinService", () => {
 
       const targetAddress = "tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx"
 
-      const plan = service.buildWithdrawalPlan(
-        utxos,
-        40_000n,
-        targetAddress,
-        targetAddress,
-        2,
-      )
+      const plan = service.buildWithdrawalPlan(utxos, 40_000n, targetAddress, targetAddress, 2)
 
       expect(plan.inputs).toEqual([
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:0",
@@ -445,7 +435,7 @@ describe("BitcoinService", () => {
             })
           }
           return HttpResponse.json({ jsonrpc: "2.0", id: "1", result: null })
-        })
+        }),
       )
 
       await expect(service.fetchMerkleProof("2".repeat(64))).rejects.toThrow(
