@@ -19,6 +19,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@scure/base": "^1.2.5",
+    "@wormhole-foundation/sdk": "^1.15.2",
     "near-kit": "^0.7.0",
     "zod": "^4.1.12"
   },

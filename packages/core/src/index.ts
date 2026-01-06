@@ -78,3 +78,6 @@ export {
   validateTransferAmount,
   verifyTransferAmount,
 } from "./utils/decimals.js"
+
+// Wormhole VAA utilities
+export { getVaa, getWormholeVaa, type WormholeNetwork } from "./wormhole.js"

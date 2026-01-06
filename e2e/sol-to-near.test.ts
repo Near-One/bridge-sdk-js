@@ -1,10 +1,9 @@
 import { beforeAll, describe, expect, test } from "bun:test"
-import { ChainKind, createBridge } from "@omni-bridge/core"
+import { ChainKind, createBridge, getWormholeVaa } from "@omni-bridge/core"
 import { createNearBuilder, toNearKitTransaction } from "@omni-bridge/near"
 import { createSolanaBuilder } from "@omni-bridge/solana"
 import { Connection, Keypair, sendAndConfirmTransaction, Transaction } from "@solana/web3.js"
 import type { Near } from "near-kit"
-import { getVaa } from "../src/proofs/wormhole.js"
 import { SOL_TO_NEAR_ROUTES, TIMEOUTS } from "./shared/fixtures.js"
 import { createNearKitInstance, TEST_CONFIG } from "./shared/setup.js"
 
@@ -83,7 +82,7 @@ describe("SOL to NEAR E2E Transfer Tests (Manual Flow)", () => {
 
       // Step 2: Get Wormhole VAA
       console.log("\n🔒 Step 2: Getting Wormhole VAA...")
-      const vaa = await getVaa(transactionHash, "Testnet")
+      const vaa = await getWormholeVaa(transactionHash, "Testnet")
 
       console.log("✓ Wormhole VAA retrieved!")
       console.log("  VAA length:", vaa.length)
