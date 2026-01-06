@@ -7,9 +7,10 @@ Practical examples showing how to use the Omni Bridge SDK for cross-chain transf
 These examples use the new `@omni-bridge/*` packages:
 
 - `@omni-bridge/core` - Bridge API, validation, and configuration
-- `@omni-bridge/btc` - Bitcoin/Zcash transaction building and proof generation
+- `@omni-bridge/evm` - Ethereum/EVM transaction building (uses viem)
 - `@omni-bridge/near` - NEAR transaction building
-- `near-kit` - NEAR RPC interactions
+- `@omni-bridge/solana` - Solana instruction building
+- `@omni-bridge/btc` - Bitcoin/Zcash transaction building and proof generation
 
 ## Setup
 
@@ -148,11 +149,65 @@ Examples use **testnet** by default. For mainnet:
 NETWORK=mainnet bun run examples/bitcoin-deposit.ts
 ```
 
-## More Examples Coming Soon
+## EVM Examples
 
-- EVM chain transfers (Ethereum, Base, Arbitrum)
-- Solana transfers
-- Cross-chain bridging (BTC → ETH via NEAR)
-- Integration patterns for dApps
+### 📤 Ethereum to NEAR (`eth-to-near.ts`)
+
+Bridge USDC from Ethereum to NEAR:
+
+```bash
+# Set your Ethereum private key
+export ETH_PRIVATE_KEY="0x..."
+
+# Run the transfer
+RECIPIENT=alice.near AMOUNT=10 bun run examples/eth-to-near.ts
+```
+
+Environment variables:
+- `ETH_PRIVATE_KEY` - Ethereum wallet private key (required)
+- `RECIPIENT` - NEAR account to receive tokens (default: `alice.near`)
+- `AMOUNT` - USDC amount to transfer (default: `10`)
+- `NETWORK` - `testnet` or `mainnet` (default: `mainnet`)
+
+### 📥 NEAR to Ethereum (`near-to-eth.ts`)
+
+Bridge wrapped USDC from NEAR back to Ethereum:
+
+```bash
+# Option 1: Use private key
+export NEAR_PRIVATE_KEY="ed25519:..."
+
+# Option 2: Use near-cli credentials (~/.near-credentials)
+
+# Run the transfer
+NEAR_ACCOUNT=alice.near RECIPIENT=0x... bun run examples/near-to-eth.ts
+```
+
+Environment variables:
+- `NEAR_ACCOUNT` - NEAR account with wrapped tokens (default: `alice.near`)
+- `NEAR_PRIVATE_KEY` - NEAR private key (optional if using near-cli)
+- `RECIPIENT` - Ethereum address to receive tokens
+- `AMOUNT` - Amount in base units (default: `1000000` = 1 USDC)
+- `NETWORK` - `testnet` or `mainnet` (default: `mainnet`)
+
+## Solana Examples
+
+### 📤 Solana to NEAR (`solana-to-near.ts`)
+
+Bridge USDC from Solana to NEAR:
+
+```bash
+# Set your Solana private key (base58 encoded)
+export SOLANA_PRIVATE_KEY="..."
+
+# Run the transfer
+RECIPIENT=alice.near AMOUNT=1000000 bun run examples/solana-to-near.ts
+```
+
+Environment variables:
+- `SOLANA_PRIVATE_KEY` - Solana wallet private key, base58 encoded (required)
+- `RECIPIENT` - NEAR account to receive tokens (default: `alice.near`)
+- `AMOUNT` - Amount in base units (default: `1000000` = 1 USDC)
+- `NETWORK` - `testnet` or `mainnet` (default: `mainnet`)
 
 See the main documentation in [`docs/`](../docs/) for detailed guides.

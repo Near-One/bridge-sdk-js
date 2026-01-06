@@ -3,10 +3,6 @@ title: Decimal Normalization
 description: Critical concept for cross-chain transfers
 ---
 
-# Decimal Normalization
-
-Different blockchains use different <Tooltip tip="The number of decimal places used to represent fractional token amounts. For example, 6 decimals means 1 token = 1,000,000 base units.">decimal precisions</Tooltip> for the same token. The Omni Bridge handles this automatically, but understanding it is critical for avoiding failed transfers.
-
 <Warning>
   **This is the most common source of transfer failures.** Amounts that are too small may normalize to zero, causing transfers to fail silently.
 </Warning>
