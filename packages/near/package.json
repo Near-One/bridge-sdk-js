@@ -18,6 +18,16 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/near-one/bridge-sdk-js",
+    "directory": "packages/near"
+  },
+  "license": "MIT",
+  "author": "NEAR One",
   "dependencies": {
     "@near-js/accounts": "^2.5.1",
     "@near-js/transactions": "^2.5.1",

@@ -18,6 +18,16 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/near-one/bridge-sdk-js",
+    "directory": "packages/core"
+  },
+  "license": "MIT",
+  "author": "NEAR One",
   "dependencies": {
     "@scure/base": "^1.2.5",
     "@wormhole-foundation/sdk": "^1.15.2",

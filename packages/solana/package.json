@@ -18,6 +18,16 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/near-one/bridge-sdk-js",
+    "directory": "packages/solana"
+  },
+  "license": "MIT",
+  "author": "NEAR One",
   "dependencies": {
     "@omni-bridge/core": "workspace:*",
     "@coral-xyz/anchor": "^0.32.1",
