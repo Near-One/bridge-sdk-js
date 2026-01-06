@@ -1,11 +1,11 @@
 import { expect } from "bun:test"
-import { OmniBridgeAPI } from "../../src/api.js"
+import { BridgeAPI } from "@omni-bridge/core"
 
 export class TransferAssertions {
-  private api: OmniBridgeAPI
+  private api: BridgeAPI
 
-  constructor() {
-    this.api = new OmniBridgeAPI()
+  constructor(network: "mainnet" | "testnet" = "testnet") {
+    this.api = new BridgeAPI(network)
   }
 
   async validateTransferStatus(
