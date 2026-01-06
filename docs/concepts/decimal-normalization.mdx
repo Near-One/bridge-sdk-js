@@ -5,7 +5,7 @@ description: Critical concept for cross-chain transfers
 
 # Decimal Normalization
 
-Different blockchains use different decimal precisions for the same token. The Omni Bridge handles this automatically, but understanding it is critical for avoiding failed transfers.
+Different blockchains use different <Tooltip tip="The number of decimal places used to represent fractional token amounts. For example, 6 decimals means 1 token = 1,000,000 base units.">decimal precisions</Tooltip> for the same token. The Omni Bridge handles this automatically, but understanding it is critical for avoiding failed transfers.
 
 <Warning>
   **This is the most common source of transfer failures.** Amounts that are too small may normalize to zero, causing transfers to fail silently.
@@ -45,7 +45,7 @@ const ethAmount = normalizeAmount(
 
 ## The Dust Problem
 
-When scaling down from high precision to low precision, small amounts may become zero:
+When scaling down from high precision to low precision, small amounts may become zero — this is known as <Tooltip tip="Amounts so small they round to zero when converted between decimal precisions, similar to dust particles that are too small to be useful.">dust</Tooltip>:
 
 ```typescript
 // Trying to bridge 0.0000001 USDC from NEAR to Ethereum

@@ -5,7 +5,7 @@ description: Understanding the transaction builder pattern
 
 # Architecture
 
-The Omni Bridge SDK uses a **transaction builder pattern**. This design separates the bridge protocol logic from transaction signing, giving you complete control over your key management.
+The Omni Bridge SDK uses a **<Tooltip tip="A design pattern where the SDK handles all protocol logic and encoding, but returns unsigned transactions for you to sign with your own wallet or key management system.">transaction builder pattern</Tooltip>**. This design separates the bridge protocol logic from transaction signing, giving you complete control over your key management.
 
 ## The Transaction Builder Pattern
 
@@ -16,6 +16,10 @@ flowchart LR
     C --> D[Unsigned Transaction]
     D --> E[Your Wallet/Signer]
     E --> F[Blockchain]
+    
+    style A fill:#6366F1,color:#fff
+    style D fill:#22C55E,color:#fff
+    style F fill:#F59E0B,color:#fff
 ```
 
 The SDK handles:
@@ -168,15 +172,16 @@ Every transfer follows the same pattern:
 
 The SDK is organized as a monorepo with separate packages for each chain:
 
-```
-@omni-bridge/
-├── core     → Validation, types, API client
-├── evm      → Ethereum, Base, Arbitrum, Polygon, BNB
-├── near     → NEAR Protocol
-├── solana   → Solana
-├── btc      → Bitcoin, Zcash
-└── sdk      → Umbrella (re-exports all)
-```
+<Tree>
+  <Tree.Folder name="@omni-bridge" defaultOpen>
+    <Tree.File name="core   → Validation, types, API client" />
+    <Tree.File name="evm    → Ethereum, Base, Arbitrum, Polygon, BNB" />
+    <Tree.File name="near   → NEAR Protocol + shims" />
+    <Tree.File name="solana → Solana (Anchor-based)" />
+    <Tree.File name="btc    → Bitcoin, Zcash (UTXO)" />
+    <Tree.File name="sdk    → Umbrella (re-exports all)" />
+  </Tree.Folder>
+</Tree>
 
 Install just what you need:
 

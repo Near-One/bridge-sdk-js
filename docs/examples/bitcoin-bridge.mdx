@@ -11,6 +11,30 @@ This example demonstrates the complete flow for bridging Bitcoin to and from NEA
 Working examples are available in the repository at [`examples/bitcoin-deposit.ts`](https://github.com/Near-one/omni-bridge/tree/main/examples/bitcoin-deposit.ts) and [`examples/bitcoin-withdraw.ts`](https://github.com/Near-one/omni-bridge/tree/main/examples/bitcoin-withdraw.ts).
 </Note>
 
+## Transfer Flow
+
+```mermaid
+flowchart LR
+    subgraph Deposit["BTC → NEAR"]
+        direction LR
+        A1[Get Deposit Address] --> A2[Send BTC]
+        A2 --> A3[Wait for Confirmations]
+        A3 --> A4[Submit Proof to NEAR]
+        A4 --> A5[Receive nBTC]
+    end
+```
+
+```mermaid
+flowchart LR
+    subgraph Withdraw["NEAR → BTC"]
+        direction LR
+        B1[Initiate on NEAR] --> B2[MPC Signing]
+        B2 --> B3[Get Signed TX]
+        B3 --> B4[Broadcast to Bitcoin]
+        B4 --> B5[Receive BTC]
+    end
+```
+
 ## Bitcoin Deposit (BTC → NEAR)
 
 Depositing Bitcoin into the bridge to receive nBTC on NEAR is a two-step process:

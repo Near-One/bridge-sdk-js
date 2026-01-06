@@ -71,14 +71,16 @@ await walletClient.sendTransaction(tx)
 
 Install the umbrella package for everything, or pick individual packages to minimize bundle size:
 
-| Package | Description |
-|---------|-------------|
-| `@omni-bridge/sdk` | Umbrella package (re-exports all packages below) |
-| `@omni-bridge/core` | Validation, types, configuration, API client |
-| `@omni-bridge/evm` | Ethereum, Base, Arbitrum, Polygon, BNB Chain |
-| `@omni-bridge/near` | NEAR Protocol |
-| `@omni-bridge/solana` | Solana |
-| `@omni-bridge/btc` | Bitcoin, Zcash |
+<Tree>
+  <Tree.Folder name="@omni-bridge" defaultOpen>
+    <Tree.File name="sdk      → Umbrella (re-exports all)" />
+    <Tree.File name="core     → Validation, types, API client" />
+    <Tree.File name="evm      → Ethereum, Base, Arbitrum, Polygon, BNB" />
+    <Tree.File name="near     → NEAR Protocol" />
+    <Tree.File name="solana   → Solana" />
+    <Tree.File name="btc      → Bitcoin, Zcash" />
+  </Tree.Folder>
+</Tree>
 
 ```bash
 # Install everything
