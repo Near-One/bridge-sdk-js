@@ -29,4 +29,4 @@ jobs:
         run: bun run biome check .
 
       - name: Run tests
-        run: bun run test tests/ -- --pool=threads
+        run: bun run test packages/ -- --pool=threads
