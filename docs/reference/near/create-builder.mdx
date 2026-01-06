@@ -52,6 +52,34 @@ function createNearBuilder(config: NearBuilderConfig): NearBuilder
     <ResponseField name="buildFinalization" type="function">
       Builds a finalization transaction.
     </ResponseField>
+
+    <ResponseField name="buildLogMetadata" type="function">
+      Builds a log metadata transaction for token registration.
+    </ResponseField>
+
+    <ResponseField name="buildDeployToken" type="function">
+      Builds a deploy token transaction for registering tokens on destination chains.
+    </ResponseField>
+
+    <ResponseField name="buildBindToken" type="function">
+      Builds a bind token transaction for linking tokens from source chains.
+    </ResponseField>
+
+    <ResponseField name="buildSignTransfer" type="function">
+      Builds an MPC sign transfer transaction (for relayers).
+    </ResponseField>
+
+    <ResponseField name="buildFastFinTransfer" type="function">
+      Builds a fast finalization transfer transaction (for relayers).
+    </ResponseField>
+
+    <ResponseField name="serializeEvmProofArgs" type="function">
+      Serializes EVM proof arguments for the prover.
+    </ResponseField>
+
+    <ResponseField name="serializeWormholeProofArgs" type="function">
+      Serializes Wormhole VAA proof arguments for the prover.
+    </ResponseField>
   </Expandable>
 </ResponseField>
 
@@ -68,6 +96,75 @@ const deposit = await nearBuilder.getRequiredStorageDeposit("alice.near")
 // Build transfer
 const validated = await bridge.validateTransfer(params)
 const unsigned = nearBuilder.buildTransfer(validated, "alice.near")
+```
+
+## Token Registration
+
+Register new tokens on the bridge:
+
+```typescript
+// 1. Log token metadata
+const logMetadataTx = nearBuilder.buildLogMetadata("wrap.near", "alice.near")
+
+// 2. Deploy token on destination chain (after proof is available)
+const deployTx = nearBuilder.buildDeployToken(
+  ChainKind.Eth,
+  proverArgs,
+  "alice.near",
+  deployDeposit
+)
+
+// 3. Bind token from source chain
+const bindTx = nearBuilder.buildBindToken(
+  ChainKind.Eth,
+  proverArgs,
+  "alice.near",
+  bindDeposit
+)
+```
+
+## MPC Signing (Relayers)
+
+For relayers that sign and finalize transfers:
+
+```typescript
+// Sign a pending transfer
+const signTx = nearBuilder.buildSignTransfer(
+  { origin_chain: ChainKind.Eth, origin_nonce: 123n },
+  "relayer.near",
+  { fee: "1000000", native_fee: "0" },
+  "relayer.near"
+)
+
+// Fast finalization
+const fastFinTx = nearBuilder.buildFastFinTransfer({
+  transferId: { origin_chain: ChainKind.Eth, origin_nonce: 123n },
+  tokenId: "wrap.near",
+  amount: "1000000000000000000000000",
+  amountToSend: "999000000000000000000000",
+  recipient: "bob.near",
+  fee: { fee: "1000000", native_fee: "0" },
+  storageDepositAmount: "1250000000000000000000",
+  relayer: "relayer.near",
+}, "relayer.near")
+```
+
+## Proof Serialization
+
+Serialize proof arguments for finalization:
+
+```typescript
+// EVM proof
+const evmProofBytes = nearBuilder.serializeEvmProofArgs({
+  proof_kind: ProofKind.InitTransfer,
+  proof: evmProof,
+})
+
+// Wormhole VAA proof
+const wormholeProofBytes = nearBuilder.serializeWormholeProofArgs({
+  proof_kind: ProofKind.InitTransfer,
+  vaa: vaaBytes,
+})
 ```
 
 ## Related
