@@ -301,6 +301,13 @@ export class BridgeAPI {
     offset?: number
     limit?: number
   }): Promise<Transfer[]> {
+    if (!params.sender && !params.transactionId) {
+      throw new OmniBridgeError(
+        "Either sender or transactionId must be provided",
+        "VALIDATION_ERROR",
+      )
+    }
+
     const urlParams: Record<string, string | undefined> = {
       offset: (params.offset ?? 0).toString(),
       limit: (params.limit ?? 10).toString(),
@@ -350,5 +357,29 @@ export class BridgeAPI {
       },
       body: JSON.stringify(body),
     })
+  }
+
+  /**
+   * @deprecated Use `findTransfers` instead
+   */
+  async findOmniTransfers(params: {
+    sender?: string
+    transactionId?: string
+    offset?: number
+    limit?: number
+  }): Promise<Transfer[]> {
+    return this.findTransfers(params)
+  }
+
+  /**
+   * @deprecated Use `getUtxoDepositAddress` instead
+   */
+  async getUtxoUserDepositAddress(
+    chain: UtxoChainParam,
+    recipient: string,
+    postActions?: PostAction[] | null,
+    extraMsg?: string | null,
+  ): Promise<UtxoDepositAddressResponse> {
+    return this.getUtxoDepositAddress(chain, recipient, postActions, extraMsg)
   }
 }
