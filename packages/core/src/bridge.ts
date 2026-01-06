@@ -2,6 +2,7 @@
  * Bridge factory and validation
  */
 
+import { Near } from "near-kit"
 import { BridgeAPI, type Chain } from "./api.js"
 import { type ChainAddresses, getAddresses } from "./config.js"
 import { ValidationError } from "./errors.js"
@@ -97,17 +98,20 @@ class BridgeImpl implements Bridge {
   readonly network: Network
   readonly addresses: ChainAddresses
   readonly api: BridgeAPI
+  private readonly near: Near
 
   constructor(config: BridgeConfig) {
     this.network = config.network
     this.addresses = getAddresses(config.network)
     this.api = new BridgeAPI(config.network)
+    this.near = new Near({ network: config.network })
   }
 
   async validateTransfer(params: TransferParams): Promise<ValidatedTransfer> {
     // Extract chains from addresses
     const sourceChain = getChain(params.sender)
     const destChain = getChain(params.recipient)
+    const tokenChain = getChain(params.token)
 
     // Basic validation
     if (params.amount <= 0n) {
@@ -147,40 +151,70 @@ class BridgeImpl implements Bridge {
       }
     }
 
-    // Get token decimals for normalization
-    const tokenDecimals = await this.getTokenDecimals(params.token)
-    if (!tokenDecimals) {
-      throw new ValidationError("Token not registered", "TOKEN_NOT_REGISTERED", {
-        token: params.token,
-      })
-    }
-
-    // Validate amount survives decimal normalization
-    validateTransferAmount(
-      params.amount,
-      params.fee,
-      tokenDecimals.origin_decimals,
-      tokenDecimals.decimals,
-    )
-
-    // Normalize amounts
-    const minDecimals = Math.min(tokenDecimals.origin_decimals, tokenDecimals.decimals)
-    const normalizedAmount = normalizeAmount(
-      params.amount,
-      tokenDecimals.origin_decimals,
-      minDecimals,
-    )
-    const normalizedFee = normalizeAmount(params.fee, tokenDecimals.origin_decimals, minDecimals)
-
-    // Look up bridged token if needed
+    // Look up bridged token first (needed for NEAR source tokens)
     let bridgedToken: OmniAddress | undefined
-    const tokenChain = getChain(params.token)
     if (tokenChain !== destChain) {
       const result = await this.getBridgedToken(params.token, destChain)
       if (result) {
         bridgedToken = result
       }
     }
+
+    // Get token decimals for normalization
+    // Decimals are stored in the NEAR bridge contract using foreign chain addresses as keys.
+    // For NEAR tokens, we need to use the bridged token address on the destination chain.
+    let tokenDecimals: TokenDecimals | null = null
+    let originDecimals: number
+    let destinationDecimals: number
+
+    if (sourceChain === ChainKind.Near && tokenChain === ChainKind.Near) {
+      // NEAR → Foreign: Query using bridged token on destination chain
+      if (!bridgedToken) {
+        throw new ValidationError(
+          "Token not registered on destination chain",
+          "TOKEN_NOT_REGISTERED",
+          { token: params.token, destChain: ChainKind[destChain] },
+        )
+      }
+      tokenDecimals = await this.getTokenDecimals(bridgedToken)
+      if (!tokenDecimals) {
+        throw new ValidationError("Token decimals not found", "TOKEN_NOT_REGISTERED", {
+          token: bridgedToken,
+        })
+      }
+      // For NEAR→Foreign: origin_decimals is NEAR decimals, decimals is destination chain decimals
+      originDecimals = tokenDecimals.origin_decimals
+      destinationDecimals = tokenDecimals.decimals
+    } else if (destChain === ChainKind.Near) {
+      // Foreign → NEAR: Query using source token address
+      tokenDecimals = await this.getTokenDecimals(params.token)
+      if (!tokenDecimals) {
+        throw new ValidationError("Token not registered", "TOKEN_NOT_REGISTERED", {
+          token: params.token,
+        })
+      }
+      // For Foreign→NEAR: decimals is foreign chain decimals, origin_decimals is what it has on NEAR
+      originDecimals = tokenDecimals.decimals
+      destinationDecimals = tokenDecimals.origin_decimals
+    } else {
+      // Foreign → Foreign: Query source token
+      tokenDecimals = await this.getTokenDecimals(params.token)
+      if (!tokenDecimals) {
+        throw new ValidationError("Token not registered", "TOKEN_NOT_REGISTERED", {
+          token: params.token,
+        })
+      }
+      originDecimals = tokenDecimals.decimals
+      destinationDecimals = tokenDecimals.decimals
+    }
+
+    // Validate amount survives decimal normalization
+    validateTransferAmount(params.amount, params.fee, originDecimals, destinationDecimals)
+
+    // Normalize amounts
+    const minDecimals = Math.min(originDecimals, destinationDecimals)
+    const normalizedAmount = normalizeAmount(params.amount, originDecimals, minDecimals)
+    const normalizedFee = normalizeAmount(params.fee, originDecimals, minDecimals)
 
     // Get contract address for source chain
     const contractAddress = getContractAddress(this.addresses, sourceChain)
@@ -197,12 +231,23 @@ class BridgeImpl implements Bridge {
   }
 
   async getTokenDecimals(token: OmniAddress): Promise<TokenDecimals | null> {
-    return this.api.getTokenDecimals(token)
+    // Query the NEAR bridge contract directly
+    const result = await this.near.view<TokenDecimals>(
+      this.addresses.near.contract,
+      "get_token_decimals",
+      { address: token },
+    )
+    return result ?? null
   }
 
   async getBridgedToken(token: OmniAddress, destChain: ChainKind): Promise<OmniAddress | null> {
-    const apiChain = chainKindToApiChain(destChain)
-    return this.api.getBridgedToken(token, apiChain)
+    // Query the NEAR bridge contract directly
+    const chainName = chainKindToApiChain(destChain)
+    const result = await this.near.view<string>(this.addresses.near.contract, "get_bridged_token", {
+      chain: chainName,
+      address: token,
+    })
+    return (result as OmniAddress) ?? null
   }
 }
 

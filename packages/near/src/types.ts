@@ -146,12 +146,59 @@ export interface InitTransferEvent {
 }
 
 /**
- * MPC signature structure
+ * MPC signature affine point
  */
-export interface MPCSignature {
-  big_r: string
-  s: string
+export interface AffinePoint {
+  affine_point: string
+}
+
+/**
+ * MPC signature scalar
+ */
+export interface Scalar {
+  scalar: string
+}
+
+/**
+ * MPC signature structure (raw from contract logs)
+ */
+export interface MPCSignatureRaw {
+  big_r: AffinePoint
+  s: Scalar
   recovery_id: number
+}
+
+function fromHex(hex: string): Uint8Array {
+  return new Uint8Array(hex.match(/.{1,2}/g)?.map((byte) => Number.parseInt(byte, 16)) || [])
+}
+
+/**
+ * MPC signature class with toBytes() conversion
+ */
+export class MPCSignature {
+  constructor(
+    public big_r: AffinePoint,
+    public s: Scalar,
+    public recovery_id: number,
+  ) {}
+
+  /**
+   * Convert signature to bytes for Solana/EVM
+   * @param forEvm - If true, adds 27 to recovery_id for EVM compatibility
+   */
+  toBytes(forEvm = false): Uint8Array {
+    const bigRBytes = fromHex(this.big_r.affine_point)
+    const sBytes = fromHex(this.s.scalar)
+    const result = [...bigRBytes.slice(1), ...sBytes, this.recovery_id + (forEvm ? 27 : 0)]
+    return new Uint8Array(result)
+  }
+
+  /**
+   * Create from raw signature object from contract logs
+   */
+  static fromRaw(raw: MPCSignatureRaw): MPCSignature {
+    return new MPCSignature(raw.big_r, raw.s, raw.recovery_id)
+  }
 }
 
 /**

@@ -336,7 +336,7 @@ class NearBuilderImpl implements NearBuilder {
     const args = {
       transfer_id: {
         origin_chain: originChain,
-        origin_nonce: transferId.origin_nonce.toString(),
+        origin_nonce: Number(transferId.origin_nonce),
       },
       fee_recipient: feeRecipient,
       fee: {

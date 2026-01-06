@@ -1,41 +1,34 @@
 import { beforeAll, describe, expect, test } from "bun:test"
-import { NearBridgeClient } from "../src/clients/near-kit.js"
-import { SolanaBridgeClient } from "../src/clients/solana.js"
-import { setNetwork } from "../src/config.js"
+import { ChainKind, createBridge } from "@omni-bridge/core"
+import { createNearBuilder, toNearKitTransaction } from "@omni-bridge/near"
+import { createSolanaBuilder } from "@omni-bridge/solana"
+import { Connection, Keypair, sendAndConfirmTransaction, Transaction } from "@solana/web3.js"
+import type { Near } from "near-kit"
 import { getVaa } from "../src/proofs/wormhole.js"
-import {
-  ChainKind,
-  type OmniTransferMessage,
-  ProofKind,
-} from "../src/types/index.js"
-import { omniAddress } from "../src/utils/index.js"
 import { SOL_TO_NEAR_ROUTES, TIMEOUTS } from "./shared/fixtures.js"
-import {
-  TEST_CONFIG,
-  type TestAccountsSetup,
-  setupTestAccounts,
-} from "./shared/setup.js"
+import { createNearKitInstance, TEST_CONFIG } from "./shared/setup.js"
 
 describe("SOL to NEAR E2E Transfer Tests (Manual Flow)", () => {
-  let testAccounts: TestAccountsSetup
-  let solanaClient: SolanaBridgeClient
-  let nearClient: NearBridgeClient
+  let near: Near
+  let connection: Connection
+  let keypair: Keypair
 
   beforeAll(async () => {
-    // Set network to testnet for all tests
-    setNetwork("testnet")
+    // Setup NEAR
+    near = await createNearKitInstance()
 
-    // Setup test accounts and clients
-    testAccounts = await setupTestAccounts()
-    solanaClient = new SolanaBridgeClient(testAccounts.solanaProvider)
-    nearClient = new NearBridgeClient(testAccounts.nearKitInstance, undefined, {
-      defaultSignerId: TEST_CONFIG.networks.near.accountId,
-    })
+    // Setup Solana
+    const { solana } = TEST_CONFIG.networks
+    if (!solana.privateKey) {
+      throw new Error("SOL_PRIVATE_KEY environment variable required")
+    }
+
+    const privateKeyBytes = Uint8Array.from(Buffer.from(solana.privateKey, "base64"))
+    keypair = Keypair.fromSecretKey(privateKeyBytes)
+    connection = new Connection(solana.rpcUrl, solana.commitment)
 
     console.log("🚀 Test setup complete:")
-    console.log(
-      `  SOL Address: ${testAccounts.solanaProvider.publicKey.toString()}`
-    )
+    console.log(`  SOL Address: ${keypair.publicKey.toString()}`)
     console.log(`  NEAR Account: ${TEST_CONFIG.networks.near.accountId}`)
   })
 
@@ -44,24 +37,42 @@ describe("SOL to NEAR E2E Transfer Tests (Manual Flow)", () => {
     async (route) => {
       console.log(`\n🌉 Testing ${route.name} (Manual Flow)...`)
 
-      // Create transfer message with zero fees (manual flow)
-      const transferMessage: OmniTransferMessage = {
-        tokenAddress: route.token.address,
-        amount: BigInt(route.token.testAmount),
-        recipient: omniAddress(ChainKind.Near, route.recipient),
-        fee: BigInt(0), // No relayer fee
-        nativeFee: BigInt(0), // No relayer fee
-      }
+      // Create builders
+      const bridge = createBridge({ network: "testnet" })
+      const nearBuilder = createNearBuilder({ network: "testnet" })
+      const solBuilder = createSolanaBuilder({ network: "testnet", connection })
+
+      const signerId = TEST_CONFIG.networks.near.accountId
 
       console.log("📤 Step 1: Initiating SOL → NEAR transfer...")
       console.log(`  Token: ${route.token.symbol} (${route.token.address})`)
       console.log(`  Amount: ${route.token.testAmount}`)
       console.log(`  From: ${route.sender}`)
-      console.log(`  To: ${transferMessage.recipient}`)
+      console.log(`  To: near:${route.recipient}`)
       console.log("  Fee: 0 (manual flow)")
 
-      // Step 1: Initiate transfer on Solana
-      const transactionHash = await solanaClient.initTransfer(transferMessage)
+      // Validate transfer
+      const validated = await bridge.validateTransfer({
+        token: route.token.address,
+        amount: BigInt(route.token.testAmount),
+        fee: 0n,
+        nativeFee: 0n,
+        sender: `sol:${keypair.publicKey.toString()}`,
+        recipient: `near:${route.recipient}`,
+      })
+
+      // Build Solana init transfer instructions
+      const initInstructions = await solBuilder.buildTransfer(validated, keypair.publicKey)
+
+      // Build and send Solana transaction
+      const { blockhash } = await connection.getLatestBlockhash()
+      const solTx = new Transaction({
+        recentBlockhash: blockhash,
+        feePayer: keypair.publicKey,
+      })
+      solTx.add(...initInstructions)
+
+      const transactionHash = await sendAndConfirmTransaction(connection, solTx, [keypair])
 
       console.log("✓ Transfer initiated on Solana!")
       console.log(`  Transaction Hash: ${transactionHash}`)
@@ -85,26 +96,40 @@ describe("SOL to NEAR E2E Transfer Tests (Manual Flow)", () => {
       // Step 3: Finalize transfer on NEAR
       console.log("\n🏁 Step 3: Finalizing transfer on NEAR...")
 
-      // Extract the NEAR token ID (equivalent of the Solana wNEAR token)
-      const nearTokenId = "wrap.testnet" // The equivalent NEAR token
+      // Get the bridged token address on NEAR for storage deposit
+      const nearTokenAddress = await bridge.getBridgedToken(route.token.address, ChainKind.Near)
+      if (!nearTokenAddress) {
+        throw new Error(`No bridged token found on NEAR for ${route.token.address}`)
+      }
 
-      const finalizeResult = await nearClient.finalizeTransfer(
-        nearTokenId,
-        route.recipient,
-        BigInt(0),
-        ChainKind.Sol,
-        undefined, // signerId (uses defaultSignerId)
-        vaa, // Wormhole VAA
-        undefined, // No EVM proof needed for SOL
-        ProofKind.InitTransfer
-      )
+      // Extract the NEAR token account ID (remove "near:" prefix)
+      const tokenAccountId = nearTokenAddress.split(":")[1]
+      if (!tokenAccountId) {
+        throw new Error("Invalid NEAR token address format")
+      }
+
+      // Build NEAR finalization transaction with storage deposit
+      const finalizeTx = nearBuilder.buildFinalization({
+        sourceChain: ChainKind.Sol,
+        signerId,
+        vaa: vaa,
+        storageDepositActions: [
+          {
+            token_id: tokenAccountId,
+            account_id: signerId,
+            storage_deposit_amount: null, // Let the contract determine the required amount
+          },
+        ],
+      })
+
+      const finalizeResult = await toNearKitTransaction(near, finalizeTx).send()
 
       console.log("✓ Transfer finalized on NEAR!")
       console.log(`  Finalization TX: ${finalizeResult.transaction.hash}`)
 
       // Validate finalization
       expect(finalizeResult.transaction.hash).toBeDefined()
-      expect(typeof finalizeResult.transaction.hash).toBe("string") // Should be transaction hash
+      expect(typeof finalizeResult.transaction.hash).toBe("string")
       expect(finalizeResult.transaction.hash.length).toBeGreaterThan(0)
 
       console.log("\n🎉 Manual transfer flow completed successfully!")
@@ -113,6 +138,6 @@ describe("SOL to NEAR E2E Transfer Tests (Manual Flow)", () => {
       console.log("  3. ✓ Finalized on NEAR")
       console.log(`✅ ${route.name} test completed!`)
     },
-    TIMEOUTS.FULL_E2E_FLOW
+    TIMEOUTS.FULL_E2E_FLOW,
   )
 })
