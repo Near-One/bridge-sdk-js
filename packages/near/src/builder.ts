@@ -10,6 +10,7 @@ import {
   type Network,
   type ValidatedTransfer,
 } from "@omni-bridge/core"
+import { Near } from "near-kit"
 import {
   BindTokenArgsSchema,
   DEPOSIT,
@@ -98,6 +99,34 @@ export interface NearBuilder {
    * Serialize Wormhole VAA proof arguments for prover
    */
   serializeWormholeProofArgs(args: WormholeVerifyProofArgs): Uint8Array
+
+  /**
+   * Get required storage deposit for an account on the bridge contract.
+   * Makes view calls to check current balance vs required amounts.
+   *
+   * @param accountId - Account to check storage for
+   * @returns Amount of additional storage deposit needed (0n if sufficient)
+   */
+  getRequiredStorageDeposit(accountId: string): Promise<bigint>
+
+  /**
+   * Check if a token has storage registered for the bridge contract.
+   * If not, the bridge contract needs storage_deposit on the token before transfers.
+   *
+   * @param tokenId - Token contract to check
+   * @returns true if bridge has storage, false if storage_deposit needed
+   */
+  isTokenStorageRegistered(tokenId: string): Promise<boolean>
+
+  /**
+   * Build a storage deposit transaction on a token contract for the bridge.
+   * This is needed before the bridge can receive tokens.
+   *
+   * @param tokenId - Token contract to register storage on
+   * @param signerId - Account paying for storage
+   * @returns Unsigned transaction for storage_deposit
+   */
+  buildTokenStorageDeposit(tokenId: string, signerId: string): Promise<NearUnsignedTransaction>
 }
 
 /**
@@ -383,6 +412,81 @@ class NearBuilderImpl implements NearBuilder {
 
   serializeWormholeProofArgs(args: WormholeVerifyProofArgs): Uint8Array {
     return WormholeVerifyProofArgsSchema.serialize(args)
+  }
+
+  async getRequiredStorageDeposit(accountId: string): Promise<bigint> {
+    const near = this.getNearClient()
+
+    const [regBalance, initBalance, storage] = await Promise.all([
+      near.view<string>(this.bridgeContract, "required_balance_for_account", {}),
+      near.view<string>(this.bridgeContract, "required_balance_for_init_transfer", {}),
+      near.view<{ total: string; available: string } | null>(
+        this.bridgeContract,
+        "storage_balance_of",
+        {
+          account_id: accountId,
+        },
+      ),
+    ])
+
+    if (!regBalance || !initBalance) {
+      throw new Error("Failed to retrieve required balance information")
+    }
+
+    const required = BigInt(regBalance) + BigInt(initBalance)
+    const existing = storage?.available ? BigInt(storage.available) : 0n
+    return required > existing ? required - existing : 0n
+  }
+
+  async isTokenStorageRegistered(tokenId: string): Promise<boolean> {
+    const near = this.getNearClient()
+
+    const storage = await near.view<{ total: string; available: string } | null>(
+      tokenId,
+      "storage_balance_of",
+      { account_id: this.bridgeContract },
+    )
+
+    return storage !== null && storage !== undefined
+  }
+
+  async buildTokenStorageDeposit(
+    tokenId: string,
+    signerId: string,
+  ): Promise<NearUnsignedTransaction> {
+    const near = this.getNearClient()
+
+    // Get required storage amount from token contract
+    const bounds = await near.view<{ min: string; max: string }>(
+      tokenId,
+      "storage_balance_bounds",
+      {},
+    )
+
+    if (!bounds) {
+      throw new Error("Failed to retrieve storage balance bounds from token")
+    }
+
+    const requiredAmount = BigInt(bounds.min)
+
+    const action: NearAction = {
+      type: "FunctionCall",
+      methodName: "storage_deposit",
+      args: encodeArgs({ account_id: this.bridgeContract }),
+      gas: GAS.STORAGE_DEPOSIT,
+      deposit: requiredAmount,
+    }
+
+    return {
+      type: "near",
+      signerId,
+      receiverId: tokenId,
+      actions: [action],
+    }
+  }
+
+  private getNearClient(): Near {
+    return new Near({ network: this.network as "mainnet" | "testnet" })
   }
 }
 

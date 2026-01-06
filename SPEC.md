@@ -409,7 +409,8 @@ Builds unsigned NEAR transactions as library-agnostic action lists. Shims conver
 ### Dependencies
 
 - `@omni-bridge/core`
-- `@near-js/crypto` (for Borsh serialization of args)
+- `@zorsh/zorsh` (for Borsh serialization of args)
+- `near-kit` (for shims and gas/amount parsing)
 
 ### Factory
 
