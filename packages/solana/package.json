@@ -21,7 +21,10 @@
   "dependencies": {
     "@omni-bridge/core": "workspace:*",
     "@coral-xyz/anchor": "^0.32.1",
-    "@solana/web3.js": "^1.98.4"
+    "@noble/hashes": "^1.4.0",
+    "@solana/spl-token": "^0.4.8",
+    "@solana/web3.js": "^1.98.4",
+    "bn.js": "^5.2.1"
   },
   "devDependencies": {
     "typescript": "^5.9.3"
