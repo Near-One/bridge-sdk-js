@@ -30,7 +30,9 @@
               "guides/bitcoin-transfers",
               "guides/tracking-transfers",
               "guides/relayer-fees",
-              "guides/manual-finalization"
+              "guides/fast-transfers",
+              "guides/manual-finalization",
+              "guides/token-deployment"
             ]
           },
           {

@@ -123,20 +123,58 @@ Each chain has a bridge contract deployed:
 
 <Tabs>
   <Tab title="Mainnet">
-    | Chain | Contract |
-    |-------|----------|
-    | Ethereum | `0x...` |
-    | Base | `0x...` |
-    | Arbitrum | `0x...` |
-    | NEAR | `omni-bridge.near` |
-    | Solana | `...` |
+    ### EVM Bridge Contracts
+
+    | Chain | Contract Address |
+    |-------|------------------|
+    | Ethereum | `0xe00c629aFaCCb0510995A2B95560E446A24c85B9` |
+    | Base | `0xd025b38762B4A4E36F0Cde483b86CB13ea00D989` |
+    | Arbitrum | `0xd025b38762B4A4E36F0Cde483b86CB13ea00D989` |
+    | Polygon | `0xd025b38762B4A4E36F0Cde483b86CB13ea00D989` |
+    | BNB Chain | `0x073C8a225c8Cf9d3f9157F5C1a1DbE02407f5720` |
+
+    ### NEAR Contracts
+
+    | Contract | Account ID |
+    |----------|------------|
+    | Omni Bridge | `omni.bridge.near` |
+    | BTC Connector | `btc-connector.bridge.near` |
+    | Zcash Connector | `zcash-connector.bridge.near` |
+    | nBTC Token | `nbtc.bridge.near` |
+    | nZEC Token | `nzec.bridge.near` |
+
+    ### Solana Program
+
+    | Program | Address |
+    |---------|---------|
+    | Bridge Token Factory | `dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe` |
   </Tab>
   <Tab title="Testnet">
-    | Chain | Contract |
-    |-------|----------|
-    | Ethereum (Sepolia) | `0x...` |
-    | Base (Sepolia) | `0x...` |
-    | NEAR | `omni-bridge.testnet` |
+    ### EVM Bridge Contracts
+
+    | Chain | Contract Address |
+    |-------|------------------|
+    | Ethereum (Sepolia) | `0x68a86e0Ea5B1d39F385c1326e4d493526dFe4401` |
+    | Base (Sepolia) | `0xa56b860017152cD296ad723E8409Abd6e5D86d4d` |
+    | Arbitrum (Sepolia) | `0x0C981337fFe39a555d3A40dbb32f21aD0eF33FFA` |
+    | Polygon (Amoy) | `0xEC81aFc3485a425347Ac03316675e58a680b283A` |
+    | BNB Chain | `0xEC81aFc3485a425347Ac03316675e58a680b283A` |
+
+    ### NEAR Contracts
+
+    | Contract | Account ID |
+    |----------|------------|
+    | Omni Bridge | `omni.n-bridge.testnet` |
+    | BTC Connector | `btc-connector.n-bridge.testnet` |
+    | Zcash Connector | `zcash_connector.n-bridge.testnet` |
+    | nBTC Token | `nbtc.n-bridge.testnet` |
+    | nZEC Token | `nzcash.n-bridge.testnet` |
+
+    ### Solana Program (Devnet)
+
+    | Program | Address |
+    |---------|---------|
+    | Bridge Token Factory | `862HdJV59Vp83PbcubUnvuXc4EAXP8CDDs6LTxFpunTe` |
   </Tab>
 </Tabs>
 
@@ -149,6 +187,22 @@ Each chain has a bridge contract deployed:
   console.log(bridge.addresses.near.contract)  // NEAR contract
   ```
 </Tip>
+
+<Note>
+  **Verifying Contract Addresses**
+
+  Always verify contract addresses on block explorers before interacting with them:
+  
+  - **Ethereum**: [Etherscan](https://etherscan.io)
+  - **Base**: [Basescan](https://basescan.org)
+  - **Arbitrum**: [Arbiscan](https://arbiscan.io)
+  - **Polygon**: [Polygonscan](https://polygonscan.com)
+  - **BNB Chain**: [BscScan](https://bscscan.com)
+  - **NEAR**: [NEAR Explorer](https://nearblocks.io)
+  - **Solana**: [Solscan](https://solscan.io)
+  
+  For testnets, use the corresponding testnet explorers (e.g., sepolia.etherscan.io).
+</Note>
 
 ## Next Steps
 

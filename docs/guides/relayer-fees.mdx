@@ -244,6 +244,89 @@ Fees are calculated based on:
   </Tab>
 </Tabs>
 
+## Updating Fees on Pending Transfers
+
+If your transfer hasn't been picked up by relayers (e.g., the fee was too low or market conditions changed), you can increase the fee to "unstick" it.
+
+<Info>
+  When you update a fee, relayers see a new `UpdateFeeEvent` and re-evaluate your transfer with the higher fee. This is the recommended way to speed up a stuck transfer.
+</Info>
+
+### Rules for Fee Updates
+
+<Steps>
+  <Step title="Sender Only">
+    Only the original sender of the transfer can update the token fee. The native fee can be topped up by anyone.
+  </Step>
+  <Step title="Fee Can Only Increase">
+    The new fee must be greater than or equal to the current fee. You cannot decrease fees.
+  </Step>
+  <Step title="Fee Must Be Less Than Amount">
+    The new fee must still be less than the transfer amount (otherwise there would be nothing left to transfer).
+  </Step>
+  <Step title="Attach Native Fee Difference">
+    If you're increasing the native fee, you must attach the difference as a deposit to the transaction.
+  </Step>
+</Steps>
+
+### Example: Updating a Fee
+
+```typescript
+import { connect, keyStores, transactions } from "near-api-js"
+
+// Connect to NEAR
+const near = await connect({
+  networkId: "mainnet",
+  keyStore: new keyStores.BrowserLocalStorageKeyStore(),
+  nodeUrl: "https://rpc.mainnet.near.org",
+})
+
+const account = await near.account("sender.near")
+
+// The transfer you want to update
+const transferId = {
+  origin_chain: "Near",
+  origin_nonce: 12345,
+}
+
+// Current fee was { fee: "100000", native_fee: "0" }
+// New fee with higher values
+const newFee = {
+  fee: "200000",      // Increased token fee
+  native_fee: "1000000000000000000000000", // 1 NEAR native fee
+}
+
+// Calculate the native fee difference to attach
+const currentNativeFee = 0n
+const newNativeFee = BigInt(newFee.native_fee)
+const nativeFeeDifference = newNativeFee - currentNativeFee
+
+// Call update_transfer_fee on the bridge contract
+await account.functionCall({
+  contractId: "omni-bridge.near",
+  methodName: "update_transfer_fee",
+  args: {
+    transfer_id: transferId,
+    fee: {
+      Fee: {
+        fee: newFee.fee,
+        native_fee: newFee.native_fee,
+      },
+    },
+  },
+  gas: "30000000000000", // 30 TGas
+  attachedDeposit: nativeFeeDifference.toString(),
+})
+```
+
+<Warning>
+  **Fees cannot be decreased.** Once you set a fee, you can only increase it. Make sure you're comfortable with the new fee amount before updating.
+</Warning>
+
+<Note>
+  After updating the fee, relayers will automatically detect the change and re-evaluate your transfer. If the new fee meets their threshold, finalization will proceed.
+</Note>
+
 ## Without Relayer Fees
 
 If you set `fee: 0n` and `nativeFee: 0n`, relayers will ignore your transfer. You'll need to finalize it yourself on the destination chain.
