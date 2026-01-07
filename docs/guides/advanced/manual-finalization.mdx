@@ -12,11 +12,20 @@ When you set `fee: 0n` and `nativeFee: 0n`, relayers won't process your transfer
 
 ## The Process
 
-1. Initiate transfer on source chain (with zero fees)
-2. Wait for proof/signature to become available
-3. Submit finalization transaction on destination chain
+The steps depend on your source chain:
 
-The proof type depends on the source chain:
+**From NEAR:**
+1. Initiate transfer (`ft_transfer_call`)
+2. Call `signTransfer` to trigger MPC signing
+3. Parse the `SignTransferEvent` from logs
+4. Submit finalization on destination chain
+
+**From EVM/Solana:**
+1. Initiate transfer on source chain
+2. Wait for proof to become available (Merkle proof or Wormhole VAA)
+3. Submit finalization on NEAR
+
+The proof type and wait time depends on the source:
 
 | Source | Proof Type | Wait Time |
 |--------|------------|-----------|
@@ -45,22 +54,76 @@ For Ethereum → NEAR specifically, you need to wait for the light client to syn
 
 ## From NEAR to EVM
 
-After the transfer is signed, extract the signature and finalize on EVM:
+NEAR → EVM transfers require three steps: initiate, sign, then finalize.
+
+### Step 1: Initiate the Transfer
+
+```typescript
+import { createBridge } from "@omni-bridge/core"
+import { createNearBuilder, toNearKitTransaction } from "@omni-bridge/near"
+
+const bridge = createBridge({ network: "mainnet" })
+const nearBuilder = createNearBuilder({ network: "mainnet" })
+
+const signerId = "alice.near"
+
+// Validate and build the transfer
+const validated = await bridge.validateTransfer({
+  token: "near:wrap.near",
+  amount: 1_000_000_000_000_000_000_000_000n,
+  sender: `near:${signerId}`,
+  recipient: "eth:0x...",
+  fee: 0n,
+  nativeFee: 0n,
+})
+
+const initTx = nearBuilder.buildTransfer(validated, signerId)
+const initResult = await toNearKitTransaction(near, initTx).send()
+```
+
+### Step 2: Sign the Transfer
+
+After the transfer is initialized, you must call `signTransfer` to trigger MPC signing:
+
+```typescript
+// Extract the transfer ID from the InitTransferEvent in the logs
+const initEvent = parseInitTransferEvent(initResult)
+
+const signTx = nearBuilder.buildSignTransfer(
+  {
+    origin_chain: "Near",
+    origin_nonce: initEvent.nonce,
+  },
+  signerId
+)
+
+const signResult = await toNearKitTransaction(near, signTx).send()
+```
+
+### Step 3: Finalize on EVM
+
+Parse the `SignTransferEvent` from the sign transaction logs and finalize on EVM:
 
 ```typescript
 import { createEvmBuilder } from "@omni-bridge/evm"
 import { ChainKind } from "@omni-bridge/core"
+import { MPCSignature } from "@omni-bridge/near"
 
 const evm = createEvmBuilder({ network: "mainnet", chain: ChainKind.Eth })
 
-// Parse the SignTransferEvent from NEAR transaction logs
-// Extract: payload, signature
+// Parse SignTransferEvent from signResult logs
+const signEvent = parseSignTransferEvent(signResult)
 
-const tx = evm.buildFinalization(payload, signature)
+// Convert signature for EVM (adds 27 to recovery ID)
+const signature = MPCSignature.fromSignTransferEvent(signEvent).toBytes(true)
+
+const tx = evm.buildFinalization(signEvent.message_payload, signature)
 await walletClient.sendTransaction(tx)
 ```
 
-The MPC signature needs format conversion for EVM — the SDK handles this when you use `buildFinalization`.
+<Note>
+The MPC signature needs format conversion for EVM — use `MPCSignature.toBytes(true)` to add 27 to the recovery ID. For Solana, use `toBytes(false)`.
+</Note>
 
 ## From EVM to NEAR
 
