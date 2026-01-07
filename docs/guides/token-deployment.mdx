@@ -232,6 +232,102 @@ When bridging a NEP-141 token from NEAR to an EVM chain:
   </Tab>
 </Tabs>
 
+## Deploying NEAR Tokens to Solana
+
+When bridging a NEP-141 token from NEAR to Solana:
+
+<Tabs>
+  <Tab title="Step 1: Log Metadata (NEAR)">
+    Call `log_metadata` on the NEAR bridge contract (same as EVM):
+
+    ```typescript
+    import { createNearBuilder, toNearKitTransaction } from "@omni-bridge/near"
+    import type { LogMetadataEvent } from "@omni-bridge/near"
+
+    const nearBuilder = createNearBuilder({ network: "mainnet" })
+    const signerId = "deployer.near"
+
+    // Build and send log_metadata transaction
+    const tx = nearBuilder.buildLogMetadata("token.near", signerId)
+    const result = await toNearKitTransaction(near, tx).send({ waitUntil: "FINAL" })
+
+    // Parse LogMetadataEvent from logs
+    const eventLog = result.receipts_outcome
+      .flatMap((receipt) => receipt.outcome.logs)
+      .find((log) => log.includes("LogMetadataEvent"))
+
+    const metadataEvent: LogMetadataEvent = JSON.parse(eventLog).LogMetadataEvent
+    ```
+  </Tab>
+
+  <Tab title="Step 2: Deploy Token (Solana)">
+    Use the signed metadata to deploy a wrapped SPL token on Solana:
+
+    ```typescript
+    import { createSolanaBuilder } from "@omni-bridge/solana"
+    import { MPCSignature } from "@omni-bridge/near"
+    import { Connection, Keypair, sendAndConfirmTransaction, Transaction } from "@solana/web3.js"
+
+    const connection = new Connection("https://api.mainnet-beta.solana.com")
+    const solBuilder = createSolanaBuilder({ network: "mainnet", connection })
+
+    // Convert signature for Solana (no recovery ID adjustment needed)
+    const signature = MPCSignature.fromRaw(metadataEvent.signature)
+
+    // Derive the expected mint address (deterministic PDA)
+    const expectedMint = solBuilder.deriveWrappedMint(metadataEvent.metadata_payload.token)
+    console.log("Expected mint:", expectedMint.toBase58())
+
+    // Build deploy instructions
+    const instructions = await solBuilder.buildDeployToken(
+      signature,
+      {
+        token: metadataEvent.metadata_payload.token,
+        name: metadataEvent.metadata_payload.name,
+        symbol: metadataEvent.metadata_payload.symbol,
+        decimals: metadataEvent.metadata_payload.decimals,
+      },
+      payer.publicKey  // Transaction fee payer
+    )
+
+    // Send transaction
+    const { blockhash } = await connection.getLatestBlockhash()
+    const tx = new Transaction({ recentBlockhash: blockhash, feePayer: payer.publicKey })
+    tx.add(...instructions)
+
+    const txHash = await sendAndConfirmTransaction(connection, tx, [payer])
+    console.log("Deploy tx:", txHash)
+    ```
+
+    <Info>
+      Solana wrapped tokens use deterministic PDA addresses. Use `deriveWrappedMint()` to get the address before deployment.
+    </Info>
+  </Tab>
+
+  <Tab title="Handling Already Deployed">
+    If the token is already deployed, the transaction will fail. Handle this gracefully:
+
+    ```typescript
+    try {
+      const instructions = await solBuilder.buildDeployToken(signature, metadata, payer.publicKey)
+      // ... send transaction
+    } catch (error) {
+      if (error.message?.match(/already deployed|already in use|AccountNotSystemOwned/i)) {
+        // Token already exists - use deriveWrappedMint to get the address
+        const mint = solBuilder.deriveWrappedMint(metadata.token)
+        console.log("Token already deployed at:", mint.toBase58())
+      } else {
+        throw error
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  Unlike EVM deployment, Solana doesn't require a separate `bindToken` step. The token mapping is established during deployment.
+</Note>
+
 ## Token Naming Conventions
 
 Bridged tokens follow specific naming patterns:
