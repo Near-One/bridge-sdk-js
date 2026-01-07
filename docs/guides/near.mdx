@@ -166,7 +166,7 @@ Shims convert this to the format your library expects and handle nonce/blockhash
 
 ## Receiving on NEAR (From Other Chains)
 
-When tokens arrive on NEAR from another chain, they land in your account automatically (if relayer fees were paid). The token will be a wrapped version — for example, USDC from Ethereum becomes `usdc.bridge.near` on NEAR.
+When tokens arrive on NEAR from another chain, they land in your account automatically (if relayer fees were paid). Bridged tokens from EVM chains use the format `<eth_address>.factory.bridge.near` — for example, USDC from Ethereum becomes `a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near`.
 
 For manual finalization, see [Manual Finalization](/guides/advanced/manual-finalization).
 
@@ -175,8 +175,9 @@ For manual finalization, see [Manual Finalization](/guides/advanced/manual-final
 | Token | NEAR Address |
 |-------|--------------|
 | wNEAR | `wrap.near` |
-| Bridged USDC | `usdc.bridge.near` |
-| Bridged USDT | `usdt.bridge.near` |
+| Bridged USDC (from Eth) | `a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near` |
+| Bridged USDT (from Eth) | `dac17f958d2ee523a2206206994597c13d831ec7.factory.bridge.near` |
+| Bridged WETH (from Eth) | `c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.factory.bridge.near` |
 | nBTC (bridged Bitcoin) | `nbtc.bridge.near` |
 
 ## Transaction Format

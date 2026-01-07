@@ -36,7 +36,7 @@ This is called "dust" — amounts so small they disappear during conversion.
 
 ```typescript
 const validated = await bridge.validateTransfer({
-  token: "near:usdc.bridge.near",
+  token: "near:a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near", // USDC
   amount: 100000000000000000n,  // Too small!
   sender: "near:alice.near",
   recipient: "eth:0x...",
