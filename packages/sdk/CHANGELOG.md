@@ -1,5 +1,17 @@
 # @omni-bridge/sdk
 
+## 0.0.3
+
+### Patch Changes
+
+- Fix npm installation by resolving workspace:\* references at publish time
+- Updated dependencies
+  - @omni-bridge/core@0.0.3
+  - @omni-bridge/evm@0.0.3
+  - @omni-bridge/near@0.0.3
+  - @omni-bridge/solana@0.0.3
+  - @omni-bridge/btc@0.0.3
+
 ## 0.0.2
 
 ### Patch Changes

@@ -15,7 +15,9 @@
     "prepublishOnly": "bun run build",
     "lefthook": "lefthook install",
     "check-exports": "bun run --filter '*' check-exports",
-    "release": "bun run build && changeset publish",
+    "ci:version": "changeset version && bun update",
+    "ci:publish": "bun run build && for dir in packages/*; do (cd \"$dir\" && bun publish --access public); done && changeset tag",
+    "release": "bun run ci:publish",
     "knip": "knip",
     "example:bitcoin-deposit": "bun run examples/bitcoin-deposit.ts",
     "example:bitcoin-withdraw": "bun run examples/bitcoin-withdraw.ts"
