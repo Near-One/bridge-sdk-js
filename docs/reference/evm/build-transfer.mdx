@@ -83,9 +83,41 @@ const tx = evm.buildTransfer(validated)
 
 ## Notes
 
+### Transaction Value Calculation
+
+The `value` field is calculated automatically based on token type:
+
+| Token Type | `tx.value` Contains |
+|------------|---------------------|
+| ERC20 tokens | `nativeFee` only |
+| Native tokens (ETH, BNB, etc.) | `amount + nativeFee` |
+
+```typescript
+// ERC20: value = nativeFee
+const validated = await bridge.validateTransfer({
+  token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC
+  amount: 1000000n,
+  nativeFee: 1000000000000000n, // 0.001 ETH
+  ...
+})
+const tx = evm.buildTransfer(validated)
+console.log(tx.value) // 1000000000000000n (just nativeFee)
+
+// Native ETH: value = amount + nativeFee
+const validated = await bridge.validateTransfer({
+  token: "eth:0x0000000000000000000000000000000000000000",
+  amount: 1000000000000000000n, // 1 ETH
+  nativeFee: 1000000000000000n, // 0.001 ETH
+  ...
+})
+const tx = evm.buildTransfer(validated)
+console.log(tx.value) // 1001000000000000000n (amount + nativeFee)
+```
+
+### Other Notes
+
 - For ERC20 tokens, call `buildApproval()` first
-- For native ETH, the `value` field includes the transfer amount plus any native fee
-- For ERC20 tokens with native fee, the `value` field only includes the native fee
+- For native token transfers (ETH, BNB, etc.), the `fee` parameter (token fee) is not supported — use `nativeFee` instead
 
 ## Related
 

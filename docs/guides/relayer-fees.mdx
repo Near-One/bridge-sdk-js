@@ -3,15 +3,28 @@ title: Relayer Fees
 description: Use relayers for automatic transfer finalization
 ---
 
-## How It Works
+## Overview
 
-Without relayers:
-1. Initiate transfer on source chain
-2. **Manually** finalize on destination chain
+Cross-chain transfers require finalization on the destination chain. You have two options:
 
-With relayers:
-1. Initiate transfer on source chain (with fee)
-2. Relayer automatically finalizes for you
+| Approach | Pros | Cons |
+|----------|------|------|
+| **With Relayer** | Automatic, no extra work | Requires fee payment |
+| **Manual** | No fees required | Must finalize yourself |
+
+## How Relayers Work
+
+When you include sufficient fees in your transfer:
+
+1. **Initiate** — You submit the transfer on the source chain with fees
+2. **Monitor** — Relayers in the network detect your transfer
+3. **Wait for Finality** — Relayers wait for source chain confirmation
+4. **Finalize** — A relayer submits the finalization transaction on the destination chain
+5. **Claim** — The relayer claims your fee as compensation
+
+<Note>
+  The relayer network is decentralized. Multiple relayers compete to finalize transfers, ensuring reliability and speed.
+</Note>
 
 ## Getting Fee Quotes
 
@@ -72,13 +85,88 @@ await walletClient.sendTransaction(tx)
 
 ## Fee Types
 
-<ResponseField name="transferred_token_fee" type="string">
-  Fee paid in the token being transferred. This is deducted from the amount, so the recipient receives `amount - fee`.
-</ResponseField>
+The bridge supports **two fee payment methods**. You can use either one, or a combination of both:
 
-<ResponseField name="native_token_fee" type="string">
-  Fee paid in the source chain's native token (ETH, NEAR, SOL). This is paid in addition to gas fees.
-</ResponseField>
+<Tabs>
+  <Tab title="Token Fee (fee)">
+    **Paid in the token being transferred.**
+    
+    - Deducted from your transfer amount
+    - Recipient receives `amount - fee`
+    - Good when you want to pay from the transfer itself
+    
+    ```typescript
+    // Sending 100 USDC with 1 USDC fee
+    // Recipient receives 99 USDC
+    const validated = await bridge.validateTransfer({
+      amount: 100_000_000n,  // 100 USDC
+      fee: 1_000_000n,       // 1 USDC token fee
+      nativeFee: 0n,
+      // ...
+    })
+    ```
+  </Tab>
+  
+  <Tab title="Native Fee (nativeFee)">
+    **Paid in the source chain's native token (ETH, SOL, NEAR, etc.).**
+    
+    - Paid separately from the transfer amount
+    - Recipient receives the full amount
+    - Good when you want to preserve the full transfer amount
+    
+    ```typescript
+    // Sending 100 USDC, paying fee in ETH
+    // Recipient receives full 100 USDC
+    const validated = await bridge.validateTransfer({
+      amount: 100_000_000n,           // 100 USDC
+      fee: 0n,
+      nativeFee: 1_000_000_000_000_000n,  // 0.001 ETH
+      // ...
+    })
+    ```
+  </Tab>
+  
+  <Tab title="Combined">
+    **Split payment between both fee types.**
+    
+    The relayer accepts any weighted combination that meets the required USD value.
+    
+    ```typescript
+    // Pay half in USDC, half in ETH
+    const validated = await bridge.validateTransfer({
+      amount: 100_000_000n,
+      fee: 500_000n,                      // 0.5 USDC
+      nativeFee: 500_000_000_000_000n,    // 0.0005 ETH
+      // ...
+    })
+    ```
+  </Tab>
+</Tabs>
+
+### How Relayers Evaluate Fees
+
+Relayers check if your provided fees meet their minimum threshold. The logic works like this:
+
+```
+// Pseudocode for relayer fee validation
+if (native_fee_required == 0 && token_fee_required == 0):
+    return true  // Free transfer route
+    
+if (token_fee_required > 0 && native_fee_required == 0):
+    return provided_token_fee >= token_fee_required
+    
+if (native_fee_required > 0 && token_fee_required == 0):
+    return provided_native_fee >= native_fee_required
+    
+// Weighted combination accepted
+return (provided_token_fee * native_fee_required + 
+        provided_native_fee * token_fee_required) >= 
+       (token_fee_required * native_fee_required)
+```
+
+<Info>
+  This means you have flexibility in how you pay. If the required fee is $1, you can pay entirely in tokens, entirely in native currency, or split between both.
+</Info>
 
 ## Fee Calculation
 
@@ -158,25 +246,12 @@ Fees are calculated based on:
 
 ## Without Relayer Fees
 
-If you set `fee: 0n` and `nativeFee: 0n`, you'll need to finalize manually:
+If you set `fee: 0n` and `nativeFee: 0n`, relayers will ignore your transfer. You'll need to finalize it yourself on the destination chain.
 
-```typescript
-// Source chain: Initiate transfer
-const validated = await bridge.validateTransfer({
-  // ...
-  fee: 0n,
-  nativeFee: 0n,
-})
-const tx = evm.buildTransfer(validated)
-await walletClient.sendTransaction(tx)
-
-// Later: Manual finalization on destination
-// (Requires proof generation and another transaction)
-```
-
-<Warning>
-  Manual finalization requires understanding the proof system for each chain (EVM Merkle proofs, Wormhole VAAs). For most use cases, relayer fees are recommended.
-</Warning>
+See the [Manual Finalization](/guides/manual-finalization) guide for:
+- How different proof systems work (MPC signatures, Merkle proofs, Wormhole VAAs)
+- When transfers are ready for finalization
+- Links to the finalization builder APIs
 
 ## UI Considerations
 

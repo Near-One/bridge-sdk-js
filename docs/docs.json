@@ -29,7 +29,8 @@
               "guides/solana-transfers",
               "guides/bitcoin-transfers",
               "guides/tracking-transfers",
-              "guides/relayer-fees"
+              "guides/relayer-fees",
+              "guides/manual-finalization"
             ]
           },
           {

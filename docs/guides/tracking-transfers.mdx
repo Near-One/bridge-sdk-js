@@ -44,12 +44,33 @@ Transfers progress through these statuses:
 | Status | Description |
 |--------|-------------|
 | `Initialized` | Transfer initiated on source chain |
-| `Signed` | MPC signature obtained |
-| `FastFinalisedOnNear` | Fast finalized on NEAR (with relayer) |
+| `Signed` | MPC signature obtained, ready for finalization |
+| `FastFinalisedOnNear` | Fast finalized on NEAR (relayer provided liquidity) |
 | `FinalisedOnNear` | Finalized on NEAR |
 | `FastFinalised` | Fast finalized on destination |
-| `Finalised` | Fully finalized |
-| `Claimed` | Tokens claimed by recipient |
+| `Finalised` | Fully finalized on destination chain |
+| `Claimed` | Fee claimed by relayer |
+
+### Status Flow Diagrams
+
+**Standard Flow (with relayer):**
+```
+Initialized → Signed → FinalisedOnNear → Finalised → Claimed
+```
+
+**Fast Transfer Flow:**
+```
+Initialized → Signed → FastFinalisedOnNear → FastFinalised → FinalisedOnNear → Finalised → Claimed
+```
+
+**Manual Finalization Flow (no fees):**
+```
+Initialized → Signed → (you finalize) → Finalised
+```
+
+<Note>
+  The `Signed` status indicates the MPC network has signed your transfer. At this point, you can finalize manually if you didn't include relayer fees.
+</Note>
 
 ```typescript
 const statuses = await api.getTransferStatus({ transactionHash: hash })

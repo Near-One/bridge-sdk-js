@@ -227,21 +227,119 @@ const transfers = await api.findTransfers({
 })
 ```
 
-## Relayer Fees
+## Fees and Relayers
 
-To use the relayer network for automatic finalization, include the relayer fee in your transfer:
+Cross-chain transfers can be finalized in two ways:
+
+1. **Automatic (Relayer)** — Pay a fee and the relayer network handles finalization
+2. **Manual** — Finalize the transfer yourself on the destination chain (no fee required)
+
+### Fee Types
+
+The bridge supports two fee payment options:
+
+| Fee Type | Parameter | Paid In | When to Use |
+|----------|-----------|---------|-------------|
+| **Token Fee** | `fee` | The token being transferred | When you want to pay from the transfer amount |
+| **Native Fee** | `nativeFee` | Source chain's native token (ETH, SOL, etc.) | When you want to keep the full transfer amount |
+
+You can provide **either or both** — the relayer accepts any combination that meets the required USD value.
 
 ```typescript
-const fee = await api.getFee(sender, recipient, token, amount)
+// Get required fee from the API
+const feeInfo = await api.getFee(sender, recipient, token, amount)
 
+// Option 1: Pay in transferred token
 const validated = await bridge.validateTransfer({
-  // ...
-  fee: BigInt(fee.transferred_token_fee ?? "0"),
-  nativeFee: fee.native_token_fee ?? 0n,
+  ...params,
+  fee: BigInt(feeInfo.transferred_token_fee ?? "0"),
+  nativeFee: 0n,
+})
+
+// Option 2: Pay in native token (e.g., ETH)
+const validated = await bridge.validateTransfer({
+  ...params,
+  fee: 0n,
+  nativeFee: feeInfo.native_token_fee ?? 0n,
+})
+
+// Option 3: Split between both (weighted combination accepted)
+const validated = await bridge.validateTransfer({
+  ...params,
+  fee: BigInt(feeInfo.transferred_token_fee ?? "0") / 2n,
+  nativeFee: (feeInfo.native_token_fee ?? 0n) / 2n,
 })
 ```
 
-With fees included, relayers will automatically finalize your transfer on the destination chain.
+### How Fees Work
+
+When you include sufficient fees, relayers in the network will:
+1. Monitor for your transfer initiation
+2. Wait for finality on the source chain
+3. Submit the finalization transaction on the destination chain
+4. Claim the fee as compensation
+
+**Note:** The `fee` (token fee) is deducted from your transfer amount. If you send 100 USDC with a 1 USDC fee, the recipient receives 99 USDC.
+
+### Manual Finalization
+
+If you prefer not to pay fees (or want full control), you can finalize transfers yourself:
+
+```typescript
+// 1. Initiate with zero fees
+const validated = await bridge.validateTransfer({
+  ...params,
+  fee: 0n,
+  nativeFee: 0n,
+})
+
+// 2. Wait for the transfer to be signed (check status)
+const status = await api.getTransferStatus({ transactionHash: txHash })
+// Wait until status includes "Signed"
+
+// 3. Get the transfer details including signature
+const transfers = await api.getTransfer({ transactionHash: txHash })
+
+// 4. Build and submit finalization on destination chain
+// (See chain-specific package READMEs for finalization examples)
+```
+
+For EVM destinations, use `evmBuilder.buildFinalization()`. For NEAR, use `nearBuilder.buildFinalization()`.
+
+## Transfer Lifecycle
+
+Every transfer goes through these stages:
+
+| Status | Description |
+|--------|-------------|
+| `Initialized` | Transfer submitted on source chain |
+| `Signed` | MPC network has signed the transfer (ready for finalization) |
+| `FinalisedOnNear` | Completed on NEAR (for transfers to NEAR) |
+| `Finalised` | Completed on destination chain |
+| `Claimed` | Fee claimed by relayer (if applicable) |
+
+Additional statuses for fast transfers:
+- `FastFinalisedOnNear` — Fast-finalized on NEAR before full confirmation
+- `FastFinalised` — Fast-finalized on destination chain
+
+Track your transfer:
+
+```typescript
+const api = new BridgeAPI("mainnet")
+
+// Poll for status
+const statuses = await api.getTransferStatus({ transactionHash: "0x..." })
+console.log("Current status:", statuses[statuses.length - 1])
+
+// Get full transfer details
+const transfers = await api.getTransfer({ transactionHash: "0x..." })
+const transfer = transfers[0]
+
+// Check specific milestones
+if (transfer.initialized) console.log("Initialized:", transfer.initialized)
+if (transfer.signed) console.log("Signed:", transfer.signed)
+if (transfer.finalised) console.log("Finalized:", transfer.finalised)
+```
 
 ## License
 
