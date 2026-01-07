@@ -1,0 +1,153 @@
+---
+title: Manual Finalization
+description: Finalize transfers yourself without relayer fees
+---
+
+When you set `fee: 0n` and `nativeFee: 0n`, relayers won't process your transfer. You finalize it yourself on the destination chain.
+
+**When to use this:**
+- Cost savings on high-volume transfers
+- Running your own relayer infrastructure
+- Specific timing or ordering requirements
+
+## The Process
+
+1. Initiate transfer on source chain (with zero fees)
+2. Wait for proof/signature to become available
+3. Submit finalization transaction on destination chain
+
+The proof type depends on the source chain:
+
+| Source | Proof Type | Wait Time |
+|--------|------------|-----------|
+| NEAR | MPC Signature | ~1-5 min |
+| Ethereum | Merkle Proof | ~15-20 min |
+| L2s (Base, Arb, etc.) | Wormhole VAA | ~1 min |
+| Solana | Wormhole VAA | ~15 sec |
+
+## When is Finalization Ready?
+
+Poll the API for the `Signed` status:
+
+```typescript
+import { BridgeAPI } from "@omni-bridge/core"
+
+const api = new BridgeAPI("mainnet")
+
+const statuses = await api.getTransferStatus({ transactionHash: hash })
+
+if (statuses.includes("Signed")) {
+  // Ready to finalize!
+}
+```
+
+For Ethereum → NEAR specifically, you need to wait for the light client to sync the block (check `Initialized` status and wait ~15-20 min).
+
+## From NEAR to EVM
+
+After the transfer is signed, extract the signature and finalize on EVM:
+
+```typescript
+import { createEvmBuilder } from "@omni-bridge/evm"
+import { ChainKind } from "@omni-bridge/core"
+
+const evm = createEvmBuilder({ network: "mainnet", chain: ChainKind.Eth })
+
+// Parse the SignTransferEvent from NEAR transaction logs
+// Extract: payload, signature
+
+const tx = evm.buildFinalization(payload, signature)
+await walletClient.sendTransaction(tx)
+```
+
+The MPC signature needs format conversion for EVM — the SDK handles this when you use `buildFinalization`.
+
+## From EVM to NEAR
+
+### Ethereum (Merkle Proof)
+
+Ethereum uses the NEAR light client for verification:
+
+```typescript
+import { createNearBuilder, toNearKitTransaction } from "@omni-bridge/near"
+import { getEvmProof, ProofKind } from "@omni-bridge/evm"
+
+const nearBuilder = createNearBuilder({ network: "mainnet" })
+
+// Wait for light client to sync (~15-20 min after source tx confirms)
+
+// Generate Merkle proof
+const proof = await getEvmProof(txHash, ChainKind.Eth)
+
+// Serialize for NEAR
+const proverArgs = nearBuilder.serializeEvmProofArgs({
+  proof_kind: ProofKind.InitTransfer,
+  proof,
+})
+
+// Build and send finalization
+const tx = nearBuilder.buildFinalization(ChainKind.Eth, proverArgs, signerId)
+await toNearKitTransaction(near, tx).send()
+```
+
+### L2s (Wormhole VAA)
+
+Base, Arbitrum, Polygon, and BNB use Wormhole:
+
+```typescript
+import { getWormholeVaa } from "@omni-bridge/core"
+
+// Wait for Wormhole guardians to sign (~1 min)
+const vaa = await getWormholeVaa(txSignature, "Mainnet")
+
+// Serialize for NEAR
+const proverArgs = nearBuilder.serializeWormholeProofArgs({
+  proof_kind: ProofKind.InitTransfer,
+  vaa,
+})
+
+// Finalize
+const tx = nearBuilder.buildFinalization(ChainKind.Base, proverArgs, signerId)
+await toNearKitTransaction(near, tx).send()
+```
+
+## From Solana to NEAR
+
+Solana also uses Wormhole VAAs:
+
+```typescript
+import { getWormholeVaa } from "@omni-bridge/core"
+
+const vaa = await getWormholeVaa(solanaSignature, "Mainnet")
+
+const proverArgs = nearBuilder.serializeWormholeProofArgs({
+  proof_kind: ProofKind.InitTransfer,
+  vaa,
+})
+
+const tx = nearBuilder.buildFinalization(ChainKind.Sol, proverArgs, signerId)
+await toNearKitTransaction(near, tx).send()
+```
+
+## Finalization Builders
+
+Each destination has a `buildFinalization` method:
+
+| Destination | Method |
+|-------------|--------|
+| EVM | `evmBuilder.buildFinalization(payload, signature)` |
+| NEAR | `nearBuilder.buildFinalization(chain, proverArgs, signerId)` |
+| Solana | `solanaBuilder.buildFinalization(payload, signature, payer)` |
+
+## Working Examples
+
+For complete, runnable examples:
+- **NEAR → EVM**: [`e2e/near-to-eth.test.ts`](https://github.com/near-one/bridge-sdk-js/blob/main/e2e/near-to-eth.test.ts)
+- **EVM → NEAR**: [`e2e/eth-to-near.test.ts`](https://github.com/near-one/bridge-sdk-js/blob/main/e2e/eth-to-near.test.ts)
+
+## Consider Using Relayers Instead
+
+Manual finalization adds complexity. Use [relayer fees](/guides/fees) if:
+- You want fire-and-forget simplicity
+- The fee cost is acceptable
+- You don't need precise timing control

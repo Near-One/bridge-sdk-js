@@ -16,43 +16,38 @@
         "icon": "book",
         "groups": [
           {
-            "group": "Getting Started",
+            "group": "Start Here",
             "icon": "rocket",
-            "pages": ["introduction", "quickstart"]
+            "pages": ["introduction", "getting-started"]
+          },
+          {
+            "group": "Core Concepts",
+            "icon": "lightbulb",
+            "pages": [
+              "core-concepts/transfer-flow",
+              "core-concepts/omni-addresses",
+              "core-concepts/decimals"
+            ]
           },
           {
             "group": "Guides",
             "icon": "map",
             "pages": [
-              "guides/evm-transfers",
-              "guides/near-transfers",
-              "guides/solana-transfers",
-              "guides/bitcoin-transfers",
-              "guides/tracking-transfers",
-              "guides/relayer-fees",
-              "guides/fast-transfers",
-              "guides/manual-finalization",
-              "guides/token-deployment"
+              "guides/evm",
+              "guides/near",
+              "guides/solana",
+              "guides/bitcoin",
+              "guides/fees",
+              "guides/tracking"
             ]
           },
           {
-            "group": "Concepts",
-            "icon": "lightbulb",
-            "pages": [
-              "concepts/architecture",
-              "concepts/omni-addresses",
-              "concepts/decimal-normalization",
-              "concepts/supported-chains"
-            ]
-          },
-          {
-            "group": "Examples",
+            "group": "Advanced",
             "icon": "flask",
             "pages": [
-              "examples/eth-to-near",
-              "examples/near-to-eth",
-              "examples/solana-bridge",
-              "examples/bitcoin-bridge"
+              "guides/advanced/manual-finalization",
+              "guides/advanced/fast-transfers",
+              "guides/advanced/token-deployment"
             ]
           }
         ]

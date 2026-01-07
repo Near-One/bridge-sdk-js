@@ -1,0 +1,161 @@
+---
+title: Getting Started
+description: Build your first cross-chain transfer in 5 minutes
+---
+
+This guide walks you through bridging USDC from Ethereum to NEAR. By the end, you'll understand the pattern that works for all chains.
+
+## Install
+
+```bash
+npm install @omni-bridge/core @omni-bridge/evm
+```
+
+## The Pattern
+
+Every transfer follows three steps:
+
+1. **Validate** — Check that addresses, amounts, and tokens are valid
+2. **Build** — Get an unsigned transaction for the source chain
+3. **Sign & Send** — Use your wallet or library to broadcast
+
+```typescript
+import { createBridge, ChainKind } from "@omni-bridge/core"
+import { createEvmBuilder } from "@omni-bridge/evm"
+import { createWalletClient, http } from "viem"
+import { mainnet } from "viem/chains"
+import { privateKeyToAccount } from "viem/accounts"
+
+// Setup
+const bridge = createBridge({ network: "mainnet" })
+const evm = createEvmBuilder({ network: "mainnet", chain: ChainKind.Eth })
+
+const account = privateKeyToAccount("0x...")
+const wallet = createWalletClient({
+  chain: mainnet,
+  transport: http(),
+  account,
+})
+
+// 1. Validate the transfer
+const validated = await bridge.validateTransfer({
+  token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC on Ethereum
+  amount: 1_000_000n, // 1 USDC (6 decimals)
+  sender: `eth:${account.address}`,
+  recipient: "near:alice.near",
+  fee: 0n,
+  nativeFee: 0n,
+})
+
+// 2. Approve the bridge to spend your tokens (ERC20 only)
+const approval = evm.buildApproval(
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  1_000_000n
+)
+await wallet.sendTransaction(approval)
+
+// 3. Build and send the transfer
+const tx = evm.buildTransfer(validated)
+const hash = await wallet.sendTransaction(tx)
+
+console.log("Transfer initiated:", hash)
+```
+
+That's it. The transfer is now in progress. Relayers will finalize it on NEAR within a few minutes.
+
+## What Just Happened
+
+Let's break down the key parts:
+
+### OmniAddress Format
+
+Addresses include a chain prefix so the SDK knows which chain they belong to:
+
+```typescript
+"eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"  // Token on Ethereum
+"near:alice.near"                                   // Account on NEAR
+"sol:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" // Token on Solana
+```
+
+See [OmniAddress Format](/core-concepts/omni-addresses) for the full list.
+
+### Validation
+
+`validateTransfer()` does the heavy lifting:
+
+- Checks that addresses are valid for their chains
+- Verifies the token is registered on the bridge
+- Ensures the amount survives [decimal normalization](/core-concepts/decimals)
+- Returns a `ValidatedTransfer` object the builders need
+
+### Unsigned Transactions
+
+`buildTransfer()` returns a plain object — not a signed transaction:
+
+```typescript
+{
+  to: "0x...",      // Bridge contract
+  data: "0x...",    // Encoded function call
+  value: 0n,        // Native token amount (for ETH transfers)
+  chainId: 1        // Ethereum mainnet
+}
+```
+
+This works directly with viem's `sendTransaction()` or ethers' `signer.sendTransaction()`.
+
+## Using Testnet
+
+For development, switch to testnet:
+
+```typescript
+const bridge = createBridge({ network: "testnet" })
+const evm = createEvmBuilder({ network: "testnet", chain: ChainKind.Eth })
+```
+
+Testnet uses Sepolia for Ethereum. Make sure your wallet and RPC are configured for the right network.
+
+## Track Your Transfer
+
+Check the status using the API client:
+
+```typescript
+import { BridgeAPI } from "@omni-bridge/core"
+
+const api = new BridgeAPI("mainnet")
+const status = await api.getTransferStatus({ transactionHash: hash })
+
+console.log("Current status:", status[status.length - 1])
+// "Initialized" → "Signed" → "FinalisedOnNear" → "Finalised"
+```
+
+See [Tracking Transfers](/guides/tracking) for polling patterns and status meanings.
+
+## Next Steps
+
+Now that you understand the pattern, pick the guide for your source chain:
+
+<CardGroup cols={2}>
+  <Card title="EVM Chains" icon="ethereum" href="/guides/evm">
+    Ethereum, Base, Arbitrum, Polygon, BNB
+  </Card>
+  <Card title="NEAR" icon="circle-nodes" href="/guides/near">
+    NEAR Protocol
+  </Card>
+  <Card title="Solana" icon="sun" href="/guides/solana">
+    Solana
+  </Card>
+  <Card title="Bitcoin" icon="bitcoin" href="/guides/bitcoin">
+    Bitcoin and Zcash
+  </Card>
+</CardGroup>
+
+Or learn more about the core concepts:
+
+<CardGroup cols={2}>
+  <Card title="Transfer Flow" icon="arrows-split-up-and-left" href="/core-concepts/transfer-flow">
+    How cross-chain transfers work
+  </Card>
+  <Card title="Decimal Normalization" icon="calculator" href="/core-concepts/decimals">
+    Why small amounts can fail
+  </Card>
+</CardGroup>

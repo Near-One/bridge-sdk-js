@@ -1,0 +1,246 @@
+---
+title: Tracking Transfers
+description: Monitor your transfer's progress
+---
+
+After initiating a transfer, use the API client to check its status.
+
+## Setup
+
+```typescript
+import { BridgeAPI } from "@omni-bridge/core"
+
+const api = new BridgeAPI("mainnet")
+```
+
+## Check Status
+
+```typescript
+const statuses = await api.getTransferStatus({
+  transactionHash: "0x..."
+})
+
+const latest = statuses[statuses.length - 1]
+console.log("Current status:", latest)
+```
+
+Or by origin chain and nonce:
+
+```typescript
+const statuses = await api.getTransferStatus({
+  originChain: "Eth",
+  originNonce: 12345
+})
+```
+
+## Status Progression
+
+Transfers move through these statuses:
+
+| Status | Meaning |
+|--------|---------|
+| `Initialized` | Transfer submitted on source chain |
+| `Signed` | MPC signature obtained |
+| `FinalisedOnNear` | Finalized on NEAR |
+| `Finalised` | Finalized on destination chain |
+| `Claimed` | Relayer claimed their fee |
+
+For fast transfers (relayer fronts liquidity):
+
+| Status | Meaning |
+|--------|---------|
+| `FastFinalisedOnNear` | Relayer fronted tokens on NEAR |
+| `FastFinalised` | Relayer fronted tokens on destination |
+
+### Typical Flows
+
+**Standard (with relayer fees):**
+```
+Initialized → Signed → FinalisedOnNear → Finalised → Claimed
+```
+
+**Fast transfer:**
+```
+Initialized → FastFinalisedOnNear → FastFinalised → ... → Claimed
+```
+
+**Manual (no fees):**
+```
+Initialized → Signed → (you finalize manually)
+```
+
+## Polling Pattern
+
+```typescript
+async function waitForCompletion(txHash: string, timeoutMs = 300_000) {
+  const startTime = Date.now()
+  
+  while (Date.now() - startTime < timeoutMs) {
+    const statuses = await api.getTransferStatus({ transactionHash: txHash })
+    const latest = statuses[statuses.length - 1]
+    
+    if (latest === "Finalised" || latest === "Claimed") {
+      return latest
+    }
+    
+    console.log(`Status: ${latest ?? "pending"}`)
+    await new Promise(r => setTimeout(r, 10_000))
+  }
+  
+  throw new Error("Transfer timeout")
+}
+
+// Usage
+const finalStatus = await waitForCompletion(hash)
+console.log("Complete!", finalStatus)
+```
+
+## Get Transfer Details
+
+Fetch full transfer information:
+
+```typescript
+const transfers = await api.getTransfer({
+  transactionHash: "0x..."
+})
+
+const transfer = transfers[0]
+
+if (transfer?.transfer_message) {
+  console.log({
+    token: transfer.transfer_message.token,
+    amount: transfer.transfer_message.amount,
+    sender: transfer.transfer_message.sender,
+    recipient: transfer.transfer_message.recipient,
+  })
+}
+
+// Transaction hashes at each stage
+if (transfer?.initialized?.EVMLog) {
+  console.log("Source TX:", transfer.initialized.EVMLog.transaction_hash)
+}
+if (transfer?.finalised?.NearReceipt) {
+  console.log("Destination TX:", transfer.finalised.NearReceipt.transaction_hash)
+}
+```
+
+## Find Transfers
+
+Search by sender or other criteria:
+
+```typescript
+// By sender
+const transfers = await api.findTransfers({
+  sender: "eth:0x...",
+  limit: 10
+})
+
+// Pagination
+const page2 = await api.findTransfers({
+  sender: "eth:0x...",
+  offset: 10,
+  limit: 10
+})
+```
+
+## List Supported Tokens
+
+```typescript
+const tokens = await api.getAllowlistedTokens()
+
+for (const [name, address] of Object.entries(tokens)) {
+  console.log(`${name}: ${address}`)
+}
+```
+
+## When is Manual Finalization Ready?
+
+Check for the `Signed` status:
+
+```typescript
+const statuses = await api.getTransferStatus({ transactionHash: hash })
+
+if (statuses.includes("Signed")) {
+  // Ready for manual finalization
+  // The MPC signature is available
+}
+```
+
+For EVM → NEAR (Ethereum mainnet only), you need to wait for the light client instead:
+
+```typescript
+if (statuses.includes("Initialized")) {
+  // Wait ~15-20 minutes for NEAR light client to sync
+  // Then generate Merkle proof and finalize
+}
+```
+
+## Error Handling
+
+```typescript
+try {
+  const statuses = await api.getTransferStatus({ transactionHash: hash })
+  
+  if (statuses.length === 0) {
+    console.log("Transfer not found - may still be processing")
+  }
+} catch (error) {
+  if (error.message.includes("rate limit")) {
+    console.log("Slow down polling")
+  }
+}
+```
+
+## Complete Example
+
+```typescript
+import { createBridge, ChainKind, BridgeAPI } from "@omni-bridge/core"
+import { createEvmBuilder } from "@omni-bridge/evm"
+
+const bridge = createBridge({ network: "mainnet" })
+const evm = createEvmBuilder({ network: "mainnet", chain: ChainKind.Eth })
+const api = new BridgeAPI("mainnet")
+
+// Initiate transfer
+const validated = await bridge.validateTransfer({
+  token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  amount: 1_000_000n,
+  sender: "eth:0x...",
+  recipient: "near:alice.near",
+  fee: 0n,
+  nativeFee: 0n,
+})
+
+const tx = evm.buildTransfer(validated)
+const hash = await wallet.sendTransaction(tx)
+
+// Track until complete
+let lastStatus = ""
+while (true) {
+  const statuses = await api.getTransferStatus({ transactionHash: hash })
+  const latest = statuses[statuses.length - 1]
+  
+  if (latest !== lastStatus) {
+    console.log(`Status: ${latest}`)
+    lastStatus = latest
+  }
+  
+  if (latest === "Finalised" || latest === "Claimed") {
+    console.log("Done!")
+    break
+  }
+  
+  await new Promise(r => setTimeout(r, 15_000))
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Manual Finalization" icon="hand" href="/guides/advanced/manual-finalization">
+    Finalize without paying relayer fees
+  </Card>
+  <Card title="Fast Transfers" icon="bolt" href="/guides/advanced/fast-transfers">
+    Near-instant transfers for relayers
+  </Card>
+</CardGroup>

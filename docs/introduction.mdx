@@ -1,95 +1,25 @@
 ---
 title: Introduction
-description: TypeScript SDK for cross-chain token transfers via the Omni Bridge protocol
+description: TypeScript SDK for cross-chain token transfers
 ---
 
-<CardGroup cols={2}>
-  <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Get up and running in 5 minutes
-  </Card>
-  <Card title="Architecture" icon="sitemap" href="/concepts/architecture">
-    Understand the transaction builder pattern
-  </Card>
-  <Card title="EVM Transfers" icon="ethereum" href="/guides/evm-transfers">
-    Bridge tokens from Ethereum, Base, Arbitrum
-  </Card>
-  <Card title="API Reference" icon="code" href="/reference/core/create-bridge">
-    Complete API documentation
-  </Card>
-</CardGroup>
+The Omni Bridge SDK lets you build cross-chain token transfers into your application. It handles the complex parts — address validation, amount encoding, fee calculation — and gives you back unsigned transactions to sign and broadcast however you like.
 
-## How It Works
+## What It Does
 
-The SDK is a **transaction builder** — it handles all the bridge protocol complexity (validation, encoding, fee calculation) and gives you back unsigned transactions. You then sign and broadcast using whatever library you prefer.
+You tell the SDK where tokens should go. It figures out the rest:
 
-This design gives you full control over signing, gas estimation, and transaction management. Whether you're building a frontend wallet integration or a backend service with your own key management, the SDK fits your architecture.
+- Validates addresses across different chain formats
+- Normalizes token amounts between different decimal precisions
+- Encodes transactions for the bridge contracts
+- Calculates fees for relayer-assisted finalization
 
-## The Three-Step Flow
-
-Every cross-chain transfer follows the same pattern:
-
-<Steps>
-  <Step title="Validate">
-    Call `bridge.validateTransfer()` with your transfer parameters. The SDK checks that addresses are valid, the token is registered, amounts survive decimal normalization, and returns a `ValidatedTransfer` object.
-  </Step>
-  <Step title="Build">
-    Pass the validated transfer to a chain-specific builder (like `evm.buildTransfer()`). You get back an unsigned transaction — a plain object with `to`, `data`, `value`, etc.
-  </Step>
-  <Step title="Sign & Send">
-    Use your preferred library to sign and broadcast. The unsigned transaction format works directly with viem, ethers v6, near-kit, @near-js/*, and @solana/web3.js.
-  </Step>
-</Steps>
-
-```typescript
-import { createBridge, ChainKind } from "@omni-bridge/core"
-import { createEvmBuilder } from "@omni-bridge/evm"
-
-// 1. Validate
-const bridge = createBridge({ network: "mainnet" })
-const validated = await bridge.validateTransfer({
-  token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-  amount: 1000000n,
-  fee: 0n,
-  nativeFee: 0n,
-  sender: "eth:0xYourAddress...",
-  recipient: "near:alice.near",
-})
-
-// 2. Build
-const evm = createEvmBuilder({ network: "mainnet", chain: ChainKind.Eth })
-const tx = evm.buildTransfer(validated)
-
-// 3. Sign & Send (using viem, ethers, or any wallet)
-await walletClient.sendTransaction(tx)
-```
-
-## Packages
-
-Install the umbrella package for everything, or pick individual packages to minimize bundle size:
-
-<Tree>
-  <Tree.Folder name="@omni-bridge" defaultOpen>
-    <Tree.File name="sdk      → Umbrella (re-exports all)" />
-    <Tree.File name="core     → Validation, types, API client" />
-    <Tree.File name="evm      → Ethereum, Base, Arbitrum, Polygon, BNB" />
-    <Tree.File name="near     → NEAR Protocol" />
-    <Tree.File name="solana   → Solana" />
-    <Tree.File name="btc      → Bitcoin, Zcash" />
-  </Tree.Folder>
-</Tree>
-
-```bash
-# Install everything
-npm install @omni-bridge/sdk
-
-# Or just what you need
-npm install @omni-bridge/core @omni-bridge/evm
-```
+The SDK is **library agnostic**. It returns plain transaction objects that work with viem, ethers, @solana/web3.js, near-kit, or whatever signing solution you prefer.
 
 ## Supported Chains
 
 <CardGroup cols={3}>
-  <Card title="EVM Chains" icon="ethereum">
+  <Card title="EVM" icon="ethereum">
     Ethereum, Base, Arbitrum, Polygon, BNB Chain
   </Card>
   <Card title="NEAR" icon="circle-nodes">
@@ -99,26 +29,36 @@ npm install @omni-bridge/core @omni-bridge/evm
     Solana
   </Card>
   <Card title="Bitcoin" icon="bitcoin">
-    Bitcoin
-  </Card>
-  <Card title="Zcash" icon="shield-halved">
-    Zcash
+    Bitcoin, Zcash
   </Card>
 </CardGroup>
 
-## Next Steps
+## Packages
 
-<CardGroup cols={2}>
-  <Card title="Quickstart" icon="play" href="/quickstart">
-    Build your first cross-chain transfer
-  </Card>
-  <Card title="EVM Guide" icon="ethereum" href="/guides/evm-transfers">
-    Transfer from Ethereum and L2s
-  </Card>
-  <Card title="NEAR Guide" icon="circle-nodes" href="/guides/near-transfers">
-    Transfer from NEAR Protocol
-  </Card>
-  <Card title="Architecture" icon="sitemap" href="/concepts/architecture">
-    Deep dive into how the SDK works
-  </Card>
-</CardGroup>
+Install everything with the umbrella package, or just the chains you need:
+
+```bash
+# Everything
+npm install @omni-bridge/sdk
+
+# Just EVM chains
+npm install @omni-bridge/core @omni-bridge/evm
+
+# Just NEAR
+npm install @omni-bridge/core @omni-bridge/near
+```
+
+| Package | What it's for |
+|---------|---------------|
+| `@omni-bridge/core` | Validation, types, API client (always needed) |
+| `@omni-bridge/evm` | Ethereum, Base, Arbitrum, Polygon, BNB |
+| `@omni-bridge/near` | NEAR Protocol |
+| `@omni-bridge/solana` | Solana |
+| `@omni-bridge/btc` | Bitcoin, Zcash |
+| `@omni-bridge/sdk` | Re-exports everything |
+
+## Next Step
+
+<Card title="Getting Started" icon="rocket" href="/getting-started">
+  Build your first cross-chain transfer in 5 minutes
+</Card>

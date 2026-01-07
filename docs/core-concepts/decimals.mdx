@@ -1,0 +1,138 @@
+---
+title: Decimal Normalization
+description: Why small amounts can fail and how to prevent it
+---
+
+<Warning>
+**This is the most common cause of transfer failures.** Read this before building any production integration.
+</Warning>
+
+## The Problem
+
+Different chains use different decimal precisions for the same token:
+
+| Token | Ethereum | NEAR | Solana |
+|-------|----------|------|--------|
+| USDC | 6 decimals | 24 decimals | 6 decimals |
+| WETH | 18 decimals | 24 decimals | 8 decimals |
+
+When bridging tokens, amounts must be converted between these precisions. Small amounts can round to zero during conversion — and a zero-amount transfer fails.
+
+## Example: The Dust Problem
+
+Suppose you try to bridge 0.0000001 USDC from NEAR (24 decimals) to Ethereum (6 decimals):
+
+```typescript
+// On NEAR: 0.0000001 USDC = 100000000000000000 (24 decimals)
+// Converted to Ethereum: rounds down to 0 (6 decimals)
+// Result: transfer fails
+```
+
+This is called "dust" — amounts so small they disappear during conversion.
+
+## How the SDK Protects You
+
+`validateTransfer()` catches this automatically:
+
+```typescript
+const validated = await bridge.validateTransfer({
+  token: "near:usdc.bridge.near",
+  amount: 100000000000000000n,  // Too small!
+  sender: "near:alice.near",
+  recipient: "eth:0x...",
+  fee: 0n,
+  nativeFee: 0n,
+})
+// Throws ValidationError with code "AMOUNT_TOO_SMALL"
+```
+
+The validation checks that your amount (minus fees) survives the round-trip conversion.
+
+## Finding Minimum Amounts
+
+Use these helpers to determine safe transfer amounts:
+
+```typescript
+import { getMinimumTransferableAmount, validateTransferAmount } from "@omni-bridge/core"
+
+// Get the minimum amount that survives conversion
+const min = getMinimumTransferableAmount(6, 24)  // 1n
+
+// Validate a specific amount
+try {
+  validateTransferAmount(
+    amount,     // Amount in source decimals
+    fee,        // Fee in source decimals  
+    6,          // Source decimals
+    24          // Destination decimals
+  )
+} catch {
+  console.log("Amount too small")
+}
+```
+
+## Building UI Validation
+
+Show users the minimum before they submit:
+
+```typescript
+import { getMinimumTransferableAmount } from "@omni-bridge/core"
+import { formatUnits } from "viem"
+
+const sourceDecimals = 6   // USDC on Ethereum
+const destDecimals = 24    // USDC on NEAR
+
+const minAmount = getMinimumTransferableAmount(sourceDecimals, destDecimals)
+const minDisplay = formatUnits(minAmount, sourceDecimals)
+
+console.log(`Minimum transfer: ${minDisplay} USDC`)
+```
+
+## Handling Errors
+
+```typescript
+import { ValidationError, getMinimumTransferableAmount } from "@omni-bridge/core"
+import { formatUnits } from "viem"
+
+try {
+  await bridge.validateTransfer(params)
+} catch (error) {
+  if (error instanceof ValidationError && error.code === "AMOUNT_TOO_SMALL") {
+    const min = getMinimumTransferableAmount(sourceDecimals, destDecimals)
+    showError(`Minimum amount is ${formatUnits(min, sourceDecimals)}`)
+  }
+}
+```
+
+## The ValidatedTransfer Contains Normalized Amounts
+
+After validation succeeds, the result includes the normalized amount:
+
+```typescript
+const validated = await bridge.validateTransfer(params)
+
+console.log(validated.normalizedAmount)  // Amount safe for cross-chain
+console.log(validated.normalizedFee)     // Fee safe for cross-chain
+```
+
+Builders use these normalized values internally.
+
+## Fees Matter Too
+
+Remember: `amount - fee` must survive normalization, not just `amount`. If you're paying fees from the transfer:
+
+```typescript
+// This might fail even if amount is large enough
+await bridge.validateTransfer({
+  amount: 1_000_000n,    // 1 USDC
+  fee: 999_999n,         // Almost all of it
+  // Net amount: 1 unit — might round to zero!
+})
+```
+
+## Key Takeaways
+
+1. **Always use `validateTransfer()`** — Never skip validation
+2. **Check minimums in your UI** — Show users the minimum before they submit
+3. **Handle `AMOUNT_TOO_SMALL` errors** — Give users a helpful message
+4. **Remember fees reduce the amount** — The net amount must survive, not just the gross
