@@ -1,5 +1,13 @@
 # omni-bridge-sdk
 
+## 0.24.2
+
+### Patch Changes
+
+- 9d6e78c: feat: add Polygon (Pol) chain support to bridge SDK
+- 8a65ea5: chore(deps): bump @wormhole-foundation/sdk from 4.1.0 to 4.2.0
+- 1dd7181: chore(deps): bump @near-wallet-selector/core from 10.1.3 to 10.1.4
+
 ## 0.24.1
 
 ### Patch Changes
