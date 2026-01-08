@@ -1,0 +1,1101 @@
+---
+title: "@omni-bridge/btc"
+description: Bitcoin and Zcash UTXO transaction builder for Omni Bridge
+---
+
+## Import
+
+```typescript
+import {
+  // Builder
+  createBtcBuilder,
+  type BtcBuilder,
+  
+  // Fee calculation
+  linearFeeCalculator,
+  zcashFeeCalculator,
+  calculateZcashFee,
+  ZCASH_DUST_THRESHOLD,
+  
+  // Zcash utilities
+  getZcashScript,
+  
+  // RPC utilities
+  UtxoRpcClient,
+  buildBitcoinMerkleProof,
+  
+  // Types
+  type BtcBuilderConfig,
+  type BtcWithdrawalPlan,
+  type BtcDepositProof,
+  type BtcMerkleProof,
+  type UTXO,
+  type NormalizedUTXO,
+  type FeeCalculator,
+  type LinearFeeParameters,
+  type UtxoSelectionOptions,
+  type UtxoSelectionResult,
+  type UtxoPlanOverrides,
+  type UtxoRpcConfig,
+  type UtxoChainType,
+} from "@omni-bridge/btc"
+```
+
+---
+
+## createBtcBuilder
+
+Factory function to create a Bitcoin or Zcash transaction builder.
+
+### Signature
+
+```typescript
+function createBtcBuilder(config: BtcBuilderConfig): BtcBuilder
+```
+
+### Parameters
+
+<ResponseField name="config" type="BtcBuilderConfig" required>
+  Configuration for the builder.
+  <Expandable title="BtcBuilderConfig properties">
+    <ResponseField name="network" type="'mainnet' | 'testnet'" required>
+      The network to connect to.
+    </ResponseField>
+
+    <ResponseField name="chain" type="'btc' | 'zcash'">
+      The UTXO chain type. Defaults to `"btc"`.
+    </ResponseField>
+
+    <ResponseField name="apiUrl" type="string">
+      Custom Blockstream-compatible API URL for broadcasting transactions and fetching data.
+      Defaults to `https://blockstream.info/api` (mainnet) or `https://blockstream.info/testnet/api` (testnet).
+    </ResponseField>
+
+    <ResponseField name="rpcUrl" type="string">
+      Bitcoin/Zcash JSON-RPC URL for proof generation.
+      Defaults to `https://bitcoin-rpc.publicnode.com` (mainnet) or `https://bitcoin-testnet-rpc.publicnode.com` (testnet).
+    </ResponseField>
+
+    <ResponseField name="rpcHeaders" type="Record<string, string>">
+      Optional HTTP headers for RPC authentication (e.g., for authenticated nodes).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Returns
+
+<ResponseField name="BtcBuilder" type="BtcBuilder">
+  A builder instance with methods for UTXO operations, proof generation, and transaction broadcasting.
+</ResponseField>
+
+### Example
+
+```typescript
+import { createBtcBuilder } from "@omni-bridge/btc"
+
+// Bitcoin mainnet
+const btc = createBtcBuilder({
+  network: "mainnet",
+  chain: "btc",
+})
+
+// Zcash mainnet
+const zec = createBtcBuilder({
+  network: "mainnet",
+  chain: "zcash",
+})
+
+// With custom RPC
+const btcCustom = createBtcBuilder({
+  network: "mainnet",
+  chain: "btc",
+  rpcUrl: "https://my-bitcoin-node.com",
+  rpcHeaders: { Authorization: "Bearer token" },
+})
+```
+
+---
+
+## BtcBuilder
+
+The builder interface returned by `createBtcBuilder`. Provides methods for UTXO selection, withdrawal planning, proof generation, and transaction broadcasting.
+
+### buildWithdrawalPlan
+
+Builds a complete withdrawal plan from available UTXOs, selecting inputs and constructing outputs.
+
+#### Signature
+
+```typescript
+buildWithdrawalPlan(
+  utxos: UTXO[],
+  amount: bigint,
+  targetAddress: string,
+  changeAddress: string,
+  feeRate?: number,
+  overrides?: UtxoPlanOverrides
+): BtcWithdrawalPlan
+```
+
+#### Parameters
+
+<ResponseField name="utxos" type="UTXO[]" required>
+  Available UTXOs to spend from.
+</ResponseField>
+
+<ResponseField name="amount" type="bigint" required>
+  Amount to send in satoshis (BTC) or zatoshis (ZEC).
+</ResponseField>
+
+<ResponseField name="targetAddress" type="string" required>
+  Recipient address.
+</ResponseField>
+
+<ResponseField name="changeAddress" type="string" required>
+  Address to receive change.
+</ResponseField>
+
+<ResponseField name="feeRate" type="number">
+  Fee rate in sat/vbyte. Defaults to `1`. Ignored for Zcash (uses ZIP-317).
+</ResponseField>
+
+<ResponseField name="overrides" type="UtxoPlanOverrides">
+  Optional overrides for UTXO selection behavior.
+  <Expandable title="UtxoPlanOverrides properties">
+    <ResponseField name="dustThreshold" type="bigint">
+      Minimum output value. Default: 546n (BTC) or 5000n (ZEC).
+    </ResponseField>
+    <ResponseField name="minChange" type="bigint">
+      Minimum change output value. Defaults to `dustThreshold`.
+    </ResponseField>
+    <ResponseField name="maxInputs" type="number">
+      Maximum number of inputs to use.
+    </ResponseField>
+    <ResponseField name="sort" type="'largest-first' | 'smallest-first'">
+      UTXO sorting strategy. Defaults to `"largest-first"`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="BtcWithdrawalPlan" type="BtcWithdrawalPlan">
+  The withdrawal plan with inputs, outputs, and calculated fee.
+</ResponseField>
+
+#### Example
+
+```typescript
+const utxos = [
+  { txid: "abc123...", vout: 0, balance: 50000n },
+  { txid: "def456...", vout: 1, balance: 100000n },
+]
+
+const plan = btc.buildWithdrawalPlan(
+  utxos,
+  75000n,                    // 0.00075 BTC
+  "bc1qrecipient...",        // recipient
+  "bc1qchange...",           // change address
+  15                         // 15 sat/vbyte
+)
+
+console.log("Inputs:", plan.inputs)      // ["abc123...:0", "def456...:1"]
+console.log("Fee:", plan.fee)            // Calculated fee in satoshis
+console.log("Outputs:", plan.outputs)    // [{ value, script_pubkey }, ...]
+```
+
+---
+
+### selectUtxos
+
+Selects UTXOs to cover a target amount plus estimated fees.
+
+#### Signature
+
+```typescript
+selectUtxos(
+  utxos: NormalizedUTXO[],
+  amount: bigint,
+  options?: Partial<UtxoSelectionOptions>
+): UtxoSelectionResult
+```
+
+#### Parameters
+
+<ResponseField name="utxos" type="NormalizedUTXO[]" required>
+  Available UTXOs with normalized `amount` as `bigint`.
+</ResponseField>
+
+<ResponseField name="amount" type="bigint" required>
+  Target amount in satoshis/zatoshis.
+</ResponseField>
+
+<ResponseField name="options" type="Partial<UtxoSelectionOptions>">
+  Selection options (merged with chain-specific defaults).
+  <Expandable title="UtxoSelectionOptions properties">
+    <ResponseField name="feeCalculator" type="FeeCalculator">
+      Function to calculate fee based on input/output counts.
+    </ResponseField>
+    <ResponseField name="dustThreshold" type="bigint">
+      Minimum output value (546n for BTC, 5000n for ZEC).
+    </ResponseField>
+    <ResponseField name="minChange" type="bigint">
+      Minimum change output value. Defaults to `dustThreshold`.
+    </ResponseField>
+    <ResponseField name="maxInputs" type="number">
+      Maximum number of inputs allowed.
+    </ResponseField>
+    <ResponseField name="sort" type="'largest-first' | 'smallest-first'">
+      UTXO sorting strategy. Defaults to `"largest-first"`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="UtxoSelectionResult" type="UtxoSelectionResult">
+  Selection result with inputs, totals, fee, and change.
+</ResponseField>
+
+#### Example
+
+```typescript
+const utxos = [
+  { txid: "abc...", vout: 0, amount: 50000n },
+  { txid: "def...", vout: 1, amount: 100000n },
+]
+
+const result = btc.selectUtxos(utxos, 75000n)
+
+console.log("Selected inputs:", result.inputs.length)
+console.log("Total input:", result.totalInput)
+console.log("Fee:", result.fee)
+console.log("Change:", result.change)
+console.log("Output count:", result.outputs)
+```
+
+---
+
+### getDepositProof
+
+Generates a deposit proof for verifying a BTC/ZEC deposit on NEAR. Used when finalizing cross-chain transfers.
+
+#### Signature
+
+```typescript
+getDepositProof(txHash: string, vout: number): Promise<BtcDepositProof>
+```
+
+#### Parameters
+
+<ResponseField name="txHash" type="string" required>
+  The transaction hash of the deposit.
+</ResponseField>
+
+<ResponseField name="vout" type="number" required>
+  The output index in the transaction.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="BtcDepositProof" type="Promise<BtcDepositProof>">
+  Proof data for on-chain verification.
+</ResponseField>
+
+#### Example
+
+```typescript
+const proof = await btc.getDepositProof(
+  "a1b2c3d4e5f6...",  // transaction hash
+  0                    // output index
+)
+
+console.log("Block hash:", proof.tx_block_blockhash)
+console.log("Merkle proof:", proof.merkle_proof)
+console.log("Amount:", proof.amount)
+```
+
+---
+
+### getMerkleProof
+
+Gets a Merkle proof for transaction inclusion in a block.
+
+#### Signature
+
+```typescript
+getMerkleProof(txHash: string): Promise<BtcMerkleProof>
+```
+
+#### Parameters
+
+<ResponseField name="txHash" type="string" required>
+  The transaction hash.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="BtcMerkleProof" type="Promise<BtcMerkleProof>">
+  Merkle proof with block height and position.
+</ResponseField>
+
+#### Example
+
+```typescript
+const merkle = await btc.getMerkleProof("a1b2c3d4e5f6...")
+
+console.log("Block height:", merkle.block_height)
+console.log("Position:", merkle.pos)
+console.log("Proof path:", merkle.merkle)
+```
+
+---
+
+### addressToScriptPubkey
+
+Converts an address to its hex-encoded scriptPubkey.
+
+#### Signature
+
+```typescript
+addressToScriptPubkey(address: string): string
+```
+
+#### Parameters
+
+<ResponseField name="address" type="string" required>
+  Bitcoin or Zcash address.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="scriptPubkey" type="string">
+  Hex-encoded scriptPubkey.
+</ResponseField>
+
+#### Example
+
+```typescript
+// Bitcoin P2WPKH
+const btcScript = btc.addressToScriptPubkey("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4")
+// "0014751e76e8199196d454941c45d1b3a323f1433bd6"
+
+// Zcash t-address
+const zec = createBtcBuilder({ network: "mainnet", chain: "zcash" })
+const zecScript = zec.addressToScriptPubkey("t1Rv4exT7bqhZqi2j7xz8bUHDMxwosrjADU")
+// "76a914..."
+```
+
+---
+
+### broadcastTransaction
+
+Broadcasts a signed transaction to the network.
+
+#### Signature
+
+```typescript
+broadcastTransaction(txHex: string): Promise<string>
+```
+
+#### Parameters
+
+<ResponseField name="txHex" type="string" required>
+  Hex-encoded signed transaction.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="txid" type="Promise<string>">
+  Transaction ID if broadcast succeeds.
+</ResponseField>
+
+#### Example
+
+```typescript
+const signedTxHex = "0200000001..."  // Your signed transaction
+
+const txid = await btc.broadcastTransaction(signedTxHex)
+console.log("Broadcast successful:", txid)
+```
+
+---
+
+### getTransactionBytes
+
+Fetches raw transaction bytes for a given transaction hash.
+
+#### Signature
+
+```typescript
+getTransactionBytes(txHash: string): Promise<Uint8Array>
+```
+
+#### Parameters
+
+<ResponseField name="txHash" type="string" required>
+  The transaction hash.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="txBytes" type="Promise<Uint8Array>">
+  Raw transaction bytes.
+</ResponseField>
+
+#### Example
+
+```typescript
+const txBytes = await btc.getTransactionBytes("a1b2c3d4e5f6...")
+console.log("Transaction size:", txBytes.length, "bytes")
+```
+
+---
+
+### getNetwork
+
+Returns the Bitcoin network configuration object from `@scure/btc-signer`.
+
+#### Signature
+
+```typescript
+getNetwork(): typeof btc.NETWORK | typeof btc.TEST_NETWORK
+```
+
+#### Returns
+
+<ResponseField name="network" type="NETWORK | TEST_NETWORK">
+  Network configuration for address encoding/decoding.
+</ResponseField>
+
+#### Example
+
+```typescript
+const network = btc.getNetwork()
+// Use with @scure/btc-signer for address operations
+```
+
+---
+
+## Fee Calculation
+
+### linearFeeCalculator
+
+Creates a fee calculator based on linear transaction size estimation (Bitcoin).
+
+#### Signature
+
+```typescript
+function linearFeeCalculator(params: LinearFeeParameters): FeeCalculator
+```
+
+#### Parameters
+
+<ResponseField name="params" type="LinearFeeParameters" required>
+  <Expandable title="LinearFeeParameters properties">
+    <ResponseField name="base" type="number" required>
+      Base transaction overhead in vbytes (typically 10).
+    </ResponseField>
+    <ResponseField name="input" type="number" required>
+      Size per input in vbytes (typically 68 for P2WPKH).
+    </ResponseField>
+    <ResponseField name="output" type="number" required>
+      Size per output in vbytes (typically 31 for P2WPKH).
+    </ResponseField>
+    <ResponseField name="rate" type="number" required>
+      Fee rate in sat/vbyte. Must be positive.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="FeeCalculator" type="FeeCalculator">
+  A function `(inputCount: number, outputCount: number) => bigint` that calculates fees.
+</ResponseField>
+
+#### Example
+
+```typescript
+import { linearFeeCalculator } from "@omni-bridge/btc"
+
+const calculator = linearFeeCalculator({
+  base: 10,
+  input: 68,
+  output: 31,
+  rate: 15,  // 15 sat/vbyte
+})
+
+// Calculate fee for 2 inputs, 2 outputs
+const fee = calculator(2, 2)
+// vbytes = 10 + 2*68 + 2*31 = 208
+// fee = 208 * 15 = 3120 satoshis
+```
+
+---
+
+### zcashFeeCalculator
+
+Creates a fee calculator using the ZIP-317 marginal fee model for Zcash.
+
+#### Signature
+
+```typescript
+function zcashFeeCalculator(): FeeCalculator
+```
+
+#### Returns
+
+<ResponseField name="FeeCalculator" type="FeeCalculator">
+  A function that calculates Zcash fees per ZIP-317.
+</ResponseField>
+
+#### Example
+
+```typescript
+import { zcashFeeCalculator } from "@omni-bridge/btc"
+
+const calculator = zcashFeeCalculator()
+const fee = calculator(2, 2)  // 10000n zatoshis
+```
+
+---
+
+### calculateZcashFee
+
+Directly calculates Zcash transaction fee using ZIP-317.
+
+ZIP-317 marginal fee model:
+- Each input or output counts as a "logical action"
+- Grace actions = 2 (first 2 actions are free)
+- Marginal fee = 5000 zatoshis per action
+- Fee = `5000 * max(2, max(inputs, outputs))`
+
+#### Signature
+
+```typescript
+function calculateZcashFee(inputs: number, outputs: number): bigint
+```
+
+#### Parameters
+
+<ResponseField name="inputs" type="number" required>
+  Number of transaction inputs.
+</ResponseField>
+
+<ResponseField name="outputs" type="number" required>
+  Number of transaction outputs.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="fee" type="bigint">
+  Fee in zatoshis.
+</ResponseField>
+
+#### Example
+
+```typescript
+import { calculateZcashFee } from "@omni-bridge/btc"
+
+calculateZcashFee(1, 1)  // 10000n (grace minimum)
+calculateZcashFee(2, 2)  // 10000n (grace minimum)
+calculateZcashFee(3, 2)  // 15000n (3 * 5000)
+calculateZcashFee(5, 2)  // 25000n (5 * 5000)
+```
+
+---
+
+### getZcashScript
+
+Converts a Zcash transparent address to its hex-encoded scriptPubkey.
+
+Supports:
+- Mainnet P2PKH (t1...)
+- Mainnet P2SH (t3...)
+- Testnet P2PKH (tm...)
+- Testnet P2SH (t2...)
+
+#### Signature
+
+```typescript
+function getZcashScript(address: string): string
+```
+
+#### Parameters
+
+<ResponseField name="address" type="string" required>
+  Zcash transparent address.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="scriptPubkey" type="string">
+  Hex-encoded scriptPubkey.
+</ResponseField>
+
+#### Example
+
+```typescript
+import { getZcashScript } from "@omni-bridge/btc"
+
+// P2PKH address -> OP_DUP OP_HASH160 <hash> OP_EQUALVERIFY OP_CHECKSIG
+const p2pkh = getZcashScript("t1Rv4exT7bqhZqi2j7xz8bUHDMxwosrjADU")
+// "76a914...88ac"
+
+// P2SH address -> OP_HASH160 <hash> OP_EQUAL
+const p2sh = getZcashScript("t3...")
+// "a914...87"
+```
+
+---
+
+### ZCASH_DUST_THRESHOLD
+
+Dust threshold constant for Zcash transactions (5000 zatoshis).
+
+```typescript
+import { ZCASH_DUST_THRESHOLD } from "@omni-bridge/btc"
+
+console.log(ZCASH_DUST_THRESHOLD)  // 5000n
+```
+
+---
+
+## RPC Utilities
+
+### UtxoRpcClient
+
+Low-level RPC client for Bitcoin/Zcash nodes. Used internally by `BtcBuilder` but exported for advanced use cases.
+
+#### Constructor
+
+```typescript
+new UtxoRpcClient(config: UtxoRpcConfig)
+```
+
+<ResponseField name="config" type="UtxoRpcConfig" required>
+  <Expandable title="UtxoRpcConfig properties">
+    <ResponseField name="url" type="string" required>
+      JSON-RPC endpoint URL.
+    </ResponseField>
+    <ResponseField name="headers" type="Record<string, string>">
+      Optional HTTP headers for authentication.
+    </ResponseField>
+    <ResponseField name="chain" type="UtxoChainType" required>
+      Chain type: `ChainKind.Btc` or `ChainKind.Zcash`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Methods
+
+##### call
+
+Execute a raw JSON-RPC method.
+
+```typescript
+call<T>(method: string, params?: unknown[]): Promise<T>
+```
+
+##### getTransaction
+
+Fetch transaction details.
+
+```typescript
+getTransaction(txHash: string): Promise<RawTransactionResult>
+```
+
+##### getBlock
+
+Fetch block details.
+
+```typescript
+getBlock(blockHash: string): Promise<BlockResult>
+```
+
+##### buildDepositProof
+
+Build a complete deposit proof.
+
+```typescript
+buildDepositProof(txHash: string, vout: number): Promise<BtcDepositProof>
+```
+
+##### buildMerkleProof
+
+Build a Merkle inclusion proof.
+
+```typescript
+buildMerkleProof(txHash: string): Promise<BtcMerkleProof>
+```
+
+#### Example
+
+```typescript
+import { UtxoRpcClient } from "@omni-bridge/btc"
+import { ChainKind } from "@omni-bridge/core"
+
+const rpc = new UtxoRpcClient({
+  url: "https://bitcoin-rpc.publicnode.com",
+  chain: ChainKind.Btc,
+})
+
+// Raw RPC call
+const blockCount = await rpc.call<number>("getblockcount")
+
+// Get deposit proof
+const proof = await rpc.buildDepositProof("txhash...", 0)
+```
+
+---
+
+### buildBitcoinMerkleProof
+
+Builds a Bitcoin-style Merkle proof for transaction inclusion in a block.
+
+#### Signature
+
+```typescript
+function buildBitcoinMerkleProof(
+  txids: string[],
+  targetTxid: string
+): { index: number; merkle: string[] }
+```
+
+#### Parameters
+
+<ResponseField name="txids" type="string[]" required>
+  Array of all transaction IDs in the block (in order).
+</ResponseField>
+
+<ResponseField name="targetTxid" type="string" required>
+  Transaction ID to generate proof for.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="proof" type="{ index: number; merkle: string[] }">
+  <Expandable title="Properties">
+    <ResponseField name="index" type="number">
+      Position of the transaction in the block.
+    </ResponseField>
+    <ResponseField name="merkle" type="string[]">
+      Array of hex-encoded sibling hashes for the proof path.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Example
+
+```typescript
+import { buildBitcoinMerkleProof } from "@omni-bridge/btc"
+
+const blockTxids = ["tx1...", "tx2...", "tx3...", "tx4..."]
+const proof = buildBitcoinMerkleProof(blockTxids, "tx2...")
+
+console.log("Index:", proof.index)      // 1
+console.log("Proof path:", proof.merkle)
+```
+
+---
+
+## Types
+
+### UTXO
+
+Unspent Transaction Output representation. Re-exported from `@omni-bridge/core`.
+
+```typescript
+interface UTXO {
+  /** Transaction ID */
+  txid: string
+  
+  /** Output index in the transaction */
+  vout: number
+  
+  /** Balance in satoshis/zatoshis (flexible input types) */
+  balance: bigint | number | string
+  
+  /** Raw transaction bytes (optional, for signing) */
+  tx_bytes?: Uint8Array | number[]
+  
+  /** HD derivation path (optional, for hardware wallets) */
+  path?: string
+}
+```
+
+---
+
+### NormalizedUTXO
+
+Normalized UTXO with `amount` as `bigint` for internal processing.
+
+```typescript
+interface NormalizedUTXO {
+  /** Transaction ID */
+  txid: string
+  
+  /** Output index */
+  vout: number
+  
+  /** Amount in satoshis/zatoshis */
+  amount: bigint
+  
+  /** HD derivation path */
+  path?: string
+  
+  /** Raw transaction bytes */
+  rawTx?: Uint8Array
+}
+```
+
+---
+
+### BtcWithdrawalPlan
+
+Complete withdrawal plan ready for signing.
+
+```typescript
+interface BtcWithdrawalPlan {
+  /** Input references in "txid:vout" format */
+  inputs: string[]
+  
+  /** Outputs with value and scriptPubkey */
+  outputs: Array<{
+    /** Value in satoshis/zatoshis */
+    value: number
+    
+    /** Hex-encoded scriptPubkey */
+    script_pubkey: string
+  }>
+  
+  /** Calculated transaction fee */
+  fee: bigint
+}
+```
+
+---
+
+### BtcDepositProof
+
+Proof data for verifying a BTC/ZEC deposit on NEAR.
+
+```typescript
+interface BtcDepositProof {
+  /** Merkle proof hashes */
+  merkle_proof: string[]
+  
+  /** Block hash containing the transaction */
+  tx_block_blockhash: string
+  
+  /** Raw transaction bytes */
+  tx_bytes: number[]
+  
+  /** Transaction index in the block */
+  tx_index: number
+  
+  /** Output amount in satoshis/zatoshis */
+  amount: bigint
+}
+```
+
+---
+
+### BtcMerkleProof
+
+Merkle inclusion proof for a transaction.
+
+```typescript
+interface BtcMerkleProof {
+  /** Block height */
+  block_height: number
+  
+  /** Merkle proof path (hex-encoded hashes) */
+  merkle: string[]
+  
+  /** Transaction position in block */
+  pos: number
+}
+```
+
+---
+
+### FeeCalculator
+
+Function type for calculating transaction fees.
+
+```typescript
+type FeeCalculator = (inputCount: number, outputCount: number) => bigint
+```
+
+---
+
+### LinearFeeParameters
+
+Parameters for the linear fee calculation model.
+
+```typescript
+interface LinearFeeParameters {
+  /** Base transaction size in vbytes */
+  base: number
+  
+  /** Size per input in vbytes */
+  input: number
+  
+  /** Size per output in vbytes */
+  output: number
+  
+  /** Fee rate in sat/vbyte */
+  rate: number
+}
+```
+
+---
+
+### UtxoSelectionOptions
+
+Options for UTXO selection algorithms.
+
+```typescript
+interface UtxoSelectionOptions {
+  /** Fee calculator function */
+  feeCalculator: FeeCalculator
+  
+  /** Minimum output value (dust threshold) */
+  dustThreshold: bigint
+  
+  /** Minimum change output value */
+  minChange?: bigint
+  
+  /** Maximum number of inputs */
+  maxInputs?: number
+  
+  /** Sorting strategy for UTXOs */
+  sort?: "largest-first" | "smallest-first"
+}
+```
+
+---
+
+### UtxoSelectionResult
+
+Result of UTXO selection.
+
+```typescript
+interface UtxoSelectionResult {
+  /** Selected UTXOs */
+  inputs: NormalizedUTXO[]
+  
+  /** Sum of all input values */
+  totalInput: bigint
+  
+  /** Calculated transaction fee */
+  fee: bigint
+  
+  /** Change amount (0 if no change output) */
+  change: bigint
+  
+  /** Number of outputs (1 or 2) */
+  outputs: number
+}
+```
+
+---
+
+### UtxoPlanOverrides
+
+Overrides for withdrawal plan generation. Subset of `UtxoSelectionOptions` excluding `feeCalculator`.
+
+```typescript
+type UtxoPlanOverrides = Partial<Omit<UtxoSelectionOptions, "feeCalculator">>
+```
+
+---
+
+### BtcBuilderConfig
+
+Configuration for `createBtcBuilder`.
+
+```typescript
+interface BtcBuilderConfig {
+  /** Network: "mainnet" or "testnet" */
+  network: "mainnet" | "testnet"
+  
+  /** Chain type: "btc" or "zcash" */
+  chain?: "btc" | "zcash"
+  
+  /** Custom Blockstream API URL */
+  apiUrl?: string
+  
+  /** Custom RPC URL */
+  rpcUrl?: string
+  
+  /** RPC authentication headers */
+  rpcHeaders?: Record<string, string>
+}
+```
+
+---
+
+### UtxoRpcConfig
+
+Configuration for `UtxoRpcClient`.
+
+```typescript
+interface UtxoRpcConfig {
+  /** JSON-RPC endpoint URL */
+  url: string
+  
+  /** Optional HTTP headers */
+  headers?: Record<string, string>
+  
+  /** Chain type for RPC variations */
+  chain: UtxoChainType
+}
+```
+
+---
+
+### UtxoChainType
+
+UTXO chain type for RPC configuration.
+
+```typescript
+type UtxoChainType = ChainKind.Btc | ChainKind.Zcash
+```
+
+---
+
+## Constants
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `ZCASH_DUST_THRESHOLD` | `5000n` | Minimum output value for Zcash (zatoshis) |
+| Bitcoin dust threshold | `546n` | Standard minimum for Bitcoin (satoshis) |
+
+---
+
+## Default Fee Parameters
+
+### Bitcoin Defaults
+
+```typescript
+{
+  feeCalculator: linearFeeCalculator({ base: 10, input: 68, output: 31, rate: 1 }),
+  dustThreshold: 546n,
+  minChange: 1000n,
+  sort: "largest-first",
+}
+```
+
+### Zcash Defaults (ZIP-317)
+
+```typescript
+{
+  feeCalculator: zcashFeeCalculator(),
+  dustThreshold: 5000n,
+  minChange: 5000n,
+  sort: "largest-first",
+}
+```

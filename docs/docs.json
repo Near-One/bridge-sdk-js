@@ -57,50 +57,14 @@
         "icon": "code",
         "groups": [
           {
-            "group": "@omni-bridge/core",
+            "group": "Packages",
             "icon": "cube",
             "pages": [
-              "reference/core/create-bridge",
-              "reference/core/validate-transfer",
-              "reference/core/api-client",
-              "reference/core/types",
-              "reference/core/errors"
-            ]
-          },
-          {
-            "group": "@omni-bridge/evm",
-            "icon": "ethereum",
-            "pages": [
-              "reference/evm/create-builder",
-              "reference/evm/build-transfer",
-              "reference/evm/build-approval",
-              "reference/evm/proofs"
-            ]
-          },
-          {
-            "group": "@omni-bridge/near",
-            "icon": "circle-nodes",
-            "pages": [
-              "reference/near/create-builder",
-              "reference/near/shims",
-              "reference/near/storage-deposits"
-            ]
-          },
-          {
-            "group": "@omni-bridge/solana",
-            "icon": "sun",
-            "pages": [
-              "reference/solana/create-builder",
-              "reference/solana/pdas"
-            ]
-          },
-          {
-            "group": "@omni-bridge/btc",
-            "icon": "bitcoin",
-            "pages": [
-              "reference/btc/create-builder",
-              "reference/btc/utxo-selection",
-              "reference/btc/fee-calculation"
+              "reference/core",
+              "reference/evm",
+              "reference/near",
+              "reference/solana",
+              "reference/btc"
             ]
           }
         ]

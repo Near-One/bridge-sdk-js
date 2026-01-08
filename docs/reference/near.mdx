@@ -1,0 +1,1603 @@
+---
+title: "@omni-bridge/near"
+description: Complete API reference for the NEAR transaction builder package
+---
+
+## Import
+
+```typescript
+import {
+  // Factory
+  createNearBuilder,
+  type NearBuilder,
+  type NearBuilderConfig,
+
+  // Shims
+  toNearKitTransaction,
+  toNearApiJsActions,
+  sendWithNearApiJs,
+
+  // Storage utilities
+  calculateStorageAccountId,
+  type TransferMessageForStorage,
+
+  // MPC Signature
+  MPCSignature,
+  type MPCSignatureRaw,
+
+  // Proof serialization schemas
+  EvmVerifyProofArgsSchema,
+  WormholeVerifyProofArgsSchema,
+  EvmProofSchema,
+  FinTransferArgsSchema,
+  DeployTokenArgsSchema,
+  BindTokenArgsSchema,
+  StorageDepositActionSchema,
+  ChainKindSchema,
+  ProofKindSchema,
+
+  // Enums and constants
+  ProofKind,
+  GAS,
+  DEPOSIT,
+
+  // Types
+  type EvmVerifyProofArgs,
+  type WormholeVerifyProofArgs,
+  type NearEvmProof,
+  type FinalizationParams,
+  type FastFinTransferParams,
+  type TransferId,
+  type TransferFee,
+  type StorageDepositAction,
+  type InitTransferEvent,
+  type SignTransferEvent,
+  type LogMetadataEvent,
+
+  // UTXO types
+  type UTXO,
+  type UtxoBridgeFee,
+  type UtxoConnectorConfig,
+  type UtxoDepositFinalizationParams,
+  type UtxoDepositMsg,
+  type UtxoPostAction,
+  type UtxoWithdrawalInitParams,
+  type UtxoWithdrawalOutput,
+  type UtxoWithdrawalVerifyParams,
+} from "@omni-bridge/near"
+```
+
+---
+
+## createNearBuilder
+
+Factory function to create a NEAR transaction builder.
+
+### Signature
+
+```typescript
+function createNearBuilder(config: NearBuilderConfig): NearBuilder
+```
+
+### Parameters
+
+<ResponseField name="config" type="NearBuilderConfig" required>
+  <Expandable title="NearBuilderConfig">
+    <ResponseField name="network" type="'mainnet' | 'testnet'" required>
+      The network to connect to.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Returns
+
+<ResponseField name="NearBuilder" type="object">
+  A builder instance with methods for building NEAR transactions.
+</ResponseField>
+
+### Example
+
+```typescript
+import { createNearBuilder } from "@omni-bridge/near"
+
+const nearBuilder = createNearBuilder({ network: "mainnet" })
+```
+
+---
+
+## NearBuilder Methods
+
+### buildTransfer
+
+Build an unsigned transfer transaction to bridge tokens from NEAR.
+
+#### Signature
+
+```typescript
+buildTransfer(validated: ValidatedTransfer, signerId: string): NearUnsignedTransaction
+```
+
+#### Parameters
+
+<ResponseField name="validated" type="ValidatedTransfer" required>
+  The validated transfer from `bridge.validateTransfer()`.
+</ResponseField>
+
+<ResponseField name="signerId" type="string" required>
+  The NEAR account ID that will sign the transaction.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="NearUnsignedTransaction" type="object">
+  An unsigned transaction ready to be signed and sent.
+</ResponseField>
+
+#### Example
+
+```typescript
+import { createBridge } from "@omni-bridge/core"
+import { createNearBuilder, toNearKitTransaction } from "@omni-bridge/near"
+import { Near } from "near-kit"
+
+const bridge = createBridge({ network: "mainnet" })
+const nearBuilder = createNearBuilder({ network: "mainnet" })
+const near = new Near({ network: "mainnet", privateKey: "ed25519:..." })
+
+const validated = await bridge.validateTransfer({
+  token: "near:wrap.near",
+  amount: 1000000000000000000000000n,
+  fee: 0n,
+  nativeFee: 0n,
+  sender: "near:alice.near",
+  recipient: "eth:0x1234567890123456789012345678901234567890",
+})
+
+const unsigned = nearBuilder.buildTransfer(validated, "alice.near")
+const result = await toNearKitTransaction(near, unsigned).send()
+```
+
+---
+
+### buildStorageDeposit
+
+Build a transaction to deposit storage on the bridge contract.
+
+#### Signature
+
+```typescript
+buildStorageDeposit(signerId: string, amount: bigint): NearUnsignedTransaction
+```
+
+#### Parameters
+
+<ResponseField name="signerId" type="string" required>
+  The NEAR account ID that will sign and pay for storage.
+</ResponseField>
+
+<ResponseField name="amount" type="bigint" required>
+  The amount of NEAR (in yoctoNEAR) to deposit for storage.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="NearUnsignedTransaction" type="object">
+  An unsigned storage deposit transaction.
+</ResponseField>
+
+#### Example
+
+```typescript
+const deposit = await nearBuilder.getRequiredStorageDeposit("alice.near")
+
+if (deposit > 0n) {
+  const tx = nearBuilder.buildStorageDeposit("alice.near", deposit)
+  await toNearKitTransaction(near, tx).send()
+}
+```
+
+---
+
+### getRequiredStorageDeposit
+
+Get the required storage deposit for an account on the bridge contract. Makes view calls to check current balance vs required amounts.
+
+#### Signature
+
+```typescript
+getRequiredStorageDeposit(accountId: string): Promise<bigint>
+```
+
+#### Parameters
+
+<ResponseField name="accountId" type="string" required>
+  The NEAR account ID to check storage for.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="bigint" type="bigint">
+  Amount of additional storage deposit needed in yoctoNEAR. Returns `0n` if sufficient storage exists.
+</ResponseField>
+
+#### Example
+
+```typescript
+const deposit = await nearBuilder.getRequiredStorageDeposit("alice.near")
+console.log(`Need to deposit ${deposit} yoctoNEAR`)
+```
+
+---
+
+### isTokenStorageRegistered
+
+Check if a token has storage registered for the bridge contract. If not, the bridge needs `storage_deposit` on the token before receiving transfers.
+
+#### Signature
+
+```typescript
+isTokenStorageRegistered(tokenId: string): Promise<boolean>
+```
+
+#### Parameters
+
+<ResponseField name="tokenId" type="string" required>
+  The token contract ID to check.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="boolean" type="boolean">
+  `true` if bridge has storage, `false` if `storage_deposit` is needed.
+</ResponseField>
+
+#### Example
+
+```typescript
+const isRegistered = await nearBuilder.isTokenStorageRegistered("wrap.near")
+
+if (!isRegistered) {
+  const tx = await nearBuilder.buildTokenStorageDeposit("wrap.near", "alice.near")
+  await toNearKitTransaction(near, tx).send()
+}
+```
+
+---
+
+### buildTokenStorageDeposit
+
+Build a storage deposit transaction on a token contract for the bridge. This is needed before the bridge can receive tokens.
+
+#### Signature
+
+```typescript
+buildTokenStorageDeposit(tokenId: string, signerId: string): Promise<NearUnsignedTransaction>
+```
+
+#### Parameters
+
+<ResponseField name="tokenId" type="string" required>
+  The token contract ID to register storage on.
+</ResponseField>
+
+<ResponseField name="signerId" type="string" required>
+  The NEAR account ID paying for storage.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="Promise<NearUnsignedTransaction>" type="Promise">
+  An unsigned transaction for `storage_deposit` on the token contract.
+</ResponseField>
+
+#### Example
+
+```typescript
+const tx = await nearBuilder.buildTokenStorageDeposit("wrap.near", "alice.near")
+await toNearKitTransaction(near, tx).send()
+```
+
+---
+
+### buildFinalization
+
+Build a transaction to finalize an incoming transfer to NEAR.
+
+#### Signature
+
+```typescript
+buildFinalization(params: FinalizationParams): NearUnsignedTransaction
+```
+
+#### Parameters
+
+<ResponseField name="params" type="FinalizationParams" required>
+  <Expandable title="FinalizationParams">
+    <ResponseField name="sourceChain" type="ChainKind" required>
+      The source chain of the transfer (e.g., `ChainKind.Eth`).
+    </ResponseField>
+
+    <ResponseField name="storageDepositActions" type="StorageDepositAction[]" required>
+      Array of storage deposit actions for recipient accounts.
+    </ResponseField>
+
+    <ResponseField name="vaa" type="string">
+      Wormhole VAA proof (provide either `vaa` or `evmProof`).
+    </ResponseField>
+
+    <ResponseField name="evmProof" type="EvmVerifyProofArgs">
+      EVM proof data (provide either `vaa` or `evmProof`).
+    </ResponseField>
+
+    <ResponseField name="signerId" type="string" required>
+      The NEAR account ID that will sign the transaction.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="NearUnsignedTransaction" type="object">
+  An unsigned finalization transaction.
+</ResponseField>
+
+#### Example
+
+```typescript
+import { ChainKind } from "@omni-bridge/core"
+
+const tx = nearBuilder.buildFinalization({
+  sourceChain: ChainKind.Eth,
+  storageDepositActions: [],
+  vaa: "AQAAAAMNALfP...", // Wormhole VAA
+  signerId: "relayer.near",
+})
+```
+
+---
+
+### buildLogMetadata
+
+Build a transaction to log token metadata on the bridge. This is the first step in registering a new token.
+
+#### Signature
+
+```typescript
+buildLogMetadata(token: string, signerId: string): NearUnsignedTransaction
+```
+
+#### Parameters
+
+<ResponseField name="token" type="string" required>
+  The NEAR token contract ID (e.g., `"wrap.near"`).
+</ResponseField>
+
+<ResponseField name="signerId" type="string" required>
+  The NEAR account ID that will sign the transaction.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="NearUnsignedTransaction" type="object">
+  An unsigned log metadata transaction.
+</ResponseField>
+
+#### Example
+
+```typescript
+const tx = nearBuilder.buildLogMetadata("wrap.near", "alice.near")
+await toNearKitTransaction(near, tx).send()
+```
+
+---
+
+### buildDeployToken
+
+Build a transaction to deploy a token on a destination chain. Used for registering NEAR tokens on other chains.
+
+#### Signature
+
+```typescript
+buildDeployToken(
+  destinationChain: ChainKind,
+  proverArgs: Uint8Array,
+  signerId: string,
+  deposit: bigint
+): NearUnsignedTransaction
+```
+
+#### Parameters
+
+<ResponseField name="destinationChain" type="ChainKind" required>
+  The destination chain to deploy the token on.
+</ResponseField>
+
+<ResponseField name="proverArgs" type="Uint8Array" required>
+  Serialized prover arguments (use `serializeEvmProofArgs` or `serializeWormholeProofArgs`).
+</ResponseField>
+
+<ResponseField name="signerId" type="string" required>
+  The NEAR account ID that will sign the transaction.
+</ResponseField>
+
+<ResponseField name="deposit" type="bigint" required>
+  The NEAR deposit required for deployment.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="NearUnsignedTransaction" type="object">
+  An unsigned deploy token transaction.
+</ResponseField>
+
+#### Example
+
+```typescript
+import { ChainKind } from "@omni-bridge/core"
+
+const proverArgs = nearBuilder.serializeWormholeProofArgs({
+  proof_kind: ProofKind.LogMetadata,
+  vaa: vaaString,
+})
+
+const tx = nearBuilder.buildDeployToken(
+  ChainKind.Eth,
+  proverArgs,
+  "alice.near",
+  1000000000000000000000000n // 1 NEAR
+)
+```
+
+---
+
+### buildBindToken
+
+Build a transaction to bind a token from a source chain. Used for registering foreign tokens on NEAR.
+
+#### Signature
+
+```typescript
+buildBindToken(
+  sourceChain: ChainKind,
+  proverArgs: Uint8Array,
+  signerId: string,
+  deposit: bigint
+): NearUnsignedTransaction
+```
+
+#### Parameters
+
+<ResponseField name="sourceChain" type="ChainKind" required>
+  The source chain where the token originates.
+</ResponseField>
+
+<ResponseField name="proverArgs" type="Uint8Array" required>
+  Serialized prover arguments.
+</ResponseField>
+
+<ResponseField name="signerId" type="string" required>
+  The NEAR account ID that will sign the transaction.
+</ResponseField>
+
+<ResponseField name="deposit" type="bigint" required>
+  The NEAR deposit required for binding.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="NearUnsignedTransaction" type="object">
+  An unsigned bind token transaction.
+</ResponseField>
+
+#### Example
+
+```typescript
+import { ChainKind } from "@omni-bridge/core"
+
+const tx = nearBuilder.buildBindToken(
+  ChainKind.Eth,
+  proverArgs,
+  "alice.near",
+  1000000000000000000000000n
+)
+```
+
+---
+
+### buildSignTransfer
+
+Build a transaction to request MPC signature for a transfer. Used by relayers.
+
+#### Signature
+
+```typescript
+buildSignTransfer(
+  transferId: TransferId,
+  feeRecipient: string,
+  fee: { fee: string; native_fee: string },
+  signerId: string
+): NearUnsignedTransaction
+```
+
+#### Parameters
+
+<ResponseField name="transferId" type="TransferId" required>
+  <Expandable title="TransferId">
+    <ResponseField name="origin_chain" type="ChainKind | number | string" required>
+      The chain where the transfer originated.
+    </ResponseField>
+
+    <ResponseField name="origin_nonce" type="bigint | string" required>
+      The nonce of the transfer on the origin chain.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="feeRecipient" type="string" required>
+  The NEAR account to receive the relayer fee.
+</ResponseField>
+
+<ResponseField name="fee" type="object" required>
+  <Expandable title="Fee">
+    <ResponseField name="fee" type="string" required>
+      The token fee amount as a string.
+    </ResponseField>
+
+    <ResponseField name="native_fee" type="string" required>
+      The native token fee amount as a string.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="signerId" type="string" required>
+  The NEAR account ID that will sign the transaction.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="NearUnsignedTransaction" type="object">
+  An unsigned sign transfer transaction.
+</ResponseField>
+
+#### Example
+
+```typescript
+import { ChainKind } from "@omni-bridge/core"
+
+const tx = nearBuilder.buildSignTransfer(
+  { origin_chain: ChainKind.Eth, origin_nonce: 123n },
+  "relayer.near",
+  { fee: "1000000", native_fee: "0" },
+  "relayer.near"
+)
+```
+
+---
+
+### buildFastFinTransfer
+
+Build a transaction for fast finalization of a transfer. Used by relayers to provide immediate liquidity.
+
+#### Signature
+
+```typescript
+buildFastFinTransfer(params: FastFinTransferParams, signerId: string): NearUnsignedTransaction
+```
+
+#### Parameters
+
+<ResponseField name="params" type="FastFinTransferParams" required>
+  <Expandable title="FastFinTransferParams">
+    <ResponseField name="tokenId" type="string" required>
+      The NEAR token contract ID.
+    </ResponseField>
+
+    <ResponseField name="amount" type="string" required>
+      The original transfer amount.
+    </ResponseField>
+
+    <ResponseField name="amountToSend" type="string" required>
+      The amount to send to recipient (after fees).
+    </ResponseField>
+
+    <ResponseField name="transferId" type="TransferId" required>
+      The transfer identifier.
+    </ResponseField>
+
+    <ResponseField name="recipient" type="OmniAddress" required>
+      The recipient address.
+    </ResponseField>
+
+    <ResponseField name="fee" type="TransferFee" required>
+      The fee structure.
+    </ResponseField>
+
+    <ResponseField name="msg" type="string">
+      Optional message attached to the transfer.
+    </ResponseField>
+
+    <ResponseField name="storageDepositAmount" type="string">
+      Optional storage deposit amount.
+    </ResponseField>
+
+    <ResponseField name="relayer" type="string" required>
+      The relayer account ID.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="signerId" type="string" required>
+  The NEAR account ID that will sign the transaction.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="NearUnsignedTransaction" type="object">
+  An unsigned fast finalization transaction.
+</ResponseField>
+
+#### Example
+
+```typescript
+import { ChainKind } from "@omni-bridge/core"
+
+const tx = nearBuilder.buildFastFinTransfer({
+  tokenId: "wrap.near",
+  amount: "1000000000000000000000000",
+  amountToSend: "999000000000000000000000",
+  transferId: { origin_chain: ChainKind.Eth, origin_nonce: 123n },
+  recipient: "near:bob.near",
+  fee: { fee: "1000000", native_fee: "0" },
+  storageDepositAmount: "1250000000000000000000",
+  relayer: "relayer.near",
+}, "relayer.near")
+```
+
+---
+
+### serializeEvmProofArgs
+
+Serialize EVM proof arguments for the prover contract.
+
+#### Signature
+
+```typescript
+serializeEvmProofArgs(args: EvmVerifyProofArgs): Uint8Array
+```
+
+#### Parameters
+
+<ResponseField name="args" type="EvmVerifyProofArgs" required>
+  <Expandable title="EvmVerifyProofArgs">
+    <ResponseField name="proof_kind" type="ProofKind" required>
+      The type of proof (`ProofKind.InitTransfer`, `ProofKind.FinTransfer`, etc.).
+    </ResponseField>
+
+    <ResponseField name="proof" type="NearEvmProof" required>
+      <Expandable title="NearEvmProof">
+        <ResponseField name="log_index" type="bigint" required>
+          Index of the log in the transaction.
+        </ResponseField>
+
+        <ResponseField name="log_entry_data" type="Uint8Array" required>
+          Serialized log entry data.
+        </ResponseField>
+
+        <ResponseField name="receipt_index" type="bigint" required>
+          Index of the receipt in the block.
+        </ResponseField>
+
+        <ResponseField name="receipt_data" type="Uint8Array" required>
+          Serialized receipt data.
+        </ResponseField>
+
+        <ResponseField name="header_data" type="Uint8Array" required>
+          Serialized block header data.
+        </ResponseField>
+
+        <ResponseField name="proof" type="Uint8Array[]" required>
+          Array of Merkle proof nodes.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="Uint8Array" type="Uint8Array">
+  Borsh-serialized proof arguments.
+</ResponseField>
+
+#### Example
+
+```typescript
+const serialized = nearBuilder.serializeEvmProofArgs({
+  proof_kind: ProofKind.InitTransfer,
+  proof: {
+    log_index: 0n,
+    log_entry_data: new Uint8Array([...]),
+    receipt_index: 0n,
+    receipt_data: new Uint8Array([...]),
+    header_data: new Uint8Array([...]),
+    proof: [new Uint8Array([...])],
+  },
+})
+```
+
+---
+
+### serializeWormholeProofArgs
+
+Serialize Wormhole VAA proof arguments for the prover contract.
+
+#### Signature
+
+```typescript
+serializeWormholeProofArgs(args: WormholeVerifyProofArgs): Uint8Array
+```
+
+#### Parameters
+
+<ResponseField name="args" type="WormholeVerifyProofArgs" required>
+  <Expandable title="WormholeVerifyProofArgs">
+    <ResponseField name="proof_kind" type="ProofKind" required>
+      The type of proof.
+    </ResponseField>
+
+    <ResponseField name="vaa" type="string" required>
+      The Wormhole VAA as a base64 or hex string.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="Uint8Array" type="Uint8Array">
+  Borsh-serialized proof arguments.
+</ResponseField>
+
+#### Example
+
+```typescript
+const serialized = nearBuilder.serializeWormholeProofArgs({
+  proof_kind: ProofKind.InitTransfer,
+  vaa: "AQAAAAMNALfP...",
+})
+```
+
+---
+
+## UTXO Methods (BTC/Zcash)
+
+Methods for interacting with the Bitcoin and Zcash UTXO connectors on NEAR.
+
+### buildUtxoDepositFinalization
+
+Build a transaction to finalize a UTXO deposit on NEAR. Calls `verify_deposit` on the connector contract.
+
+#### Signature
+
+```typescript
+buildUtxoDepositFinalization(params: UtxoDepositFinalizationParams): NearUnsignedTransaction
+```
+
+#### Parameters
+
+<ResponseField name="params" type="UtxoDepositFinalizationParams" required>
+  <Expandable title="UtxoDepositFinalizationParams">
+    <ResponseField name="chain" type="'btc' | 'zcash'" required>
+      The UTXO chain.
+    </ResponseField>
+
+    <ResponseField name="depositMsg" type="UtxoDepositMsg" required>
+      <Expandable title="UtxoDepositMsg">
+        <ResponseField name="recipient_id" type="string" required>
+          The NEAR account to receive the tokens.
+        </ResponseField>
+
+        <ResponseField name="post_actions" type="UtxoPostAction[]">
+          Optional post-deposit actions (e.g., bridge to another chain).
+        </ResponseField>
+
+        <ResponseField name="extra_msg" type="string">
+          Optional extra message.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+
+    <ResponseField name="txBytes" type="number[]" required>
+      Raw transaction bytes.
+    </ResponseField>
+
+    <ResponseField name="vout" type="number" required>
+      Output index in the transaction.
+    </ResponseField>
+
+    <ResponseField name="txBlockBlockhash" type="string" required>
+      Block hash containing the transaction.
+    </ResponseField>
+
+    <ResponseField name="txIndex" type="number" required>
+      Transaction index in the block.
+    </ResponseField>
+
+    <ResponseField name="merkleProof" type="string[]" required>
+      Merkle proof for transaction inclusion.
+    </ResponseField>
+
+    <ResponseField name="signerId" type="string" required>
+      The NEAR account ID that will sign the transaction.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="NearUnsignedTransaction" type="object">
+  An unsigned verify_deposit transaction.
+</ResponseField>
+
+---
+
+### buildUtxoWithdrawalInit
+
+Build a transaction to initiate a UTXO withdrawal from NEAR. Calls `ft_transfer_call` on the nBTC/nZEC token.
+
+#### Signature
+
+```typescript
+buildUtxoWithdrawalInit(params: UtxoWithdrawalInitParams): NearUnsignedTransaction
+```
+
+#### Parameters
+
+<ResponseField name="params" type="UtxoWithdrawalInitParams" required>
+  <Expandable title="UtxoWithdrawalInitParams">
+    <ResponseField name="chain" type="'btc' | 'zcash'" required>
+      The UTXO chain.
+    </ResponseField>
+
+    <ResponseField name="targetAddress" type="string" required>
+      Target BTC/Zcash address.
+    </ResponseField>
+
+    <ResponseField name="inputs" type="string[]" required>
+      UTXO inputs in "txid:vout" format.
+    </ResponseField>
+
+    <ResponseField name="outputs" type="UtxoWithdrawalOutput[]" required>
+      <Expandable title="UtxoWithdrawalOutput">
+        <ResponseField name="value" type="number" required>
+          Output value in satoshis/zatoshis.
+        </ResponseField>
+
+        <ResponseField name="script_pubkey" type="string" required>
+          Output script pubkey (hex).
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+
+    <ResponseField name="totalAmount" type="bigint" required>
+      Total amount to transfer (including fees).
+    </ResponseField>
+
+    <ResponseField name="maxGasFee" type="bigint">
+      Optional maximum gas fee in satoshis/zatoshis.
+    </ResponseField>
+
+    <ResponseField name="signerId" type="string" required>
+      The NEAR account ID that will sign the transaction.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="NearUnsignedTransaction" type="object">
+  An unsigned ft_transfer_call transaction.
+</ResponseField>
+
+---
+
+### buildUtxoWithdrawalVerify
+
+Build a transaction to verify a UTXO withdrawal on NEAR. Calls `btc_verify_withdraw` on the connector.
+
+#### Signature
+
+```typescript
+buildUtxoWithdrawalVerify(params: UtxoWithdrawalVerifyParams): NearUnsignedTransaction
+```
+
+#### Parameters
+
+<ResponseField name="params" type="UtxoWithdrawalVerifyParams" required>
+  <Expandable title="UtxoWithdrawalVerifyParams">
+    <ResponseField name="chain" type="'btc' | 'zcash'" required>
+      The UTXO chain.
+    </ResponseField>
+
+    <ResponseField name="blockHeight" type="number" required>
+      Block height of the transaction.
+    </ResponseField>
+
+    <ResponseField name="merkle" type="string[]" required>
+      Merkle proof hashes.
+    </ResponseField>
+
+    <ResponseField name="pos" type="number" required>
+      Position in the merkle tree.
+    </ResponseField>
+
+    <ResponseField name="signerId" type="string" required>
+      The NEAR account ID that will sign the transaction.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="NearUnsignedTransaction" type="object">
+  An unsigned btc_verify_withdraw transaction.
+</ResponseField>
+
+---
+
+### getUtxoConnectorAddress
+
+Get the UTXO connector contract address for a chain.
+
+#### Signature
+
+```typescript
+getUtxoConnectorAddress(chain: "btc" | "zcash"): string
+```
+
+#### Parameters
+
+<ResponseField name="chain" type="'btc' | 'zcash'" required>
+  The UTXO chain.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="string" type="string">
+  The connector contract address.
+</ResponseField>
+
+---
+
+### getUtxoTokenAddress
+
+Get the UTXO token contract address for a chain.
+
+#### Signature
+
+```typescript
+getUtxoTokenAddress(chain: "btc" | "zcash"): string
+```
+
+#### Parameters
+
+<ResponseField name="chain" type="'btc' | 'zcash'" required>
+  The UTXO chain.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="string" type="string">
+  The token contract address (nBTC or nZEC).
+</ResponseField>
+
+---
+
+### getUtxoConnectorConfig
+
+Get the UTXO connector configuration from the contract.
+
+#### Signature
+
+```typescript
+getUtxoConnectorConfig(chain: "btc" | "zcash"): Promise<UtxoConnectorConfig>
+```
+
+#### Parameters
+
+<ResponseField name="chain" type="'btc' | 'zcash'" required>
+  The UTXO chain.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="Promise<UtxoConnectorConfig>" type="Promise">
+  <Expandable title="UtxoConnectorConfig">
+    <ResponseField name="change_address" type="string">
+      The change address for withdrawals.
+    </ResponseField>
+
+    <ResponseField name="deposit_bridge_fee" type="UtxoBridgeFee">
+      Fee configuration for deposits.
+    </ResponseField>
+
+    <ResponseField name="withdraw_bridge_fee" type="UtxoBridgeFee">
+      Fee configuration for withdrawals.
+    </ResponseField>
+
+    <ResponseField name="min_deposit_amount" type="string">
+      Minimum deposit amount.
+    </ResponseField>
+
+    <ResponseField name="min_withdraw_amount" type="string">
+      Minimum withdrawal amount.
+    </ResponseField>
+
+    <ResponseField name="min_change_amount" type="string">
+      Minimum change amount.
+    </ResponseField>
+
+    <ResponseField name="max_withdrawal_input_number" type="number">
+      Maximum number of inputs for withdrawal.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+### getUtxoAvailableOutputs
+
+Get available UTXOs from the connector contract.
+
+#### Signature
+
+```typescript
+getUtxoAvailableOutputs(chain: "btc" | "zcash"): Promise<UTXO[]>
+```
+
+#### Parameters
+
+<ResponseField name="chain" type="'btc' | 'zcash'" required>
+  The UTXO chain.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="Promise<UTXO[]>" type="Promise">
+  Array of available UTXOs for withdrawal.
+</ResponseField>
+
+---
+
+### getUtxoTokenBalance
+
+Get the nBTC/nZEC token balance for an account.
+
+#### Signature
+
+```typescript
+getUtxoTokenBalance(chain: "btc" | "zcash", accountId: string): Promise<bigint>
+```
+
+#### Parameters
+
+<ResponseField name="chain" type="'btc' | 'zcash'" required>
+  The UTXO chain.
+</ResponseField>
+
+<ResponseField name="accountId" type="string" required>
+  NEAR account to check balance for.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="Promise<bigint>" type="Promise">
+  Token balance in satoshis/zatoshis.
+</ResponseField>
+
+---
+
+### calculateUtxoWithdrawalFee
+
+Calculate the bridge fee for a UTXO withdrawal.
+
+#### Signature
+
+```typescript
+calculateUtxoWithdrawalFee(chain: "btc" | "zcash", amount: bigint): Promise<bigint>
+```
+
+#### Parameters
+
+<ResponseField name="chain" type="'btc' | 'zcash'" required>
+  The UTXO chain.
+</ResponseField>
+
+<ResponseField name="amount" type="bigint" required>
+  Withdrawal amount in satoshis/zatoshis.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="Promise<bigint>" type="Promise">
+  Bridge fee amount.
+</ResponseField>
+
+---
+
+## Shim Functions
+
+Functions to convert SDK transactions to library-specific formats.
+
+### toNearKitTransaction
+
+Convert a `NearUnsignedTransaction` to a near-kit TransactionBuilder. near-kit handles nonce, blockHash, and signing automatically.
+
+#### Signature
+
+```typescript
+function toNearKitTransaction(near: Near, unsigned: NearUnsignedTransaction): TransactionBuilder
+```
+
+#### Parameters
+
+<ResponseField name="near" type="Near" required>
+  A configured near-kit `Near` instance.
+</ResponseField>
+
+<ResponseField name="unsigned" type="NearUnsignedTransaction" required>
+  The unsigned transaction from the builder.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="TransactionBuilder" type="TransactionBuilder">
+  A near-kit TransactionBuilder that can be sent with `.send()` or built with `.build()`.
+</ResponseField>
+
+#### Example
+
+```typescript
+import { Near } from "near-kit"
+import { createNearBuilder, toNearKitTransaction } from "@omni-bridge/near"
+
+const near = new Near({
+  network: "mainnet",
+  privateKey: "ed25519:...",
+})
+const nearBuilder = createNearBuilder({ network: "mainnet" })
+
+const unsigned = nearBuilder.buildTransfer(validated, "alice.near")
+const result = await toNearKitTransaction(near, unsigned).send()
+```
+
+---
+
+### toNearApiJsActions
+
+Convert `NearUnsignedTransaction` actions to `@near-js/transactions` Action array. Use this with `Account.signAndSendTransaction()`.
+
+#### Signature
+
+```typescript
+function toNearApiJsActions(unsigned: NearUnsignedTransaction): Action[]
+```
+
+#### Parameters
+
+<ResponseField name="unsigned" type="NearUnsignedTransaction" required>
+  The unsigned transaction from the builder.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="Action[]" type="Action[]">
+  Array of Action objects for use with `@near-js/accounts`.
+</ResponseField>
+
+#### Example
+
+```typescript
+import { Account } from "@near-js/accounts"
+import { JsonRpcProvider } from "@near-js/providers"
+import { InMemoryKeyStore } from "@near-js/keystores"
+import { KeyPair } from "@near-js/crypto"
+import { InMemorySigner } from "@near-js/signers"
+import { toNearApiJsActions } from "@omni-bridge/near"
+
+const keyStore = new InMemoryKeyStore()
+await keyStore.setKey("mainnet", "alice.near", KeyPair.fromString("ed25519:..."))
+const provider = new JsonRpcProvider({ url: "https://rpc.mainnet.near.org" })
+const signer = new InMemorySigner(keyStore)
+const account = new Account({ accountId: "alice.near", provider, signer })
+
+const actions = toNearApiJsActions(unsigned)
+const result = await account.signAndSendTransaction({
+  receiverId: unsigned.receiverId,
+  actions,
+})
+```
+
+---
+
+### sendWithNearApiJs
+
+Convenience wrapper that converts and sends a transaction using `@near-js/accounts`.
+
+#### Signature
+
+```typescript
+function sendWithNearApiJs(
+  account: Account,
+  unsigned: NearUnsignedTransaction
+): Promise<FinalExecutionOutcome>
+```
+
+#### Parameters
+
+<ResponseField name="account" type="Account" required>
+  A `@near-js/accounts` Account instance with signer configured.
+</ResponseField>
+
+<ResponseField name="unsigned" type="NearUnsignedTransaction" required>
+  The unsigned transaction from the builder.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="Promise<FinalExecutionOutcome>" type="Promise">
+  The transaction execution outcome.
+</ResponseField>
+
+#### Example
+
+```typescript
+import { Account } from "@near-js/accounts"
+import { sendWithNearApiJs } from "@omni-bridge/near"
+
+// ... setup account as shown above
+
+const unsigned = nearBuilder.buildTransfer(validated, "alice.near")
+const result = await sendWithNearApiJs(account, unsigned)
+console.log("Transaction hash:", result.transaction.hash)
+```
+
+---
+
+## MPCSignature Class
+
+Class representing an MPC signature from the NEAR bridge contract.
+
+### Constructor
+
+```typescript
+constructor(big_r: AffinePoint, s: Scalar, recovery_id: number)
+```
+
+### Properties
+
+<ResponseField name="big_r" type="AffinePoint">
+  The R component of the signature as an affine point.
+  <Expandable title="AffinePoint">
+    <ResponseField name="affine_point" type="string">
+      Hex-encoded affine point.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="s" type="Scalar">
+  The S component of the signature.
+  <Expandable title="Scalar">
+    <ResponseField name="scalar" type="string">
+      Hex-encoded scalar value.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="recovery_id" type="number">
+  The recovery ID (0 or 1).
+</ResponseField>
+
+### Methods
+
+#### toBytes
+
+Convert the signature to bytes for use on Solana or EVM.
+
+```typescript
+toBytes(forEvm: boolean = false): Uint8Array
+```
+
+<ResponseField name="forEvm" type="boolean">
+  If `true`, adds 27 to `recovery_id` for EVM compatibility.
+</ResponseField>
+
+#### fromRaw (static)
+
+Create an MPCSignature from raw contract log data.
+
+```typescript
+static fromRaw(raw: MPCSignatureRaw): MPCSignature
+```
+
+### Example
+
+```typescript
+import { MPCSignature } from "@omni-bridge/near"
+
+// From contract logs
+const raw = {
+  big_r: { affine_point: "02abc..." },
+  s: { scalar: "def..." },
+  recovery_id: 0,
+}
+
+const signature = MPCSignature.fromRaw(raw)
+
+// For Solana
+const solanaBytes = signature.toBytes(false)
+
+// For EVM (adds 27 to recovery_id)
+const evmBytes = signature.toBytes(true)
+```
+
+---
+
+## calculateStorageAccountId
+
+Calculate the storage account ID for a transfer message. This replicates the on-chain calculation.
+
+### Signature
+
+```typescript
+function calculateStorageAccountId(transferMessage: TransferMessageForStorage): string
+```
+
+### Parameters
+
+<ResponseField name="transferMessage" type="TransferMessageForStorage" required>
+  <Expandable title="TransferMessageForStorage">
+    <ResponseField name="token" type="string" required>
+      Token as OmniAddress string (e.g., `"near:wrap.near"`).
+    </ResponseField>
+
+    <ResponseField name="amount" type="bigint" required>
+      Transfer amount.
+    </ResponseField>
+
+    <ResponseField name="recipient" type="string" required>
+      Recipient as OmniAddress string.
+    </ResponseField>
+
+    <ResponseField name="fee" type="object" required>
+      <Expandable title="fee">
+        <ResponseField name="fee" type="bigint" required>
+          Token fee amount.
+        </ResponseField>
+
+        <ResponseField name="native_fee" type="bigint" required>
+          Native token fee amount.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+
+    <ResponseField name="sender" type="string" required>
+      Sender as OmniAddress string.
+    </ResponseField>
+
+    <ResponseField name="msg" type="string" required>
+      Message attached to transfer.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Returns
+
+<ResponseField name="string" type="string">
+  The storage account ID as a hex string.
+</ResponseField>
+
+### Example
+
+```typescript
+import { calculateStorageAccountId } from "@omni-bridge/near"
+
+const storageAccountId = calculateStorageAccountId({
+  token: "near:wrap.near",
+  amount: 1000000000000000000000000n,
+  recipient: "eth:0x1234567890123456789012345678901234567890",
+  fee: { fee: 0n, native_fee: 0n },
+  sender: "near:alice.near",
+  msg: "",
+})
+```
+
+---
+
+## Types
+
+### NearUnsignedTransaction
+
+The unsigned transaction format returned by the builder.
+
+```typescript
+interface NearUnsignedTransaction {
+  type: "near"
+  signerId: string
+  receiverId: string
+  actions: NearAction[]
+}
+```
+
+### NearAction
+
+An action within a NEAR transaction.
+
+```typescript
+interface NearAction {
+  type: "FunctionCall"
+  methodName: string
+  args: Uint8Array
+  gas: bigint
+  deposit: bigint
+}
+```
+
+### TransferId
+
+Identifier for a cross-chain transfer.
+
+```typescript
+interface TransferId {
+  origin_chain: ChainKind | number | string
+  origin_nonce: bigint | string
+}
+```
+
+### TransferFee
+
+Fee structure for transfers.
+
+```typescript
+interface TransferFee {
+  fee: string
+  native_fee: string
+}
+```
+
+### StorageDepositAction
+
+Action for depositing storage during finalization.
+
+```typescript
+interface StorageDepositAction {
+  token_id: string
+  account_id: string
+  storage_deposit_amount?: bigint
+}
+```
+
+### UtxoPostAction
+
+Post-action to execute after UTXO deposit is finalized.
+
+```typescript
+interface UtxoPostAction {
+  receiver_id: string
+  amount: bigint
+  memo?: string
+  msg: string
+  gas?: bigint
+}
+```
+
+### UtxoBridgeFee
+
+Bridge fee configuration.
+
+```typescript
+interface UtxoBridgeFee {
+  fee_min: string
+  fee_rate: number
+  protocol_fee_rate: number
+}
+```
+
+### UTXO
+
+UTXO structure for Bitcoin/Zcash operations.
+
+```typescript
+interface UTXO {
+  txid: string
+  vout: number
+  balance: bigint
+  path?: string
+  tx_bytes?: number[]
+}
+```
+
+---
+
+## Enums
+
+### ProofKind
+
+Types of proofs for finalization and token operations.
+
+```typescript
+enum ProofKind {
+  InitTransfer = 0,
+  FinTransfer = 1,
+  DeployToken = 2,
+  LogMetadata = 3,
+}
+```
+
+---
+
+## Constants
+
+### GAS
+
+Pre-defined gas amounts for NEAR transactions.
+
+```typescript
+const GAS = {
+  LOG_METADATA: 300_000_000_000_000n,      // 300 Tgas
+  DEPLOY_TOKEN: 120_000_000_000_000n,      // 120 Tgas
+  BIND_TOKEN: 300_000_000_000_000n,        // 300 Tgas
+  INIT_TRANSFER: 300_000_000_000_000n,     // 300 Tgas
+  FIN_TRANSFER: 300_000_000_000_000n,      // 300 Tgas
+  SIGN_TRANSFER: 300_000_000_000_000n,     // 300 Tgas
+  STORAGE_DEPOSIT: 10_000_000_000_000n,    // 10 Tgas
+  FAST_FIN_TRANSFER: 300_000_000_000_000n, // 300 Tgas
+  UTXO_VERIFY_DEPOSIT: 300_000_000_000_000n,  // 300 Tgas
+  UTXO_INIT_WITHDRAWAL: 100_000_000_000_000n, // 100 Tgas
+  UTXO_VERIFY_WITHDRAWAL: 5_000_000_000_000n, // 5 Tgas
+}
+```
+
+### DEPOSIT
+
+Pre-defined deposit amounts.
+
+```typescript
+const DEPOSIT = {
+  ONE_YOCTO: 1n,
+}
+```
+
+---
+
+## Borsh Schemas
+
+The package exports Borsh serialization schemas for advanced use cases.
+
+```typescript
+// Proof schemas
+EvmVerifyProofArgsSchema    // EVM proof arguments
+WormholeVerifyProofArgsSchema // Wormhole VAA proof arguments
+EvmProofSchema              // EVM proof structure
+
+// Transaction argument schemas
+FinTransferArgsSchema       // Finalization arguments
+DeployTokenArgsSchema       // Deploy token arguments
+BindTokenArgsSchema         // Bind token arguments
+StorageDepositActionSchema  // Storage deposit action
+
+// Enum schemas
+ChainKindSchema             // ChainKind enum
+ProofKindSchema             // ProofKind enum
+```
+
+These schemas use the `@zorsh/zorsh` library and can be used for custom serialization:
+
+```typescript
+import { FinTransferArgsSchema, ChainKind, ProofKind } from "@omni-bridge/near"
+
+const serialized = FinTransferArgsSchema.serialize({
+  chain_kind: ChainKind.Eth,
+  storage_deposit_actions: [],
+  prover_args: new Uint8Array([...]),
+})
+```
