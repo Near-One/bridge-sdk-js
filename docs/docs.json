@@ -75,17 +75,17 @@
     "links": [
       {
         "label": "GitHub",
-        "href": "https://github.com/Near-one/omni-bridge"
+        "href": "https://github.com/Near-one/bridge-sdk-js"
       }
     ],
     "primary": {
       "type": "github",
-      "href": "https://github.com/Near-one/omni-bridge"
+      "href": "https://github.com/Near-one/bridge-sdk-js"
     }
   },
   "footer": {
     "socials": {
-      "github": "https://github.com/Near-one/omni-bridge",
+      "github": "https://github.com/Near-one/bridge-sdk-js",
       "discord": "https://discord.gg/nearprotocol"
     }
   },
