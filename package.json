@@ -4,7 +4,7 @@
   "private": true,
   "description": "SDK for Omni bridge transfers",
   "type": "module",
-  "packageManager": "bun@1.2.16",
+  "packageManager": "bun@1.3.5",
   "workspaces": ["packages/*"],
   "scripts": {
     "build": "tsc --build",
