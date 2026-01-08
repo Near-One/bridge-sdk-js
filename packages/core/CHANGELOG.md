@@ -1,5 +1,11 @@
 # @omni-bridge/core
 
+## 0.0.4
+
+### Patch Changes
+
+- 500e399: Add default condition to package exports for CommonJS compatibility
+
 ## 0.0.3
 
 ### Patch Changes
