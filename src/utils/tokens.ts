@@ -5,7 +5,7 @@ import { ChainKind, type OmniAddress } from "../types/index.js"
 const CHAIN_PATTERNS: Record<string, ChainKind> = {
   "nbtc.bridge.near": ChainKind.Btc,
   "eth.bridge.near": ChainKind.Eth,
-  "sol.omdep.near": ChainKind.Sol,
+  "sol.omft.near": ChainKind.Sol,
   "base.omdep.near": ChainKind.Base,
   "arb.omdep.near": ChainKind.Arb,
   "bnb.omdep.near": ChainKind.Bnb,
@@ -30,7 +30,7 @@ const CHAIN_PATTERNS: Record<string, ChainKind> = {
 export function isBridgeToken(nearAddress: string): boolean {
   return (
     nearAddress in CHAIN_PATTERNS ||
-    /\.(omdep\.near|omnidep\.testnet|factory\.bridge\.(near|testnet))$/.test(nearAddress)
+    /\.(omdep\.near|omft\.near|omnidep\.testnet|factory\.bridge\.(near|testnet))$/.test(nearAddress)
   )
 }
 
@@ -46,7 +46,9 @@ export function parseOriginChain(nearAddress: string): ChainKind | null {
   if (exactMatch !== undefined) return exactMatch
 
   // Check prefixed patterns
-  if (/\.(omdep\.near|omnidep\.testnet|factory\.bridge\.(near|testnet))$/.test(nearAddress)) {
+  if (
+    /\.(omdep\.near|omft\.near|omnidep\.testnet|factory\.bridge\.(near|testnet))$/.test(nearAddress)
+  ) {
     if (nearAddress.startsWith("sol-")) return ChainKind.Sol
     if (nearAddress.startsWith("base-")) return ChainKind.Base
     if (nearAddress.startsWith("arb-")) return ChainKind.Arb
