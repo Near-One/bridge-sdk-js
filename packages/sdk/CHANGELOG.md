@@ -1,5 +1,17 @@
 # @omni-bridge/sdk
 
+## 0.0.4
+
+### Patch Changes
+
+- 500e399: Add default condition to package exports for CommonJS compatibility
+- Updated dependencies [500e399]
+  - @omni-bridge/core@0.0.4
+  - @omni-bridge/evm@0.0.4
+  - @omni-bridge/near@0.0.4
+  - @omni-bridge/solana@0.0.4
+  - @omni-bridge/btc@0.0.4
+
 ## 0.0.3
 
 ### Patch Changes
