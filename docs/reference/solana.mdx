@@ -83,7 +83,8 @@ Builds transfer instructions for bridging tokens from Solana to another chain.
 ```typescript
 buildTransfer(
   validated: ValidatedTransfer,
-  payer: PublicKey
+  user: PublicKey,
+  payer?: PublicKey
 ): Promise<TransactionInstruction[]>
 ```
 
@@ -93,8 +94,12 @@ buildTransfer(
   The validated transfer from `bridge.validateTransfer()`. Must have `sourceChain` set to `ChainKind.Sol`.
 </ResponseField>
 
-<ResponseField name="payer" type="PublicKey" required>
-  The public key of the account paying for the transaction and sending tokens.
+<ResponseField name="user" type="PublicKey" required>
+  The public key of the account that owns the tokens and authorizes the transfer (signs the token transfer/burn).
+</ResponseField>
+
+<ResponseField name="payer" type="PublicKey">
+  Optional public key of the account paying for Wormhole fees and rent. Defaults to `user` if not provided. This allows a gas refiller to pay fees on behalf of the user.
 </ResponseField>
 
 #### Returns
@@ -124,8 +129,12 @@ const validated = await bridge.validateTransfer({
 })
 
 // Build the transfer instructions
-const payer = new PublicKey("YourWalletPubkey...")
-const instructions = await solana.buildTransfer(validated, payer)
+const user = new PublicKey("YourWalletPubkey...")
+const instructions = await solana.buildTransfer(validated, user)
+
+// Or with a separate payer for fees (e.g., gas refiller)
+// const payer = new PublicKey("GasRefillerPubkey...")
+// const instructions = await solana.buildTransfer(validated, user, payer)
 
 // Create and send transaction
 const tx = new Transaction()
@@ -147,7 +156,7 @@ const validated = await bridge.validateTransfer({
   recipient: "near:recipient.near",
 })
 
-const instructions = await solana.buildTransfer(validated, payer)
+const instructions = await solana.buildTransfer(validated, user)
 ```
 
 ---
@@ -535,7 +544,11 @@ The Solana instruction builder interface.
 
 ```typescript
 interface SolanaBuilder {
-  buildTransfer(validated: ValidatedTransfer, payer: PublicKey): Promise<TransactionInstruction[]>
+  buildTransfer(
+    validated: ValidatedTransfer,
+    user: PublicKey,
+    payer?: PublicKey
+  ): Promise<TransactionInstruction[]>
   buildFinalization(
     payload: SolanaTransferMessagePayload,
     signature: SolanaMPCSignature,

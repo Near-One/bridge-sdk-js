@@ -32,8 +32,11 @@ const validated = await bridge.validateTransfer({
   recipient: "eth:0x1234567890123456789012345678901234567890",
 })
 
-// 2. Build instructions
+// 2. Build instructions (user owns tokens, payer pays fees)
 const instructions = await solBuilder.buildTransfer(validated, keypair.publicKey)
+
+// Or with separate payer for fees (e.g., gas refiller pays Wormhole fees)
+// const instructions = await solBuilder.buildTransfer(validated, userPubkey, payerPubkey)
 
 // 3. Create and send transaction
 const connection = new Connection("https://api.mainnet-beta.solana.com")
@@ -67,7 +70,10 @@ const builder = createSolanaBuilder({
 })
 
 // Transfers - returns TransactionInstruction[]
-await builder.buildTransfer(validated, payer)
+// user: account that owns tokens and authorizes the transfer
+// payer: optional account that pays Wormhole fees and rent (defaults to user)
+await builder.buildTransfer(validated, user)
+await builder.buildTransfer(validated, user, payer)  // separate fee payer
 
 // Finalization
 await builder.buildFinalization(payload, signature, payer)

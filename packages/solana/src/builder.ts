@@ -60,8 +60,15 @@ export interface SolanaBuilderConfig {
 export interface SolanaBuilder {
   /**
    * Build transfer instructions for bridging tokens from Solana
+   * @param validated - Validated transfer parameters
+   * @param user - The account that owns tokens and authorizes the transfer (signs token transfer/burn)
+   * @param payer - Optional account that pays Wormhole fees and rent. Defaults to user if not provided.
    */
-  buildTransfer(validated: ValidatedTransfer, payer: PublicKey): Promise<TransactionInstruction[]>
+  buildTransfer(
+    validated: ValidatedTransfer,
+    user: PublicKey,
+    payer?: PublicKey,
+  ): Promise<TransactionInstruction[]>
 
   /**
    * Build finalization instructions for receiving tokens on Solana
@@ -292,11 +299,15 @@ class SolanaBuilderImpl implements SolanaBuilder {
 
   async buildTransfer(
     validated: ValidatedTransfer,
-    payer: PublicKey,
+    user: PublicKey,
+    payer?: PublicKey,
   ): Promise<TransactionInstruction[]> {
     if (validated.sourceChain !== ChainKind.Sol) {
       throw new Error(`Source chain ${validated.sourceChain} is not Solana`)
     }
+
+    // Default payer to user if not provided
+    const feePayer = payer ?? user
 
     const program = this.getProgram()
     const solVault = this.deriveSolVault()
@@ -315,7 +326,7 @@ class SolanaBuilderImpl implements SolanaBuilder {
     }
 
     const commonAccounts = {
-      payer,
+      payer: feePayer,
       config,
       bridge: this.deriveWormholeBridge(),
       feeCollector: this.deriveWormholeFeeCollector(),
@@ -334,7 +345,7 @@ class SolanaBuilderImpl implements SolanaBuilder {
         .initTransferSol(payload)
         .accountsStrict({
           solVault,
-          user: payer,
+          user,
           common: commonAccounts,
         })
         .instruction()
@@ -345,7 +356,7 @@ class SolanaBuilderImpl implements SolanaBuilder {
     const mint = new PublicKey(tokenAddress)
     const tokenProgram = await this.getTokenProgramForMint(mint)
     const [from] = PublicKey.findProgramAddressSync(
-      [payer.toBuffer(), tokenProgram.toBuffer(), mint.toBuffer()],
+      [user.toBuffer(), tokenProgram.toBuffer(), mint.toBuffer()],
       ASSOCIATED_TOKEN_PROGRAM_ID,
     )
     const vault = (await this.isBridgedToken(mint)) ? null : this.deriveVault(mint)
@@ -358,7 +369,7 @@ class SolanaBuilderImpl implements SolanaBuilder {
         from,
         vault,
         solVault,
-        user: payer,
+        user,
         common: commonAccounts,
         tokenProgram,
       })

@@ -35,26 +35,30 @@ const solana = createSolanaBuilder({ network: "mainnet", connection })
 
 // Your keypair
 const keypair = Keypair.fromSecretKey(/* your secret key */)
-const payer = keypair.publicKey
+const user = keypair.publicKey
 
 // 1. Validate
 const validated = await bridge.validateTransfer({
   token: "sol:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC on Solana
   amount: 100_000_000n, // 100 USDC (6 decimals)
-  sender: `sol:${payer.toBase58()}`,
+  sender: `sol:${user.toBase58()}`,
   recipient: "near:alice.near",
   fee: 0n,
   nativeFee: 0n,
 })
 
 // 2. Build instructions
-const instructions = await solana.buildTransfer(validated, payer)
+const instructions = await solana.buildTransfer(validated, user)
+
+// Or with a separate payer for fees (e.g., gas refiller pays Wormhole fees)
+// const payer = new PublicKey("GasRefillerPubkey...")
+// const instructions = await solana.buildTransfer(validated, user, payer)
 
 // 3. Create and send transaction
 const { blockhash } = await connection.getLatestBlockhash()
 const tx = new Transaction({
   recentBlockhash: blockhash,
-  feePayer: payer,
+  feePayer: user,
 })
 tx.add(...instructions)
 
@@ -72,14 +76,14 @@ import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js"
 const validated = await bridge.validateTransfer({
   token: `sol:${PublicKey.default.toBase58()}`, // Native SOL
   amount: BigInt(0.1 * LAMPORTS_PER_SOL), // 0.1 SOL
-  sender: `sol:${payer.toBase58()}`,
+  sender: `sol:${user.toBase58()}`,
   recipient: "near:alice.near",
   fee: 0n,
   nativeFee: 0n,
 })
 
 // The SDK uses initTransferSol automatically
-const instructions = await solana.buildTransfer(validated, payer)
+const instructions = await solana.buildTransfer(validated, user)
 ```
 
 ## Wallet Adapter Integration
