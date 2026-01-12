@@ -1,5 +1,11 @@
 # @omni-bridge/btc
 
+## 0.1.0
+
+### Patch Changes
+
+- @omni-bridge/core@0.1.0
+
 ## 0.0.4
 
 ### Patch Changes
