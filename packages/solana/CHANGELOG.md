@@ -1,5 +1,15 @@
 # @omni-bridge/solana
 
+## 0.1.0
+
+### Minor Changes
+
+- eeb4aee: Add separate `user` and `payer` parameters to `buildTransfer` to allow a gas refiller to pay Wormhole fees and rent instead of the deposit address
+
+### Patch Changes
+
+- @omni-bridge/core@0.1.0
+
 ## 0.0.4
 
 ### Patch Changes

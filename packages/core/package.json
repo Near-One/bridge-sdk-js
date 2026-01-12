@@ -1,6 +1,6 @@
 {
   "name": "@omni-bridge/core",
-  "version": "0.0.4",
+  "version": "0.1.0",
   "description": "Core types, validation, and API client for Omni Bridge",
   "type": "module",
   "main": "dist/index.js",
