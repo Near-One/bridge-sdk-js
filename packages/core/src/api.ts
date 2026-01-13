@@ -222,7 +222,7 @@ export class BridgeAPI {
       throw new ApiError(responseText || "API request failed", response.status, response.statusText)
     }
 
-    const data: unknown = await response.json()
+    const data = await response.json()
     return schema.parse(data)
   }
 
