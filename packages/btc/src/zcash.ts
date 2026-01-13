@@ -106,10 +106,7 @@ export function calculateZcashFee(inputs: number, outputs: number): bigint {
   const logicalActions = Math.max(inputs, outputs)
 
   // Fee = marginalFee * max(graceActions, logicalActions)
-  const fee = Math.max(
-    marginalFee * Math.max(graceActions, logicalActions),
-    marginalFee * graceActions,
-  )
+  const fee = marginalFee * Math.max(graceActions, logicalActions)
 
   return BigInt(fee)
 }
