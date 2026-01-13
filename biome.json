@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.3.8/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
   "vcs": {
     "enabled": false,
     "clientKind": "git",
@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["src/**/*", "test/**/*", "*.config.js"]
+    "includes": ["packages/*/src/**/*", "src/**/*", "tests/**/*", "e2e/**/*", "examples/**/*"]
   },
   "formatter": {
     "enabled": true,
@@ -18,6 +18,9 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "complexity": {
+        "useLiteralKeys": "off"
+      },
       "correctness": {
         "noUnusedImports": "error",
         "noUnusedVariables": "error",
@@ -62,5 +65,18 @@
       "quoteStyle": "double",
       "semicolons": "asNeeded"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["examples/**/*"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off",
+            "noNonNullAssertion": "off"
+          }
+        }
+      }
+    }
+  ]
 }

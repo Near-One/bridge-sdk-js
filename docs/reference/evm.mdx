@@ -1,0 +1,881 @@
+---
+title: "@omni-bridge/evm"
+description: EVM transaction builder for Ethereum, Base, Arbitrum, Polygon, and BNB Chain
+---
+
+## Import
+
+```typescript
+import {
+  createEvmBuilder,
+  getEvmProof,
+  parseInitTransferEvent,
+  getInitTransferTopic,
+  BRIDGE_TOKEN_FACTORY_ABI,
+  ERC20_ABI,
+} from "@omni-bridge/evm"
+```
+
+---
+
+## createEvmBuilder
+
+Factory function to create an EVM transaction builder for a specific chain.
+
+### Signature
+
+```typescript
+function createEvmBuilder(config: EvmBuilderConfig): EvmBuilder
+```
+
+### Parameters
+
+<ResponseField name="config" type="EvmBuilderConfig" required>
+  Configuration object for the EVM builder.
+  <Expandable title="EvmBuilderConfig">
+    <ResponseField name="network" type="'mainnet' | 'testnet'" required>
+      The network to connect to.
+    </ResponseField>
+
+    <ResponseField name="chain" type="EvmChainKind" required>
+      The EVM chain to build transactions for. One of: `ChainKind.Eth`, `ChainKind.Base`, `ChainKind.Arb`, `ChainKind.Pol`, `ChainKind.Bnb`
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Returns
+
+<ResponseField name="EvmBuilder" type="EvmBuilder">
+  An EVM transaction builder instance.
+  <Expandable title="EvmBuilder">
+    <ResponseField name="chainId" type="number">
+      The chain ID for this builder's configured chain (readonly).
+    </ResponseField>
+
+    <ResponseField name="bridgeAddress" type="Address">
+      The bridge contract address for this builder's configured chain (readonly).
+    </ResponseField>
+
+    <ResponseField name="buildTransfer" type="(validated: ValidatedTransfer) => EvmUnsignedTransaction">
+      Builds an unsigned transfer transaction.
+    </ResponseField>
+
+    <ResponseField name="buildApproval" type="(token: Address, amount: bigint) => EvmUnsignedTransaction">
+      Builds an ERC20 approval transaction for the bridge contract.
+    </ResponseField>
+
+    <ResponseField name="buildMaxApproval" type="(token: Address) => EvmUnsignedTransaction">
+      Builds a max (unlimited) approval transaction for the bridge contract.
+    </ResponseField>
+
+    <ResponseField name="buildFinalization" type="(payload: TransferPayload, signature: Uint8Array) => EvmUnsignedTransaction">
+      Builds a finalization transaction for incoming transfers.
+    </ResponseField>
+
+    <ResponseField name="buildLogMetadata" type="(token: Address) => EvmUnsignedTransaction">
+      Builds a token metadata logging transaction.
+    </ResponseField>
+
+    <ResponseField name="buildDeployToken" type="(signature: Uint8Array, metadata: TokenMetadata) => EvmUnsignedTransaction">
+      Builds a bridged token deployment transaction.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```typescript
+import { createEvmBuilder } from "@omni-bridge/evm"
+import { ChainKind } from "@omni-bridge/core"
+
+// Create builder for Ethereum mainnet
+const ethBuilder = createEvmBuilder({
+  network: "mainnet",
+  chain: ChainKind.Eth,
+})
+
+// Create builder for Base
+const baseBuilder = createEvmBuilder({
+  network: "mainnet",
+  chain: ChainKind.Base,
+})
+
+// Create builder for Arbitrum testnet
+const arbBuilder = createEvmBuilder({
+  network: "testnet",
+  chain: ChainKind.Arb,
+})
+
+console.log(ethBuilder.chainId) // 1
+console.log(ethBuilder.bridgeAddress) // "0x..."
+```
+
+---
+
+## EvmBuilder Methods
+
+### buildTransfer
+
+Builds an unsigned transfer transaction for bridging tokens from an EVM chain.
+
+#### Signature
+
+```typescript
+builder.buildTransfer(validated: ValidatedTransfer): EvmUnsignedTransaction
+```
+
+#### Parameters
+
+<ResponseField name="validated" type="ValidatedTransfer" required>
+  A validated transfer object from `bridge.validateTransfer()`. The source chain in the validated transfer must match the builder's configured chain.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="EvmUnsignedTransaction" type="EvmUnsignedTransaction">
+  An unsigned transaction object compatible with viem and ethers v6.
+</ResponseField>
+
+#### Example
+
+```typescript
+import { createBridge } from "@omni-bridge/core"
+import { createEvmBuilder } from "@omni-bridge/evm"
+import { ChainKind } from "@omni-bridge/core"
+
+const bridge = createBridge({ network: "mainnet" })
+const evm = createEvmBuilder({ network: "mainnet", chain: ChainKind.Eth })
+
+// Validate the transfer
+const validated = await bridge.validateTransfer({
+  token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  amount: 1000000n, // 1 USDC
+  fee: 0n,
+  nativeFee: 0n,
+  sender: "eth:0xYourAddress",
+  recipient: "near:alice.near",
+})
+
+// Build the unsigned transaction
+const tx = evm.buildTransfer(validated)
+
+// Send with viem
+await walletClient.sendTransaction(tx)
+
+// Or send with ethers v6
+await signer.sendTransaction(tx)
+```
+
+#### Native Token Transfers
+
+When bridging native tokens (ETH, BNB, etc.), use the zero address:
+
+```typescript
+import { parseEther } from "viem"
+
+const validated = await bridge.validateTransfer({
+  token: "eth:0x0000000000000000000000000000000000000000",
+  amount: parseEther("0.1"),
+  fee: 0n,
+  nativeFee: 0n,
+  sender: "eth:0xYourAddress",
+  recipient: "near:alice.near",
+})
+
+const tx = evm.buildTransfer(validated)
+// tx.value includes the transfer amount
+```
+
+#### Transaction Value Calculation
+
+The `value` field is calculated automatically based on token type:
+
+| Token Type | `tx.value` Contains |
+|------------|---------------------|
+| ERC20 tokens | `nativeFee` only |
+| Native tokens (ETH, BNB, etc.) | `amount + nativeFee` |
+
+```typescript
+// ERC20: value = nativeFee
+const validated = await bridge.validateTransfer({
+  token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC
+  amount: 1000000n,
+  nativeFee: 1000000000000000n, // 0.001 ETH
+  // ...
+})
+const tx = evm.buildTransfer(validated)
+console.log(tx.value) // 1000000000000000n (just nativeFee)
+
+// Native ETH: value = amount + nativeFee
+const validated = await bridge.validateTransfer({
+  token: "eth:0x0000000000000000000000000000000000000000",
+  amount: 1000000000000000000n, // 1 ETH
+  nativeFee: 1000000000000000n, // 0.001 ETH
+  // ...
+})
+const tx = evm.buildTransfer(validated)
+console.log(tx.value) // 1001000000000000000n (amount + nativeFee)
+```
+
+<Note>
+For ERC20 tokens, you must call `buildApproval()` first to approve the bridge contract to spend your tokens.
+</Note>
+
+---
+
+### buildApproval
+
+Builds an ERC20 approval transaction for the bridge contract.
+
+#### Signature
+
+```typescript
+builder.buildApproval(token: Address, amount: bigint): EvmUnsignedTransaction
+```
+
+#### Parameters
+
+<ResponseField name="token" type="Address" required>
+  The ERC20 token contract address (without chain prefix), e.g., `"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"`.
+</ResponseField>
+
+<ResponseField name="amount" type="bigint" required>
+  The amount to approve in the token's smallest unit.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="EvmUnsignedTransaction" type="EvmUnsignedTransaction">
+  An unsigned approval transaction. The `to` field is the token contract address, and `value` is always `0n`.
+</ResponseField>
+
+#### Example
+
+```typescript
+const approvalTx = evm.buildApproval(
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC
+  1000000n // 1 USDC
+)
+
+await walletClient.sendTransaction(approvalTx)
+```
+
+---
+
+### buildMaxApproval
+
+Builds an unlimited (max uint256) approval transaction for the bridge contract.
+
+#### Signature
+
+```typescript
+builder.buildMaxApproval(token: Address): EvmUnsignedTransaction
+```
+
+#### Parameters
+
+<ResponseField name="token" type="Address" required>
+  The ERC20 token contract address (without chain prefix).
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="EvmUnsignedTransaction" type="EvmUnsignedTransaction">
+  An unsigned approval transaction for `type(uint256).max`.
+</ResponseField>
+
+#### Example
+
+```typescript
+// Approve unlimited USDC spending
+const approvalTx = evm.buildMaxApproval(
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+)
+
+await walletClient.sendTransaction(approvalTx)
+```
+
+<Note>
+Max approvals are convenient for repeated transfers but carry higher security risk. Consider using exact amounts for better security.
+</Note>
+
+---
+
+### buildFinalization
+
+Builds a finalization transaction for completing incoming transfers to an EVM chain.
+
+#### Signature
+
+```typescript
+builder.buildFinalization(
+  payload: TransferPayload,
+  signature: Uint8Array
+): EvmUnsignedTransaction
+```
+
+#### Parameters
+
+<ResponseField name="payload" type="TransferPayload" required>
+  The transfer payload containing transfer details.
+  <Expandable title="TransferPayload">
+    <ResponseField name="destinationNonce" type="bigint" required>
+      The nonce on the destination chain.
+    </ResponseField>
+
+    <ResponseField name="originChain" type="number" required>
+      The origin chain identifier.
+    </ResponseField>
+
+    <ResponseField name="originNonce" type="bigint" required>
+      The nonce on the origin chain.
+    </ResponseField>
+
+    <ResponseField name="tokenAddress" type="Address" required>
+      The token address on the destination chain.
+    </ResponseField>
+
+    <ResponseField name="amount" type="bigint" required>
+      The transfer amount.
+    </ResponseField>
+
+    <ResponseField name="recipient" type="Address" required>
+      The recipient address on the destination chain.
+    </ResponseField>
+
+    <ResponseField name="feeRecipient" type="string" required>
+      The fee recipient address (OmniAddress format).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="signature" type="Uint8Array" required>
+  The MPC signature authorizing the finalization.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="EvmUnsignedTransaction" type="EvmUnsignedTransaction">
+  An unsigned finalization transaction. The `value` is always `0n`.
+</ResponseField>
+
+#### Example
+
+```typescript
+const finalizeTx = evm.buildFinalization(
+  {
+    destinationNonce: 42n,
+    originChain: 1, // NEAR
+    originNonce: 123n,
+    tokenAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    amount: 1000000n,
+    recipient: "0xRecipientAddress",
+    feeRecipient: "near:relayer.near",
+  },
+  signature // MPC signature bytes
+)
+
+await walletClient.sendTransaction(finalizeTx)
+```
+
+---
+
+### buildLogMetadata
+
+Builds a transaction to log token metadata on-chain. This is used to register token information for bridging.
+
+#### Signature
+
+```typescript
+builder.buildLogMetadata(token: Address): EvmUnsignedTransaction
+```
+
+#### Parameters
+
+<ResponseField name="token" type="Address" required>
+  The ERC20 token contract address to log metadata for.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="EvmUnsignedTransaction" type="EvmUnsignedTransaction">
+  An unsigned transaction to call `logMetadata` on the bridge contract.
+</ResponseField>
+
+#### Example
+
+```typescript
+const logTx = evm.buildLogMetadata(
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" // USDC
+)
+
+await walletClient.sendTransaction(logTx)
+```
+
+---
+
+### buildDeployToken
+
+Builds a transaction to deploy a bridged token representation on the EVM chain.
+
+#### Signature
+
+```typescript
+builder.buildDeployToken(
+  signature: Uint8Array,
+  metadata: TokenMetadata
+): EvmUnsignedTransaction
+```
+
+#### Parameters
+
+<ResponseField name="signature" type="Uint8Array" required>
+  The MPC signature authorizing the token deployment.
+</ResponseField>
+
+<ResponseField name="metadata" type="TokenMetadata" required>
+  The token metadata for the bridged token.
+  <Expandable title="TokenMetadata">
+    <ResponseField name="token" type="string" required>
+      The original token identifier (e.g., NEAR account ID).
+    </ResponseField>
+
+    <ResponseField name="name" type="string" required>
+      The token name.
+    </ResponseField>
+
+    <ResponseField name="symbol" type="string" required>
+      The token symbol.
+    </ResponseField>
+
+    <ResponseField name="decimals" type="number" required>
+      The number of decimal places.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="EvmUnsignedTransaction" type="EvmUnsignedTransaction">
+  An unsigned transaction to deploy the bridged token contract.
+</ResponseField>
+
+#### Example
+
+```typescript
+const deployTx = evm.buildDeployToken(signature, {
+  token: "wrap.near",
+  name: "Wrapped NEAR",
+  symbol: "wNEAR",
+  decimals: 24,
+})
+
+await walletClient.sendTransaction(deployTx)
+```
+
+---
+
+## Proof Utilities
+
+### getEvmProof
+
+Generates a Merkle proof for an EVM transaction, used for cross-chain verification.
+
+#### Signature
+
+```typescript
+async function getEvmProof(
+  txHash: Hex,
+  topic: Hex,
+  chain: EvmChainKind,
+  network: Network,
+  customRpcUrl?: string
+): Promise<EvmProof>
+```
+
+#### Parameters
+
+<ResponseField name="txHash" type="Hex" required>
+  The transaction hash to generate a proof for, e.g., `"0x..."`.
+</ResponseField>
+
+<ResponseField name="topic" type="Hex" required>
+  The event topic to prove. Use `getInitTransferTopic()` for transfer proofs.
+</ResponseField>
+
+<ResponseField name="chain" type="EvmChainKind" required>
+  The EVM chain where the transaction occurred. One of: `ChainKind.Eth`, `ChainKind.Base`, `ChainKind.Arb`, `ChainKind.Pol`, `ChainKind.Bnb`
+</ResponseField>
+
+<ResponseField name="network" type="Network" required>
+  The network: `"mainnet"` or `"testnet"`.
+</ResponseField>
+
+<ResponseField name="customRpcUrl" type="string">
+  Optional custom RPC URL. If not provided, uses default public RPC endpoints.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="EvmProof" type="EvmProof">
+  The Merkle proof data for cross-chain verification.
+  <Expandable title="EvmProof">
+    <ResponseField name="log_index" type="bigint">
+      The index of the log entry within the receipt.
+    </ResponseField>
+
+    <ResponseField name="log_entry_data" type="Uint8Array">
+      RLP-encoded log entry data.
+    </ResponseField>
+
+    <ResponseField name="receipt_index" type="bigint">
+      The transaction index within the block.
+    </ResponseField>
+
+    <ResponseField name="receipt_data" type="Uint8Array">
+      RLP-encoded receipt data.
+    </ResponseField>
+
+    <ResponseField name="header_data" type="Uint8Array">
+      RLP-encoded block header data.
+    </ResponseField>
+
+    <ResponseField name="proof" type="Uint8Array[]">
+      The Merkle proof path.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Example
+
+```typescript
+import { getEvmProof, getInitTransferTopic } from "@omni-bridge/evm"
+import { ChainKind } from "@omni-bridge/core"
+
+const proof = await getEvmProof(
+  "0x1234567890abcdef...",
+  getInitTransferTopic(),
+  ChainKind.Eth,
+  "mainnet"
+)
+
+// Use with custom RPC
+const proofWithCustomRpc = await getEvmProof(
+  "0x1234567890abcdef...",
+  getInitTransferTopic(),
+  ChainKind.Eth,
+  "mainnet",
+  "https://my-rpc-endpoint.com"
+)
+```
+
+---
+
+### parseInitTransferEvent
+
+Parses the `InitTransfer` event from transaction logs. Works with both viem and ethers receipt log formats.
+
+#### Signature
+
+```typescript
+function parseInitTransferEvent(logs: readonly LogEntry[]): EvmInitTransferEvent
+```
+
+#### Parameters
+
+<ResponseField name="logs" type="readonly LogEntry[]" required>
+  Array of log entries from a transaction receipt.
+  <Expandable title="LogEntry">
+    <ResponseField name="topics" type="readonly string[] | string[]" required>
+      The log topics.
+    </ResponseField>
+
+    <ResponseField name="data" type="string" required>
+      The log data.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="EvmInitTransferEvent" type="EvmInitTransferEvent">
+  Parsed event data.
+  <Expandable title="EvmInitTransferEvent">
+    <ResponseField name="sender" type="string">
+      The sender address.
+    </ResponseField>
+
+    <ResponseField name="tokenAddress" type="string">
+      The token contract address.
+    </ResponseField>
+
+    <ResponseField name="originNonce" type="bigint">
+      The transfer nonce on the origin chain.
+    </ResponseField>
+
+    <ResponseField name="amount" type="bigint">
+      The transfer amount.
+    </ResponseField>
+
+    <ResponseField name="fee" type="bigint">
+      The token fee amount.
+    </ResponseField>
+
+    <ResponseField name="nativeTokenFee" type="bigint">
+      The native token fee amount.
+    </ResponseField>
+
+    <ResponseField name="recipient" type="string">
+      The recipient address (OmniAddress format).
+    </ResponseField>
+
+    <ResponseField name="message" type="string">
+      Optional message attached to the transfer.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Throws
+
+Throws an error if no `InitTransfer` event is found in the logs.
+
+#### Example
+
+```typescript
+import { parseInitTransferEvent } from "@omni-bridge/evm"
+
+// With viem
+const receipt = await publicClient.getTransactionReceipt({ hash: txHash })
+const event = parseInitTransferEvent(receipt.logs)
+
+console.log(`Transfer nonce: ${event.originNonce}`)
+console.log(`Amount: ${event.amount}`)
+console.log(`Recipient: ${event.recipient}`)
+
+// With ethers v6
+const receipt = await provider.getTransactionReceipt(txHash)
+const event = parseInitTransferEvent(receipt.logs)
+```
+
+---
+
+### getInitTransferTopic
+
+Returns the topic hash for the `InitTransfer` event.
+
+#### Signature
+
+```typescript
+function getInitTransferTopic(): Hex
+```
+
+#### Returns
+
+<ResponseField name="Hex" type="Hex">
+  The keccak256 hash of the `InitTransfer` event signature: `"0xaa7e1f77d43faa300bc5ae8f012f0b7cf80174f4c0b1cffeab250cb4966bb88c"`
+</ResponseField>
+
+#### Example
+
+```typescript
+import { getInitTransferTopic } from "@omni-bridge/evm"
+
+const topic = getInitTransferTopic()
+// "0xaa7e1f77d43faa300bc5ae8f012f0b7cf80174f4c0b1cffeab250cb4966bb88c"
+```
+
+---
+
+## Contract ABIs
+
+### BRIDGE_TOKEN_FACTORY_ABI
+
+The ABI for the bridge token factory contract. Includes functions for:
+- `initTransfer` - Initiate a cross-chain transfer
+- `finTransfer` - Finalize an incoming transfer
+- `deployToken` - Deploy a bridged token
+- `logMetadata` - Log token metadata
+- `nearToEthToken` - Look up bridged token address
+- `InitTransfer` - Event emitted on transfer initiation
+
+```typescript
+import { BRIDGE_TOKEN_FACTORY_ABI } from "@omni-bridge/evm"
+```
+
+### ERC20_ABI
+
+A minimal ERC20 ABI with `approve` and `allowance` functions.
+
+```typescript
+import { ERC20_ABI } from "@omni-bridge/evm"
+```
+
+---
+
+## Types
+
+### EvmUnsignedTransaction
+
+An unsigned EVM transaction object compatible with both viem and ethers v6.
+
+```typescript
+interface EvmUnsignedTransaction {
+  to: `0x${string}`   // Target contract address
+  data: `0x${string}` // Encoded function call data
+  value: bigint       // ETH value to send
+  chainId: number     // Chain ID
+}
+```
+
+Can be passed directly to:
+- viem: `walletClient.sendTransaction(tx)`
+- ethers v6: `signer.sendTransaction(tx)`
+
+---
+
+### EvmBuilderConfig
+
+Configuration for creating an EVM builder.
+
+```typescript
+interface EvmBuilderConfig {
+  network: "mainnet" | "testnet"
+  chain: EvmChainKind
+}
+```
+
+---
+
+### TokenMetadata
+
+Metadata for deploying a bridged token.
+
+```typescript
+interface TokenMetadata {
+  token: string    // Original token identifier
+  name: string     // Token name
+  symbol: string   // Token symbol
+  decimals: number // Decimal places
+}
+```
+
+---
+
+### TransferPayload
+
+Payload for finalizing an incoming transfer.
+
+```typescript
+interface TransferPayload {
+  destinationNonce: bigint
+  originChain: number
+  originNonce: bigint
+  tokenAddress: Address
+  amount: bigint
+  recipient: Address
+  feeRecipient: string
+}
+```
+
+---
+
+### EvmProof
+
+Merkle proof data for cross-chain verification.
+
+```typescript
+interface EvmProof {
+  log_index: bigint
+  log_entry_data: Uint8Array
+  receipt_index: bigint
+  receipt_data: Uint8Array
+  header_data: Uint8Array
+  proof: Uint8Array[]
+}
+```
+
+---
+
+### EvmInitTransferEvent
+
+Parsed `InitTransfer` event from bridge transactions.
+
+```typescript
+interface EvmInitTransferEvent {
+  sender: string
+  tokenAddress: string
+  originNonce: bigint
+  amount: bigint
+  fee: bigint
+  nativeTokenFee: bigint
+  recipient: string
+  message: string
+}
+```
+
+---
+
+### LogEntry
+
+Log entry format compatible with both viem and ethers receipts.
+
+```typescript
+interface LogEntry {
+  topics: readonly string[] | string[]
+  data: string
+}
+```
+
+---
+
+## Complete Transfer Example
+
+```typescript
+import { createBridge, ChainKind } from "@omni-bridge/core"
+import { createEvmBuilder, parseInitTransferEvent } from "@omni-bridge/evm"
+import { createPublicClient, createWalletClient, http, parseUnits } from "viem"
+import { mainnet } from "viem/chains"
+import { privateKeyToAccount } from "viem/accounts"
+
+// Setup clients
+const account = privateKeyToAccount("0x...")
+const publicClient = createPublicClient({ chain: mainnet, transport: http() })
+const walletClient = createWalletClient({
+  chain: mainnet,
+  transport: http(),
+  account,
+})
+
+// Create bridge and builder
+const bridge = createBridge({ network: "mainnet" })
+const evm = createEvmBuilder({ network: "mainnet", chain: ChainKind.Eth })
+
+// 1. Validate the transfer
+const validated = await bridge.validateTransfer({
+  token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC
+  amount: parseUnits("100", 6), // 100 USDC
+  fee: 0n,
+  nativeFee: 0n,
+  sender: `eth:${account.address}`,
+  recipient: "near:recipient.near",
+})
+
+// 2. Approve the bridge (for ERC20 tokens)
+const approvalTx = evm.buildApproval(
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  validated.params.amount
+)
+const approvalHash = await walletClient.sendTransaction(approvalTx)
+await publicClient.waitForTransactionReceipt({ hash: approvalHash })
+
+// 3. Execute the transfer
+const transferTx = evm.buildTransfer(validated)
+const transferHash = await walletClient.sendTransaction(transferTx)
+const receipt = await publicClient.waitForTransactionReceipt({
+  hash: transferHash,
+})
+
+// 4. Parse the transfer event
+const event = parseInitTransferEvent(receipt.logs)
+console.log(`Transfer initiated with nonce: ${event.originNonce}`)
+```

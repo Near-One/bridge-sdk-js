@@ -1,5 +1,4 @@
-import { ChainKind, type OmniAddress } from "../../src/types/index.js"
-import { omniAddress } from "../../src/utils/index.js"
+import { ChainKind, type OmniAddress, omniAddress } from "@omni-bridge/core"
 
 export interface TestTokenConfig {
   address: OmniAddress

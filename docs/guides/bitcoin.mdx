@@ -1,0 +1,292 @@
+---
+title: Bitcoin & Zcash
+description: Bridge Bitcoin and Zcash to NEAR
+---
+
+Bitcoin and Zcash use a different flow than other chains. They're UTXO-based, so:
+- **Deposits** generate a unique address, you send funds, then finalize on NEAR
+- **Withdrawals** initiate on NEAR, wait for MPC signing, then broadcast
+
+## Setup
+
+```typescript
+import { createBridge, ChainKind } from "@omni-bridge/core"
+import { createBtcBuilder } from "@omni-bridge/btc"
+import { createNearBuilder, toNearKitTransaction } from "@omni-bridge/near"
+import { Near } from "near-kit"
+
+const bridge = createBridge({ network: "mainnet" })
+const btc = createBtcBuilder({ network: "mainnet", chain: "btc" })
+const nearBuilder = createNearBuilder({ network: "mainnet" })
+const near = new Near({ network: "mainnet", privateKey: "ed25519:..." })
+```
+
+For Zcash, change `chain: "zcash"`:
+
+```typescript
+const zec = createBtcBuilder({ network: "mainnet", chain: "zcash" })
+```
+
+## Deposits: Bitcoin → NEAR
+
+Depositing Bitcoin gives you nBTC on NEAR.
+
+### Step 1: Get a Deposit Address
+
+```typescript
+const { address } = await bridge.getUtxoDepositAddress(
+  ChainKind.Btc,
+  "alice.near"  // NEAR recipient
+)
+
+console.log("Send BTC to:", address)
+```
+
+<Warning>
+Each deposit address is unique to the recipient. Don't reuse addresses for different accounts.
+</Warning>
+
+### Step 2: Send Bitcoin
+
+Send Bitcoin to the deposit address using any wallet. Wait for at least 2 confirmations (~20 minutes).
+
+### Step 3: Finalize on NEAR
+
+After the Bitcoin transaction confirms, submit a proof to NEAR:
+
+```typescript
+// Get the proof
+const proof = await btc.getDepositProof(
+  "your_btc_tx_hash",
+  0  // vout (output index)
+)
+
+// Build finalization transaction
+const finalizeTx = nearBuilder.buildUtxoDepositFinalization({
+  chain: "btc",
+  depositMsg: { recipient_id: "alice.near" },
+  txBytes: proof.tx_bytes,
+  vout: 0,
+  txBlockBlockhash: proof.tx_block_blockhash,
+  txIndex: proof.tx_index,
+  merkleProof: proof.merkle_proof,
+  signerId: "alice.near",
+})
+
+// Send to NEAR
+await toNearKitTransaction(near, finalizeTx).send()
+
+// Check balance
+const balance = await nearBuilder.getUtxoTokenBalance("btc", "alice.near")
+console.log("nBTC balance:", balance, "satoshis")
+```
+
+### Finding the Output Index (vout)
+
+Check your Bitcoin transaction on a block explorer:
+1. Go to [mempool.space](https://mempool.space) or [blockstream.info](https://blockstream.info)
+2. Find your transaction
+3. Look at the outputs — find the one going to your deposit address
+4. The position (0, 1, 2, ...) is your `vout`
+
+## Withdrawals: NEAR → Bitcoin
+
+Withdrawing nBTC from NEAR to Bitcoin.
+
+### Step 1: Check Balance and Build Plan
+
+```typescript
+import type { UTXO } from "@omni-bridge/core"
+
+const signerId = "alice.near"
+const targetAddress = "bc1q..."  // Your Bitcoin address
+
+// Check balance
+const balance = await nearBuilder.getUtxoTokenBalance("btc", signerId)
+const config = await nearBuilder.getUtxoConnectorConfig("btc")
+
+console.log("Balance:", balance, "satoshis")
+console.log("Min withdraw:", config.min_withdraw_amount)
+
+// Get available UTXOs and build withdrawal plan
+const utxos: UTXO[] = await nearBuilder.getUtxoAvailableOutputs("btc")
+const withdrawAmount = 100_000n  // satoshis
+
+const plan = btc.buildWithdrawalPlan(
+  utxos,
+  withdrawAmount,
+  targetAddress,
+  config.change_address,
+  2  // fee rate (sat/vB)
+)
+
+const bridgeFee = await nearBuilder.calculateUtxoWithdrawalFee("btc", withdrawAmount)
+const totalAmount = withdrawAmount + plan.fee + bridgeFee
+
+console.log("Network fee:", plan.fee, "satoshis")
+console.log("Bridge fee:", bridgeFee, "satoshis")
+console.log("Total:", totalAmount, "satoshis")
+```
+
+### Step 2: Initiate on NEAR
+
+```typescript
+const withdrawTx = nearBuilder.buildUtxoWithdrawalInit({
+  chain: "btc",
+  targetAddress,
+  inputs: plan.inputs,
+  outputs: plan.outputs,
+  totalAmount,
+  signerId,
+})
+
+const result = await toNearKitTransaction(near, withdrawTx).send()
+console.log("Withdrawal initiated:", result.transaction.hash)
+```
+
+### Step 3: Wait for MPC Signing
+
+```typescript
+import { BridgeAPI } from "@omni-bridge/core"
+
+const api = new BridgeAPI("mainnet")
+
+let signedTxHash: string | undefined
+
+for (let i = 0; i < 60; i++) {
+  const transfers = await api.getTransfer({
+    transactionHash: result.transaction.hash,
+  })
+  const transfer = transfers[0]
+
+  if (transfer?.signed?.NearReceipt?.transaction_hash) {
+    signedTxHash = transfer.signed.NearReceipt.transaction_hash
+    break
+  }
+
+  console.log(`Waiting for MPC signature... (${i + 1}/60)`)
+  await new Promise((r) => setTimeout(r, 5000))
+}
+
+if (!signedTxHash) throw new Error("MPC signing timed out")
+```
+
+### Step 4: Broadcast to Bitcoin
+
+```typescript
+// Get signed transaction from NEAR logs
+const signedTx = await near.getTransactionStatus(signedTxHash, signerId, "FINAL")
+
+const signedLog = signedTx.receipts_outcome
+  .flatMap((r) => r.outcome.logs)
+  .find((log) => log.includes("signed_btc_transaction"))
+
+const jsonPart = signedLog.split("EVENT_JSON:")[1]
+const signedData = JSON.parse(jsonPart)
+const txBytes: number[] = signedData.data[0].tx_bytes
+
+// Convert to hex and broadcast
+const txHex = txBytes.map((b) => b.toString(16).padStart(2, "0")).join("")
+const btcTxHash = await btc.broadcastTransaction(txHex)
+
+console.log("Bitcoin TX:", btcTxHash)
+console.log("Explorer:", `https://mempool.space/tx/${btcTxHash}`)
+```
+
+## Zcash
+
+Zcash works identically — just change the chain parameter:
+
+```typescript
+const zec = createBtcBuilder({ network: "mainnet", chain: "zcash" })
+
+// Deposit
+const { address } = await bridge.getUtxoDepositAddress(
+  ChainKind.Zcash,
+  "alice.near"
+)
+
+// Withdrawal
+const utxos = await nearBuilder.getUtxoAvailableOutputs("zcash")
+const config = await nearBuilder.getUtxoConnectorConfig("zcash")
+
+const plan = zec.buildWithdrawalPlan(
+  utxos,
+  100_000n,
+  "t1...",  // Zcash transparent address
+  config.change_address
+)
+```
+
+<Note>
+Zcash only supports transparent addresses (`t1...`). Shielded addresses are not supported.
+</Note>
+
+## Fee Calculation
+
+Bitcoin uses a linear fee model based on transaction size:
+
+```typescript
+import { linearFeeCalculator } from "@omni-bridge/btc"
+
+const calculator = linearFeeCalculator({
+  base: 10,    // Base overhead
+  input: 68,   // Bytes per input
+  output: 31,  // Bytes per output
+  rate: 5,     // sat/vB
+})
+
+const fee = calculator(2, 2)  // 2 inputs, 2 outputs
+```
+
+Zcash uses ZIP-317 marginal fees (handled automatically).
+
+## Connector Configuration
+
+Check limits and fees:
+
+```typescript
+const config = await nearBuilder.getUtxoConnectorConfig("btc")
+
+console.log({
+  minDeposit: config.min_deposit_amount,
+  minWithdraw: config.min_withdraw_amount,
+  depositFee: config.deposit_bridge_fee,
+  withdrawFee: config.withdraw_bridge_fee,
+})
+```
+
+## Error Handling
+
+```typescript
+try {
+  const proof = await btc.getDepositProof(txHash, vout)
+} catch (error) {
+  if (error.message.includes("not found")) {
+    console.error("Transaction not found or not confirmed yet")
+  } else if (error.message.includes("invalid vout")) {
+    console.error("Wrong output index")
+  }
+}
+
+try {
+  const plan = btc.buildWithdrawalPlan(utxos, amount, to, change)
+} catch (error) {
+  if (error.message.includes("No UTXOs")) {
+    console.error("No UTXOs available in bridge pool")
+  } else if (error.message.includes("Insufficient")) {
+    console.error("Not enough UTXOs to cover amount + fees")
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Track Status" icon="magnifying-glass" href="/guides/tracking">
+    Monitor your transfer's progress
+  </Card>
+  <Card title="Relayer Fees" icon="money-bill" href="/guides/fees">
+    Automatic finalization options
+  </Card>
+</CardGroup>

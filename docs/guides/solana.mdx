@@ -1,0 +1,227 @@
+---
+title: Solana
+description: Bridge tokens from Solana
+---
+
+This guide covers bridging tokens from Solana to other chains. The Solana builder returns native `TransactionInstruction[]` that work directly with `@solana/web3.js`.
+
+## Setup
+
+```typescript
+import { createBridge } from "@omni-bridge/core"
+import { createSolanaBuilder } from "@omni-bridge/solana"
+import { Connection } from "@solana/web3.js"
+
+const bridge = createBridge({ network: "mainnet" })
+const connection = new Connection("https://api.mainnet-beta.solana.com")
+const solana = createSolanaBuilder({ network: "mainnet", connection })
+```
+
+## Complete Transfer
+
+```typescript
+import { createBridge } from "@omni-bridge/core"
+import { createSolanaBuilder } from "@omni-bridge/solana"
+import {
+  Connection,
+  Keypair,
+  Transaction,
+  sendAndConfirmTransaction,
+} from "@solana/web3.js"
+
+const bridge = createBridge({ network: "mainnet" })
+const connection = new Connection("https://api.mainnet-beta.solana.com")
+const solana = createSolanaBuilder({ network: "mainnet", connection })
+
+// Your keypair
+const keypair = Keypair.fromSecretKey(/* your secret key */)
+const user = keypair.publicKey
+
+// 1. Validate
+const validated = await bridge.validateTransfer({
+  token: "sol:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC on Solana
+  amount: 100_000_000n, // 100 USDC (6 decimals)
+  sender: `sol:${user.toBase58()}`,
+  recipient: "near:alice.near",
+  fee: 0n,
+  nativeFee: 0n,
+})
+
+// 2. Build instructions
+const instructions = await solana.buildTransfer(validated, user)
+
+// Or with a separate payer for fees (e.g., gas refiller pays Wormhole fees)
+// const payer = new PublicKey("GasRefillerPubkey...")
+// const instructions = await solana.buildTransfer(validated, user, payer)
+
+// 3. Create and send transaction
+const { blockhash } = await connection.getLatestBlockhash()
+const tx = new Transaction({
+  recentBlockhash: blockhash,
+  feePayer: user,
+})
+tx.add(...instructions)
+
+const signature = await sendAndConfirmTransaction(connection, tx, [keypair])
+console.log("Transfer initiated:", signature)
+```
+
+## Native SOL Transfers
+
+For native SOL (not wrapped tokens), use the default public key:
+
+```typescript
+import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js"
+
+const validated = await bridge.validateTransfer({
+  token: `sol:${PublicKey.default.toBase58()}`, // Native SOL
+  amount: BigInt(0.1 * LAMPORTS_PER_SOL), // 0.1 SOL
+  sender: `sol:${user.toBase58()}`,
+  recipient: "near:alice.near",
+  fee: 0n,
+  nativeFee: 0n,
+})
+
+// The SDK uses initTransferSol automatically
+const instructions = await solana.buildTransfer(validated, user)
+```
+
+## Wallet Adapter Integration
+
+For frontend apps using `@solana/wallet-adapter`:
+
+```typescript
+import { useConnection, useWallet } from "@solana/wallet-adapter-react"
+import { Transaction } from "@solana/web3.js"
+
+function BridgeButton() {
+  const { connection } = useConnection()
+  const { publicKey, sendTransaction } = useWallet()
+
+  const handleBridge = async () => {
+    if (!publicKey) return
+
+    const bridge = createBridge({ network: "mainnet" })
+    const solana = createSolanaBuilder({ network: "mainnet", connection })
+
+    const validated = await bridge.validateTransfer({
+      token: "sol:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      amount: 100_000_000n,
+      sender: `sol:${publicKey.toBase58()}`,
+      recipient: "near:alice.near",
+      fee: 0n,
+      nativeFee: 0n,
+    })
+
+    const instructions = await solana.buildTransfer(validated, publicKey)
+
+    const { blockhash } = await connection.getLatestBlockhash()
+    const tx = new Transaction({ recentBlockhash: blockhash, feePayer: publicKey })
+    tx.add(...instructions)
+
+    const signature = await sendTransaction(tx, connection)
+    console.log("Sent:", signature)
+  }
+
+  return <button onClick={handleBridge}>Bridge to NEAR</button>
+}
+```
+
+## SPL Token Support
+
+The SDK supports both SPL Token and Token-2022 programs automatically:
+
+```typescript
+// Standard SPL Token
+const validated = await bridge.validateTransfer({
+  token: "sol:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC
+  amount: 100_000_000n,
+  // ...
+})
+
+// Token-2022 works the same way
+const validated = await bridge.validateTransfer({
+  token: "sol:SomeToken2022Mint...",
+  amount: 1_000_000n,
+  // ...
+})
+```
+
+## PDA Derivation
+
+The builder provides methods to derive Program Derived Addresses:
+
+```typescript
+// Bridge PDAs
+const config = solana.deriveConfig()
+const authority = solana.deriveAuthority()
+const solVault = solana.deriveSolVault()
+
+// Token-specific PDAs
+const vault = solana.deriveVault(mintPublicKey)
+const wrappedMint = solana.deriveWrappedMint("near:wrap.near")
+
+console.log("Config:", config.toBase58())
+console.log("Wrapped wNEAR mint:", wrappedMint.toBase58())
+```
+
+<Warning>
+PDA seeds must match the on-chain program exactly. Always use the builder's derive methods — don't compute them manually.
+</Warning>
+
+## Receiving on Solana (From Other Chains)
+
+When tokens arrive on Solana from another chain, the transfer finalizes automatically if relayer fees were paid. The tokens appear in your associated token account.
+
+For manual finalization, you need the Wormhole VAA:
+
+```typescript
+const instructions = await solana.buildFinalization(payload, signature, payer)
+```
+
+See [Manual Finalization](/guides/advanced/manual-finalization) for details.
+
+## Differences from EVM
+
+| Aspect | EVM | Solana |
+|--------|-----|--------|
+| Return type | `{ to, data, value, chainId }` | `TransactionInstruction[]` |
+| Approval | Separate ERC20 approve tx | Not needed (uses ATAs) |
+| Gas | Specified in tx | Computed by network |
+| Accounts | Single sender | Multiple accounts in instruction |
+
+## Error Handling
+
+```typescript
+import { ValidationError } from "@omni-bridge/core"
+
+try {
+  const validated = await bridge.validateTransfer(params)
+  const instructions = await solana.buildTransfer(validated, payer)
+  
+  const tx = new Transaction()
+  tx.add(...instructions)
+  // ...
+  
+  await sendAndConfirmTransaction(connection, tx, [keypair])
+} catch (error) {
+  if (error instanceof ValidationError) {
+    console.error(`Validation failed: ${error.code}`)
+  } else if (error.message?.includes("insufficient funds")) {
+    console.error("Not enough SOL for fees")
+  } else if (error.message?.includes("not Solana")) {
+    console.error("Source chain must be Solana")
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Pay Relayer Fees" icon="money-bill" href="/guides/fees">
+    Automatic finalization on destination
+  </Card>
+  <Card title="Track Status" icon="magnifying-glass" href="/guides/tracking">
+    Monitor your transfer's progress
+  </Card>
+</CardGroup>

@@ -1,350 +1,344 @@
 # Omni Bridge SDK
 
 ![Status](https://img.shields.io/badge/Status-Beta-blue)
-![Stability](https://img.shields.io/badge/Stability-Pre--Release-yellow)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-A TypeScript SDK for seamless cross-chain token transfers using the [Omni Bridge](https://github.com/Near-one/omni-bridge) protocol.
+TypeScript SDK for cross-chain token transfers via the [Omni Bridge](https://github.com/Near-one/omni-bridge) protocol. Transfer tokens between Ethereum, NEAR, Solana, Base, Arbitrum, Polygon, BNB Chain, Bitcoin, and Zcash.
 
-
-> [!IMPORTANT]  
-> This SDK is in beta and approaching production readiness. While core functionality is stable, some features may still change. We recommend thorough testing before using in production environments.
-
-## Features
-
-- 🔄 Cross-chain token transfers between Ethereum, NEAR, Solana, Base, and Arbitrum
-- 🤖 Automated transfer finalization through our relayer network
-- 🪙 Token deployment and management across chains
-- 📖 Comprehensive TypeScript type definitions
-- ⚡ Support for native chain-specific features
-- 🔍 Transfer status tracking and history
-
-## Getting Started
-
-### Installation
+## Install
 
 ```bash
-npm install omni-bridge-sdk
-# or
-yarn add omni-bridge-sdk
+npm install @omni-bridge/sdk
 ```
 
-### Quick Start with Relayers
+Or install only the chains you need:
 
-The fastest way to get started is using our relayer service for automated transfer finalization:
+```bash
+npm install @omni-bridge/core @omni-bridge/evm
+```
+
+## How It Works
+
+The SDK is a **transaction builder** — it handles all the bridge protocol complexity (validation, encoding, fee calculation) and gives you back unsigned transactions. You then sign and broadcast using whatever library you prefer (viem, ethers, @near-js/*, etc.).
+
+This design gives you full control over signing, gas estimation, and transaction management. Whether you're building a frontend wallet integration or a backend service with your own key management, the SDK fits your architecture.
+
+### The Three-Step Flow
+
+Every cross-chain transfer follows the same pattern:
+
+1. **Validate** — Call `bridge.validateTransfer()` with your transfer parameters. The SDK checks that addresses are valid, the token is registered, amounts survive decimal normalization, and returns a `ValidatedTransfer` object.
+
+2. **Build** — Pass the validated transfer to a chain-specific builder (like `evm.buildTransfer()`). You get back an unsigned transaction — a plain object with `to`, `data`, `value`, etc.
+
+3. **Sign & Send** — Use your preferred library to sign and broadcast. The unsigned transaction format is designed to work directly with viem, ethers v6, near-kit, @near-js/*, and @solana/web3.js.
 
 ```typescript
-import { omniTransfer, OmniBridgeAPI } from "omni-bridge-sdk";
+// 1. Validate
+const validated = await bridge.validateTransfer(params)
 
-// Get fees (includes relayer service fee)
-const api = new OmniBridgeAPI();
-const fees = await api.getFee("eth:0x123...", "near:bob.near", "eth:0x789...");
+// 2. Build
+const tx = evm.buildTransfer(validated)
 
-// Send tokens
-await omniTransfer(wallet, {
-  tokenAddress: "eth:0x789...", // Token contract
-  recipient: "near:bob.near", // Destination address
-  amount: BigInt("1000000"), // Amount to send
-  fee: BigInt(fees.transferred_token_fee), // Includes relayer fee
-  nativeFee: BigInt(fees.native_token_fee),
-});
+// 3. Sign & Send (using viem, ethers, or any wallet)
+await walletClient.sendTransaction(tx)
 ```
 
-### Complete Example
+## Addresses
 
-Here's a more detailed example showing wallet setup, error handling, and status monitoring:
+The SDK uses **OmniAddress** format — a chain prefix followed by the native address:
+
+```
+eth:0x1234...      → Ethereum
+base:0x1234...     → Base
+arb:0x1234...      → Arbitrum
+near:alice.near    → NEAR
+sol:ABC123...      → Solana
+btc:bc1q...        → Bitcoin
+```
+
+This makes it unambiguous which chain an address belongs to, which is essential for cross-chain operations.
+
+## Packages
+
+| Package               | Description                                    |
+| --------------------- | ---------------------------------------------- |
+| `@omni-bridge/core`   | Validation, types, configuration, API client   |
+| `@omni-bridge/evm`    | Ethereum, Base, Arbitrum, Polygon, BNB Chain   |
+| `@omni-bridge/near`   | NEAR Protocol                                  |
+| `@omni-bridge/solana` | Solana                                         |
+| `@omni-bridge/btc`    | Bitcoin, Zcash                                 |
+| `@omni-bridge/sdk`    | Umbrella package (re-exports all of the above) |
+
+Install `@omni-bridge/sdk` for everything, or pick individual packages to minimize bundle size.
+
+## Examples
+
+### EVM Chains (Ethereum, Base, Arbitrum, etc.)
+
+EVM builders return transactions that work directly with viem and ethers — no conversion needed.
 
 ```typescript
-import { setNetwork } from "omni-bridge-sdk";
+import { createBridge, ChainKind } from "@omni-bridge/core"
+import { createEvmBuilder } from "@omni-bridge/evm"
+import { createWalletClient, http } from "viem"
+import { mainnet } from "viem/chains"
 
-// Set network type
-setNetwork("testnet");
+// Create bridge and builder
+const bridge = createBridge({ network: "mainnet" })
+const evm = createEvmBuilder({ network: "mainnet", chain: ChainKind.Eth })
 
-// 1. Setup wallet/provider
-const wallet = provider.getSigner(); // for EVM
-// or
-const account = await near.account("sender.near"); // for NEAR
-// or
-const provider = new AnchorProvider(connection, wallet); // for Solana
+// Validate transfer parameters
+const validated = await bridge.validateTransfer({
+  token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC
+  amount: 1000000n, // 1 USDC (6 decimals)
+  fee: 0n,
+  nativeFee: 0n,
+  sender: "eth:0xYourAddress...",
+  recipient: "near:alice.near",
+})
 
-// 2. Get fees (includes relayer service fee)
-const api = new OmniBridgeAPI();
-const sender = "eth:0x123...";
-const recipient = "near:bob.near";
-const token = "eth:0x789...";
+// Build unsigned transaction
+const tx = evm.buildTransfer(validated)
 
-const fees = await api.getFee(sender, recipient, token);
+// Send with viem
+const walletClient = createWalletClient({ chain: mainnet, transport: http() })
+await walletClient.sendTransaction(tx)
 
-// 3. Send tokens
-try {
-  const result = await omniTransfer(wallet, {
-    tokenAddress: token,
-    recipient,
-    amount: BigInt("1000000"),
-    fee: BigInt(fees.transferred_token_fee),
-    nativeFee: BigInt(fees.native_token_fee),
-  });
-
-  // 4. Monitor status
-  const status = await api.getTransferStatus(sourceChain, result.nonce);
-  console.log(`Transfer status: ${status}`);
-} catch (error) {
-  console.error("Transfer failed:", error);
-}
+// Or with ethers v6
+// await signer.sendTransaction(tx)
 ```
 
-### Core Concepts
-
-#### Addresses
-
-All addresses in the SDK use the `OmniAddress` format, which includes the chain prefix:
+**Don't forget approvals** — for ERC20 tokens, you'll need to approve the bridge contract first:
 
 ```typescript
-type OmniAddress =
-  | `eth:${string}` // Ethereum addresses
-  | `near:${string}` // NEAR accounts
-  | `sol:${string}` // Solana public keys
-  | `arb:${string}` // Arbitrum addresses
-  | `base:${string}`; // Base addresses
-
-// Helper function
-const addr = omniAddress(ChainKind.Near, "account.near");
+const approvalTx = evm.buildApproval(tokenAddress, amount)
+await walletClient.sendTransaction(approvalTx)
 ```
-
-#### Transfer Messages
-
-Transfer messages represent cross-chain token transfers:
-
-```typescript
-interface UtxoTransferOptions {
-  maxFee?: bigint;  // Maximum BTC/Zcash network fee (in satoshis)
-}
-
-interface OmniTransferMessage {
-  tokenAddress: OmniAddress; // Source token address
-  amount: bigint; // Amount to transfer
-  fee: bigint; // Token fee
-  nativeFee: bigint; // Gas fee in native token
-  recipient: OmniAddress; // Destination address
-  message?: string; // Optional message field (for advanced use, overrides maxFee)
-  options?: UtxoTransferOptions; // Chain-specific options
-}
-```
-
-**Chain-Specific Options**: The `options` field allows you to specify chain-specific parameters:
-- **UTXO chains (Bitcoin/Zcash)**: Use `UtxoTransferOptions` to specify:
-  - `maxFee`: Maximum BTC/Zcash network fee allowed (in satoshis). This protects you from excessive fees.
-    - Automatically converted to the nested message format: `{"MaxGasFee":"5000"}` (stringified int)
-    - The contract validates that the actual gas fee doesn't exceed this limit
-    - Cannot be used together with the `message` field (use one or the other)
-  - The protocol fee is automatically calculated by the contract based on the configured `protocol_fee_rate`
-
-Example for Bitcoin:
-```typescript
-const transfer: OmniTransferMessage = {
-  tokenAddress: "near:nbtc.near",
-  recipient: "btc:bc1q...",
-  amount: BigInt(100000),
-  fee: BigInt(5000),
-  nativeFee: BigInt(1000),
-  options: {
-    maxFee: BigInt(5000)  // Maximum BTC network fee in satoshis
-  }
-}
-```
-
-## Transfer Guide
-
-### Using Relayers (Recommended)
-
-While the SDK provides methods to manually handle the complete transfer lifecycle, we recommend using our relayer service for the best user experience. Benefits include:
-
-- Single transaction for end users
-- Automated message signing and finalization
-- No need to handle cross-chain message passing
-- Optimized gas fees
-- Simplified error handling
-
-To use relayers, simply include the relayer fee when initiating the transfer:
-
-```typescript
-const transfer = {
-  tokenAddress: omniAddress(ChainKind.Near, "usdc.near"),
-  amount: BigInt("1000000"),
-  fee: BigInt(feeEstimate.transferred_token_fee), // Relayer fee included
-  nativeFee: BigInt(feeEstimate.native_token_fee),
-  recipient: omniAddress(ChainKind.Eth, recipientAddress),
-};
-
-// One transaction - relayers handle the rest
-const result = await omniTransfer(account, transfer);
-```
-
-### Status Monitoring
-
-Track transfer progress using the API:
-
-```typescript
-const api = new OmniBridgeAPI();
-const status = await api.getTransferStatus(sourceChain, nonce);
-// Status: "pending" | "ready_for_finalize" | "completed" | "failed"
-
-// Get transfer history
-const transfers = await api.findOmniTransfers(
-  "near:sender.near",
-  0, // offset
-  10 // limit
-);
-```
-
-### Fee Estimation
-
-```typescript
-const api = new OmniBridgeAPI();
-const fee = await api.getFee(sender, recipient, tokenAddr);
-
-console.log(`Native fee: ${fee.native_token_fee}`); // Includes relayer fee
-console.log(`Token fee: ${fee.transferred_token_fee}`);
-console.log(`USD fee: ${fee.usd_fee}`);
-```
-
-> **Fee Validation**: Using `api.getFee()` is recommended to get accurate protocol and relayer fees. The smart contract validates fees on-chain and will reject transfers with insufficient fees. You can provide higher fees than the API suggests if desired (e.g., for priority processing or custom relayers).
-
-## Understanding Wormhole VAAs
-
-### What are VAAs?
-
-Verified Action Approvals (VAAs) are cryptographic proofs used by the Wormhole protocol to verify cross-chain messages. When tokens are transferred from Solana to other chains, Wormhole Guardians observe the transaction and collectively sign a VAA that proves the transfer occurred.
-
-### When VAAs are Required
-
-- **Solana → NEAR**: VAA required for transfer finalization
-- **Solana → Any Chain**: VAA needed for token deployments  
-- **EVM → NEAR**: EVM proof required instead of VAA
-- **NEAR → Any Chain**: MPC signature used instead of VAA
-
-### Working with VAAs
-
-```typescript
-import { getVaa } from "omni-bridge-sdk";
-
-// Get VAA after Solana transaction (may take 30-60 seconds)
-const vaa = await getVaa(txHash, "Testnet");
-
-// Use VAA for finalization on NEAR
-await nearClient.finalizeTransfer(tokenId, recipient, storageDeposit, 
-  ChainKind.Sol, vaa, undefined, ProofKind.InitTransfer);
-```
-
-> **Note**: VAAs may take 30-60 seconds to become available after transaction confirmation. Implement retry logic for production applications.
-
-## Advanced Usage
-
-### Manual Transfer Flows
-
-For applications requiring manual control over the transfer process, the SDK provides complete access to underlying bridge functions. Each chain requires specific handling:
-
-```typescript
-// Basic manual flow pattern
-const txHash = await sourceClient.initTransfer(transferMessage);
-const proof = await getProof(txHash); // VAA for Solana, EVM proof for Ethereum 
-await destinationClient.finalizeTransfer(tokenId, recipient, proof);
-```
-
-> **Complete Examples**: See the `e2e/` directory for working end-to-end transfer examples, including Solana→NEAR, Ethereum→NEAR, and NEAR→Ethereum flows with full error handling.
-
-> [!WARNING]
-> **NEAR Wallet Integration Notes**: When using browser-based NEAR wallets through Wallet Selector, transactions involve page redirects. The current SDK doesn't fully support this flow - applications need to handle redirect returns and transaction hash parsing separately. For production applications, consider using [near-api-js](https://github.com/near/near-api-js) with a direct key approach or implement custom redirect handling.
-
-### Token Operations
-
-#### Deploying Tokens
-
-Token deployment follows a multi-step process depending on source and destination chains:
-
-```typescript
-// Basic token deployment pattern
-await sourceClient.logMetadata(tokenAddress);
-// ... wait for proof/signature generation ...
-const { tokenAddress } = await destinationClient.deployToken(proof, metadata);
-// ... binding step if deploying FROM NEAR ...
-```
-
-**Key Requirements:**
-- **NEAR→Foreign**: 4 steps (logMetadata → wait → deployToken → bindToken)
-- **Foreign→NEAR**: 3 steps (logMetadata → wait → deployToken)
-- All cross-chain deployments require the token to first exist on NEAR
-
-> **Complete Guide**: See [`docs/token-deployment.md`](docs/token-deployment.md) for detailed deployment instructions with full code examples for all supported chain combinations.
-
-### Error Handling
-
-The SDK provides detailed error messages for common failure scenarios:
-
-```typescript
-try {
-  const result = await omniTransfer(wallet, transferMessage);
-} catch (error) {
-  if (error.message.includes("Insufficient balance")) {
-    // Handle balance errors
-  } else if (error.message.includes("No VAA found")) {
-    // VAA not ready yet - implement retry logic
-  } else if (error.message.includes("Token already exists")) {
-    // Token deployment conflicts
-  }
-  // ... handle other error types
-}
-```
-
-> **Note**: For VAA operations, implement retry logic as VAAs may take 30-60 seconds to become available. For comprehensive error handling patterns, see the examples in `e2e/` test files.
-
-## Chain Support
-
-Each supported chain has specific requirements:
 
 ### NEAR
 
-- Account must exist and be initialized
-- Sufficient NEAR for storage and gas
-- Token must be registered with account
-- Supports both [near-api-js](https://github.com/near/near-api-js) and [Wallet Selector](https://github.com/near/wallet-selector)
+NEAR transactions require runtime context (nonce, block hash) that the SDK doesn't fetch. Instead, the SDK returns a library-agnostic object, and you use a **shim** to convert it for your preferred library.
 
-### Ethereum/EVM
+```typescript
+import { createBridge } from "@omni-bridge/core"
+import { createNearBuilder, toNearKitTransaction } from "@omni-bridge/near"
+import { Near } from "near-kit"
 
-- Sufficient ETH/native token for gas
-- Token must be approved for bridge
-- Valid ERC20 token contract
+const bridge = createBridge({ network: "mainnet" })
+const nearBuilder = createNearBuilder({ network: "mainnet" })
+const near = new Near({ network: "mainnet", privateKey: "ed25519:..." })
+
+const validated = await bridge.validateTransfer({
+  token: "near:wrap.near",
+  amount: 1000000000000000000000000n, // 1 wNEAR (24 decimals)
+  fee: 0n,
+  nativeFee: 0n,
+  sender: "near:alice.near",
+  recipient: "eth:0x1234...",
+})
+
+// Build library-agnostic transaction
+const unsigned = nearBuilder.buildTransfer(validated, "alice.near")
+
+// Convert to near-kit and send
+const result = await toNearKitTransaction(near, unsigned).send()
+```
+
+Using @near-js/* instead? There's a shim for that too:
+
+```typescript
+import { sendWithNearApiJs } from "@omni-bridge/near"
+
+const account = await near.account("alice.near")
+await sendWithNearApiJs(account, unsigned)
+```
+
+**Storage deposits** — NEAR requires storage deposits before transfers. Check if one is needed:
+
+```typescript
+const deposit = await nearBuilder.getRequiredStorageDeposit("alice.near")
+if (deposit > 0n) {
+  const depositTx = nearBuilder.buildStorageDeposit("alice.near", deposit)
+  await toNearKitTransaction(near, depositTx).send()
+}
+```
 
 ### Solana
 
-- Sufficient SOL for rent and fees
-- Associated token accounts must exist
-- SPL token program requirements
+Solana builders return native `TransactionInstruction[]` that you add to a transaction:
 
-Currently supported chains:
+```typescript
+import { createBridge } from "@omni-bridge/core"
+import { createSolanaBuilder } from "@omni-bridge/solana"
+import {
+  Connection,
+  Keypair,
+  Transaction,
+  sendAndConfirmTransaction,
+} from "@solana/web3.js"
 
-- Ethereum (ETH)
-- NEAR
-- Solana (SOL)
-- Arbitrum (ARB)
-- Base
+const bridge = createBridge({ network: "mainnet" })
+const connection = new Connection("https://api.mainnet-beta.solana.com")
+const solana = createSolanaBuilder({ network: "mainnet", connection })
 
-### Build and Test
+const validated = await bridge.validateTransfer({
+  token: "sol:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC
+  amount: 1000000n,
+  fee: 0n,
+  nativeFee: 0n,
+  sender: "sol:YourPublicKey...",
+  recipient: "near:alice.near",
+})
 
-```bash
-# Install dependencies
-bun install
+// Build instructions
+const instructions = await solana.buildTransfer(validated, keypair.publicKey)
 
-# Build
-bun run build
+// Create and send transaction
+const { blockhash } = await connection.getLatestBlockhash()
+const tx = new Transaction({
+  recentBlockhash: blockhash,
+  feePayer: keypair.publicKey,
+})
+tx.add(...instructions)
 
-# Run tests
-bun run test
+await sendAndConfirmTransaction(connection, tx, [keypair])
+```
 
-# Type checking
-bun run typecheck
+## Tracking Transfers
 
-# Linting
-bun run lint
+Use the API client to check transfer status and history:
+
+```typescript
+import { BridgeAPI } from "@omni-bridge/core"
+
+const api = new BridgeAPI("mainnet")
+
+// Check status by transaction hash
+const status = await api.getTransferStatus({ txHash: "0x..." })
+
+// Or by nonce
+const status = await api.getTransferStatus({ nonce: "123" })
+
+// Find transfers for an address
+const transfers = await api.findTransfers({
+  sender: "eth:0x...",
+  limit: 10,
+})
+```
+
+## Fees and Relayers
+
+Cross-chain transfers can be finalized in two ways:
+
+1. **Automatic (Relayer)** — Pay a fee and the relayer network handles finalization
+2. **Manual** — Finalize the transfer yourself on the destination chain (no fee required)
+
+### Fee Types
+
+The bridge supports two fee payment options:
+
+| Fee Type | Parameter | Paid In | When to Use |
+|----------|-----------|---------|-------------|
+| **Token Fee** | `fee` | The token being transferred | When you want to pay from the transfer amount |
+| **Native Fee** | `nativeFee` | Source chain's native token (ETH, SOL, etc.) | When you want to keep the full transfer amount |
+
+You can provide **either or both** — the relayer accepts any combination that meets the required USD value.
+
+```typescript
+// Get required fee from the API
+const feeInfo = await api.getFee(sender, recipient, token, amount)
+
+// Option 1: Pay in transferred token
+const validated = await bridge.validateTransfer({
+  ...params,
+  fee: BigInt(feeInfo.transferred_token_fee ?? "0"),
+  nativeFee: 0n,
+})
+
+// Option 2: Pay in native token (e.g., ETH)
+const validated = await bridge.validateTransfer({
+  ...params,
+  fee: 0n,
+  nativeFee: feeInfo.native_token_fee ?? 0n,
+})
+
+// Option 3: Split between both (weighted combination accepted)
+const validated = await bridge.validateTransfer({
+  ...params,
+  fee: BigInt(feeInfo.transferred_token_fee ?? "0") / 2n,
+  nativeFee: (feeInfo.native_token_fee ?? 0n) / 2n,
+})
+```
+
+### How Fees Work
+
+When you include sufficient fees, relayers in the network will:
+1. Monitor for your transfer initiation
+2. Wait for finality on the source chain
+3. Submit the finalization transaction on the destination chain
+4. Claim the fee as compensation
+
+**Note:** The `fee` (token fee) is deducted from your transfer amount. If you send 100 USDC with a 1 USDC fee, the recipient receives 99 USDC.
+
+### Manual Finalization
+
+If you prefer not to pay fees (or want full control), you can finalize transfers yourself:
+
+```typescript
+// 1. Initiate with zero fees
+const validated = await bridge.validateTransfer({
+  ...params,
+  fee: 0n,
+  nativeFee: 0n,
+})
+
+// 2. Wait for the transfer to be signed (check status)
+const status = await api.getTransferStatus({ transactionHash: txHash })
+// Wait until status includes "Signed"
+
+// 3. Get the transfer details including signature
+const transfers = await api.getTransfer({ transactionHash: txHash })
+
+// 4. Build and submit finalization on destination chain
+// (See chain-specific package READMEs for finalization examples)
+```
+
+For EVM destinations, use `evmBuilder.buildFinalization()`. For NEAR, use `nearBuilder.buildFinalization()`.
+
+## Transfer Lifecycle
+
+Every transfer goes through these stages:
+
+| Status | Description |
+|--------|-------------|
+| `Initialized` | Transfer submitted on source chain |
+| `Signed` | MPC network has signed the transfer (ready for finalization) |
+| `FinalisedOnNear` | Completed on NEAR (for transfers to NEAR) |
+| `Finalised` | Completed on destination chain |
+| `Claimed` | Fee claimed by relayer (if applicable) |
+
+Additional statuses for fast transfers:
+- `FastFinalisedOnNear` — Fast-finalized on NEAR before full confirmation
+- `FastFinalised` — Fast-finalized on destination chain
+
+Track your transfer:
+
+```typescript
+const api = new BridgeAPI("mainnet")
+
+// Poll for status
+const statuses = await api.getTransferStatus({ transactionHash: "0x..." })
+console.log("Current status:", statuses[statuses.length - 1])
+
+// Get full transfer details
+const transfers = await api.getTransfer({ transactionHash: "0x..." })
+const transfer = transfers[0]
+
+// Check specific milestones
+if (transfer.initialized) console.log("Initialized:", transfer.initialized)
+if (transfer.signed) console.log("Signed:", transfer.signed)
+if (transfer.finalised) console.log("Finalized:", transfer.finalised)
 ```
 
 ## License

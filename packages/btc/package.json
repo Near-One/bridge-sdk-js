@@ -1,0 +1,42 @@
+{
+  "name": "@omni-bridge/btc",
+  "version": "0.1.0",
+  "description": "Bitcoin/UTXO transaction builder for Omni Bridge",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/near-one/bridge-sdk-js",
+    "directory": "packages/btc"
+  },
+  "license": "MIT",
+  "author": "NEAR One",
+  "dependencies": {
+    "@noble/hashes": "^2.0.1",
+    "@omni-bridge/core": "workspace:*",
+    "@scure/base": "^2.0.0",
+    "@scure/btc-signer": "^2.0.1",
+    "merkletreejs": "^0.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

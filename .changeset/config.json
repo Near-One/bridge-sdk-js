@@ -2,7 +2,16 @@
   "$schema": "https://unpkg.com/@changesets/config@3.0.5/schema.json",
   "changelog": "@changesets/cli/changelog",
   "commit": false,
-  "fixed": [],
+  "fixed": [
+    [
+      "@omni-bridge/core",
+      "@omni-bridge/evm",
+      "@omni-bridge/near",
+      "@omni-bridge/solana",
+      "@omni-bridge/btc",
+      "@omni-bridge/sdk"
+    ]
+  ],
   "linked": [],
   "access": "public",
   "baseBranch": "main",

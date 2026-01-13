@@ -1,0 +1,198 @@
+---
+title: Relayer Fees
+description: Pay fees for automatic transfer finalization
+---
+
+When you include fees in your transfer, relayers automatically finalize it on the destination chain. No extra work required.
+
+## How It Works
+
+1. You submit a transfer with fees on the source chain
+2. Relayers detect your transfer and verify it's profitable
+3. A relayer finalizes the transfer on the destination chain
+4. The relayer claims your fee as payment
+
+Without fees, you'd need to finalize manually (see [Manual Finalization](/guides/advanced/manual-finalization)).
+
+## Getting a Fee Quote
+
+```typescript
+import { BridgeAPI } from "@omni-bridge/core"
+
+const api = new BridgeAPI("mainnet")
+
+const fee = await api.getFee(
+  "eth:0xSenderAddress...",
+  "near:recipient.near",
+  "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",  // USDC
+  1_000_000n  // Amount
+)
+
+console.log({
+  tokenFee: fee.transferred_token_fee,  // Fee in USDC
+  nativeFee: fee.native_token_fee,      // Fee in ETH
+})
+```
+
+## Including Fees in a Transfer
+
+Pass the fee values to `validateTransfer()`:
+
+```typescript
+const validated = await bridge.validateTransfer({
+  token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  amount: 100_000_000n,  // 100 USDC
+  sender: "eth:0x...",
+  recipient: "near:alice.near",
+  fee: BigInt(fee.transferred_token_fee ?? "0"),
+  nativeFee: fee.native_token_fee ?? 0n,
+})
+```
+
+## Two Ways to Pay
+
+You can pay fees in the transfer token, the native token, or both:
+
+### Token Fee
+
+Paid in the token you're transferring. Deducted from the amount.
+
+```typescript
+// Sending 100 USDC, paying 1 USDC fee
+// Recipient receives 99 USDC
+const validated = await bridge.validateTransfer({
+  amount: 100_000_000n,  // 100 USDC
+  fee: 1_000_000n,       // 1 USDC
+  nativeFee: 0n,
+  // ...
+})
+```
+
+### Native Fee
+
+Paid in the source chain's native token (ETH, NEAR, SOL). Recipient gets the full amount.
+
+```typescript
+// Sending 100 USDC, paying fee in ETH
+// Recipient receives full 100 USDC
+const validated = await bridge.validateTransfer({
+  amount: 100_000_000n,           // 100 USDC
+  fee: 0n,
+  nativeFee: 1_000_000_000_000_000n,  // 0.001 ETH
+  // ...
+})
+```
+
+### Combined
+
+Split between both. Useful for optimizing costs.
+
+```typescript
+const validated = await bridge.validateTransfer({
+  amount: 100_000_000n,
+  fee: 500_000n,                    // 0.5 USDC
+  nativeFee: 500_000_000_000_000n,  // 0.0005 ETH
+  // ...
+})
+```
+
+Relayers accept any combination that meets their threshold.
+
+## Fee Factors
+
+Fees depend on:
+- **Source chain** — Gas costs for proof verification
+- **Destination chain** — Finalization costs
+- **Token** — Some tokens have different fee structures
+- **Amount** — Large transfers may have percentage-based fees
+
+<Note>
+Fee quotes are valid for a limited time. Fetch a fresh quote right before sending large transfers.
+</Note>
+
+## UI Pattern
+
+Show users what they'll receive:
+
+```typescript
+const fee = await api.getFee(sender, recipient, token, amount)
+
+const tokenFee = BigInt(fee.transferred_token_fee ?? "0")
+const receiveAmount = amount - tokenFee
+
+console.log(`
+  Sending: ${formatUnits(amount, decimals)} USDC
+  Fee: ${formatUnits(tokenFee, decimals)} USDC
+  Recipient receives: ${formatUnits(receiveAmount, decimals)} USDC
+`)
+```
+
+## Updating Fees on Stuck Transfers
+
+If your transfer isn't getting picked up (fee too low, market changed), you can increase the fee:
+
+```typescript
+// On NEAR, call update_transfer_fee
+await account.functionCall({
+  contractId: "omni-bridge.near",
+  methodName: "update_transfer_fee",
+  args: {
+    transfer_id: {
+      origin_chain: "Eth",
+      origin_nonce: 12345,
+    },
+    fee: {
+      Fee: {
+        fee: "200000",  // New (higher) token fee
+        native_fee: "0",
+      },
+    },
+  },
+  gas: "30000000000000",
+  attachedDeposit: "0",  // Attach difference if increasing native fee
+})
+```
+
+Rules:
+- Only the original sender can update token fees
+- Fees can only increase, never decrease
+- Attach the difference when increasing native fees
+
+## Without Fees
+
+Set both to zero:
+
+```typescript
+const validated = await bridge.validateTransfer({
+  // ...
+  fee: 0n,
+  nativeFee: 0n,
+})
+```
+
+Relayers will ignore your transfer. You'll need to finalize it yourself. See [Manual Finalization](/guides/advanced/manual-finalization).
+
+## Error Handling
+
+```typescript
+try {
+  const fee = await api.getFee(sender, recipient, token, amount)
+} catch (error) {
+  if (error.message.includes("unsupported route")) {
+    console.error("This route isn't supported")
+  } else if (error.message.includes("amount too small")) {
+    console.error("Increase the transfer amount")
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Track Status" icon="magnifying-glass" href="/guides/tracking">
+    Monitor your transfer's progress
+  </Card>
+  <Card title="Manual Finalization" icon="hand" href="/guides/advanced/manual-finalization">
+    Finalize without relayers
+  </Card>
+</CardGroup>

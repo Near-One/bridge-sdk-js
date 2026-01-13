@@ -4,9 +4,10 @@ on:
   push:
     branches:
       - main
+      - rewrite
     paths:
       - ".changeset/**"
-      - ".github/workflows/changesets.yaml"
+      - ".github/workflows/release.yml"
   workflow_dispatch:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
@@ -19,7 +20,7 @@ jobs:
       contents: write
       pull-requests: write
       repository-projects: write
-      id-token: write  # Required for OIDC
+      id-token: write
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -36,7 +37,9 @@ jobs:
         id: changesets
         uses: changesets/action@v1
         with:
-          # This expects you to have a script called release which does a build for your packages and calls changeset publish
+          # Custom version script: runs changeset version + bun update to sync lockfile
+          version: bun run ci:version
+          # Custom publish script: uses bun publish to resolve workspace:* references
           publish: bun run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

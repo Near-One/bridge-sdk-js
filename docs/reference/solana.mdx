@@ -1,0 +1,814 @@
+---
+title: "@omni-bridge/solana"
+description: Solana instruction builder
+---
+
+## Import
+
+```typescript
+import {
+  createSolanaBuilder,
+  type SolanaBuilder,
+  type SolanaBuilderConfig,
+  type SolanaTransferMessagePayload,
+  type SolanaMPCSignature,
+  type SolanaTokenMetadata,
+  type SolanaTransferId,
+  type SolanaDepositPayload,
+  type BridgeTokenFactory,
+} from "@omni-bridge/solana"
+```
+
+---
+
+## createSolanaBuilder
+
+Factory function to create a Solana instruction builder.
+
+### Signature
+
+```typescript
+function createSolanaBuilder(config: SolanaBuilderConfig): SolanaBuilder
+```
+
+### Parameters
+
+<ResponseField name="config" type="SolanaBuilderConfig" required>
+  <Expandable title="SolanaBuilderConfig">
+    <ResponseField name="network" type="'mainnet' | 'testnet'" required>
+      The network to connect to. Determines which bridge program addresses to use.
+    </ResponseField>
+
+    <ResponseField name="connection" type="Connection">
+      Optional Solana connection instance. If not provided, uses the default public RPC endpoint for the network:
+      - `mainnet`: `https://api.mainnet-beta.solana.com`
+      - `testnet`: `https://api.devnet.solana.com`
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Returns
+
+<ResponseField name="SolanaBuilder" type="object">
+  A builder instance with methods for creating Solana transaction instructions.
+</ResponseField>
+
+### Example
+
+```typescript
+import { createSolanaBuilder } from "@omni-bridge/solana"
+import { Connection } from "@solana/web3.js"
+
+// Using default public RPC
+const solana = createSolanaBuilder({ network: "mainnet" })
+
+// Using custom connection
+const connection = new Connection("https://my-rpc.example.com")
+const solanaWithCustomRpc = createSolanaBuilder({
+  network: "mainnet",
+  connection,
+})
+```
+
+---
+
+## SolanaBuilder Methods
+
+### buildTransfer
+
+Builds transfer instructions for bridging tokens from Solana to another chain.
+
+#### Signature
+
+```typescript
+buildTransfer(
+  validated: ValidatedTransfer,
+  user: PublicKey,
+  payer?: PublicKey
+): Promise<TransactionInstruction[]>
+```
+
+#### Parameters
+
+<ResponseField name="validated" type="ValidatedTransfer" required>
+  The validated transfer from `bridge.validateTransfer()`. Must have `sourceChain` set to `ChainKind.Sol`.
+</ResponseField>
+
+<ResponseField name="user" type="PublicKey" required>
+  The public key of the account that owns the tokens and authorizes the transfer (signs the token transfer/burn).
+</ResponseField>
+
+<ResponseField name="payer" type="PublicKey">
+  Optional public key of the account paying for Wormhole fees and rent. Defaults to `user` if not provided. This allows a gas refiller to pay fees on behalf of the user.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="instructions" type="TransactionInstruction[]">
+  Array of Solana transaction instructions. Typically contains a single instruction for either `initTransfer` (SPL tokens) or `initTransferSol` (native SOL).
+</ResponseField>
+
+#### Example
+
+```typescript
+import { createBridge } from "@omni-bridge/core"
+import { createSolanaBuilder } from "@omni-bridge/solana"
+import { PublicKey, Transaction, sendAndConfirmTransaction } from "@solana/web3.js"
+
+const bridge = createBridge({ network: "mainnet" })
+const solana = createSolanaBuilder({ network: "mainnet" })
+
+// Validate the transfer
+const validated = await bridge.validateTransfer({
+  token: "sol:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC
+  amount: 1000000n, // 1 USDC (6 decimals)
+  fee: 10000n,
+  nativeFee: 0n,
+  sender: "sol:YourWalletPubkey...",
+  recipient: "near:recipient.near",
+})
+
+// Build the transfer instructions
+const user = new PublicKey("YourWalletPubkey...")
+const instructions = await solana.buildTransfer(validated, user)
+
+// Or with a separate payer for fees (e.g., gas refiller)
+// const payer = new PublicKey("GasRefillerPubkey...")
+// const instructions = await solana.buildTransfer(validated, user, payer)
+
+// Create and send transaction
+const tx = new Transaction()
+tx.add(...instructions)
+await sendAndConfirmTransaction(connection, tx, [payerKeypair])
+```
+
+#### Native SOL Transfers
+
+For native SOL transfers, use the zero address as the token:
+
+```typescript
+const validated = await bridge.validateTransfer({
+  token: "sol:11111111111111111111111111111111", // Native SOL (zero address)
+  amount: 1000000000n, // 1 SOL (9 decimals)
+  fee: 10000n,
+  nativeFee: 0n,
+  sender: "sol:YourWalletPubkey...",
+  recipient: "near:recipient.near",
+})
+
+const instructions = await solana.buildTransfer(validated, user)
+```
+
+---
+
+### buildFinalization
+
+Builds finalization instructions for receiving tokens on Solana from another chain.
+
+#### Signature
+
+```typescript
+buildFinalization(
+  payload: SolanaTransferMessagePayload,
+  signature: SolanaMPCSignature,
+  payer: PublicKey
+): Promise<TransactionInstruction[]>
+```
+
+#### Parameters
+
+<ResponseField name="payload" type="SolanaTransferMessagePayload" required>
+  The transfer message payload containing destination nonce, transfer ID, token address, amount, and recipient.
+</ResponseField>
+
+<ResponseField name="signature" type="SolanaMPCSignature" required>
+  The MPC signature authorizing the finalization. Must implement `toBytes()` method returning a `Uint8Array`.
+</ResponseField>
+
+<ResponseField name="payer" type="PublicKey" required>
+  The public key of the account paying for the transaction.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="instructions" type="TransactionInstruction[]">
+  Array of Solana transaction instructions for finalizing the transfer. This will mint tokens (for bridged tokens) or release tokens from the vault (for native Solana tokens).
+</ResponseField>
+
+#### Example
+
+```typescript
+import { createSolanaBuilder } from "@omni-bridge/solana"
+import { PublicKey, Transaction } from "@solana/web3.js"
+
+const solana = createSolanaBuilder({ network: "mainnet" })
+
+const payload = {
+  destination_nonce: 12345n,
+  transfer_id: {
+    origin_chain: "Near",
+    origin_nonce: "67890",
+  },
+  token_address: "sol:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  amount: "1000000",
+  recipient: "sol:RecipientPubkey...",
+  fee_recipient: "sol:RelayerPubkey...",
+}
+
+const signature = {
+  toBytes: () => new Uint8Array(/* MPC signature bytes */),
+}
+
+const payer = new PublicKey("PayerPubkey...")
+const instructions = await solana.buildFinalization(payload, signature, payer)
+
+const tx = new Transaction()
+tx.add(...instructions)
+```
+
+---
+
+### buildLogMetadata
+
+Builds instructions for logging token metadata to register a Solana token with the bridge.
+
+#### Signature
+
+```typescript
+buildLogMetadata(
+  token: PublicKey,
+  payer: PublicKey
+): Promise<TransactionInstruction[]>
+```
+
+#### Parameters
+
+<ResponseField name="token" type="PublicKey" required>
+  The public key of the SPL token mint to register.
+</ResponseField>
+
+<ResponseField name="payer" type="PublicKey" required>
+  The public key of the account paying for the transaction.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="instructions" type="TransactionInstruction[]">
+  Array of Solana transaction instructions that emit the token's metadata (name, symbol, decimals) via Wormhole for cross-chain registration.
+</ResponseField>
+
+#### Example
+
+```typescript
+import { createSolanaBuilder } from "@omni-bridge/solana"
+import { PublicKey, Transaction } from "@solana/web3.js"
+
+const solana = createSolanaBuilder({ network: "mainnet" })
+
+const tokenMint = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")
+const payer = new PublicKey("YourWalletPubkey...")
+
+const instructions = await solana.buildLogMetadata(tokenMint, payer)
+
+const tx = new Transaction()
+tx.add(...instructions)
+```
+
+<Note>
+  This creates a vault for the token if it doesn't exist and emits metadata via Wormhole. The metadata can then be used to deploy a wrapped version of this token on other chains.
+</Note>
+
+---
+
+### buildDeployToken
+
+Builds instructions for deploying a wrapped token on Solana for a token from another chain.
+
+#### Signature
+
+```typescript
+buildDeployToken(
+  signature: SolanaMPCSignature,
+  metadata: SolanaTokenMetadata,
+  payer: PublicKey
+): Promise<TransactionInstruction[]>
+```
+
+#### Parameters
+
+<ResponseField name="signature" type="SolanaMPCSignature" required>
+  The MPC signature authorizing the token deployment.
+</ResponseField>
+
+<ResponseField name="metadata" type="SolanaTokenMetadata" required>
+  <Expandable title="SolanaTokenMetadata">
+    <ResponseField name="token" type="string" required>
+      The original token address on the source chain (e.g., `"near:wrap.near"`).
+    </ResponseField>
+
+    <ResponseField name="name" type="string" required>
+      The token name for the wrapped token.
+    </ResponseField>
+
+    <ResponseField name="symbol" type="string" required>
+      The token symbol for the wrapped token.
+    </ResponseField>
+
+    <ResponseField name="decimals" type="number" required>
+      The number of decimals for the wrapped token.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="payer" type="PublicKey" required>
+  The public key of the account paying for the transaction.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="instructions" type="TransactionInstruction[]">
+  Array of Solana transaction instructions that create a new wrapped token mint PDA and set up its metadata.
+</ResponseField>
+
+#### Example
+
+```typescript
+import { createSolanaBuilder } from "@omni-bridge/solana"
+import { PublicKey, Transaction } from "@solana/web3.js"
+
+const solana = createSolanaBuilder({ network: "mainnet" })
+
+const metadata = {
+  token: "near:wrap.near",
+  name: "Wrapped NEAR",
+  symbol: "wNEAR",
+  decimals: 24,
+}
+
+const signature = {
+  toBytes: () => new Uint8Array(/* MPC signature bytes */),
+}
+
+const payer = new PublicKey("YourWalletPubkey...")
+const instructions = await solana.buildDeployToken(signature, metadata, payer)
+
+const tx = new Transaction()
+tx.add(...instructions)
+```
+
+---
+
+## PDA Derivation Methods
+
+<Warning>
+  PDA seeds must match the on-chain program exactly. Always use the builder's derive methods rather than computing PDAs manually.
+</Warning>
+
+### deriveConfig
+
+Derives the bridge configuration PDA.
+
+#### Signature
+
+```typescript
+deriveConfig(): PublicKey
+```
+
+#### Returns
+
+<ResponseField name="config" type="PublicKey">
+  The config PDA used as the Wormhole message emitter.
+</ResponseField>
+
+#### Example
+
+```typescript
+const configPda = solana.deriveConfig()
+console.log("Config PDA:", configPda.toBase58())
+```
+
+---
+
+### deriveAuthority
+
+Derives the program authority PDA.
+
+#### Signature
+
+```typescript
+deriveAuthority(): PublicKey
+```
+
+#### Returns
+
+<ResponseField name="authority" type="PublicKey">
+  The authority PDA that has mint/burn authority over bridged tokens and controls token vaults.
+</ResponseField>
+
+#### Example
+
+```typescript
+const authorityPda = solana.deriveAuthority()
+console.log("Authority PDA:", authorityPda.toBase58())
+```
+
+---
+
+### deriveSolVault
+
+Derives the native SOL vault PDA.
+
+#### Signature
+
+```typescript
+deriveSolVault(): PublicKey
+```
+
+#### Returns
+
+<ResponseField name="solVault" type="PublicKey">
+  The SOL vault PDA that holds native SOL for bridging.
+</ResponseField>
+
+#### Example
+
+```typescript
+const solVaultPda = solana.deriveSolVault()
+console.log("SOL Vault PDA:", solVaultPda.toBase58())
+```
+
+---
+
+### deriveVault
+
+Derives the token vault PDA for a specific SPL token mint.
+
+#### Signature
+
+```typescript
+deriveVault(mint: PublicKey): PublicKey
+```
+
+#### Parameters
+
+<ResponseField name="mint" type="PublicKey" required>
+  The public key of the SPL token mint.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="vault" type="PublicKey">
+  The vault PDA that holds tokens of this mint for bridging.
+</ResponseField>
+
+#### Example
+
+```typescript
+const usdcMint = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")
+const vaultPda = solana.deriveVault(usdcMint)
+console.log("USDC Vault PDA:", vaultPda.toBase58())
+```
+
+---
+
+### deriveWrappedMint
+
+Derives the wrapped token mint PDA for a token from another chain.
+
+#### Signature
+
+```typescript
+deriveWrappedMint(token: string): PublicKey
+```
+
+#### Parameters
+
+<ResponseField name="token" type="string" required>
+  The original token address on the source chain. For tokens longer than 32 bytes, the address is hashed with SHA-256.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="wrappedMint" type="PublicKey">
+  The wrapped mint PDA for the bridged token.
+</ResponseField>
+
+#### Example
+
+```typescript
+// Get the wrapped NEAR token mint on Solana
+const wrappedNearMint = solana.deriveWrappedMint("near:wrap.near")
+console.log("Wrapped NEAR Mint:", wrappedNearMint.toBase58())
+
+// Get wrapped ETH mint
+const wrappedEthMint = solana.deriveWrappedMint("eth:0x0000000000000000000000000000000000000000")
+console.log("Wrapped ETH Mint:", wrappedEthMint.toBase58())
+```
+
+---
+
+## PDA Seeds Reference
+
+For reference only - always use the derive methods above.
+
+| PDA | Seeds |
+|-----|-------|
+| Config | `["config"]` |
+| Authority | `["authority"]` |
+| SOL Vault | `["sol_vault"]` |
+| Token Vault | `["vault", mint]` |
+| Wrapped Mint | `["wrapped_mint", token_address]` |
+| Used Nonces | `["used_nonces", nonce_group]` |
+
+---
+
+## Types
+
+### SolanaBuilderConfig
+
+Configuration for creating a Solana builder.
+
+```typescript
+interface SolanaBuilderConfig {
+  network: Network
+  /** Optional - uses public RPC endpoint if not provided */
+  connection?: Connection
+}
+```
+
+---
+
+### SolanaBuilder
+
+The Solana instruction builder interface.
+
+```typescript
+interface SolanaBuilder {
+  buildTransfer(
+    validated: ValidatedTransfer,
+    user: PublicKey,
+    payer?: PublicKey
+  ): Promise<TransactionInstruction[]>
+  buildFinalization(
+    payload: SolanaTransferMessagePayload,
+    signature: SolanaMPCSignature,
+    payer: PublicKey
+  ): Promise<TransactionInstruction[]>
+  buildLogMetadata(token: PublicKey, payer: PublicKey): Promise<TransactionInstruction[]>
+  buildDeployToken(
+    signature: SolanaMPCSignature,
+    metadata: SolanaTokenMetadata,
+    payer: PublicKey
+  ): Promise<TransactionInstruction[]>
+  deriveConfig(): PublicKey
+  deriveAuthority(): PublicKey
+  deriveWrappedMint(token: string): PublicKey
+  deriveVault(mint: PublicKey): PublicKey
+  deriveSolVault(): PublicKey
+}
+```
+
+---
+
+### SolanaTransferMessagePayload
+
+Payload for finalizing a transfer to Solana.
+
+```typescript
+interface SolanaTransferMessagePayload {
+  destination_nonce: bigint | number
+  transfer_id: {
+    origin_chain: ChainKind | string
+    origin_nonce: bigint | string
+  }
+  token_address: string
+  amount: bigint | string
+  recipient: string
+  fee_recipient?: string | null
+}
+```
+
+<ResponseField name="destination_nonce" type="bigint | number" required>
+  The nonce assigned to this transfer on the destination chain.
+</ResponseField>
+
+<ResponseField name="transfer_id" type="object" required>
+  <Expandable title="transfer_id">
+    <ResponseField name="origin_chain" type="ChainKind | string" required>
+      The chain where the transfer originated. Can be a `ChainKind` enum value or string like `"Near"`.
+    </ResponseField>
+
+    <ResponseField name="origin_nonce" type="bigint | string" required>
+      The nonce of the transfer on the origin chain.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="token_address" type="string" required>
+  The OmniAddress of the token on Solana (e.g., `"sol:EPjFWdd5..."`).
+</ResponseField>
+
+<ResponseField name="amount" type="bigint | string" required>
+  The amount to transfer in the smallest unit.
+</ResponseField>
+
+<ResponseField name="recipient" type="string" required>
+  The OmniAddress of the recipient on Solana (e.g., `"sol:RecipientPubkey..."`).
+</ResponseField>
+
+<ResponseField name="fee_recipient" type="string | null">
+  Optional OmniAddress of the fee recipient (typically the relayer).
+</ResponseField>
+
+---
+
+### SolanaMPCSignature
+
+Interface for MPC signatures used in finalization and token deployment.
+
+```typescript
+interface SolanaMPCSignature {
+  toBytes(): Uint8Array
+}
+```
+
+<ResponseField name="toBytes" type="() => Uint8Array" required>
+  Returns the signature as a byte array. The signature is typically 64 bytes (Ed25519).
+</ResponseField>
+
+---
+
+### SolanaTokenMetadata
+
+Token metadata for deploying wrapped tokens.
+
+```typescript
+interface SolanaTokenMetadata {
+  token: string
+  name: string
+  symbol: string
+  decimals: number
+}
+```
+
+<ResponseField name="token" type="string" required>
+  The original token address on the source chain (e.g., `"near:wrap.near"`).
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  The name for the wrapped token.
+</ResponseField>
+
+<ResponseField name="symbol" type="string" required>
+  The symbol for the wrapped token.
+</ResponseField>
+
+<ResponseField name="decimals" type="number" required>
+  The number of decimals for the wrapped token.
+</ResponseField>
+
+---
+
+### SolanaTransferId
+
+Transfer ID for cross-chain transfers (Solana-specific).
+
+```typescript
+interface SolanaTransferId {
+  originChain: ChainKind | number
+  originNonce: bigint | BN
+}
+```
+
+<ResponseField name="originChain" type="ChainKind | number" required>
+  The chain where the transfer originated.
+</ResponseField>
+
+<ResponseField name="originNonce" type="bigint | BN" required>
+  The nonce of the transfer on the origin chain.
+</ResponseField>
+
+---
+
+### SolanaDepositPayload
+
+Internal payload used for finalize transfer operations.
+
+```typescript
+interface SolanaDepositPayload {
+  destinationNonce: BN
+  transferId: {
+    originChain: number
+    originNonce: BN
+  }
+  amount: BN
+  feeRecipient: string
+}
+```
+
+<ResponseField name="destinationNonce" type="BN" required>
+  The destination nonce as a BN (bn.js) instance.
+</ResponseField>
+
+<ResponseField name="transferId" type="object" required>
+  <Expandable title="transferId">
+    <ResponseField name="originChain" type="number" required>
+      The origin chain as a numeric `ChainKind` value.
+    </ResponseField>
+
+    <ResponseField name="originNonce" type="BN" required>
+      The origin nonce as a BN instance.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="amount" type="BN" required>
+  The transfer amount as a BN instance.
+</ResponseField>
+
+<ResponseField name="feeRecipient" type="string" required>
+  The fee recipient address (empty string if none).
+</ResponseField>
+
+---
+
+### BridgeTokenFactory
+
+The Anchor IDL type for the bridge program. This is exported for advanced use cases that need direct program interaction.
+
+```typescript
+type BridgeTokenFactory = {
+  address: string
+  metadata: {
+    name: "bridgeTokenFactory"
+    version: string
+    spec: string
+    description: string
+  }
+  instructions: [/* ... */]
+  // ... full IDL structure
+}
+```
+
+---
+
+## Complete Example
+
+```typescript
+import { createBridge, ChainKind } from "@omni-bridge/core"
+import { createSolanaBuilder } from "@omni-bridge/solana"
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  Transaction,
+  sendAndConfirmTransaction,
+} from "@solana/web3.js"
+
+// Setup
+const connection = new Connection("https://api.mainnet-beta.solana.com")
+const bridge = createBridge({ network: "mainnet" })
+const solana = createSolanaBuilder({ network: "mainnet", connection })
+const wallet = Keypair.fromSecretKey(/* your secret key */)
+
+// Transfer USDC from Solana to NEAR
+async function transferToNear() {
+  const validated = await bridge.validateTransfer({
+    token: "sol:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    amount: 10_000_000n, // 10 USDC
+    fee: 100_000n,
+    nativeFee: 0n,
+    sender: `sol:${wallet.publicKey.toBase58()}`,
+    recipient: "near:recipient.near",
+  })
+
+  const instructions = await solana.buildTransfer(validated, wallet.publicKey)
+
+  const tx = new Transaction()
+  tx.add(...instructions)
+
+  const signature = await sendAndConfirmTransaction(connection, tx, [wallet])
+  console.log("Transfer submitted:", signature)
+}
+
+// Query PDAs
+function queryPDAs() {
+  console.log("Config:", solana.deriveConfig().toBase58())
+  console.log("Authority:", solana.deriveAuthority().toBase58())
+  console.log("SOL Vault:", solana.deriveSolVault().toBase58())
+
+  const usdcMint = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")
+  console.log("USDC Vault:", solana.deriveVault(usdcMint).toBase58())
+
+  console.log("Wrapped NEAR Mint:", solana.deriveWrappedMint("near:wrap.near").toBase58())
+}
+```
+
+---
+
+## Related
+
+- [Core Package](/reference/core) - Validation, types, and API client
+- [EVM Package](/reference/evm) - EVM transaction builder
+- [NEAR Package](/reference/near) - NEAR transaction builder
+- [Bitcoin Package](/reference/btc) - Bitcoin/Zcash UTXO builder

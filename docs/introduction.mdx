@@ -1,0 +1,64 @@
+---
+title: Introduction
+description: TypeScript SDK for cross-chain token transfers
+---
+
+The Omni Bridge SDK lets you build cross-chain token transfers into your application. It handles the complex parts — address validation, amount encoding, fee calculation — and gives you back unsigned transactions to sign and broadcast however you like.
+
+## What It Does
+
+You tell the SDK where tokens should go. It figures out the rest:
+
+- Validates addresses across different chain formats
+- Normalizes token amounts between different decimal precisions
+- Encodes transactions for the bridge contracts
+- Calculates fees for relayer-assisted finalization
+
+The SDK is **library agnostic**. It returns plain transaction objects that work with viem, ethers, @solana/web3.js, near-kit, or whatever signing solution you prefer.
+
+## Supported Chains
+
+<CardGroup cols={3}>
+  <Card title="EVM" icon="ethereum">
+    Ethereum, Base, Arbitrum, Polygon, BNB Chain
+  </Card>
+  <Card title="NEAR" icon="circle-nodes">
+    NEAR Protocol
+  </Card>
+  <Card title="Solana" icon="sun">
+    Solana
+  </Card>
+  <Card title="Bitcoin" icon="bitcoin">
+    Bitcoin, Zcash
+  </Card>
+</CardGroup>
+
+## Packages
+
+Install everything with the umbrella package, or just the chains you need:
+
+```bash
+# Everything
+npm install @omni-bridge/sdk
+
+# Just EVM chains
+npm install @omni-bridge/core @omni-bridge/evm
+
+# Just NEAR
+npm install @omni-bridge/core @omni-bridge/near
+```
+
+| Package | What it's for |
+|---------|---------------|
+| `@omni-bridge/core` | Validation, types, API client (always needed) |
+| `@omni-bridge/evm` | Ethereum, Base, Arbitrum, Polygon, BNB |
+| `@omni-bridge/near` | NEAR Protocol |
+| `@omni-bridge/solana` | Solana |
+| `@omni-bridge/btc` | Bitcoin, Zcash |
+| `@omni-bridge/sdk` | Re-exports everything |
+
+## Next Step
+
+<Card title="Getting Started" icon="rocket" href="/getting-started">
+  Build your first cross-chain transfer in 5 minutes
+</Card>
