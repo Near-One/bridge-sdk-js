@@ -278,10 +278,7 @@ class BtcBuilderImpl implements BtcBuilder {
   }
 
   private createFeeCalculator(feeRate: number): FeeCalculator {
-    let effectiveRate = feeRate
-    if (effectiveRate <= 0) {
-      effectiveRate = 1
-    }
+    const effectiveRate = feeRate <= 0 ? 1 : feeRate
     return linearFeeCalculator({
       base: 10,
       input: 68,
