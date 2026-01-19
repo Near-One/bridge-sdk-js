@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../core" },
+    { "path": "../evm" },
+    { "path": "../near" },
+    { "path": "../solana" },
+    { "path": "../btc" }
+  ]
+}

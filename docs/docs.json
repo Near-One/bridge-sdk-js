@@ -1,0 +1,98 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Omni Bridge SDK",
+  "description": "TypeScript SDK for cross-chain token transfers via the Omni Bridge protocol. Transfer tokens between Ethereum, NEAR, Solana, Base, Arbitrum, Polygon, BNB Chain, Bitcoin, and Zcash.",
+  "colors": {
+    "primary": "#6366F1",
+    "light": "#818CF8",
+    "dark": "#4F46E5"
+  },
+  "favicon": "/images/favicon.png",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "icon": "book",
+        "groups": [
+          {
+            "group": "Start Here",
+            "icon": "rocket",
+            "pages": ["introduction", "getting-started"]
+          },
+          {
+            "group": "Core Concepts",
+            "icon": "lightbulb",
+            "pages": [
+              "core-concepts/transfer-flow",
+              "core-concepts/omni-addresses",
+              "core-concepts/decimals"
+            ]
+          },
+          {
+            "group": "Guides",
+            "icon": "map",
+            "pages": [
+              "guides/evm",
+              "guides/near",
+              "guides/solana",
+              "guides/bitcoin",
+              "guides/fees",
+              "guides/tracking"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "icon": "flask",
+            "pages": [
+              "guides/advanced/manual-finalization",
+              "guides/advanced/fast-transfers",
+              "guides/advanced/token-deployment"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "icon": "code",
+        "groups": [
+          {
+            "group": "Packages",
+            "icon": "cube",
+            "pages": [
+              "reference/core",
+              "reference/evm",
+              "reference/near",
+              "reference/solana",
+              "reference/btc"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/Near-one/bridge-sdk-js"
+      }
+    ],
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/Near-one/bridge-sdk-js"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/Near-one/bridge-sdk-js",
+      "discord": "https://discord.gg/nearprotocol"
+    }
+  },
+  "contextual": {
+    "options": ["copy", "view", "chatgpt", "claude"]
+  },
+  "search": {
+    "prompt": "Search documentation..."
+  }
+}

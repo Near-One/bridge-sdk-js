@@ -1,0 +1,44 @@
+{
+  "name": "@omni-bridge/solana",
+  "version": "0.1.0",
+  "description": "Solana transaction builder for Omni Bridge",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/near-one/bridge-sdk-js",
+    "directory": "packages/solana"
+  },
+  "license": "MIT",
+  "author": "NEAR One",
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
+    "@noble/hashes": "^2.0.1",
+    "@omni-bridge/core": "workspace:*",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
+    "bn.js": "^5.2.2"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.2.0",
+    "typescript": "^5.9.3"
+  }
+}

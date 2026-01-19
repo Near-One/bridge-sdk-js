@@ -1,0 +1,122 @@
+---
+title: OmniAddress Format
+description: Cross-chain address format used throughout the SDK
+---
+
+The SDK uses a unified address format called OmniAddress. It's simple: a chain prefix, a colon, and the native address.
+
+```
+<chain>:<address>
+```
+
+## Examples
+
+| Chain | OmniAddress |
+|-------|-------------|
+| Ethereum | `eth:0x1234567890123456789012345678901234567890` |
+| Base | `base:0x1234567890123456789012345678901234567890` |
+| Arbitrum | `arb:0x1234567890123456789012345678901234567890` |
+| Polygon | `pol:0x1234567890123456789012345678901234567890` |
+| BNB Chain | `bnb:0x1234567890123456789012345678901234567890` |
+| NEAR | `near:alice.near` |
+| Solana | `sol:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` |
+| Bitcoin | `btc:bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh` |
+| Zcash | `zec:t1Rv4exT7bqhZqi2j7xz8bUHDMxwosrjADU` |
+
+## Chain Prefixes
+
+| Prefix | Chain | Chain ID (mainnet) |
+|--------|-------|-------------------|
+| `eth` | Ethereum | 1 |
+| `base` | Base | 8453 |
+| `arb` | Arbitrum One | 42161 |
+| `pol` | Polygon PoS | 137 |
+| `bnb` | BNB Smart Chain | 56 |
+| `near` | NEAR Protocol | — |
+| `sol` | Solana | — |
+| `btc` | Bitcoin | — |
+| `zec` | Zcash | — |
+
+## Tokens Use The Same Format
+
+Token addresses are also OmniAddresses:
+
+```typescript
+// USDC on Ethereum
+"eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+
+// USDC on Solana
+"sol:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+
+// wNEAR on NEAR
+"near:wrap.near"
+```
+
+## Native Tokens
+
+For native tokens (ETH, SOL, etc.), use the zero address or default representation:
+
+| Chain | Native Token Address |
+|-------|---------------------|
+| EVM chains | `eth:0x0000000000000000000000000000000000000000` |
+| Solana | `sol:11111111111111111111111111111111` |
+
+## Utility Functions
+
+The SDK provides helpers for working with OmniAddresses:
+
+```typescript
+import { getChain, getAddress, omniAddress, ChainKind } from "@omni-bridge/core"
+
+// Parse an OmniAddress
+const addr = "eth:0x1234567890123456789012345678901234567890"
+const chain = getChain(addr)    // ChainKind.Eth
+const raw = getAddress(addr)    // "0x1234567890123456789012345678901234567890"
+
+// Create an OmniAddress
+const omni = omniAddress(ChainKind.Eth, "0x1234...")  // "eth:0x1234..."
+
+// Check chain type
+import { isEvmChain } from "@omni-bridge/core"
+
+isEvmChain(ChainKind.Eth)   // true
+isEvmChain(ChainKind.Base)  // true
+isEvmChain(ChainKind.Near)  // false
+```
+
+## ChainKind Enum
+
+For programmatic use, the SDK provides a `ChainKind` enum:
+
+```typescript
+enum ChainKind {
+  Eth = 0,
+  Near = 1,
+  Sol = 2,
+  Arb = 3,
+  Base = 4,
+  Bnb = 5,
+  Btc = 6,
+  Zcash = 7,
+  Pol = 8
+}
+```
+
+## Validation
+
+`validateTransfer()` automatically validates addresses. Invalid addresses throw a `ValidationError`:
+
+```typescript
+try {
+  await bridge.validateTransfer({
+    token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    sender: "eth:not-a-valid-address",  // Invalid!
+    recipient: "near:alice.near",
+    amount: 1_000_000n,
+    fee: 0n,
+    nativeFee: 0n,
+  })
+} catch (error) {
+  // ValidationError with code "INVALID_ADDRESS"
+}
+```

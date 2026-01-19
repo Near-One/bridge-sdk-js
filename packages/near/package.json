@@ -1,0 +1,44 @@
+{
+  "name": "@omni-bridge/near",
+  "version": "0.1.0",
+  "description": "NEAR transaction builder for Omni Bridge",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/near-one/bridge-sdk-js",
+    "directory": "packages/near"
+  },
+  "license": "MIT",
+  "author": "NEAR One",
+  "dependencies": {
+    "@near-js/accounts": "^2.5.1",
+    "@near-js/transactions": "^2.5.1",
+    "@noble/hashes": "^2.0.1",
+    "@omni-bridge/core": "^0.1.0",
+    "@scure/base": "^2.0.0",
+    "@zorsh/zorsh": "^0.4.0",
+    "near-kit": "^0.7.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
