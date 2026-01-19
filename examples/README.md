@@ -47,6 +47,10 @@ const NETWORK = "mainnet" as "testnet" | "mainnet"
 // Update contract addresses accordingly
 ```
 
+## Token Deployment
+
+For a detailed guide on how to deploy tokens across different chains using the Omni Bridge protocol, refer to the [Token Deployment Guide](https://github.com/Near-One/bridge-sdk-js/blob/main/docs/token-deployment.md)
+
 ## More Examples Coming Soon
 
 - EVM chain transfers (Ethereum, Base, Arbitrum)
