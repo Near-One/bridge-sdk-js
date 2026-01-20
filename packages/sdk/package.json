@@ -1,0 +1,42 @@
+{
+  "name": "@omni-bridge/sdk",
+  "version": "0.1.0",
+  "description": "Omni Bridge SDK - Umbrella package re-exporting all chain packages",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/near-one/bridge-sdk-js",
+    "directory": "packages/sdk"
+  },
+  "license": "MIT",
+  "author": "NEAR One",
+  "dependencies": {
+    "@omni-bridge/core": "workspace:*",
+    "@omni-bridge/evm": "workspace:*",
+    "@omni-bridge/near": "workspace:*",
+    "@omni-bridge/solana": "workspace:*",
+    "@omni-bridge/btc": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

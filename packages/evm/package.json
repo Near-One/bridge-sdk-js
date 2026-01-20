@@ -1,0 +1,42 @@
+{
+  "name": "@omni-bridge/evm",
+  "version": "0.1.0",
+  "description": "EVM transaction builder for Omni Bridge",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/near-one/bridge-sdk-js",
+    "directory": "packages/evm"
+  },
+  "license": "MIT",
+  "author": "NEAR One",
+  "dependencies": {
+    "@omni-bridge/core": "^0.1.0",
+    "@ethereumjs/mpt": "^10.1.0",
+    "@ethereumjs/rlp": "^10.1.0",
+    "@ethereumjs/util": "^10.1.0",
+    "viem": "^2.43.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

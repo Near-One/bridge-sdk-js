@@ -1,0 +1,226 @@
+---
+title: EVM Chains
+description: Bridge tokens from Ethereum, Base, Arbitrum, Polygon, and BNB Chain
+---
+
+This guide covers bridging from any EVM chain. The process is identical — you just change the `chain` parameter.
+
+## Setup
+
+```typescript
+import { createBridge, ChainKind } from "@omni-bridge/core"
+import { createEvmBuilder } from "@omni-bridge/evm"
+
+const bridge = createBridge({ network: "mainnet" })
+
+// Pick your chain
+const evm = createEvmBuilder({ network: "mainnet", chain: ChainKind.Eth })
+// Or: ChainKind.Base, ChainKind.Arb, ChainKind.Pol, ChainKind.Bnb
+```
+
+## Complete Transfer
+
+```typescript
+import { createBridge, ChainKind } from "@omni-bridge/core"
+import { createEvmBuilder } from "@omni-bridge/evm"
+import { createWalletClient, createPublicClient, http } from "viem"
+import { mainnet } from "viem/chains"
+import { privateKeyToAccount } from "viem/accounts"
+
+const bridge = createBridge({ network: "mainnet" })
+const evm = createEvmBuilder({ network: "mainnet", chain: ChainKind.Eth })
+
+const account = privateKeyToAccount("0x...")
+const wallet = createWalletClient({ chain: mainnet, transport: http(), account })
+const publicClient = createPublicClient({ chain: mainnet, transport: http() })
+
+// 1. Validate
+const validated = await bridge.validateTransfer({
+  token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // USDC
+  amount: 100_000_000n, // 100 USDC
+  sender: `eth:${account.address}`,
+  recipient: "near:alice.near",
+  fee: 0n,
+  nativeFee: 0n,
+})
+
+// 2. Approve (ERC20 only — skip for native ETH)
+const approval = evm.buildApproval(
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  100_000_000n
+)
+const approvalHash = await wallet.sendTransaction(approval)
+await publicClient.waitForTransactionReceipt({ hash: approvalHash })
+
+// 3. Transfer
+const tx = evm.buildTransfer(validated)
+const hash = await wallet.sendTransaction(tx)
+
+console.log("Transfer initiated:", hash)
+```
+
+<Accordion title="Using ethers v6 instead of viem">
+```typescript
+import { createBridge, ChainKind } from "@omni-bridge/core"
+import { createEvmBuilder } from "@omni-bridge/evm"
+import { ethers } from "ethers"
+
+const bridge = createBridge({ network: "mainnet" })
+const evm = createEvmBuilder({ network: "mainnet", chain: ChainKind.Eth })
+
+const provider = new ethers.JsonRpcProvider("https://eth.llamarpc.com")
+const signer = new ethers.Wallet("0x...", provider)
+
+// 1. Validate
+const validated = await bridge.validateTransfer({
+  token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  amount: 100_000_000n,
+  sender: `eth:${signer.address}`,
+  recipient: "near:alice.near",
+  fee: 0n,
+  nativeFee: 0n,
+})
+
+// 2. Approve
+const approval = evm.buildApproval(
+  "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  100_000_000n
+)
+await (await signer.sendTransaction(approval)).wait()
+
+// 3. Transfer
+const tx = evm.buildTransfer(validated)
+const receipt = await signer.sendTransaction(tx)
+
+console.log("Transfer initiated:", receipt.hash)
+```
+</Accordion>
+
+## Native ETH Transfers
+
+For native ETH (not WETH), use the zero address and skip approval:
+
+```typescript
+import { parseEther } from "viem"
+
+const validated = await bridge.validateTransfer({
+  token: "eth:0x0000000000000000000000000000000000000000", // Native ETH
+  amount: parseEther("0.1"),
+  sender: `eth:${account.address}`,
+  recipient: "near:alice.near",
+  fee: 0n,
+  nativeFee: 0n,
+})
+
+// No approval needed — go straight to transfer
+const tx = evm.buildTransfer(validated)
+await wallet.sendTransaction(tx)
+```
+
+The `value` field in the transaction includes both the transfer amount and any native fee.
+
+## L2 Chains
+
+The same code works for L2s — just change the chain config:
+
+```typescript
+import { base } from "viem/chains"
+
+// Base
+const baseBuilder = createEvmBuilder({ network: "mainnet", chain: ChainKind.Base })
+const baseWallet = createWalletClient({ chain: base, transport: http(), account })
+
+const validated = await bridge.validateTransfer({
+  token: "base:0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC on Base
+  amount: 100_000_000n,
+  sender: `base:${account.address}`,
+  recipient: "near:alice.near",
+  fee: 0n,
+  nativeFee: 0n,
+})
+
+const tx = baseBuilder.buildTransfer(validated)
+await baseWallet.sendTransaction(tx)
+```
+
+## Receiving on EVM (From NEAR)
+
+When tokens come from NEAR to an EVM chain, the transfer finalizes automatically if the sender paid relayer fees. The tokens appear in the recipient's address.
+
+If you need to finalize manually (no fees paid), see [Manual Finalization](/guides/advanced/manual-finalization).
+
+## Approvals
+
+For ERC20 tokens, you must approve the bridge contract before transferring.
+
+**Exact approval** — Approve only what you need:
+```typescript
+const approval = evm.buildApproval(tokenAddress, amount)
+```
+
+**Unlimited approval** — Approve once, transfer many times:
+```typescript
+const approval = evm.buildMaxApproval(tokenAddress)
+```
+
+## Transaction Format
+
+`buildTransfer()` returns an `EvmUnsignedTransaction`:
+
+```typescript
+interface EvmUnsignedTransaction {
+  to: `0x${string}`   // Bridge contract
+  data: `0x${string}` // Encoded function call
+  value: bigint       // Native token (ETH) if applicable
+  chainId: number     // Chain ID for signing
+}
+```
+
+This works directly with viem and ethers — no conversion needed.
+
+## Error Handling
+
+```typescript
+import { ValidationError } from "@omni-bridge/core"
+
+try {
+  const validated = await bridge.validateTransfer(params)
+  const tx = evm.buildTransfer(validated)
+  await wallet.sendTransaction(tx)
+} catch (error) {
+  if (error instanceof ValidationError) {
+    switch (error.code) {
+      case "INVALID_ADDRESS":
+        console.error("Invalid address format")
+        break
+      case "TOKEN_NOT_REGISTERED":
+        console.error("Token not supported")
+        break
+      case "AMOUNT_TOO_SMALL":
+        console.error("Amount too small — see /core-concepts/decimals")
+        break
+    }
+  }
+}
+```
+
+## Chain Reference
+
+| Chain | ChainKind | Token Prefix | Mainnet ID | Testnet ID |
+|-------|-----------|--------------|------------|------------|
+| Ethereum | `Eth` | `eth:` | 1 | 11155111 (Sepolia) |
+| Base | `Base` | `base:` | 8453 | 84532 |
+| Arbitrum | `Arb` | `arb:` | 42161 | 421614 |
+| Polygon | `Pol` | `pol:` | 137 | 80002 (Amoy) |
+| BNB Chain | `Bnb` | `bnb:` | 56 | 97 |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Pay Relayer Fees" icon="money-bill" href="/guides/fees">
+    Automatic finalization on destination
+  </Card>
+  <Card title="Track Status" icon="magnifying-glass" href="/guides/tracking">
+    Monitor your transfer's progress
+  </Card>
+</CardGroup>

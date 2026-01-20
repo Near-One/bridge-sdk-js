@@ -1,0 +1,2005 @@
+---
+title: "@omni-bridge/core"
+description: Validation, types, configuration, and API client
+---
+
+## Import
+
+```typescript
+import {
+  // Bridge factory
+  createBridge,
+  type Bridge,
+  type BridgeConfig,
+
+  // API client
+  BridgeAPI,
+  type BridgeAPIConfig,
+  type ApiFeeResponse,
+  type Transfer,
+  type TransferStatus,
+  type Chain,
+  type PostAction,
+  type UtxoChainParam,
+  type UtxoDepositAddressResponse,
+
+  // Types
+  ChainKind,
+  type Network,
+  type OmniAddress,
+  type ChainPrefix,
+  type TransferParams,
+  type ValidatedTransfer,
+  type TokenDecimals,
+  type Fee,
+  type Nonce,
+  type U128,
+  type AccountId,
+  type UtxoChain,
+  type UTXO,
+
+  // Unsigned transaction types
+  type EvmUnsignedTransaction,
+  type NearUnsignedTransaction,
+  type NearAction,
+  type SolanaUnsignedTransaction,
+  type SolanaInstruction,
+  type BtcUnsignedTransaction,
+
+  // Address utilities
+  getChain,
+  getAddress,
+  omniAddress,
+  getChainPrefix,
+  isEvmChain,
+  type EvmChainKind,
+
+  // Decimal utilities
+  normalizeAmount,
+  validateTransferAmount,
+  verifyTransferAmount,
+  getMinimumTransferableAmount,
+
+  // Configuration
+  getAddresses,
+  EVM_CHAIN_IDS,
+  API_BASE_URLS,
+  type ChainAddresses,
+  type EvmAddresses,
+  type NearAddresses,
+  type SolanaAddresses,
+  type BtcAddresses,
+  type ZcashAddresses,
+
+  // Wormhole utilities
+  getWormholeVaa,
+  getVaa,
+  type WormholeNetwork,
+
+  // Errors
+  OmniBridgeError,
+  ValidationError,
+  RpcError,
+  ProofError,
+  type ValidationErrorCode,
+} from "@omni-bridge/core"
+```
+
+---
+
+## createBridge
+
+Factory function to create a Bridge instance for validating transfers and accessing the API.
+
+### Signature
+
+```typescript
+function createBridge(config: BridgeConfig): Bridge
+```
+
+### Parameters
+
+<ResponseField name="config" type="BridgeConfig" required>
+  Configuration object for the bridge.
+
+  <Expandable title="BridgeConfig properties">
+    <ResponseField name="network" type="'mainnet' | 'testnet'" required>
+      The network to connect to.
+    </ResponseField>
+
+    <ResponseField name="rpcUrls" type="Partial<Record<ChainKind, string>>">
+      Optional custom RPC URLs for each chain. Overrides default RPC endpoints.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Returns
+
+<ResponseField name="Bridge" type="Bridge">
+  A Bridge instance with properties and methods for transfer validation.
+
+  <Expandable title="Bridge interface">
+    <ResponseField name="network" type="'mainnet' | 'testnet'">
+      The network this bridge is connected to.
+    </ResponseField>
+
+    <ResponseField name="addresses" type="ChainAddresses">
+      Contract addresses for all supported chains.
+    </ResponseField>
+
+    <ResponseField name="api" type="BridgeAPI">
+      Direct access to the API client instance.
+    </ResponseField>
+
+    <ResponseField name="validateTransfer" type="(params: TransferParams) => Promise<ValidatedTransfer>">
+      Validates transfer parameters and prepares for execution.
+    </ResponseField>
+
+    <ResponseField name="getTokenDecimals" type="(token: OmniAddress) => Promise<TokenDecimals | null>">
+      Gets decimal information for a token.
+    </ResponseField>
+
+    <ResponseField name="getBridgedToken" type="(token: OmniAddress, destChain: ChainKind) => Promise<OmniAddress | null>">
+      Gets the bridged token address on a destination chain.
+    </ResponseField>
+
+    <ResponseField name="getUtxoDepositAddress" type="(chain: UtxoChain, recipient: string, options?: UtxoDepositOptions) => Promise<UtxoDepositResult>">
+      Gets a deposit address for Bitcoin or Zcash.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```typescript
+import { createBridge, ChainKind } from "@omni-bridge/core"
+
+// Basic usage
+const bridge = createBridge({ network: "mainnet" })
+
+// With custom RPC URLs
+const bridgeWithRpc = createBridge({
+  network: "mainnet",
+  rpcUrls: {
+    [ChainKind.Eth]: "https://my-custom-rpc.com",
+    [ChainKind.Near]: "https://rpc.mainnet.near.org",
+  },
+})
+
+// Accessing addresses
+console.log(bridge.addresses.eth.bridge)    // EVM bridge contract
+console.log(bridge.addresses.near.contract) // NEAR contract
+console.log(bridge.addresses.sol.locker)    // Solana locker program
+```
+
+---
+
+## Bridge.validateTransfer
+
+Validates transfer parameters and prepares a `ValidatedTransfer` object for building transactions.
+
+### Signature
+
+```typescript
+bridge.validateTransfer(params: TransferParams): Promise<ValidatedTransfer>
+```
+
+### Parameters
+
+<ResponseField name="params" type="TransferParams" required>
+  The transfer parameters to validate.
+
+  <Expandable title="TransferParams properties">
+    <ResponseField name="token" type="OmniAddress" required>
+      The token to transfer, in OmniAddress format (e.g., `eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48`).
+    </ResponseField>
+
+    <ResponseField name="amount" type="bigint" required>
+      Amount to transfer in the token's smallest unit (e.g., wei for ETH, lamports for SOL).
+    </ResponseField>
+
+    <ResponseField name="fee" type="bigint" required>
+      Relayer fee in the transfer token. Set to `0n` for manual finalization.
+    </ResponseField>
+
+    <ResponseField name="nativeFee" type="bigint" required>
+      Relayer fee in the source chain's native token. Set to `0n` for manual finalization.
+    </ResponseField>
+
+    <ResponseField name="sender" type="OmniAddress" required>
+      Sender address in OmniAddress format.
+    </ResponseField>
+
+    <ResponseField name="recipient" type="OmniAddress" required>
+      Recipient address in OmniAddress format.
+    </ResponseField>
+
+    <ResponseField name="message" type="string">
+      Optional message or memo to include with the transfer.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Returns
+
+<ResponseField name="ValidatedTransfer" type="ValidatedTransfer">
+  A validated transfer object ready for building.
+
+  <Expandable title="ValidatedTransfer properties">
+    <ResponseField name="params" type="TransferParams">
+      The original transfer parameters.
+    </ResponseField>
+
+    <ResponseField name="sourceChain" type="ChainKind">
+      The source chain extracted from the sender address.
+    </ResponseField>
+
+    <ResponseField name="destChain" type="ChainKind">
+      The destination chain extracted from the recipient address.
+    </ResponseField>
+
+    <ResponseField name="normalizedAmount" type="bigint">
+      Amount normalized for decimal differences between chains.
+    </ResponseField>
+
+    <ResponseField name="normalizedFee" type="bigint">
+      Fee normalized for decimal differences between chains.
+    </ResponseField>
+
+    <ResponseField name="contractAddress" type="string">
+      The bridge contract address on the source chain.
+    </ResponseField>
+
+    <ResponseField name="bridgedToken" type="OmniAddress | undefined">
+      The token address on the destination chain (if different from source).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Validation Checks
+
+The method performs these validations:
+
+1. **Amount validation**: Amount must be positive, fee cannot be negative
+2. **Address format**: Sender and recipient must be valid OmniAddresses
+3. **EVM address validation**: EVM addresses must be valid hex format
+4. **Token registration**: Token must be registered on the bridge
+5. **Decimal normalization**: Amount must survive conversion between chains
+6. **Minimum amount**: Amount minus fee must be greater than zero after normalization
+
+### Errors
+
+Throws `ValidationError` with one of these codes:
+
+| Code | Description |
+|------|-------------|
+| `INVALID_AMOUNT` | Amount is invalid (zero, negative, or less than fee) |
+| `INVALID_ADDRESS` | Address format is invalid |
+| `INVALID_CHAIN` | Chain prefix is not recognized |
+| `TOKEN_NOT_REGISTERED` | Token is not registered on the bridge |
+| `AMOUNT_TOO_SMALL` | Amount too small after decimal normalization |
+
+### Example
+
+```typescript
+import { createBridge, ValidationError } from "@omni-bridge/core"
+
+const bridge = createBridge({ network: "mainnet" })
+
+try {
+  const validated = await bridge.validateTransfer({
+    token: "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    amount: 1000000n, // 1 USDC
+    fee: 0n,
+    nativeFee: 0n,
+    sender: "eth:0x1234567890123456789012345678901234567890",
+    recipient: "near:alice.near",
+  })
+
+  console.log(validated.sourceChain)      // ChainKind.Eth
+  console.log(validated.destChain)        // ChainKind.Near
+  console.log(validated.normalizedAmount) // Scaled for NEAR decimals
+  console.log(validated.contractAddress)  // Bridge contract on Ethereum
+} catch (error) {
+  if (error instanceof ValidationError) {
+    console.error(`Validation failed: ${error.code}`, error.details)
+  }
+}
+```
+
+---
+
+## Bridge.getTokenDecimals
+
+Gets decimal information for a token from the NEAR bridge contract.
+
+### Signature
+
+```typescript
+bridge.getTokenDecimals(token: OmniAddress): Promise<TokenDecimals | null>
+```
+
+### Parameters
+
+<ResponseField name="token" type="OmniAddress" required>
+  The token address in OmniAddress format.
+</ResponseField>
+
+### Returns
+
+<ResponseField name="TokenDecimals | null" type="TokenDecimals | null">
+  Token decimal information, or `null` if the token is not registered.
+
+  <Expandable title="TokenDecimals properties">
+    <ResponseField name="decimals" type="number">
+      Decimals on the foreign chain.
+    </ResponseField>
+
+    <ResponseField name="origin_decimals" type="number">
+      Decimals on NEAR.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```typescript
+const decimals = await bridge.getTokenDecimals(
+  "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+)
+
+if (decimals) {
+  console.log(`Foreign decimals: ${decimals.decimals}`)
+  console.log(`NEAR decimals: ${decimals.origin_decimals}`)
+}
+```
+
+---
+
+## Bridge.getBridgedToken
+
+Gets the bridged token address on a destination chain.
+
+### Signature
+
+```typescript
+bridge.getBridgedToken(token: OmniAddress, destChain: ChainKind): Promise<OmniAddress | null>
+```
+
+### Parameters
+
+<ResponseField name="token" type="OmniAddress" required>
+  The source token address in OmniAddress format.
+</ResponseField>
+
+<ResponseField name="destChain" type="ChainKind" required>
+  The destination chain to look up the bridged token on.
+</ResponseField>
+
+### Returns
+
+<ResponseField name="OmniAddress | null" type="OmniAddress | null">
+  The bridged token address on the destination chain, or `null` if not found.
+</ResponseField>
+
+### Example
+
+```typescript
+import { ChainKind } from "@omni-bridge/core"
+
+const bridgedToken = await bridge.getBridgedToken(
+  "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  ChainKind.Near
+)
+
+if (bridgedToken) {
+  console.log(`Bridged token on NEAR: ${bridgedToken}`)
+}
+```
+
+---
+
+## Bridge.getUtxoDepositAddress
+
+Gets a deposit address for Bitcoin or Zcash. Funds sent to this address will be bridged to NEAR.
+
+### Signature
+
+```typescript
+bridge.getUtxoDepositAddress(
+  chain: UtxoChain,
+  recipient: string,
+  options?: UtxoDepositOptions
+): Promise<UtxoDepositResult>
+```
+
+### Parameters
+
+<ResponseField name="chain" type="UtxoChain" required>
+  The UTXO chain (`ChainKind.Btc` or `ChainKind.Zcash`).
+</ResponseField>
+
+<ResponseField name="recipient" type="string" required>
+  NEAR account ID to receive the bridged tokens.
+</ResponseField>
+
+<ResponseField name="options" type="UtxoDepositOptions">
+  Optional configuration for the deposit.
+
+  <Expandable title="UtxoDepositOptions properties">
+    <ResponseField name="postActions" type="PostAction[]">
+      Post-actions to execute after the deposit is finalized on NEAR. Used for automatic bridging to other chains.
+    </ResponseField>
+
+    <ResponseField name="extraMsg" type="string">
+      Extra message to include in the deposit.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Returns
+
+<ResponseField name="UtxoDepositResult" type="UtxoDepositResult">
+  The deposit address and related information.
+
+  <Expandable title="UtxoDepositResult properties">
+    <ResponseField name="address" type="string">
+      The BTC/Zcash address to send funds to.
+    </ResponseField>
+
+    <ResponseField name="chain" type="'btc' | 'zcash'">
+      The chain type.
+    </ResponseField>
+
+    <ResponseField name="recipient" type="string">
+      The recipient on NEAR.
+    </ResponseField>
+
+    <ResponseField name="postActions" type="PostAction[]">
+      Post-actions if any were provided.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```typescript
+import { ChainKind } from "@omni-bridge/core"
+
+// Get a Bitcoin deposit address
+const deposit = await bridge.getUtxoDepositAddress(
+  ChainKind.Btc,
+  "alice.near"
+)
+
+console.log(`Send BTC to: ${deposit.address}`)
+
+// With post-actions for automatic bridging to Ethereum
+const depositWithBridge = await bridge.getUtxoDepositAddress(
+  ChainKind.Btc,
+  "alice.near",
+  {
+    postActions: [{
+      receiver_id: "omni.bridge.near",
+      amount: "0",
+      msg: JSON.stringify({ recipient: "eth:0x..." }),
+    }]
+  }
+)
+```
+
+---
+
+## BridgeAPI
+
+REST API client for interacting with the Omni Bridge backend services.
+
+### Constructor
+
+```typescript
+new BridgeAPI(network: Network, config?: BridgeAPIConfig)
+```
+
+<ResponseField name="network" type="'mainnet' | 'testnet'" required>
+  The network to connect to.
+</ResponseField>
+
+<ResponseField name="config" type="BridgeAPIConfig">
+  Optional configuration.
+
+  <Expandable title="BridgeAPIConfig properties">
+    <ResponseField name="baseUrl" type="string">
+      Override the default API base URL.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```typescript
+import { BridgeAPI } from "@omni-bridge/core"
+
+const api = new BridgeAPI("mainnet")
+
+// With custom base URL
+const customApi = new BridgeAPI("mainnet", {
+  baseUrl: "https://my-api.example.com"
+})
+```
+
+---
+
+## BridgeAPI.getTransferStatus
+
+Gets the status of a transfer.
+
+### Signature
+
+```typescript
+api.getTransferStatus(
+  options: { originChain: Chain; originNonce: number } | { transactionHash: string }
+): Promise<TransferStatus[]>
+```
+
+### Parameters
+
+<ResponseField name="options" type="object" required>
+  Lookup options. Provide either `transactionHash` OR `originChain` + `originNonce`.
+
+  <Expandable title="options">
+    <ResponseField name="transactionHash" type="string">
+      The transaction hash on the source chain.
+    </ResponseField>
+
+    <ResponseField name="originChain" type="Chain">
+      The origin chain name (`"Eth"`, `"Near"`, `"Sol"`, `"Arb"`, `"Base"`, `"Bnb"`, `"Btc"`, `"Zcash"`, `"Pol"`).
+    </ResponseField>
+
+    <ResponseField name="originNonce" type="number">
+      The transfer nonce on the origin chain.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Returns
+
+<ResponseField name="TransferStatus[]" type="TransferStatus[]">
+  Array of status values representing the transfer's progression.
+
+  Possible values:
+  - `"Initialized"` - Transfer initiated on source chain
+  - `"Signed"` - MPC signature obtained
+  - `"FastFinalisedOnNear"` - Fast finalized on NEAR
+  - `"FinalisedOnNear"` - Finalized on NEAR
+  - `"FastFinalised"` - Fast finalized on destination
+  - `"Finalised"` - Fully finalized
+  - `"Claimed"` - Tokens claimed
+</ResponseField>
+
+### Example
+
+```typescript
+// By transaction hash
+const status = await api.getTransferStatus({
+  transactionHash: "0x..."
+})
+
+// By chain and nonce
+const status = await api.getTransferStatus({
+  originChain: "Eth",
+  originNonce: 12345
+})
+
+console.log(`Latest status: ${status[status.length - 1]}`)
+```
+
+---
+
+## BridgeAPI.getFee
+
+Gets a fee quote for a transfer.
+
+### Signature
+
+```typescript
+api.getFee(
+  sender: OmniAddress,
+  recipient: OmniAddress,
+  tokenAddress: OmniAddress,
+  amount: string | bigint
+): Promise<ApiFeeResponse>
+```
+
+### Parameters
+
+<ResponseField name="sender" type="OmniAddress" required>
+  Sender address in OmniAddress format.
+</ResponseField>
+
+<ResponseField name="recipient" type="OmniAddress" required>
+  Recipient address in OmniAddress format.
+</ResponseField>
+
+<ResponseField name="tokenAddress" type="OmniAddress" required>
+  Token address in OmniAddress format.
+</ResponseField>
+
+<ResponseField name="amount" type="string | bigint" required>
+  Transfer amount in the token's smallest unit.
+</ResponseField>
+
+### Returns
+
+<ResponseField name="ApiFeeResponse" type="ApiFeeResponse">
+  Fee quote information.
+
+  <Expandable title="ApiFeeResponse properties">
+    <ResponseField name="native_token_fee" type="bigint">
+      Fee in the source chain's native token.
+    </ResponseField>
+
+    <ResponseField name="gas_fee" type="bigint | null">
+      Gas fee component (optional).
+    </ResponseField>
+
+    <ResponseField name="protocol_fee" type="bigint | null">
+      Protocol fee component (optional).
+    </ResponseField>
+
+    <ResponseField name="usd_fee" type="number">
+      Fee in USD.
+    </ResponseField>
+
+    <ResponseField name="transferred_token_fee" type="string | null">
+      Fee in the transfer token (optional).
+    </ResponseField>
+
+    <ResponseField name="min_amount" type="string | null">
+      Minimum transfer amount (optional).
+    </ResponseField>
+
+    <ResponseField name="insufficient_utxo" type="boolean">
+      Whether there are insufficient UTXOs for UTXO chain transfers.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```typescript
+const fee = await api.getFee(
+  "eth:0xSender...",
+  "near:recipient.near",
+  "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  "1000000"
+)
+
+console.log(`Token fee: ${fee.transferred_token_fee}`)
+console.log(`Native fee: ${fee.native_token_fee}`)
+console.log(`USD fee: $${fee.usd_fee}`)
+```
+
+---
+
+## BridgeAPI.getTransfer
+
+Gets full details of a transfer.
+
+### Signature
+
+```typescript
+api.getTransfer(
+  options: { originChain: Chain; originNonce: number } | { transactionHash: string }
+): Promise<Transfer[]>
+```
+
+### Parameters
+
+Same as `getTransferStatus`.
+
+### Returns
+
+<ResponseField name="Transfer[]" type="Transfer[]">
+  Array of transfer objects with full details.
+
+  <Expandable title="Transfer properties">
+    <ResponseField name="id" type="object | null">
+      Transfer identifier containing `origin_chain` and `kind` (either `Nonce` or `Utxo`).
+    </ResponseField>
+
+    <ResponseField name="initialized" type="Transaction | null">
+      Transaction when transfer was initialized.
+    </ResponseField>
+
+    <ResponseField name="signed" type="Transaction | null">
+      Transaction when MPC signature was obtained.
+    </ResponseField>
+
+    <ResponseField name="fast_finalised_on_near" type="Transaction | null">
+      Transaction when fast finalized on NEAR.
+    </ResponseField>
+
+    <ResponseField name="finalised_on_near" type="Transaction | null">
+      Transaction when finalized on NEAR.
+    </ResponseField>
+
+    <ResponseField name="fast_finalised" type="Transaction | null">
+      Transaction when fast finalized on destination.
+    </ResponseField>
+
+    <ResponseField name="finalised" type="Transaction | null">
+      Transaction when fully finalized.
+    </ResponseField>
+
+    <ResponseField name="claimed" type="Transaction | null">
+      Transaction when tokens were claimed.
+    </ResponseField>
+
+    <ResponseField name="transfer_message" type="object | null">
+      Transfer message containing `token`, `amount`, `sender`, `recipient`, `fee`, and `msg`.
+    </ResponseField>
+
+    <ResponseField name="updated_fee" type="Transaction[]">
+      Array of fee update transactions.
+    </ResponseField>
+
+    <ResponseField name="utxo_transfer" type="object | null">
+      UTXO-specific transfer data for BTC/Zcash transfers.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```typescript
+const transfers = await api.getTransfer({
+  transactionHash: "0x..."
+})
+
+if (transfers.length > 0) {
+  const transfer = transfers[0]
+  console.log(`Token: ${transfer.transfer_message?.token}`)
+  console.log(`Amount: ${transfer.transfer_message?.amount}`)
+}
+```
+
+---
+
+## BridgeAPI.findTransfers
+
+Searches for transfers by sender or transaction ID.
+
+### Signature
+
+```typescript
+api.findTransfers(params: {
+  sender?: string
+  transactionId?: string
+  offset?: number
+  limit?: number
+}): Promise<Transfer[]>
+```
+
+### Parameters
+
+<ResponseField name="params" type="object" required>
+  Search parameters. At least one of `sender` or `transactionId` must be provided.
+
+  <Expandable title="params">
+    <ResponseField name="sender" type="string">
+      Filter by sender address.
+    </ResponseField>
+
+    <ResponseField name="transactionId" type="string">
+      Filter by transaction ID.
+    </ResponseField>
+
+    <ResponseField name="offset" type="number">
+      Pagination offset. Defaults to `0`.
+    </ResponseField>
+
+    <ResponseField name="limit" type="number">
+      Maximum results to return. Defaults to `10`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Returns
+
+<ResponseField name="Transfer[]" type="Transfer[]">
+  Array of matching transfers.
+</ResponseField>
+
+### Example
+
+```typescript
+const transfers = await api.findTransfers({
+  sender: "eth:0x1234567890123456789012345678901234567890",
+  limit: 10
+})
+
+console.log(`Found ${transfers.length} transfers`)
+```
+
+---
+
+## BridgeAPI.getAllowlistedTokens
+
+Gets all tokens supported by the bridge.
+
+### Signature
+
+```typescript
+api.getAllowlistedTokens(): Promise<Record<string, OmniAddress>>
+```
+
+### Returns
+
+<ResponseField name="Record<string, OmniAddress>" type="Record<string, OmniAddress>">
+  Map of token symbols to their OmniAddress.
+</ResponseField>
+
+### Example
+
+```typescript
+const tokens = await api.getAllowlistedTokens()
+
+console.log(tokens)
+// { "USDC": "eth:0x...", "wNEAR": "near:wrap.near", ... }
+```
+
+---
+
+## BridgeAPI.getUtxoDepositAddress
+
+Gets a deposit address for Bitcoin or Zcash.
+
+### Signature
+
+```typescript
+api.getUtxoDepositAddress(
+  chain: UtxoChainParam,
+  recipient: string,
+  postActions?: PostAction[] | null,
+  extraMsg?: string | null
+): Promise<UtxoDepositAddressResponse>
+```
+
+### Parameters
+
+<ResponseField name="chain" type="'btc' | 'zcash'" required>
+  The UTXO chain.
+</ResponseField>
+
+<ResponseField name="recipient" type="string" required>
+  NEAR recipient account ID.
+</ResponseField>
+
+<ResponseField name="postActions" type="PostAction[] | null">
+  Optional post-actions to execute after deposit finalization.
+
+  <Expandable title="PostAction properties">
+    <ResponseField name="receiver_id" type="string" required>
+      NEAR account to receive the action.
+    </ResponseField>
+
+    <ResponseField name="amount" type="string" required>
+      Amount to send with the action.
+    </ResponseField>
+
+    <ResponseField name="msg" type="string" required>
+      Message/arguments for the action.
+    </ResponseField>
+
+    <ResponseField name="gas" type="string">
+      Optional gas limit.
+    </ResponseField>
+
+    <ResponseField name="memo" type="string | null">
+      Optional memo.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="extraMsg" type="string | null">
+  Optional extra message.
+</ResponseField>
+
+### Returns
+
+<ResponseField name="UtxoDepositAddressResponse" type="UtxoDepositAddressResponse">
+  <Expandable title="UtxoDepositAddressResponse properties">
+    <ResponseField name="address" type="string">
+      The deposit address on the UTXO chain.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```typescript
+const result = await api.getUtxoDepositAddress(
+  "btc",
+  "alice.near"
+)
+
+console.log(`Deposit address: ${result.address}`)
+```
+
+---
+
+## Types
+
+### OmniAddress
+
+Cross-chain address format with chain prefix.
+
+```typescript
+type OmniAddress =
+  | `eth:${string}`
+  | `near:${string}`
+  | `sol:${string}`
+  | `arb:${string}`
+  | `base:${string}`
+  | `bnb:${string}`
+  | `btc:${string}`
+  | `zec:${string}`
+  | `pol:${string}`
+```
+
+**Examples:**
+- `"eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"` - USDC on Ethereum
+- `"near:alice.near"` - NEAR account
+- `"sol:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"` - Token on Solana
+- `"btc:bc1q..."` - Bitcoin address
+
+---
+
+### ChainKind
+
+Enum representing supported chains, matching on-chain values.
+
+```typescript
+enum ChainKind {
+  Eth = 0,
+  Near = 1,
+  Sol = 2,
+  Arb = 3,
+  Base = 4,
+  Bnb = 5,
+  Btc = 6,
+  Zcash = 7,
+  Pol = 8,
+}
+```
+
+---
+
+### ChainPrefix
+
+Chain prefix strings used in OmniAddress format.
+
+```typescript
+type ChainPrefix = "eth" | "near" | "sol" | "arb" | "base" | "bnb" | "btc" | "zec" | "pol"
+```
+
+---
+
+### Network
+
+Network type for mainnet or testnet.
+
+```typescript
+type Network = "mainnet" | "testnet"
+```
+
+---
+
+### Chain
+
+API chain name strings.
+
+```typescript
+type Chain = "Eth" | "Near" | "Sol" | "Arb" | "Base" | "Bnb" | "Btc" | "Zcash" | "Pol"
+```
+
+---
+
+### TransferParams
+
+Parameters for initiating a transfer.
+
+```typescript
+interface TransferParams {
+  token: OmniAddress
+  amount: bigint
+  fee: bigint
+  nativeFee: bigint
+  sender: OmniAddress
+  recipient: OmniAddress
+  message?: string
+}
+```
+
+<ResponseField name="token" type="OmniAddress">
+  The token to transfer in OmniAddress format.
+</ResponseField>
+
+<ResponseField name="amount" type="bigint">
+  Amount in the token's smallest unit.
+</ResponseField>
+
+<ResponseField name="fee" type="bigint">
+  Relayer fee in the transfer token.
+</ResponseField>
+
+<ResponseField name="nativeFee" type="bigint">
+  Relayer fee in the source chain's native token.
+</ResponseField>
+
+<ResponseField name="sender" type="OmniAddress">
+  Sender address in OmniAddress format.
+</ResponseField>
+
+<ResponseField name="recipient" type="OmniAddress">
+  Recipient address in OmniAddress format.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Optional message or memo.
+</ResponseField>
+
+---
+
+### ValidatedTransfer
+
+Result of transfer validation, ready for building transactions.
+
+```typescript
+interface ValidatedTransfer {
+  params: TransferParams
+  sourceChain: ChainKind
+  destChain: ChainKind
+  normalizedAmount: bigint
+  normalizedFee: bigint
+  contractAddress: string
+  bridgedToken?: OmniAddress | undefined
+}
+```
+
+<ResponseField name="params" type="TransferParams">
+  The original transfer parameters.
+</ResponseField>
+
+<ResponseField name="sourceChain" type="ChainKind">
+  Source chain extracted from sender address.
+</ResponseField>
+
+<ResponseField name="destChain" type="ChainKind">
+  Destination chain extracted from recipient address.
+</ResponseField>
+
+<ResponseField name="normalizedAmount" type="bigint">
+  Amount normalized for decimal differences.
+</ResponseField>
+
+<ResponseField name="normalizedFee" type="bigint">
+  Fee normalized for decimal differences.
+</ResponseField>
+
+<ResponseField name="contractAddress" type="string">
+  Bridge contract address on source chain.
+</ResponseField>
+
+<ResponseField name="bridgedToken" type="OmniAddress | undefined">
+  Token address on destination chain if different.
+</ResponseField>
+
+---
+
+### TokenDecimals
+
+Token decimal information from the bridge contract.
+
+```typescript
+interface TokenDecimals {
+  decimals: number
+  origin_decimals: number
+}
+```
+
+<ResponseField name="decimals" type="number">
+  Decimals on the foreign chain.
+</ResponseField>
+
+<ResponseField name="origin_decimals" type="number">
+  Decimals on NEAR.
+</ResponseField>
+
+---
+
+### UTXO
+
+Unspent Transaction Output for Bitcoin/Zcash operations.
+
+```typescript
+interface UTXO {
+  txid: string
+  vout: number
+  balance: bigint | number | string
+  tx_bytes?: Uint8Array | number[] | undefined
+  path?: string | undefined
+}
+```
+
+<ResponseField name="txid" type="string">
+  Transaction ID.
+</ResponseField>
+
+<ResponseField name="vout" type="number">
+  Output index in the transaction.
+</ResponseField>
+
+<ResponseField name="balance" type="bigint | number | string">
+  Balance in satoshis/zatoshis.
+</ResponseField>
+
+<ResponseField name="tx_bytes" type="Uint8Array | number[] | undefined">
+  Raw transaction bytes for signing.
+</ResponseField>
+
+<ResponseField name="path" type="string | undefined">
+  HD derivation path for hardware wallets.
+</ResponseField>
+
+---
+
+### UtxoChain
+
+UTXO chain subset type.
+
+```typescript
+type UtxoChain = ChainKind.Btc | ChainKind.Zcash
+```
+
+---
+
+### EvmUnsignedTransaction
+
+Unsigned transaction for EVM chains. Compatible with both viem and ethers v6.
+
+```typescript
+interface EvmUnsignedTransaction {
+  to: `0x${string}`
+  data: `0x${string}`
+  value: bigint
+  chainId: number
+}
+```
+
+<ResponseField name="to" type="`0x${string}`">
+  Target contract address.
+</ResponseField>
+
+<ResponseField name="data" type="`0x${string}`">
+  Encoded call data.
+</ResponseField>
+
+<ResponseField name="value" type="bigint">
+  Native token value to send.
+</ResponseField>
+
+<ResponseField name="chainId" type="number">
+  EVM chain ID.
+</ResponseField>
+
+---
+
+### NearUnsignedTransaction
+
+Unsigned transaction for NEAR.
+
+```typescript
+interface NearUnsignedTransaction {
+  type: "near"
+  signerId: string
+  receiverId: string
+  actions: NearAction[]
+}
+```
+
+<ResponseField name="type" type='"near"'>
+  Transaction type identifier.
+</ResponseField>
+
+<ResponseField name="signerId" type="string">
+  NEAR account ID of the signer.
+</ResponseField>
+
+<ResponseField name="receiverId" type="string">
+  NEAR account ID of the receiver.
+</ResponseField>
+
+<ResponseField name="actions" type="NearAction[]">
+  Array of actions to execute.
+</ResponseField>
+
+---
+
+### NearAction
+
+A single action in a NEAR transaction.
+
+```typescript
+interface NearAction {
+  type: "FunctionCall"
+  methodName: string
+  args: Uint8Array
+  gas: bigint
+  deposit: bigint
+}
+```
+
+<ResponseField name="type" type='"FunctionCall"'>
+  Action type.
+</ResponseField>
+
+<ResponseField name="methodName" type="string">
+  Contract method to call.
+</ResponseField>
+
+<ResponseField name="args" type="Uint8Array">
+  Encoded method arguments.
+</ResponseField>
+
+<ResponseField name="gas" type="bigint">
+  Gas to attach.
+</ResponseField>
+
+<ResponseField name="deposit" type="bigint">
+  NEAR tokens to deposit.
+</ResponseField>
+
+---
+
+### SolanaUnsignedTransaction
+
+Unsigned transaction for Solana.
+
+```typescript
+interface SolanaUnsignedTransaction {
+  type: "solana"
+  feePayer: string
+  instructions: SolanaInstruction[]
+}
+```
+
+<ResponseField name="type" type='"solana"'>
+  Transaction type identifier.
+</ResponseField>
+
+<ResponseField name="feePayer" type="string">
+  Public key of the fee payer.
+</ResponseField>
+
+<ResponseField name="instructions" type="SolanaInstruction[]">
+  Array of instructions to execute.
+</ResponseField>
+
+---
+
+### SolanaInstruction
+
+A single instruction in a Solana transaction.
+
+```typescript
+interface SolanaInstruction {
+  programId: string
+  keys: Array<{ pubkey: string; isSigner: boolean; isWritable: boolean }>
+  data: Uint8Array
+}
+```
+
+<ResponseField name="programId" type="string">
+  Program ID to invoke.
+</ResponseField>
+
+<ResponseField name="keys" type="Array">
+  Account keys with signer and writable flags.
+</ResponseField>
+
+<ResponseField name="data" type="Uint8Array">
+  Instruction data.
+</ResponseField>
+
+---
+
+### BtcUnsignedTransaction
+
+Unsigned transaction for Bitcoin/Zcash.
+
+```typescript
+interface BtcUnsignedTransaction {
+  type: "btc"
+  inputs: Array<{ txid: string; vout: number; value: bigint }>
+  outputs: Array<{ address: string; value: bigint }>
+}
+```
+
+<ResponseField name="type" type='"btc"'>
+  Transaction type identifier.
+</ResponseField>
+
+<ResponseField name="inputs" type="Array">
+  UTXO inputs to spend.
+</ResponseField>
+
+<ResponseField name="outputs" type="Array">
+  Outputs to create.
+</ResponseField>
+
+---
+
+### Common Type Aliases
+
+```typescript
+type U128 = bigint
+type Nonce = bigint
+type AccountId = string
+type Fee = bigint
+```
+
+---
+
+### ChainAddresses
+
+Contract addresses for all chains.
+
+```typescript
+interface ChainAddresses {
+  eth: EvmAddresses
+  arb: EvmAddresses
+  base: EvmAddresses
+  bnb: EvmAddresses
+  pol: EvmAddresses
+  near: NearAddresses
+  sol: SolanaAddresses
+  btc: BtcAddresses
+  zcash: ZcashAddresses
+}
+```
+
+---
+
+### EvmAddresses
+
+EVM chain contract addresses.
+
+```typescript
+interface EvmAddresses {
+  bridge: string
+}
+```
+
+---
+
+### NearAddresses
+
+NEAR chain configuration.
+
+```typescript
+interface NearAddresses {
+  contract: string
+  rpcUrls: string[]
+}
+```
+
+---
+
+### SolanaAddresses
+
+Solana chain configuration.
+
+```typescript
+interface SolanaAddresses {
+  locker: string
+  wormhole: string
+  shimProgram: string
+  eventAuthority: string
+}
+```
+
+---
+
+### BtcAddresses
+
+Bitcoin chain configuration.
+
+```typescript
+interface BtcAddresses {
+  network: Network
+  apiUrl: string
+  mempoolUrl: string
+  rpcUrl: string
+  btcConnector: string
+  btcToken: string
+  bitcoinRelayer: string
+}
+```
+
+---
+
+### ZcashAddresses
+
+Zcash chain configuration.
+
+```typescript
+interface ZcashAddresses {
+  network: Network
+  apiUrl: string
+  rpcUrl: string
+  zcashConnector: string
+  zcashToken: string
+}
+```
+
+---
+
+### WormholeNetwork
+
+Wormhole network type.
+
+```typescript
+type WormholeNetwork = "Mainnet" | "Testnet" | "Devnet"
+```
+
+---
+
+### EvmChainKind
+
+Type representing EVM-compatible chains.
+
+```typescript
+type EvmChainKind =
+  | ChainKind.Eth
+  | ChainKind.Base
+  | ChainKind.Arb
+  | ChainKind.Bnb
+  | ChainKind.Pol
+```
+
+---
+
+## Utility Functions
+
+### getChain
+
+Extracts the chain from an OmniAddress.
+
+```typescript
+function getChain(address: OmniAddress): ChainKind
+```
+
+**Parameters:**
+- `address` - An OmniAddress string
+
+**Returns:** The `ChainKind` enum value
+
+**Throws:** `ValidationError` with code `INVALID_ADDRESS` or `INVALID_CHAIN`
+
+```typescript
+import { getChain, ChainKind } from "@omni-bridge/core"
+
+const chain = getChain("eth:0x...")
+console.log(chain === ChainKind.Eth) // true
+```
+
+---
+
+### getAddress
+
+Extracts the raw address (without chain prefix) from an OmniAddress.
+
+```typescript
+function getAddress(address: OmniAddress): string
+```
+
+**Parameters:**
+- `address` - An OmniAddress string
+
+**Returns:** The raw address without the chain prefix
+
+**Throws:** `ValidationError` with code `INVALID_ADDRESS`
+
+```typescript
+import { getAddress } from "@omni-bridge/core"
+
+const raw = getAddress("eth:0x1234...")
+console.log(raw) // "0x1234..."
+```
+
+---
+
+### omniAddress
+
+Constructs an OmniAddress from chain kind and raw address.
+
+```typescript
+function omniAddress(chain: ChainKind, address: string): OmniAddress
+```
+
+**Parameters:**
+- `chain` - The `ChainKind` enum value
+- `address` - The raw address string
+
+**Returns:** A properly formatted `OmniAddress`
+
+```typescript
+import { omniAddress, ChainKind } from "@omni-bridge/core"
+
+const addr = omniAddress(ChainKind.Eth, "0x1234...")
+console.log(addr) // "eth:0x1234..."
+```
+
+---
+
+### getChainPrefix
+
+Returns the chain prefix for a given chain kind.
+
+```typescript
+function getChainPrefix(chain: ChainKind): ChainPrefix
+```
+
+**Parameters:**
+- `chain` - The `ChainKind` enum value
+
+**Returns:** The chain prefix string
+
+```typescript
+import { getChainPrefix, ChainKind } from "@omni-bridge/core"
+
+const prefix = getChainPrefix(ChainKind.Zcash)
+console.log(prefix) // "zec"
+```
+
+---
+
+### isEvmChain
+
+Checks if a chain is an EVM-compatible chain.
+
+```typescript
+function isEvmChain(chain: ChainKind): chain is EvmChainKind
+```
+
+**Parameters:**
+- `chain` - The `ChainKind` enum value
+
+**Returns:** `true` if the chain is EVM-compatible (Eth, Base, Arb, Bnb, Pol)
+
+```typescript
+import { isEvmChain, ChainKind } from "@omni-bridge/core"
+
+console.log(isEvmChain(ChainKind.Eth))  // true
+console.log(isEvmChain(ChainKind.Near)) // false
+console.log(isEvmChain(ChainKind.Sol))  // false
+```
+
+---
+
+### normalizeAmount
+
+Normalizes an amount from one decimal precision to another.
+
+```typescript
+function normalizeAmount(
+  amount: bigint,
+  fromDecimals: number,
+  toDecimals: number
+): bigint
+```
+
+**Parameters:**
+- `amount` - The amount to normalize as a bigint
+- `fromDecimals` - The source decimal precision
+- `toDecimals` - The target decimal precision
+
+**Returns:** The normalized amount as a bigint
+
+```typescript
+import { normalizeAmount } from "@omni-bridge/core"
+
+// Scale down from 18 decimals to 6 decimals
+const scaled = normalizeAmount(1000000000000000000n, 18, 6)
+console.log(scaled) // 1000000n
+
+// Scale up from 6 decimals to 18 decimals
+const scaledUp = normalizeAmount(1000000n, 6, 18)
+console.log(scaledUp) // 1000000000000000000n
+```
+
+---
+
+### validateTransferAmount
+
+Validates that a transfer amount will survive decimal normalization. Throws if invalid.
+
+```typescript
+function validateTransferAmount(
+  amount: bigint,
+  fee: bigint,
+  originDecimals: number,
+  destinationDecimals: number
+): void
+```
+
+**Parameters:**
+- `amount` - The amount to transfer
+- `fee` - The fee to be deducted
+- `originDecimals` - Decimals on the source chain
+- `destinationDecimals` - Decimals on the destination chain
+
+**Throws:**
+- `ValidationError` with code `INVALID_AMOUNT` if amount is less than or equal to fee
+- `ValidationError` with code `AMOUNT_TOO_SMALL` if normalized amount would be zero
+
+```typescript
+import { validateTransferAmount, ValidationError } from "@omni-bridge/core"
+
+try {
+  validateTransferAmount(1000000n, 100n, 6, 18)
+  console.log("Amount is valid")
+} catch (error) {
+  if (error instanceof ValidationError) {
+    console.error(`Invalid: ${error.code}`)
+  }
+}
+```
+
+---
+
+### verifyTransferAmount
+
+Checks if a transfer amount will be valid after normalization. Returns boolean instead of throwing.
+
+```typescript
+function verifyTransferAmount(
+  amount: bigint,
+  fee: bigint,
+  originDecimals: number,
+  destinationDecimals: number
+): boolean
+```
+
+**Parameters:**
+- `amount` - The amount to transfer
+- `fee` - The fee to be deducted
+- `originDecimals` - Decimals on the source chain
+- `destinationDecimals` - Decimals on the destination chain
+
+**Returns:** `true` if the normalized amount (minus fee) will be greater than 0
+
+```typescript
+import { verifyTransferAmount } from "@omni-bridge/core"
+
+const isValid = verifyTransferAmount(1000000n, 100n, 6, 18)
+console.log(isValid) // true
+```
+
+---
+
+### getMinimumTransferableAmount
+
+Gets the minimum transferable amount for a token pair accounting for decimal normalization.
+
+```typescript
+function getMinimumTransferableAmount(
+  originDecimals: number,
+  destinationDecimals: number
+): bigint
+```
+
+**Parameters:**
+- `originDecimals` - Decimals on the source chain
+- `destinationDecimals` - Decimals on the destination chain
+
+**Returns:** The minimum transferable amount as a bigint
+
+```typescript
+import { getMinimumTransferableAmount } from "@omni-bridge/core"
+
+// 18 decimals -> 6 decimals: need at least 1e12 to have 1 unit after scaling
+const min = getMinimumTransferableAmount(18, 6)
+console.log(min) // 1000000000000n
+```
+
+---
+
+### getAddresses
+
+Gets contract addresses for a network.
+
+```typescript
+function getAddresses(network: Network): ChainAddresses
+```
+
+**Parameters:**
+- `network` - The network (`"mainnet"` or `"testnet"`)
+
+**Returns:** `ChainAddresses` object with all chain configurations
+
+```typescript
+import { getAddresses } from "@omni-bridge/core"
+
+const addresses = getAddresses("mainnet")
+console.log(addresses.eth.bridge)     // "0xe00c629afaccb0510995a2b95560e446a24c85b9"
+console.log(addresses.near.contract)  // "omni.bridge.near"
+```
+
+---
+
+### getWormholeVaa
+
+Fetches a Wormhole VAA for a Solana transaction. Waits up to 2 minutes for guardians to sign.
+
+```typescript
+async function getWormholeVaa(
+  txSignature: string,
+  network: WormholeNetwork
+): Promise<string>
+```
+
+**Parameters:**
+- `txSignature` - Solana transaction signature
+- `network` - Wormhole network (`"Mainnet"`, `"Testnet"`, or `"Devnet"`)
+
+**Returns:** Hex-encoded VAA string
+
+**Throws:** Error if no VAA is found within the timeout
+
+```typescript
+import { getWormholeVaa } from "@omni-bridge/core"
+
+const vaa = await getWormholeVaa(
+  "5KtPn1...", // Solana transaction signature
+  "Mainnet"
+)
+console.log(vaa) // Hex-encoded VAA
+```
+
+---
+
+## Configuration Constants
+
+### EVM_CHAIN_IDS
+
+EVM chain IDs per network.
+
+```typescript
+const EVM_CHAIN_IDS: Record<Network, Record<string, number>> = {
+  mainnet: {
+    eth: 1,
+    arb: 42161,
+    base: 8453,
+    bnb: 56,
+    pol: 137,
+  },
+  testnet: {
+    eth: 11155111,  // Sepolia
+    arb: 421614,    // Arbitrum Sepolia
+    base: 84532,    // Base Sepolia
+    bnb: 97,        // BSC Testnet
+    pol: 80002,     // Polygon Amoy
+  },
+}
+```
+
+---
+
+### API_BASE_URLS
+
+API base URLs per network.
+
+```typescript
+const API_BASE_URLS: Record<Network, string> = {
+  mainnet: "https://mainnet.api.bridge.nearone.org",
+  testnet: "https://testnet.api.bridge.nearone.org",
+}
+```
+
+---
+
+## Error Types
+
+### OmniBridgeError
+
+Base error class for all SDK errors.
+
+```typescript
+class OmniBridgeError extends Error {
+  code: string
+  details?: Record<string, unknown>
+
+  constructor(
+    message: string,
+    code: string,
+    details?: Record<string, unknown>
+  )
+}
+```
+
+<ResponseField name="code" type="string">
+  Error code identifying the type of error.
+</ResponseField>
+
+<ResponseField name="details" type="Record<string, unknown>">
+  Optional additional details about the error.
+</ResponseField>
+
+---
+
+### ValidationError
+
+Thrown when transfer validation fails.
+
+```typescript
+class ValidationError extends OmniBridgeError {
+  constructor(
+    message: string,
+    code: ValidationErrorCode,
+    details?: Record<string, unknown>
+  )
+}
+```
+
+**Error Codes (`ValidationErrorCode`):**
+
+| Code | Description |
+|------|-------------|
+| `INVALID_AMOUNT` | Amount is invalid (zero, negative, or less than fee) |
+| `INVALID_ADDRESS` | Address format is invalid |
+| `INVALID_CHAIN` | Chain is not supported |
+| `TOKEN_NOT_REGISTERED` | Token is not registered on the bridge |
+| `DECIMAL_OVERFLOW` | Amount exceeds precision limits |
+| `AMOUNT_TOO_SMALL` | Amount too small after decimal normalization |
+| `INVALID_CHECKSUM` | Address checksum is invalid |
+
+---
+
+### RpcError
+
+Thrown when RPC calls fail.
+
+```typescript
+class RpcError extends OmniBridgeError {
+  retryCount: number
+
+  constructor(
+    message: string,
+    retryCount: number,
+    details?: Record<string, unknown>
+  )
+}
+```
+
+<ResponseField name="retryCount" type="number">
+  Number of retries attempted before failing.
+</ResponseField>
+
+---
+
+### ProofError
+
+Thrown when proof generation or verification fails.
+
+```typescript
+class ProofError extends OmniBridgeError {
+  constructor(
+    message: string,
+    code: "PROOF_NOT_READY" | "PROOF_FETCH_FAILED",
+    details?: Record<string, unknown>
+  )
+}
+```
+
+**Error Codes:**
+
+| Code | Description |
+|------|-------------|
+| `PROOF_NOT_READY` | Proof is not yet available |
+| `PROOF_FETCH_FAILED` | Failed to fetch proof from RPC |
+
+---
+
+## Error Handling
+
+### Basic error handling
+
+```typescript
+import {
+  createBridge,
+  ValidationError,
+  OmniBridgeError
+} from "@omni-bridge/core"
+
+const bridge = createBridge({ network: "mainnet" })
+
+try {
+  const validated = await bridge.validateTransfer(params)
+} catch (error) {
+  if (error instanceof ValidationError) {
+    console.error(`Validation failed: ${error.code}`)
+    console.error(`Details:`, error.details)
+  } else if (error instanceof OmniBridgeError) {
+    console.error(`Bridge error: ${error.message}`)
+  } else {
+    throw error
+  }
+}
+```
+
+### Handling specific validation codes
+
+```typescript
+import { ValidationError, getMinimumTransferableAmount } from "@omni-bridge/core"
+
+try {
+  const validated = await bridge.validateTransfer(params)
+} catch (error) {
+  if (error instanceof ValidationError) {
+    switch (error.code) {
+      case "INVALID_ADDRESS":
+        showError("Please enter a valid address")
+        break
+      case "AMOUNT_TOO_SMALL":
+        const min = getMinimumTransferableAmount(srcDecimals, dstDecimals)
+        showError(`Minimum amount is ${formatAmount(min)}`)
+        break
+      case "TOKEN_NOT_REGISTERED":
+        showError("This token is not supported")
+        break
+      default:
+        showError(error.message)
+    }
+  }
+}
+```
+
+### RPC error retry pattern
+
+```typescript
+import { RpcError } from "@omni-bridge/core"
+
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  try {
+    return await fn()
+  } catch (error) {
+    if (error instanceof RpcError && error.retryCount < maxRetries) {
+      await new Promise(r => setTimeout(r, 1000 * error.retryCount))
+      return withRetry(fn, maxRetries)
+    }
+    throw error
+  }
+}
+```
+
+### Proof error handling
+
+```typescript
+import { ProofError } from "@omni-bridge/core"
+
+try {
+  const proof = await getEvmProof(txHash, topic, chain)
+} catch (error) {
+  if (error instanceof ProofError) {
+    if (error.code === "PROOF_NOT_READY") {
+      console.log("Proof not ready yet, retrying...")
+      await new Promise(r => setTimeout(r, 5000))
+      // Retry
+    } else if (error.code === "PROOF_FETCH_FAILED") {
+      console.error("Could not fetch proof from RPC")
+    }
+  }
+}
+```
