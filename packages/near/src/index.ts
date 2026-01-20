@@ -7,7 +7,7 @@
 
 export { createNearBuilder, type NearBuilder, type NearBuilderConfig } from "./builder.js"
 export {
-  sendWithNearApiJs,
+  type NearApiJsAction,
   toNearApiJsActions,
   toNearKitTransaction,
 } from "./shims.js"

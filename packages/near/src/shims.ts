@@ -2,11 +2,19 @@
  * Shims for converting NearUnsignedTransaction to library-specific types
  */
 
-import type { Account } from "@near-js/accounts"
-import { type Action, actionCreators } from "@near-js/transactions"
 import type { NearUnsignedTransaction } from "@omni-bridge/core"
 import type { Near } from "near-kit"
 import { Amount, Gas } from "near-kit"
+
+/**
+ * Plain object representation of a NEAR action for use with near-api-js.
+ * These serialize identically to @near-js/transactions Action class instances.
+ */
+export type NearApiJsAction =
+  | { functionCall: { methodName: string; args: Uint8Array; gas: bigint; deposit: bigint } }
+  | { transfer: { deposit: bigint } }
+  | { createAccount: Record<string, never> }
+  | { deleteAccount: { beneficiaryId: string } }
 
 /**
  * Convert NearUnsignedTransaction to a near-kit TransactionBuilder.
@@ -41,77 +49,42 @@ export function toNearKitTransaction(near: Near, unsigned: NearUnsignedTransacti
 }
 
 /**
- * Convert NearUnsignedTransaction actions to @near-js/transactions Action array.
+ * Convert NearUnsignedTransaction actions to plain objects compatible with near-api-js.
  *
- * Use this with @near-js/accounts Account.signAndSendTransaction() which
- * handles nonce, blockHash, and signing automatically.
+ * Returns plain objects that serialize identically to @near-js/transactions Action
+ * class instances. Use with Account.signAndSendTransaction() - cast to Action[] if
+ * TypeScript requires it.
  *
  * @param unsigned - Library-agnostic unsigned transaction from the SDK
- * @returns Array of Action objects for use with @near-js/accounts
+ * @returns Array of plain action objects compatible with near-api-js
  *
  * @example
  * ```typescript
- * import { Account } from '@near-js/accounts'
- * import { JsonRpcProvider } from '@near-js/providers'
- * import { InMemoryKeyStore } from '@near-js/keystores'
- * import { KeyPair } from '@near-js/crypto'
- * import { InMemorySigner } from '@near-js/signers'
+ * import type { Action } from 'near-api-js'
+ * import { Account } from 'near-api-js'
  *
- * const keyStore = new InMemoryKeyStore()
- * await keyStore.setKey('mainnet', 'alice.near', KeyPair.fromString('ed25519:...'))
- * const provider = new JsonRpcProvider({ url: 'https://rpc.mainnet.near.org' })
- * const signer = new InMemorySigner(keyStore)
- * const account = new Account({ accountId: 'alice.near', provider, signer })
- *
+ * const account = new Account(...)
  * const actions = toNearApiJsActions(unsigned)
+ *
+ * // Cast to Action[] for TypeScript compatibility
  * const result = await account.signAndSendTransaction({
  *   receiverId: unsigned.receiverId,
- *   actions,
+ *   actions: actions as Action[],
  * })
  * ```
  */
-export function toNearApiJsActions(unsigned: NearUnsignedTransaction): Action[] {
+export function toNearApiJsActions(unsigned: NearUnsignedTransaction): NearApiJsAction[] {
   return unsigned.actions.map((action) => {
     if (action.type === "FunctionCall") {
-      return actionCreators.functionCall(action.methodName, action.args, action.gas, action.deposit)
+      return {
+        functionCall: {
+          methodName: action.methodName,
+          args: action.args,
+          gas: action.gas,
+          deposit: action.deposit,
+        },
+      }
     }
     throw new Error(`Unsupported action type: ${action.type}`)
-  })
-}
-
-/**
- * Send a NearUnsignedTransaction using a @near-js/accounts Account.
- *
- * This is a convenience wrapper that converts the unsigned transaction
- * and sends it in one call. The Account handles nonce, blockHash, and signing.
- *
- * @param account - Account instance from @near-js/accounts (with signer configured)
- * @param unsigned - Library-agnostic unsigned transaction from the SDK
- * @returns Promise resolving to the transaction execution outcome
- *
- * @example
- * ```typescript
- * import { Account } from '@near-js/accounts'
- * import { JsonRpcProvider } from '@near-js/providers'
- * import { InMemoryKeyStore } from '@near-js/keystores'
- * import { KeyPair } from '@near-js/crypto'
- * import { InMemorySigner } from '@near-js/signers'
- *
- * const keyStore = new InMemoryKeyStore()
- * await keyStore.setKey('mainnet', 'alice.near', KeyPair.fromString('ed25519:...'))
- * const provider = new JsonRpcProvider({ url: 'https://rpc.mainnet.near.org' })
- * const signer = new InMemorySigner(keyStore)
- * const account = new Account({ accountId: 'alice.near', provider, signer })
- *
- * const unsigned = builder.buildTransfer(validated, 'alice.near')
- * const result = await sendWithNearApiJs(account, unsigned)
- * console.log('Transaction hash:', result.transaction.hash)
- * ```
- */
-export async function sendWithNearApiJs(account: Account, unsigned: NearUnsignedTransaction) {
-  const actions = toNearApiJsActions(unsigned)
-  return account.signAndSendTransaction({
-    receiverId: unsigned.receiverId,
-    actions,
   })
 }

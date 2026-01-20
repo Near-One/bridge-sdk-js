@@ -15,7 +15,7 @@ import {
   // Shims
   toNearKitTransaction,
   toNearApiJsActions,
-  sendWithNearApiJs,
+  type NearApiJsAction,
 
   // Storage utilities
   calculateStorageAccountId,
@@ -1128,7 +1128,7 @@ calculateUtxoWithdrawalFee(chain: "btc" | "zcash", amount: bigint): Promise<bigi
 
 Functions to convert SDK transactions to library-specific formats.
 
-### toNearKitTransaction
+### toNearKitTransaction (near-kit)
 
 Convert a `NearUnsignedTransaction` to a near-kit TransactionBuilder. near-kit handles nonce, blockHash, and signing automatically.
 
@@ -1172,14 +1172,16 @@ const result = await toNearKitTransaction(near, unsigned).send()
 
 ---
 
-### toNearApiJsActions
+### toNearApiJsActions (near-api-js)
 
-Convert `NearUnsignedTransaction` actions to `@near-js/transactions` Action array. Use this with `Account.signAndSendTransaction()`.
+Convert `NearUnsignedTransaction` actions to plain objects compatible with near-api-js.
+
+These plain objects serialize identically to `@near-js/transactions` Action class instances via Borsh, so they work directly with `Account.signAndSendTransaction()`.
 
 #### Signature
 
 ```typescript
-function toNearApiJsActions(unsigned: NearUnsignedTransaction): Action[]
+function toNearApiJsActions(unsigned: NearUnsignedTransaction): NearApiJsAction[]
 ```
 
 #### Parameters
@@ -1190,75 +1192,25 @@ function toNearApiJsActions(unsigned: NearUnsignedTransaction): Action[]
 
 #### Returns
 
-<ResponseField name="Action[]" type="Action[]">
-  Array of Action objects for use with `@near-js/accounts`.
+<ResponseField name="NearApiJsAction[]" type="NearApiJsAction[]">
+  Array of plain action objects. Cast to `Action[]` for TypeScript compatibility with near-api-js.
 </ResponseField>
 
 #### Example
 
 ```typescript
-import { Account } from "@near-js/accounts"
-import { JsonRpcProvider } from "@near-js/providers"
-import { InMemoryKeyStore } from "@near-js/keystores"
-import { KeyPair } from "@near-js/crypto"
-import { InMemorySigner } from "@near-js/signers"
+import type { Action } from "near-api-js"
+import { Account } from "near-api-js"
 import { toNearApiJsActions } from "@omni-bridge/near"
 
-const keyStore = new InMemoryKeyStore()
-await keyStore.setKey("mainnet", "alice.near", KeyPair.fromString("ed25519:..."))
-const provider = new JsonRpcProvider({ url: "https://rpc.mainnet.near.org" })
-const signer = new InMemorySigner(keyStore)
-const account = new Account({ accountId: "alice.near", provider, signer })
-
+const account = new Account(...)
 const actions = toNearApiJsActions(unsigned)
+
+// Cast to Action[] for TypeScript compatibility
 const result = await account.signAndSendTransaction({
   receiverId: unsigned.receiverId,
-  actions,
+  actions: actions as Action[],
 })
-```
-
----
-
-### sendWithNearApiJs
-
-Convenience wrapper that converts and sends a transaction using `@near-js/accounts`.
-
-#### Signature
-
-```typescript
-function sendWithNearApiJs(
-  account: Account,
-  unsigned: NearUnsignedTransaction
-): Promise<FinalExecutionOutcome>
-```
-
-#### Parameters
-
-<ResponseField name="account" type="Account" required>
-  A `@near-js/accounts` Account instance with signer configured.
-</ResponseField>
-
-<ResponseField name="unsigned" type="NearUnsignedTransaction" required>
-  The unsigned transaction from the builder.
-</ResponseField>
-
-#### Returns
-
-<ResponseField name="Promise<FinalExecutionOutcome>" type="Promise">
-  The transaction execution outcome.
-</ResponseField>
-
-#### Example
-
-```typescript
-import { Account } from "@near-js/accounts"
-import { sendWithNearApiJs } from "@omni-bridge/near"
-
-// ... setup account as shown above
-
-const unsigned = nearBuilder.buildTransfer(validated, "alice.near")
-const result = await sendWithNearApiJs(account, unsigned)
-console.log("Transaction hash:", result.transaction.hash)
 ```
 
 ---

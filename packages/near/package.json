@@ -30,8 +30,6 @@
   "license": "MIT",
   "author": "NEAR One",
   "dependencies": {
-    "@near-js/accounts": "^2.5.1",
-    "@near-js/transactions": "^2.5.1",
     "@noble/hashes": "^2.0.1",
     "@omni-bridge/core": "^0.1.0",
     "@scure/base": "^2.0.0",
