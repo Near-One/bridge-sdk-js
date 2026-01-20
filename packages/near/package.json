@@ -37,6 +37,7 @@
     "near-kit": "^0.7.0"
   },
   "devDependencies": {
+    "near-api-js": "^7.0.0",
     "typescript": "^5.9.3"
   }
 }
