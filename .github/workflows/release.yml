@@ -5,7 +5,6 @@ on:
     branches:
       - main
       - rewrite
-      - fix/trusted-publishing-oidc
     paths:
       - ".changeset/**"
       - ".github/workflows/release.yml"
