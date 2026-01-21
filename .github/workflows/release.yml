@@ -50,3 +50,6 @@ jobs:
           publish: bun run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Empty string prevents changesets/action from writing token to .npmrc,
+          # allowing npm to use OIDC trusted publishing instead
+          NPM_TOKEN: ""
