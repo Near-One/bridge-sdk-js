@@ -5,9 +5,11 @@ on:
     branches:
       - main
       - rewrite
+      - fix/trusted-publishing-oidc
     paths:
       - ".changeset/**"
       - ".github/workflows/release.yml"
+      - "package.json"
   workflow_dispatch:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
