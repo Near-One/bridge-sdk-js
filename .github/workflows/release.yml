@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - rewrite
+      - fix/trusted-publishing-oidc
     paths:
       - ".changeset/**"
       - ".github/workflows/release.yml"
@@ -25,6 +26,12 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
       - uses: oven-sh/setup-bun@v2
         name: Install bun
         with:
@@ -43,4 +50,3 @@ jobs:
           publish: bun run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
