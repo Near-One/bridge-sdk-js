@@ -9,10 +9,10 @@
         "@biomejs/biome": "^2.3.11",
         "@changesets/cli": "^2.29.8",
         "@types/bun": "^1.3.6",
-        "@types/node": "^25.0.9",
+        "@types/node": "^25.0.10",
         "@vitest/coverage-v8": "^4.0.17",
-        "knip": "^5.80.2",
-        "lefthook": "^2.0.14",
+        "knip": "^5.82.1",
+        "lefthook": "^2.0.15",
         "msw": "^2.12.7",
         "typescript": "^5.9.3",
         "vitest": "^4.0.17",
@@ -38,7 +38,7 @@
       "dependencies": {
         "@scure/base": "^2.0.0",
         "@wormhole-foundation/sdk": "^4.7.3",
-        "near-kit": "^0.7.0",
+        "near-kit": "^0.8.2",
         "zod": "^4.3.5",
       },
       "devDependencies": {
@@ -67,7 +67,7 @@
         "@omni-bridge/core": "^0.2.0",
         "@scure/base": "^2.0.0",
         "@zorsh/zorsh": "^0.4.0",
-        "near-kit": "^0.7.0",
+        "near-kit": "^0.8.2",
       },
       "devDependencies": {
         "near-api-js": "^7.0.0",
@@ -1192,7 +1192,7 @@
 
     "near-hd-key": ["near-hd-key@1.2.1", "", { "dependencies": { "bip39": "3.0.2", "create-hmac": "1.1.7", "tweetnacl": "1.0.3" } }, "sha512-SIrthcL5Wc0sps+2e1xGj3zceEa68TgNZDLuCx0daxmfTP7sFTB3/mtE2pYhlFsCxWoMn+JfID5E1NlzvvbRJg=="],
 
-    "near-kit": ["near-kit@0.7.0", "", { "dependencies": { "@napi-rs/keyring": "^1.2.0", "@noble/curves": "^2.0.1", "@noble/hashes": "^2.0.1", "@scure/base": "^2.0.0", "@scure/bip32": "^2.0.1", "@scure/bip39": "^2.0.1", "@zorsh/zorsh": "^0.4.0", "tar": "^7.5.2", "zod": "^4.1.12" }, "peerDependencies": { "@hot-labs/near-connect": ">=0.6.0", "@near-wallet-selector/core": ">=8.0.0" }, "optionalPeers": ["@hot-labs/near-connect", "@near-wallet-selector/core"] }, "sha512-mqE9i8QRq0DV/mky8RY+tO1kdx+yuQm3X5nuWiJAXqrfVe17SvDoMjyZpDWENSUqempiU22kBQX4OjGod4B96g=="],
+    "near-kit": ["near-kit@0.8.2", "", { "dependencies": { "@napi-rs/keyring": "^1.2.0", "@noble/curves": "^2.0.1", "@noble/hashes": "^2.0.1", "@scure/base": "^2.0.0", "@scure/bip32": "^2.0.1", "@scure/bip39": "^2.0.1", "@zorsh/zorsh": "^0.4.0", "tar": "^7.5.2", "zod": "^4.1.12" }, "peerDependencies": { "@hot-labs/near-connect": ">=0.6.0", "@near-wallet-selector/core": ">=8.0.0" }, "optionalPeers": ["@hot-labs/near-connect", "@near-wallet-selector/core"] }, "sha512-kyBgVP4uRZsPayZyCY+RSFkXmDqK+uM8njYPzCuBN1mMns8RqU+5tyaO7kIeooyIXFk98ERXCa3T28hXz2sc8A=="],
 
     "near-seed-phrase": ["near-seed-phrase@0.2.1", "", { "dependencies": { "bip39-light": "^1.0.7", "bs58": "^4.0.1", "near-hd-key": "^1.2.1", "tweetnacl": "^1.0.2" } }, "sha512-feMuums+kVL3LSuPcP4ld07xHCb2mu6z48SGfP3W+8tl1Qm5xIcjiQzY2IDPBvFgajRDxWSb8GzsRHoInazByw=="],
 
@@ -1707,8 +1707,6 @@
     "marked-terminal/chalk": ["chalk@5.6.2", "", {}, "sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA=="],
 
     "micromatch/picomatch": ["picomatch@2.3.1", "", {}, "sha512-JU3teHTNjmE2VCGFzuY8EXzCDVwEqB2a8fsIvwaStHhAWJEeVd1o1QD80CU6+ZdEXXSLbSsuLwJjkCBWqRQUVA=="],
-
-    "near-kit/zod": ["zod@4.1.13", "", {}, "sha512-AvvthqfqrAhNH9dnfmrfKzX5upOdjUVJYFqNSlkmGf64gRaTzlPwz99IHYnVs28qYAybvAlBV+H7pn0saFY4Ig=="],
 
     "no-case/tslib": ["tslib@2.8.1", "", {}, "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="],
 
