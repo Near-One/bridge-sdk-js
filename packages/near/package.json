@@ -34,7 +34,7 @@
     "@omni-bridge/core": "^0.2.0",
     "@scure/base": "^2.0.0",
     "@zorsh/zorsh": "^0.4.0",
-    "near-kit": "^0.7.0"
+    "near-kit": "^0.8.2"
   },
   "devDependencies": {
     "near-api-js": "^7.0.0",
