@@ -84,7 +84,7 @@ describe("toNearKitTransaction", () => {
 })
 
 describe("toNearApiJsActions", () => {
-  it("should convert function call actions to near-api-js format", () => {
+  it("should convert function call actions to plain objects for near-api-js", () => {
     const unsigned: NearUnsignedTransaction = {
       type: "near",
       signerId: "alice.near",
@@ -103,7 +103,15 @@ describe("toNearApiJsActions", () => {
     const actions = toNearApiJsActions(unsigned)
 
     expect(actions).toHaveLength(1)
-    expect(actions[0]).toBeDefined()
+    // Verify it's a plain object with the correct structure for Borsh serialization
+    expect(actions[0]).toEqual({
+      functionCall: {
+        methodName: "ft_transfer",
+        args: expect.any(Uint8Array),
+        gas: 30_000_000_000_000n,
+        deposit: 1n,
+      },
+    })
   })
 
   it("should handle multiple actions", () => {
