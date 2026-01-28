@@ -26,8 +26,10 @@ describe("Token Utils", () => {
       expect(isBridgeToken("sol-ABC123.omdep.near")).toBe(true)
       expect(isBridgeToken("base-0x1234.omdep.near")).toBe(true)
       expect(isBridgeToken("arb-0xabcd.omnidep.testnet")).toBe(true)
-      expect(isBridgeToken("eth-token.factory.bridge.near")).toBe(true)
-      expect(isBridgeToken("usdc.factory.bridge.testnet")).toBe(true)
+      // Mainnet ETH factory
+      expect(isBridgeToken("usdc.factory.bridge.near")).toBe(true)
+      // Testnet ETH factory
+      expect(isBridgeToken("usdc.factory.sepolia.testnet")).toBe(true)
     })
 
     it("should return false for non-bridge tokens", () => {
@@ -105,12 +107,18 @@ describe("Token Utils", () => {
     })
 
     describe("factory.bridge pattern", () => {
-      it("should parse ETH tokens from factory.bridge", () => {
+      it("should parse ETH tokens from factory.bridge (mainnet)", () => {
         expect(parseOriginChain("usdc.factory.bridge.near")).toBe(ChainKind.Eth)
-        expect(parseOriginChain("dai.factory.bridge.testnet")).toBe(ChainKind.Eth)
         // ETH address format tokens
         expect(
           parseOriginChain("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near"),
+        ).toBe(ChainKind.Eth)
+      })
+
+      it("should parse ETH tokens from factory.sepolia (testnet)", () => {
+        expect(parseOriginChain("usdc.factory.sepolia.testnet")).toBe(ChainKind.Eth)
+        expect(
+          parseOriginChain("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.sepolia.testnet"),
         ).toBe(ChainKind.Eth)
       })
     })

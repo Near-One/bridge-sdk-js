@@ -34,7 +34,7 @@ const KNOWN_BRIDGE_TOKENS: Record<string, ChainKind> = {
  * Regex pattern matching known bridge token factory suffixes
  */
 const BRIDGE_TOKEN_SUFFIX_PATTERN =
-  /\.(omdep\.near|omnidep\.testnet|factory\.bridge\.(near|testnet))$/
+  /\.(omdep\.near|omnidep\.testnet|factory\.bridge\.near|factory\.sepolia\.testnet)$/
 
 /**
  * Chain prefix patterns for wrapped tokens
@@ -94,8 +94,9 @@ export function parseOriginChain(nearAddress: string): ChainKind | null {
       if (nearAddress.startsWith(prefix)) return chain
     }
 
-    // ETH tokens use factory.bridge suffix
-    if (nearAddress.includes("factory.bridge")) return ChainKind.Eth
+    // ETH tokens use factory.bridge (mainnet) or factory.sepolia (testnet) suffix
+    if (nearAddress.includes("factory.bridge") || nearAddress.includes("factory.sepolia"))
+      return ChainKind.Eth
   }
 
   return null
