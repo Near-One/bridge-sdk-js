@@ -86,5 +86,8 @@ export {
   verifyTransferAmount,
 } from "./utils/decimals.js"
 
+// Token utilities
+export { isBridgeToken, parseOriginChain } from "./utils/token.js"
+
 // Wormhole VAA utilities
 export { getVaa, getWormholeVaa, type WormholeNetwork } from "./wormhole.js"
