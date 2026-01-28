@@ -7,11 +7,13 @@ describe("Token Utils", () => {
     it("should return true for known mainnet bridge tokens", () => {
       expect(isBridgeToken("nbtc.bridge.near")).toBe(true)
       expect(isBridgeToken("nzec.bridge.near")).toBe(true)
+      expect(isBridgeToken("zec.omft.near")).toBe(true)
       expect(isBridgeToken("eth.bridge.near")).toBe(true)
       expect(isBridgeToken("sol.omdep.near")).toBe(true)
       expect(isBridgeToken("base.omdep.near")).toBe(true)
       expect(isBridgeToken("arb.omdep.near")).toBe(true)
       expect(isBridgeToken("bnb.omdep.near")).toBe(true)
+      expect(isBridgeToken("pol.omdep.near")).toBe(true)
     })
 
     it("should return true for known testnet bridge tokens", () => {
@@ -45,6 +47,7 @@ describe("Token Utils", () => {
 
       it("should parse mainnet Zcash token", () => {
         expect(parseOriginChain("nzec.bridge.near")).toBe(ChainKind.Zcash)
+        expect(parseOriginChain("zec.omft.near")).toBe(ChainKind.Zcash)
       })
 
       it("should parse mainnet ETH token", () => {
@@ -65,6 +68,10 @@ describe("Token Utils", () => {
 
       it("should parse mainnet BNB token", () => {
         expect(parseOriginChain("bnb.omdep.near")).toBe(ChainKind.Bnb)
+      })
+
+      it("should parse mainnet Pol token", () => {
+        expect(parseOriginChain("pol.omdep.near")).toBe(ChainKind.Pol)
       })
 
       it("should parse testnet tokens", () => {
@@ -101,6 +108,10 @@ describe("Token Utils", () => {
       it("should parse ETH tokens from factory.bridge", () => {
         expect(parseOriginChain("usdc.factory.bridge.near")).toBe(ChainKind.Eth)
         expect(parseOriginChain("dai.factory.bridge.testnet")).toBe(ChainKind.Eth)
+        // ETH address format tokens
+        expect(
+          parseOriginChain("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near"),
+        ).toBe(ChainKind.Eth)
       })
     })
 
