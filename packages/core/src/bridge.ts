@@ -162,7 +162,12 @@ class BridgeImpl implements Bridge {
     this.network = config.network
     this.addresses = getAddresses(config.network)
     this.api = new BridgeAPI(config.network)
-    this.near = new Near({ network: config.network })
+
+    // Use custom NEAR RPC URL if provided, otherwise use default network config
+    const nearRpcUrl = config.rpcUrls?.[ChainKind.Near]
+    this.near = nearRpcUrl
+      ? new Near({ rpcUrl: nearRpcUrl, network: config.network })
+      : new Near({ network: config.network })
   }
 
   async validateTransfer(params: TransferParams): Promise<ValidatedTransfer> {
