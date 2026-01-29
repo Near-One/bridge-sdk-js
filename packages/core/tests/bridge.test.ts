@@ -5,13 +5,21 @@ import { ChainKind, type OmniAddress, type TransferParams } from "../src/types.j
 
 // Mock near-kit
 const mockNearView = vi.fn()
+const mockNearConstructor = vi.fn()
 vi.mock("near-kit", () => ({
   Near: class {
+    constructor(config: unknown) {
+      mockNearConstructor(config)
+    }
     view = mockNearView
   },
 }))
 
 describe("createBridge", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it("creates bridge with testnet config", () => {
     const bridge = createBridge({ network: "testnet" })
 
@@ -25,6 +33,33 @@ describe("createBridge", () => {
 
     expect(bridge.network).toBe("mainnet")
     expect(bridge.addresses).toBeDefined()
+  })
+
+  it("uses default RPC when rpcUrls not provided", () => {
+    createBridge({ network: "mainnet" })
+
+    expect(mockNearConstructor).toHaveBeenCalledWith({ network: "mainnet" })
+  })
+
+  it("uses custom NEAR RPC URL when provided", () => {
+    createBridge({
+      network: "mainnet",
+      rpcUrls: { [ChainKind.Near]: "https://custom-rpc.example.com" },
+    })
+
+    expect(mockNearConstructor).toHaveBeenCalledWith({
+      rpcUrl: "https://custom-rpc.example.com",
+      network: "mainnet",
+    })
+  })
+
+  it("ignores non-NEAR rpcUrls entries", () => {
+    createBridge({
+      network: "mainnet",
+      rpcUrls: { [ChainKind.Eth]: "https://eth-rpc.example.com" },
+    })
+
+    expect(mockNearConstructor).toHaveBeenCalledWith({ network: "mainnet" })
   })
 })
 

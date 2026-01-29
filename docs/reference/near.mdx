@@ -86,6 +86,10 @@ function createNearBuilder(config: NearBuilderConfig): NearBuilder
     <ResponseField name="network" type="'mainnet' | 'testnet'" required>
       The network to connect to.
     </ResponseField>
+
+    <ResponseField name="rpcUrl" type="string">
+      Optional custom NEAR RPC URL. If not provided, uses the default RPC for the network.
+    </ResponseField>
   </Expandable>
 </ResponseField>
 
@@ -100,7 +104,14 @@ function createNearBuilder(config: NearBuilderConfig): NearBuilder
 ```typescript
 import { createNearBuilder } from "@omni-bridge/near"
 
+// Basic usage
 const nearBuilder = createNearBuilder({ network: "mainnet" })
+
+// With custom RPC URL (to avoid rate limiting)
+const nearBuilderWithRpc = createNearBuilder({
+  network: "mainnet",
+  rpcUrl: "https://my-custom-rpc.example.com",
+})
 ```
 
 ---

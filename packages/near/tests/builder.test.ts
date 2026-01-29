@@ -5,17 +5,25 @@ import { ProofKind } from "../src/types.js"
 
 // Mock near-kit
 const mockNearView = vi.fn()
+const mockNearConstructor = vi.fn()
 vi.mock("near-kit", async (importOriginal) => {
   const actual = await importOriginal<typeof import("near-kit")>()
   return {
     ...actual,
     Near: class {
+      constructor(config: unknown) {
+        mockNearConstructor(config)
+      }
       view = mockNearView
     },
   }
 })
 
 describe("createNearBuilder", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it("creates builder with testnet config", () => {
     const builder = createNearBuilder({ network: "testnet" })
     expect(builder).toBeDefined()
@@ -24,6 +32,38 @@ describe("createNearBuilder", () => {
   it("creates builder with mainnet config", () => {
     const builder = createNearBuilder({ network: "mainnet" })
     expect(builder).toBeDefined()
+  })
+
+  it("uses default RPC when rpcUrl not provided", async () => {
+    const builder = createNearBuilder({ network: "mainnet" })
+    // Trigger an RPC call to verify the Near client config
+    mockNearView.mockResolvedValue({ min: "0", max: "0" })
+    try {
+      await builder.getRequiredStorageDeposit("alice.near")
+    } catch {
+      // Ignore errors, we just want to verify the Near constructor was called
+    }
+
+    expect(mockNearConstructor).toHaveBeenCalledWith({ network: "mainnet" })
+  })
+
+  it("uses custom RPC URL when provided", async () => {
+    const builder = createNearBuilder({
+      network: "mainnet",
+      rpcUrl: "https://custom-rpc.example.com",
+    })
+    // Trigger an RPC call to verify the Near client config
+    mockNearView.mockResolvedValue({ min: "0", max: "0" })
+    try {
+      await builder.getRequiredStorageDeposit("alice.near")
+    } catch {
+      // Ignore errors, we just want to verify the Near constructor was called
+    }
+
+    expect(mockNearConstructor).toHaveBeenCalledWith({
+      rpcUrl: "https://custom-rpc.example.com",
+      network: "mainnet",
+    })
   })
 })
 
