@@ -227,6 +227,29 @@ const transfers = await api.findTransfers({
 })
 ```
 
+## Token Utilities
+
+The SDK provides utilities for identifying and parsing bridge token addresses on NEAR:
+
+```typescript
+import { isBridgeToken, parseOriginChain, ChainKind } from "@omni-bridge/core"
+
+// Check if a NEAR address is a bridge token
+isBridgeToken("nbtc.bridge.near") // true - native BTC wrapper
+isBridgeToken("sol-ABC123.omdep.near") // true - wrapped SOL token
+isBridgeToken("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near") // true - bridged USDC
+isBridgeToken("wrap.near") // false - not a bridge token
+
+// Parse the origin chain from a NEAR token address (offline, no RPC)
+parseOriginChain("nbtc.bridge.near") // ChainKind.Btc
+parseOriginChain("sol-ABC123.omdep.near") // ChainKind.Sol
+parseOriginChain("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.factory.bridge.near") // ChainKind.Eth
+parseOriginChain("base-0x1234.omdep.near") // ChainKind.Base
+parseOriginChain("wrap.near") // null - not a bridge token
+```
+
+These are useful for building UIs that need to identify bridge tokens without making API calls.
+
 ## Fees and Relayers
 
 Cross-chain transfers can be finalized in two ways:
