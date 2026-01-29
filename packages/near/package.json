@@ -1,6 +1,6 @@
 {
   "name": "@omni-bridge/near",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "NEAR transaction builder for Omni Bridge",
   "type": "module",
   "main": "dist/index.js",
@@ -31,7 +31,7 @@
   "author": "NEAR One",
   "dependencies": {
     "@noble/hashes": "^2.0.1",
-    "@omni-bridge/core": "^0.2.0",
+    "@omni-bridge/core": "^0.2.1",
     "@scure/base": "^2.0.0",
     "@zorsh/zorsh": "^0.4.0",
     "near-kit": "^0.7.0"

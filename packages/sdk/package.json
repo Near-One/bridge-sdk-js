@@ -1,6 +1,6 @@
 {
   "name": "@omni-bridge/sdk",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Omni Bridge SDK - Umbrella package re-exporting all chain packages",
   "type": "module",
   "main": "dist/index.js",

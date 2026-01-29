@@ -1,5 +1,22 @@
 # @omni-bridge/near
 
+## 0.2.1
+
+### Patch Changes
+
+- f9d8909: Fix custom RPC URL support in createBridge and createNearBuilder
+
+  The `rpcUrls` config option in `createBridge()` was defined but never used. This fix:
+
+  - Uses the custom NEAR RPC URL from `rpcUrls[ChainKind.Near]` when creating the internal Near client in `createBridge()`
+  - Adds `rpcUrl` option to `NearBuilderConfig` for `createNearBuilder()`
+
+  This allows users to specify custom RPC endpoints to avoid rate limiting on default public RPCs.
+
+- Updated dependencies [816c551]
+- Updated dependencies [f9d8909]
+  - @omni-bridge/core@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes
