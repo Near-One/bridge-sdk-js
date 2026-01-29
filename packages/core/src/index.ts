@@ -77,7 +77,8 @@ export {
   isEvmChain,
   omniAddress,
 } from "./utils/address.js"
-
+// Bridge token utilities
+export { isBridgeToken, parseOriginChain } from "./utils/bridge-token.js"
 // Decimal utilities
 export {
   getMinimumTransferableAmount,

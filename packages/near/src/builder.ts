@@ -34,6 +34,10 @@ import {
 
 export interface NearBuilderConfig {
   network: Network
+  /**
+   * Custom NEAR RPC URL. If not provided, uses the default RPC for the network.
+   */
+  rpcUrl?: string
 }
 
 /**
@@ -226,9 +230,11 @@ function encodeArgs(args: unknown): Uint8Array {
 class NearBuilderImpl implements NearBuilder {
   private readonly bridgeContract: string
   readonly network: Network
+  private readonly rpcUrl: string | undefined
 
-  constructor(network: Network) {
+  constructor(network: Network, rpcUrl: string | undefined) {
     this.network = network
+    this.rpcUrl = rpcUrl
     const addresses = getAddresses(network)
     this.bridgeContract = addresses.near.contract
   }
@@ -762,7 +768,9 @@ class NearBuilderImpl implements NearBuilder {
   }
 
   private getNearClient(): Near {
-    return new Near({ network: this.network as "mainnet" | "testnet" })
+    return this.rpcUrl
+      ? new Near({ rpcUrl: this.rpcUrl, network: this.network as "mainnet" | "testnet" })
+      : new Near({ network: this.network as "mainnet" | "testnet" })
   }
 }
 
@@ -770,5 +778,5 @@ class NearBuilderImpl implements NearBuilder {
  * Create a NEAR transaction builder
  */
 export function createNearBuilder(config: NearBuilderConfig): NearBuilder {
-  return new NearBuilderImpl(config.network)
+  return new NearBuilderImpl(config.network, config.rpcUrl)
 }
