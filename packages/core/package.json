@@ -31,7 +31,7 @@
   "author": "NEAR One",
   "dependencies": {
     "@scure/base": "^2.0.0",
-    "@wormhole-foundation/sdk": "^4.7.3",
+    "@wormhole-foundation/sdk": "^4.9.1",
     "near-kit": "^0.7.0",
     "zod": "^4.3.5"
   },
