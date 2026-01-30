@@ -1,5 +1,11 @@
 # @omni-bridge/core
 
+## 0.2.2
+
+### Patch Changes
+
+- ede2319: Replace deprecated `nzec.bridge.near` with `zec.omft.near` for mainnet Zcash token
+
 ## 0.2.1
 
 ### Patch Changes
