@@ -80,7 +80,7 @@ const MAINNET_ADDRESSES: ChainAddresses = {
     apiUrl: "https://zcash-mainnet.gateway.tatum.io/",
     rpcUrl: "https://zcash-mainnet.gateway.tatum.io/",
     zcashConnector: "zcash-connector.bridge.near",
-    zcashToken: "nzec.bridge.near",
+    zcashToken: "zec.omft.near",
   },
 }
 
