@@ -9,23 +9,33 @@ description: Why small amounts can fail and how to prevent it
 
 ## The Problem
 
-Different chains use different decimal precisions for the same token:
+Different chains use different decimal precisions for the same token. The bridge preserves origin decimals unless they exceed the destination chain's maximum:
+
+| Chain | Maximum Decimals |
+|-------|------------------|
+| NEAR | No limit (keeps origin) |
+| EVM | 18 |
+| Solana | 9 |
+
+For example, bridged tokens on NEAR keep their original decimals:
 
 | Token | Ethereum | NEAR | Solana |
 |-------|----------|------|--------|
-| USDC | 6 decimals | 24 decimals | 6 decimals |
-| WETH | 18 decimals | 24 decimals | 8 decimals |
+| USDC | 6 decimals | 6 decimals | 6 decimals |
+| WETH | 18 decimals | 18 decimals | 8 decimals (capped from 18) |
+| wNEAR | 24 decimals | 24 decimals | 9 decimals (capped from 24) |
 
 When bridging tokens, amounts must be converted between these precisions. Small amounts can round to zero during conversion — and a zero-amount transfer fails.
 
 ## Example: The Dust Problem
 
-Suppose you try to bridge 0.0000001 USDC from NEAR (24 decimals) to Ethereum (6 decimals):
+Suppose you try to bridge 0.0000001 USDC from NEAR (6 decimals) to Solana (6 decimals), but with a very small fee:
 
 ```typescript
-// On NEAR: 0.0000001 USDC = 100000000000000000 (24 decimals)
-// Converted to Ethereum: rounds down to 0 (6 decimals)
-// Result: transfer fails
+// wNEAR bridged to Ethereum: 24 decimals → 18 decimals
+// On NEAR: 0.0000001 wNEAR = 100000000000000000 (24 decimals)
+// Converted to Ethereum: rounds down to 10000000000 (18 decimals)
+// If this is smaller than fees, transfer fails
 ```
 
 This is called "dust" — amounts so small they disappear during conversion.
@@ -80,7 +90,7 @@ import { getMinimumTransferableAmount } from "@omni-bridge/core"
 import { formatUnits } from "viem"
 
 const sourceDecimals = 6   // USDC on Ethereum
-const destDecimals = 24    // USDC on NEAR
+const destDecimals = 6     // USDC on NEAR (keeps origin decimals)
 
 const minAmount = getMinimumTransferableAmount(sourceDecimals, destDecimals)
 const minDisplay = formatUnits(minAmount, sourceDecimals)
@@ -136,3 +146,20 @@ await bridge.validateTransfer({
 2. **Check minimums in your UI** — Show users the minimum before they submit
 3. **Handle `AMOUNT_TOO_SMALL` errors** — Give users a helpful message
 4. **Remember fees reduce the amount** — The net amount must survive, not just the gross
+
+## Querying Actual Token Decimals
+
+To verify the exact decimals for any registered token, query the bridge contract:
+
+```typescript
+const decimals = await bridge.getTokenDecimals(
+  "eth:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" // USDC on Ethereum
+)
+
+if (decimals) {
+  console.log(`On foreign chain: ${decimals.decimals}`)      // 6 for USDC
+  console.log(`On NEAR: ${decimals.origin_decimals}`)        // 6 for USDC
+}
+```
+
+This queries the NEAR bridge contract's `get_token_decimals` method and returns the actual registered values.

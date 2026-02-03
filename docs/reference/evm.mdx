@@ -463,11 +463,13 @@ builder.buildDeployToken(
 #### Example
 
 ```typescript
+// Note: Pass the source token's decimals - the EVM contract
+// normalizes to max 18 decimals automatically
 const deployTx = evm.buildDeployToken(signature, {
   token: "wrap.near",
   name: "Wrapped NEAR",
   symbol: "wNEAR",
-  decimals: 24,
+  decimals: 24, // Source decimals; will be 18 on EVM
 })
 
 await walletClient.sendTransaction(deployTx)

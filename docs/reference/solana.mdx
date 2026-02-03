@@ -338,11 +338,13 @@ import { PublicKey, Transaction } from "@solana/web3.js"
 
 const solana = createSolanaBuilder({ network: "mainnet" })
 
+// Note: Pass the source token's decimals - the Solana program
+// normalizes to max 9 decimals automatically
 const metadata = {
   token: "near:wrap.near",
   name: "Wrapped NEAR",
   symbol: "wNEAR",
-  decimals: 24,
+  decimals: 24, // Source decimals; will be 9 on Solana
 }
 
 const signature = {
