@@ -1,5 +1,11 @@
 # @omni-bridge/core
 
+## 0.2.3
+
+### Patch Changes
+
+- d0b6b71: Remove deprecated `nzec.bridge.near` from token utilities
+
 ## 0.2.2
 
 ### Patch Changes
