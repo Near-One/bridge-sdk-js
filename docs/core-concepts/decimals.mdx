@@ -17,25 +17,26 @@ Different chains use different decimal precisions for the same token. The bridge
 | EVM | 18 |
 | Solana | 9 |
 
-For example, bridged tokens on NEAR keep their original decimals:
+For example, bridged tokens keep their original decimals unless they exceed the chain maximum:
 
-| Token | Ethereum | NEAR | Solana |
-|-------|----------|------|--------|
-| USDC | 6 decimals | 6 decimals | 6 decimals |
-| WETH | 18 decimals | 18 decimals | 8 decimals (capped from 18) |
-| wNEAR | 24 decimals | 24 decimals | 9 decimals (capped from 24) |
+| Token | Origin | NEAR | Solana |
+|-------|--------|------|--------|
+| USDC | 6 (Ethereum) | 6 | 6 |
+| WETH | 18 (Ethereum) | 18 | 9 (capped) |
+| wNEAR | 24 (NEAR) | 24 | 9 (capped) |
+| ZEC | 8 (Zcash) | 8 | 8 |
 
 When bridging tokens, amounts must be converted between these precisions. Small amounts can round to zero during conversion — and a zero-amount transfer fails.
 
 ## Example: The Dust Problem
 
-Suppose you try to bridge 0.0000001 USDC from NEAR (6 decimals) to Solana (6 decimals), but with a very small fee:
+Suppose you try to bridge a tiny amount of wNEAR from NEAR (24 decimals) to Ethereum (18 decimals):
 
 ```typescript
 // wNEAR bridged to Ethereum: 24 decimals → 18 decimals
 // On NEAR: 0.0000001 wNEAR = 100000000000000000 (24 decimals)
-// Converted to Ethereum: rounds down to 10000000000 (18 decimals)
-// If this is smaller than fees, transfer fails
+// Converted to Ethereum: 100000000000 (18 decimals) = 0.0000001 wNEAR
+// If amount after fees is too small, transfer fails
 ```
 
 This is called "dust" — amounts so small they disappear during conversion.
