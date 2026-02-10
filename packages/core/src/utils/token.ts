@@ -13,7 +13,7 @@ const KNOWN_BRIDGE_TOKENS: Record<string, ChainKind> = {
   "nbtc.bridge.near": ChainKind.Btc,
   "zec.omft.near": ChainKind.Zcash,
   "eth.bridge.near": ChainKind.Eth,
-  "sol.omdep.near": ChainKind.Sol,
+  "sol.omft.near": ChainKind.Sol,
   "base.omdep.near": ChainKind.Base,
   "arb.omdep.near": ChainKind.Arb,
   "bnb.omdep.near": ChainKind.Bnb,

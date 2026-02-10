@@ -8,7 +8,7 @@ describe("Token Utils", () => {
       expect(isBridgeToken("nbtc.bridge.near")).toBe(true)
       expect(isBridgeToken("zec.omft.near")).toBe(true)
       expect(isBridgeToken("eth.bridge.near")).toBe(true)
-      expect(isBridgeToken("sol.omdep.near")).toBe(true)
+      expect(isBridgeToken("sol.omft.near")).toBe(true)
       expect(isBridgeToken("base.omdep.near")).toBe(true)
       expect(isBridgeToken("arb.omdep.near")).toBe(true)
       expect(isBridgeToken("bnb.omdep.near")).toBe(true)
@@ -55,7 +55,7 @@ describe("Token Utils", () => {
       })
 
       it("should parse mainnet SOL token", () => {
-        expect(parseOriginChain("sol.omdep.near")).toBe(ChainKind.Sol)
+        expect(parseOriginChain("sol.omft.near")).toBe(ChainKind.Sol)
       })
 
       it("should parse mainnet Base token", () => {
