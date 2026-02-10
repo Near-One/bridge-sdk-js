@@ -1,5 +1,11 @@
 # @omni-bridge/core
 
+## 0.2.4
+
+### Patch Changes
+
+- c8f7495: chore: update sol.omdep.near to sol.omft.near for Solana migration
+
 ## 0.2.3
 
 ### Patch Changes
