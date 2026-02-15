@@ -46,6 +46,31 @@ const normalizedTransfer = {
   ...mockTransfer,
 }
 
+const mockStarknetTransfer = {
+  id: {
+    origin_chain: "Strk",
+    kind: {
+      Nonce: 456,
+    },
+  },
+  initialized: {
+    Starknet: {
+      block_number: 100,
+      block_timestamp: 1730000000,
+      transaction_hash: "0xstarknettx",
+    },
+  },
+  signed: null,
+  fast_finalised_on_near: null,
+  finalised_on_near: null,
+  fast_finalised: null,
+  finalised: null,
+  claimed: null,
+  transfer_message: null,
+  updated_fee: [],
+  utxo_transfer: null,
+}
+
 const mockFee = {
   native_token_fee: 5000,
   gas_fee: null,
@@ -115,6 +140,11 @@ describe("BridgeAPI", () => {
       expect(status).toEqual(["Initialized"])
     })
 
+    it("should accept new chain enums", async () => {
+      const status = await api.getTransferStatus({ originChain: "HlEvm", originNonce: 123 })
+      expect(status).toEqual(["Initialized"])
+    })
+
     it("should handle 404 error", async () => {
       server.use(
         http.get(`${BASE_URL}/api/v3/transfers/transfer/status`, () => {
@@ -171,6 +201,17 @@ describe("BridgeAPI", () => {
     it("should fetch transfer by transaction hash", async () => {
       const transfers = await api.getTransfer({ transactionHash: "0x123..." })
       expect(transfers).toEqual([normalizedTransfer])
+    })
+
+    it("should parse Starknet transaction payloads", async () => {
+      server.use(
+        http.get(`${BASE_URL}/api/v3/transfers/transfer`, () => {
+          return HttpResponse.json([mockStarknetTransfer])
+        }),
+      )
+
+      const transfers = await api.getTransfer({ originChain: "Strk", originNonce: 456 })
+      expect(transfers).toEqual([mockStarknetTransfer])
     })
   })
 
