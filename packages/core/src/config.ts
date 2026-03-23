@@ -38,16 +38,22 @@ export interface ZcashAddresses {
   zcashToken: string
 }
 
+export interface StarknetAddresses {
+  bridge: string
+}
+
 export interface ChainAddresses {
   eth: EvmAddresses
   arb: EvmAddresses
   base: EvmAddresses
   bnb: EvmAddresses
   pol: EvmAddresses
+  abs: EvmAddresses
   near: NearAddresses
   sol: SolanaAddresses
   btc: BtcAddresses
   zcash: ZcashAddresses
+  strk: StarknetAddresses
 }
 
 const MAINNET_ADDRESSES: ChainAddresses = {
@@ -56,6 +62,7 @@ const MAINNET_ADDRESSES: ChainAddresses = {
   base: { bridge: "0xd025b38762B4A4E36F0Cde483b86CB13ea00D989" },
   bnb: { bridge: "0x073C8a225c8Cf9d3f9157F5C1a1DbE02407f5720" },
   pol: { bridge: "0xd025b38762B4A4E36F0Cde483b86CB13ea00D989" },
+  abs: { bridge: "0x0000000000000000000000000000000000000000" },
   near: {
     contract: "omni.bridge.near",
     rpcUrls: ["https://free.rpc.fastnear.com"],
@@ -82,6 +89,9 @@ const MAINNET_ADDRESSES: ChainAddresses = {
     zcashConnector: "zcash-connector.bridge.near",
     zcashToken: "nzec.bridge.near",
   },
+  strk: {
+    bridge: "0x0000000000000000000000000000000000000000000000000000000000000000",
+  },
 }
 
 const TESTNET_ADDRESSES: ChainAddresses = {
@@ -90,6 +100,7 @@ const TESTNET_ADDRESSES: ChainAddresses = {
   base: { bridge: "0xa56b860017152cD296ad723E8409Abd6e5D86d4d" },
   bnb: { bridge: "0x7Fd1E9F9ed48ebb64476ba9E06e5F1a90e31DA74" },
   pol: { bridge: "0xEC81aFc3485a425347Ac03316675e58a680b283A" },
+  abs: { bridge: "0x5C79627d2cD753d45B41839d187619f99c7B8D78" },
   near: {
     contract: "omni.n-bridge.testnet",
     rpcUrls: ["https://test.rpc.fastnear.com"],
@@ -116,6 +127,9 @@ const TESTNET_ADDRESSES: ChainAddresses = {
     zcashConnector: "zcash_connector.n-bridge.testnet",
     zcashToken: "nzcash.n-bridge.testnet",
   },
+  strk: {
+    bridge: "0x02830785fd87b181c5391819f4a5e6a0b2d76c49d92b7f748a2433495eead162",
+  },
 }
 
 const ADDRESSES: Record<Network, ChainAddresses> = {
@@ -135,6 +149,7 @@ export const EVM_CHAIN_IDS: Record<Network, Record<string, number>> = {
     base: 8453,
     bnb: 56,
     pol: 137,
+    abs: 2741,
   },
   testnet: {
     eth: 11155111, // Sepolia
@@ -142,6 +157,7 @@ export const EVM_CHAIN_IDS: Record<Network, Record<string, number>> = {
     base: 84532, // Base Sepolia
     bnb: 97, // BSC Testnet
     pol: 80002, // Polygon Amoy
+    abs: 11124, // Abstract Testnet
   },
 }
 

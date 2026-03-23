@@ -10,6 +10,7 @@
     { "path": "../evm" },
     { "path": "../near" },
     { "path": "../solana" },
-    { "path": "../btc" }
+    { "path": "../btc" },
+    { "path": "../starknet" }
   ]
 }

@@ -11,6 +11,8 @@ describe("Omni Address Utils", () => {
       expect(omniAddress(ChainKind.Arb, "0xarb456")).toBe("arb:0xarb456")
       expect(omniAddress(ChainKind.Base, "0xbase789")).toBe("base:0xbase789")
       expect(omniAddress(ChainKind.Bnb, "0xbnb123")).toBe("bnb:0xbnb123")
+      expect(omniAddress(ChainKind.Abs, "0xabs456")).toBe("abs:0xabs456")
+      expect(omniAddress(ChainKind.Strk, "0xstrk789")).toBe("strk:0xstrk789")
     })
 
     it("should work with empty addresses", () => {
@@ -36,6 +38,8 @@ describe("Omni Address Utils", () => {
         "arb:0xarb456",
         "base:0xbase789",
         "bnb:0xbnb123",
+        "abs:0xabs456",
+        "strk:0xstrk789",
       ]
 
       const expected = [
@@ -45,6 +49,8 @@ describe("Omni Address Utils", () => {
         ChainKind.Arb,
         ChainKind.Base,
         ChainKind.Bnb,
+        ChainKind.Abs,
+        ChainKind.Strk,
       ]
 
       addresses.forEach((addr, i) => {
@@ -62,9 +68,11 @@ describe("Omni Address Utils", () => {
         "arb:0xarb456",
         "base:0xbase789",
         "bnb:0xbnb123",
+        "abs:0xabs456",
+        "strk:0xstrk789",
       ]
 
-      expect(validAddresses.length).toBe(6) // Just to use the array
+      expect(validAddresses.length).toBe(8) // Just to use the array
     })
 
     it("should allow construction via omniAddress helper", () => {
@@ -99,11 +107,13 @@ describe("Omni Address Utils", () => {
       expect(isEvmChain(ChainKind.Arb)).toBe(true)
       expect(isEvmChain(ChainKind.Base)).toBe(true)
       expect(isEvmChain(ChainKind.Bnb)).toBe(true)
+      expect(isEvmChain(ChainKind.Abs)).toBe(true)
     })
 
     it("should return false for non-EVM chains", () => {
       expect(isEvmChain(ChainKind.Near)).toBe(false)
       expect(isEvmChain(ChainKind.Sol)).toBe(false)
+      expect(isEvmChain(ChainKind.Strk)).toBe(false)
     })
 
     it("should work with type checking", () => {

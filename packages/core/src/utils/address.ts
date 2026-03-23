@@ -16,6 +16,8 @@ const CHAIN_PREFIX_MAP: Record<ChainPrefix, ChainKind> = {
   btc: ChainKind.Btc,
   zec: ChainKind.Zcash,
   pol: ChainKind.Pol,
+  abs: ChainKind.Abs,
+  strk: ChainKind.Strk,
 }
 
 // Mapping from ChainKind to prefix
@@ -29,6 +31,8 @@ const CHAIN_KIND_PREFIX_MAP: Record<ChainKind, ChainPrefix> = {
   [ChainKind.Btc]: "btc",
   [ChainKind.Zcash]: "zec",
   [ChainKind.Pol]: "pol",
+  [ChainKind.Abs]: "abs",
+  [ChainKind.Strk]: "strk",
 }
 
 // Valid chain prefixes
@@ -84,6 +88,7 @@ export type EvmChainKind =
   | ChainKind.Arb
   | ChainKind.Bnb
   | ChainKind.Pol
+  | ChainKind.Abs
 
 /**
  * Checks if a chain is an EVM-compatible chain
@@ -94,7 +99,8 @@ export function isEvmChain(chain: ChainKind): chain is EvmChainKind {
     chain === ChainKind.Base ||
     chain === ChainKind.Arb ||
     chain === ChainKind.Bnb ||
-    chain === ChainKind.Pol
+    chain === ChainKind.Pol ||
+    chain === ChainKind.Abs
   )
 }
 
