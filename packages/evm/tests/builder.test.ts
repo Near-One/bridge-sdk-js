@@ -52,9 +52,10 @@ describe("createEvmBuilder", () => {
     expect(builder.bridgeAddress).toBe("0x5C79627d2cD753d45B41839d187619f99c7B8D78")
   })
 
-  it("creates builder for Abstract mainnet", () => {
-    const builder = createEvmBuilder({ network: "mainnet", chain: ChainKind.Abs })
-    expect(builder.chainId).toBe(2741) // Abstract Mainnet
+  it("throws for Abstract mainnet (not yet deployed)", () => {
+    expect(() => createEvmBuilder({ network: "mainnet", chain: ChainKind.Abs })).toThrow(
+      "No bridge address configured",
+    )
   })
 })
 
