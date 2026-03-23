@@ -33,7 +33,7 @@ export interface StarknetTransferPayload {
   amount: bigint
   recipient: string
   feeRecipient?: string | undefined
-  message?: Uint8Array | undefined
+  message?: string | undefined
 }
 
 export interface StarknetBuilder {
@@ -152,7 +152,7 @@ class StarknetBuilderImpl implements StarknetBuilder {
     }
 
     if (payload.message && payload.message.length > 0) {
-      raw.push("0", ...encodeByteArray(new TextDecoder().decode(payload.message)))
+      raw.push("0", ...encodeByteArray(payload.message))
     } else {
       raw.push("1")
     }
