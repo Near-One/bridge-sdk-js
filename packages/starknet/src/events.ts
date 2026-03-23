@@ -14,7 +14,7 @@ import { decodeByteArray } from "./encoding.js"
 export interface StarknetInitTransferEvent {
   sender: bigint
   tokenAddress: bigint
-  originNonce: number
+  originNonce: bigint
   amount: bigint
   fee: bigint
   nativeFee: bigint
@@ -179,7 +179,7 @@ export function parseInitTransferEvent(log: StarknetEventLog): StarknetInitTrans
   return {
     sender,
     tokenAddress,
-    originNonce: Number(originNonce),
+    originNonce,
     amount,
     fee,
     nativeFee,
@@ -196,7 +196,7 @@ export function parseInitTransferEvent(log: StarknetEventLog): StarknetInitTrans
 export async function isTransferFinalised(
   provider: RpcProvider,
   bridgeAddress: string,
-  nonce: number,
+  nonce: bigint,
 ): Promise<boolean> {
   const result = await provider.callContract({
     contractAddress: bridgeAddress,
