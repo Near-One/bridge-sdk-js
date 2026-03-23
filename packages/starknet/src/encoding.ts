@@ -20,14 +20,25 @@ export function encodeByteArray(s: string): string[] {
  * Returns [decoded_string, next_offset].
  */
 export function decodeByteArray(data: string[], offset: number): [string, number] {
-  const numFullWords = Number(BigInt(data[offset] ?? "0"))
+  if (offset < 0 || offset >= data.length) {
+    throw new Error(`decodeByteArray: offset ${offset} out of bounds (length ${data.length})`)
+  }
+
+  const numFullWords = Number(BigInt(data[offset]!))
   const totalFelts = 1 + numFullWords + 2
+
+  if (offset + totalFelts > data.length) {
+    throw new Error(
+      `decodeByteArray: need ${totalFelts} felts at offset ${offset}, but length is ${data.length}`,
+    )
+  }
+
   const pendingWordIdx = offset + 1 + numFullWords
 
   const decoded = byteArray.stringFromByteArray({
     data: data.slice(offset + 1, offset + 1 + numFullWords),
-    pending_word: data[pendingWordIdx] ?? "0",
-    pending_word_len: Number(BigInt(data[pendingWordIdx + 1] ?? "0")),
+    pending_word: data[pendingWordIdx]!,
+    pending_word_len: Number(BigInt(data[pendingWordIdx + 1]!)),
   })
 
   return [decoded, offset + totalFelts]
