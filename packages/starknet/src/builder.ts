@@ -71,6 +71,9 @@ class StarknetBuilderImpl implements StarknetBuilder {
       this.bridgeAddress = config.bridgeAddress
     } else {
       const addresses = getAddresses(config.network)
+      if (!addresses.strk.bridge) {
+        throw new Error(`No Starknet bridge address configured for ${config.network}`)
+      }
       this.bridgeAddress = addresses.strk.bridge
     }
   }

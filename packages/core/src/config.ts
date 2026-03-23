@@ -62,7 +62,7 @@ const MAINNET_ADDRESSES: ChainAddresses = {
   base: { bridge: "0xd025b38762B4A4E36F0Cde483b86CB13ea00D989" },
   bnb: { bridge: "0x073C8a225c8Cf9d3f9157F5C1a1DbE02407f5720" },
   pol: { bridge: "0xd025b38762B4A4E36F0Cde483b86CB13ea00D989" },
-  abs: { bridge: "0x0000000000000000000000000000000000000000" },
+  abs: { bridge: "" },
   near: {
     contract: "omni.bridge.near",
     rpcUrls: ["https://free.rpc.fastnear.com"],
@@ -89,9 +89,7 @@ const MAINNET_ADDRESSES: ChainAddresses = {
     zcashConnector: "zcash-connector.bridge.near",
     zcashToken: "nzec.bridge.near",
   },
-  strk: {
-    bridge: "0x0000000000000000000000000000000000000000000000000000000000000000",
-  },
+  strk: { bridge: "" },
 }
 
 const TESTNET_ADDRESSES: ChainAddresses = {
