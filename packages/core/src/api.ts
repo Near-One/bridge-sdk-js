@@ -18,6 +18,7 @@ const ChainSchema = z.enum([
   "Btc",
   "Zcash",
   "Pol",
+  "Abs",
   "HlEvm",
   "Strk",
 ])
