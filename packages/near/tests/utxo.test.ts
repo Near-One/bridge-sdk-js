@@ -173,7 +173,7 @@ describe("NearBuilder UTXO methods", () => {
     it("builds sign_btc_transaction for BTC", () => {
       const tx = builder.buildUtxoWithdrawalSign({
         chain: "btc",
-        btcPendingSignId: 42,
+        pendingSignId: 42,
         signIndex: 0,
         signerId: "relayer.testnet",
       })
@@ -196,7 +196,7 @@ describe("NearBuilder UTXO methods", () => {
     it("builds sign_btc_transaction for Zcash", () => {
       const tx = builder.buildUtxoWithdrawalSign({
         chain: "zcash",
-        btcPendingSignId: 7,
+        pendingSignId: 7,
         signIndex: 1,
         signerId: "relayer.testnet",
       })

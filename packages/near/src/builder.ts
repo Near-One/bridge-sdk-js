@@ -673,7 +673,7 @@ class NearBuilderImpl implements NearBuilder {
     const connector = this.getUtxoConnectorAddress(params.chain)
 
     const args = {
-      btc_pending_sign_id: params.btcPendingSignId,
+      btc_pending_sign_id: params.pendingSignId,
       sign_index: params.signIndex,
       key_version: 0,
     }

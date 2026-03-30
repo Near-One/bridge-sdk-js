@@ -320,7 +320,7 @@ export interface UtxoWithdrawalSignParams {
   /** The UTXO chain (BTC or Zcash) */
   chain: "btc" | "zcash"
   /** Pending sign ID from the generate_btc_pending_info event */
-  btcPendingSignId: number
+  pendingSignId: number
   /** Index of the input to sign (one call per input) */
   signIndex: number
   /** Signer account ID */
