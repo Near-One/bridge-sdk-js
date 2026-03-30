@@ -169,6 +169,43 @@ describe("NearBuilder UTXO methods", () => {
     })
   })
 
+  describe("buildUtxoWithdrawalSign", () => {
+    it("builds sign_btc_transaction for BTC", () => {
+      const tx = builder.buildUtxoWithdrawalSign({
+        chain: "btc",
+        btcPendingSignId: 42,
+        signIndex: 0,
+        signerId: "relayer.testnet",
+      })
+
+      expect(tx.type).toBe("near")
+      expect(tx.signerId).toBe("relayer.testnet")
+      expect(tx.receiverId).toBe("btc-connector.n-bridge.testnet")
+      expect(tx.actions).toHaveLength(1)
+      expect(tx.actions[0]?.methodName).toBe("sign_btc_transaction")
+      expect(tx.actions[0]?.gas).toBe(GAS.UTXO_SIGN_WITHDRAWAL)
+      expect(tx.actions[0]?.deposit).toBe(DEPOSIT.MPC_SIGNING)
+
+      const argsJson = new TextDecoder().decode(tx.actions[0]?.args)
+      const args = JSON.parse(argsJson)
+      expect(args.btc_pending_sign_id).toBe(42)
+      expect(args.sign_index).toBe(0)
+      expect(args.key_version).toBe(0)
+    })
+
+    it("builds sign_btc_transaction for Zcash", () => {
+      const tx = builder.buildUtxoWithdrawalSign({
+        chain: "zcash",
+        btcPendingSignId: 7,
+        signIndex: 1,
+        signerId: "relayer.testnet",
+      })
+
+      expect(tx.receiverId).toBe("zcash_connector.n-bridge.testnet")
+      expect(tx.actions[0]?.methodName).toBe("sign_btc_transaction")
+    })
+  })
+
   describe("buildUtxoWithdrawalVerify", () => {
     it("builds btc_verify_withdraw transaction for BTC", () => {
       const tx = builder.buildUtxoWithdrawalVerify({
@@ -224,7 +261,7 @@ describe("NearBuilder UTXO methods", () => {
     })
 
     it("uses mainnet Zcash token address", () => {
-      expect(mainnetBuilder.getUtxoTokenAddress("zcash")).toBe("zec.omft.near")
+      expect(mainnetBuilder.getUtxoTokenAddress("zcash")).toBe("nzec.bridge.near")
     })
   })
 })

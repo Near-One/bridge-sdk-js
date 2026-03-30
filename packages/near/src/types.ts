@@ -21,12 +21,14 @@ export const GAS = {
   // UTXO-specific gas constants
   UTXO_VERIFY_DEPOSIT: BigInt(parseGas("300 Tgas")),
   UTXO_INIT_WITHDRAWAL: BigInt(parseGas("100 Tgas")),
+  UTXO_SIGN_WITHDRAWAL: BigInt(parseGas("300 Tgas")),
   UTXO_VERIFY_WITHDRAWAL: BigInt(parseGas("5 Tgas")),
 } as const
 
 // Deposit constants
 export const DEPOSIT = {
   ONE_YOCTO: BigInt(parseAmount("1 yocto")),
+  MPC_SIGNING: BigInt(parseAmount("0.25 NEAR")),
 } as const
 
 /**
@@ -306,6 +308,21 @@ export interface UtxoWithdrawalInitParams {
   totalAmount: bigint
   /** Optional maximum gas fee in satoshis/zatoshis */
   maxGasFee?: bigint
+  /** Signer account ID */
+  signerId: string
+}
+
+/**
+ * Parameters for signing a UTXO withdrawal transaction via MPC.
+ * Call this for each input that needs signing when the relayer is stuck.
+ */
+export interface UtxoWithdrawalSignParams {
+  /** The UTXO chain (BTC or Zcash) */
+  chain: "btc" | "zcash"
+  /** Pending sign ID from the generate_btc_pending_info event */
+  btcPendingSignId: number
+  /** Index of the input to sign (one call per input) */
+  signIndex: number
   /** Signer account ID */
   signerId: string
 }

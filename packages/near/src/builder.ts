@@ -27,6 +27,7 @@ import {
   type UtxoConnectorConfig,
   type UtxoDepositFinalizationParams,
   type UtxoWithdrawalInitParams,
+  type UtxoWithdrawalSignParams,
   type UtxoWithdrawalVerifyParams,
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
@@ -158,6 +159,16 @@ export interface NearBuilder {
    * @returns Unsigned transaction for ft_transfer_call
    */
   buildUtxoWithdrawalInit(params: UtxoWithdrawalInitParams): NearUnsignedTransaction
+
+  /**
+   * Build a transaction to manually trigger MPC signing for a UTXO withdrawal input.
+   * Use this to "unstuck" a withdrawal when the relayer fails to sign.
+   * Must be called once per input in the pending transaction.
+   *
+   * @param params - Signing parameters including the pending sign ID and input index
+   * @returns Unsigned transaction for sign_btc_transaction
+   */
+  buildUtxoWithdrawalSign(params: UtxoWithdrawalSignParams): NearUnsignedTransaction
 
   /**
    * Build a transaction to verify a UTXO withdrawal on NEAR.
@@ -654,6 +665,31 @@ class NearBuilderImpl implements NearBuilder {
       type: "near",
       signerId: params.signerId,
       receiverId: token,
+      actions: [action],
+    }
+  }
+
+  buildUtxoWithdrawalSign(params: UtxoWithdrawalSignParams): NearUnsignedTransaction {
+    const connector = this.getUtxoConnectorAddress(params.chain)
+
+    const args = {
+      btc_pending_sign_id: params.btcPendingSignId,
+      sign_index: params.signIndex,
+      key_version: 0,
+    }
+
+    const action: NearAction = {
+      type: "FunctionCall",
+      methodName: "sign_btc_transaction",
+      args: encodeArgs(args),
+      gas: GAS.UTXO_SIGN_WITHDRAWAL,
+      deposit: DEPOSIT.MPC_SIGNING,
+    }
+
+    return {
+      type: "near",
+      signerId: params.signerId,
+      receiverId: connector,
       actions: [action],
     }
   }
