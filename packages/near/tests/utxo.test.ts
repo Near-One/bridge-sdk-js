@@ -1,3 +1,4 @@
+import { ChainKind } from "@omni-bridge/core"
 import { describe, expect, it } from "vitest"
 import { createNearBuilder } from "../src/builder.js"
 import { GAS, DEPOSIT } from "../src/types.js"
@@ -166,6 +167,65 @@ describe("NearBuilder UTXO methods", () => {
       const args = JSON.parse(argsJson)
       const msg = JSON.parse(args.msg)
       expect(msg.Withdraw.max_gas_fee).toBe("5000")
+    })
+  })
+
+  describe("buildUtxoWithdrawalSubmit", () => {
+    it("builds submit_transfer_to_utxo_chain_connector transaction", () => {
+      const tx = builder.buildUtxoWithdrawalSubmit({
+        chain: "btc",
+        transferId: {
+          origin_chain: ChainKind.Near,
+          origin_nonce: 123n,
+        },
+        targetAddress: "tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx",
+        inputs: ["txid1:0", "txid2:1"],
+        outputs: [
+          { value: 50000, script_pubkey: "0014751e76e8199196d454941c45d1b3a323f1433bd6" },
+          { value: 10000, script_pubkey: "0014abcdef1234567890" },
+        ],
+        signerId: "relayer.testnet",
+      })
+
+      expect(tx.type).toBe("near")
+      expect(tx.signerId).toBe("relayer.testnet")
+      expect(tx.receiverId).toBe("omni.n-bridge.testnet")
+      expect(tx.actions).toHaveLength(1)
+      expect(tx.actions[0]?.methodName).toBe("submit_transfer_to_utxo_chain_connector")
+      expect(tx.actions[0]?.gas).toBe(GAS.UTXO_SUBMIT_WITHDRAWAL)
+      expect(tx.actions[0]?.deposit).toBe(0n)
+
+      const argsJson = new TextDecoder().decode(tx.actions[0]?.args)
+      const args = JSON.parse(argsJson)
+      expect(args.transfer_id.origin_chain).toBe("Near")
+      expect(args.transfer_id.origin_nonce).toBe(123)
+
+      const msg = JSON.parse(args.msg)
+      expect(msg.Withdraw.target_btc_address).toBe(
+        "tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx",
+      )
+      expect(msg.Withdraw.input).toEqual(["txid1:0", "txid2:1"])
+      expect(msg.Withdraw.output).toHaveLength(2)
+    })
+
+    it("includes max_gas_fee when provided", () => {
+      const tx = builder.buildUtxoWithdrawalSubmit({
+        chain: "btc",
+        transferId: {
+          origin_chain: ChainKind.Near,
+          origin_nonce: 456n,
+        },
+        targetAddress: "tb1qtest",
+        inputs: ["txid:0"],
+        outputs: [{ value: 10000, script_pubkey: "script" }],
+        maxGasFee: 3000n,
+        signerId: "relayer.testnet",
+      })
+
+      const argsJson = new TextDecoder().decode(tx.actions[0]?.args)
+      const args = JSON.parse(argsJson)
+      const msg = JSON.parse(args.msg)
+      expect(msg.Withdraw.max_gas_fee).toBe("3000")
     })
   })
 

@@ -21,6 +21,7 @@ export const GAS = {
   // UTXO-specific gas constants
   UTXO_VERIFY_DEPOSIT: BigInt(parseGas("300 Tgas")),
   UTXO_INIT_WITHDRAWAL: BigInt(parseGas("100 Tgas")),
+  UTXO_SUBMIT_WITHDRAWAL: BigInt(parseGas("300 Tgas")),
   UTXO_SIGN_WITHDRAWAL: BigInt(parseGas("300 Tgas")),
   UTXO_VERIFY_WITHDRAWAL: BigInt(parseGas("5 Tgas")),
 } as const
@@ -306,6 +307,28 @@ export interface UtxoWithdrawalInitParams {
   outputs: UtxoWithdrawalOutput[]
   /** Total amount to transfer (including fees) */
   totalAmount: bigint
+  /** Optional maximum gas fee in satoshis/zatoshis */
+  maxGasFee?: bigint
+  /** Signer account ID */
+  signerId: string
+}
+
+/**
+ * Parameters for submitting a UTXO withdrawal to the chain connector.
+ * Use this to "unstuck" a withdrawal when the relayer fails to submit it
+ * after the user initiated the transfer on the omni bridge.
+ */
+export interface UtxoWithdrawalSubmitParams {
+  /** The UTXO chain (BTC or Zcash) */
+  chain: "btc" | "zcash"
+  /** Transfer ID from the init_transfer event */
+  transferId: TransferId
+  /** Target BTC/Zcash address */
+  targetAddress: string
+  /** UTXO inputs in "txid:vout" format */
+  inputs: string[]
+  /** Transaction outputs */
+  outputs: UtxoWithdrawalOutput[]
   /** Optional maximum gas fee in satoshis/zatoshis */
   maxGasFee?: bigint
   /** Signer account ID */

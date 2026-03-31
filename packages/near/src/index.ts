@@ -50,6 +50,7 @@ export {
   type UtxoWithdrawalInitParams,
   type UtxoWithdrawalOutput,
   type UtxoWithdrawalSignParams,
+  type UtxoWithdrawalSubmitParams,
   type UtxoWithdrawalVerifyParams,
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,

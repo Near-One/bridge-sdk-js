@@ -28,6 +28,7 @@ import {
   type UtxoDepositFinalizationParams,
   type UtxoWithdrawalInitParams,
   type UtxoWithdrawalSignParams,
+  type UtxoWithdrawalSubmitParams,
   type UtxoWithdrawalVerifyParams,
   type WormholeVerifyProofArgs,
   WormholeVerifyProofArgsSchema,
@@ -159,6 +160,16 @@ export interface NearBuilder {
    * @returns Unsigned transaction for ft_transfer_call
    */
   buildUtxoWithdrawalInit(params: UtxoWithdrawalInitParams): NearUnsignedTransaction
+
+  /**
+   * Build a transaction to submit a UTXO withdrawal to the chain connector.
+   * Use this to "unstuck" a withdrawal when the relayer fails to submit it
+   * after the user called init_transfer on the omni bridge.
+   *
+   * @param params - Submit parameters including transfer ID and UTXO plan
+   * @returns Unsigned transaction for submit_transfer_to_utxo_chain_connector
+   */
+  buildUtxoWithdrawalSubmit(params: UtxoWithdrawalSubmitParams): NearUnsignedTransaction
 
   /**
    * Build a transaction to manually trigger MPC signing for a UTXO withdrawal input.
@@ -665,6 +676,46 @@ class NearBuilderImpl implements NearBuilder {
       type: "near",
       signerId: params.signerId,
       receiverId: token,
+      actions: [action],
+    }
+  }
+
+  buildUtxoWithdrawalSubmit(params: UtxoWithdrawalSubmitParams): NearUnsignedTransaction {
+    // Convert chain kind to string if needed
+    let originChain: string | number = params.transferId.origin_chain
+    if (typeof originChain === "number") {
+      originChain = ChainKind[originChain] ?? originChain
+    }
+
+    const withdrawMsg = {
+      Withdraw: {
+        target_btc_address: params.targetAddress,
+        input: params.inputs,
+        output: params.outputs,
+        ...(params.maxGasFee !== undefined && { max_gas_fee: params.maxGasFee.toString() }),
+      },
+    }
+
+    const args = {
+      transfer_id: {
+        origin_chain: originChain,
+        origin_nonce: Number(params.transferId.origin_nonce),
+      },
+      msg: JSON.stringify(withdrawMsg),
+    }
+
+    const action: NearAction = {
+      type: "FunctionCall",
+      methodName: "submit_transfer_to_utxo_chain_connector",
+      args: encodeArgs(args),
+      gas: GAS.UTXO_SUBMIT_WITHDRAWAL,
+      deposit: 0n,
+    }
+
+    return {
+      type: "near",
+      signerId: params.signerId,
+      receiverId: this.bridgeContract,
       actions: [action],
     }
   }
