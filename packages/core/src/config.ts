@@ -89,7 +89,7 @@ const MAINNET_ADDRESSES: ChainAddresses = {
     zcashConnector: "zcash-connector.bridge.near",
     zcashToken: "nzec.bridge.near",
   },
-  strk: { bridge: "" },
+  strk: { bridge: "0x05f9a4a841dfb7bb3cde33073b2450fe45dcd407fb6c0985a274b0e943ad8598" },
 }
 
 const TESTNET_ADDRESSES: ChainAddresses = {
