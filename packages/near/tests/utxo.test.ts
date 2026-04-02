@@ -233,7 +233,7 @@ describe("NearBuilder UTXO methods", () => {
     it("builds sign_btc_transaction for BTC", () => {
       const tx = builder.buildUtxoWithdrawalSign({
         chain: "btc",
-        pendingSignId: 42,
+        pendingSignId: "abc123def456",
         signIndex: 0,
         signerId: "relayer.testnet",
       })
@@ -248,7 +248,7 @@ describe("NearBuilder UTXO methods", () => {
 
       const argsJson = new TextDecoder().decode(tx.actions[0]?.args)
       const args = JSON.parse(argsJson)
-      expect(args.btc_pending_sign_id).toBe(42)
+      expect(args.btc_pending_sign_id).toBe("abc123def456")
       expect(args.sign_index).toBe(0)
       expect(args.key_version).toBe(0)
     })
@@ -256,7 +256,7 @@ describe("NearBuilder UTXO methods", () => {
     it("builds sign_btc_transaction for Zcash", () => {
       const tx = builder.buildUtxoWithdrawalSign({
         chain: "zcash",
-        pendingSignId: 7,
+        pendingSignId: "789def",
         signIndex: 1,
         signerId: "relayer.testnet",
       })
