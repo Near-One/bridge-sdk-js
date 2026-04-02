@@ -333,4 +333,146 @@ describe("NEAR to BTC Withdrawal E2E Test", () => {
     },
     TIMEOUTS.FULL_E2E_FLOW * 2, // 10 minutes for full flow with signing wait
   )
+
+  test(
+    "should manually sign a BTC withdrawal (unstuck flow)",
+    async () => {
+      console.log("\n🔧 Testing manual signing (unstuck) flow...")
+
+      // Step 1: Check balance
+      const balance = await nearBuilder.getUtxoTokenBalance("btc", signerId)
+      const config = await nearBuilder.getUtxoConnectorConfig("btc")
+      const minWithdraw = BigInt(config.min_withdraw_amount)
+
+      if (balance < minWithdraw) {
+        console.log(`  ⚠️ Insufficient nBTC balance (${balance} < ${minWithdraw}), skipping`)
+        return
+      }
+
+      // Step 2: Build plan and initiate withdrawal
+      const utxos: UTXO[] = await nearBuilder.getUtxoAvailableOutputs("btc")
+      if (utxos.length === 0) {
+        console.log("  ⚠️ No UTXOs available, skipping")
+        return
+      }
+
+      const plan = btcBuilder.buildWithdrawalPlan(
+        utxos,
+        minWithdraw,
+        BITCOIN_TESTNET_ADDRESS,
+        config.change_address,
+        2,
+      )
+
+      const bridgeFee = await nearBuilder.calculateUtxoWithdrawalFee("btc", minWithdraw)
+      const totalAmount = minWithdraw + plan.fee + bridgeFee
+
+      if (balance < totalAmount) {
+        console.log("  ⚠️ Insufficient balance for total amount, skipping")
+        return
+      }
+
+      console.log("  Initiating withdrawal...")
+      const withdrawTx = nearBuilder.buildUtxoWithdrawalInit({
+        chain: "btc",
+        targetAddress: BITCOIN_TESTNET_ADDRESS,
+        inputs: plan.inputs,
+        outputs: plan.outputs,
+        totalAmount,
+        signerId,
+      })
+
+      const initResult = await toNearKitTransaction(near, withdrawTx).send({ waitUntil: "FINAL" })
+      console.log(`  ✓ NEAR TX: ${initResult.transaction.hash}`)
+
+      // Step 3: Extract pending sign ID from logs
+      const pendingLog = initResult.receipts_outcome
+        .flatMap((receipt) => receipt.outcome.logs)
+        .find((log) => log.includes("generate_btc_pending_info"))
+
+      if (!pendingLog) {
+        console.log("  ⚠️ No pending info found, skipping manual sign")
+        return
+      }
+
+      const pendingParts = pendingLog.split("EVENT_JSON:")
+      if (!pendingParts[1]) {
+        console.log("  ⚠️ Could not parse pending event, skipping")
+        return
+      }
+
+      const pendingData = JSON.parse(pendingParts[1])
+      const pendingSignId = pendingData.data?.[0]?.btc_pending_id
+      const inputCount = plan.inputs.length
+
+      console.log(`  ✓ Pending Sign ID: ${pendingSignId}`)
+      console.log(`  Inputs to sign: ${inputCount}`)
+
+      // Step 4: Manually sign each input using buildUtxoWithdrawalSign
+      for (let i = 0; i < inputCount; i++) {
+        console.log(`  Signing input ${i}...`)
+        const signTx = nearBuilder.buildUtxoWithdrawalSign({
+          chain: "btc",
+          pendingSignId: pendingSignId,
+          signIndex: i,
+          signerId,
+        })
+
+        // Verify transaction structure
+        expect(signTx.receiverId).toBe(nearBuilder.getUtxoConnectorAddress("btc"))
+        expect(signTx.actions[0]?.methodName).toBe("sign_btc_transaction")
+
+        try {
+          const signResult = await toNearKitTransaction(near, signTx).send({
+            waitUntil: "FINAL",
+          })
+          console.log(`  ✓ Signed input ${i}: ${signResult.transaction.hash}`)
+
+          // Check for signed_btc_transaction event in the last input's result
+          if (i === inputCount - 1) {
+            const signedLog = signResult.receipts_outcome
+              .flatMap((receipt) => receipt.outcome.logs)
+              .find((log) => log.includes("signed_btc_transaction"))
+
+            if (signedLog) {
+              console.log("  ✓ Got signed_btc_transaction event - manual signing works!")
+
+              // Extract and broadcast
+              const signedTxHex = await getSignedTxBytes(
+                near,
+                signResult.transaction.hash,
+                signerId,
+              )
+              console.log(`  ✓ Signed tx: ${signedTxHex.length / 2} bytes`)
+
+              try {
+                const btcTxHash = await btcBuilder.broadcastTransaction(signedTxHex)
+                console.log(`  ✓ Broadcast: ${btcTxHash}`)
+              } catch (error) {
+                const msg = (error as Error).message
+                if (msg.includes("already in block chain") || msg.includes("already known")) {
+                  console.log("  ✓ Already broadcast by relayer (race condition, still valid)")
+                } else {
+                  console.log(`  ⚠️ Broadcast failed: ${msg}`)
+                }
+              }
+            } else {
+              console.log("  ℹ️ No signed_btc_transaction yet (may need more confirmations)")
+            }
+          }
+        } catch (error) {
+          const msg = (error as Error).message
+          if (msg.includes("already signed") || msg.includes("AlreadySigned")) {
+            console.log(`  ✓ Input ${i} already signed by relayer (race condition, method works)`)
+          } else {
+            console.log(`  ⚠️ Sign failed for input ${i}: ${msg}`)
+            throw error
+          }
+        }
+      }
+
+      console.log("\n🎉 Manual signing flow completed!")
+    },
+    TIMEOUTS.FULL_E2E_FLOW * 2,
+  )
 })
