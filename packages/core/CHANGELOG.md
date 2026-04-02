@@ -1,5 +1,19 @@
 # @omni-bridge/core
 
+## 0.3.0
+
+### Minor Changes
+
+- d22ee53: Add Abstract (Abs) and Starknet (Strk) chain support with builder configs,
+  address mappings, and the new `@omni-bridge/starknet` transaction builder package.
+
+### Patch Changes
+
+- 0009f08: Add `buildUtxoWithdrawalSubmit()` and `buildUtxoWithdrawalSign()` for manually unsticking BTC/Zcash withdrawals. Revert Zcash mainnet token address to `nzec.bridge.near` since the `zec.omft.near` migration never happened.
+- c8f7495: chore: update sol.omdep.near to sol.omft.near for Solana migration
+- 18c8d3c: Add support for the new `HlEvm` and `Strk` transfer API chain enums and parse
+  the new `Starknet` transaction variant in transfer responses.
+
 ## 0.2.3
 
 ### Patch Changes
