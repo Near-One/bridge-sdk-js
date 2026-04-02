@@ -1,5 +1,15 @@
 # @omni-bridge/btc
 
+## 0.3.0
+
+### Patch Changes
+
+- Updated dependencies [d22ee53]
+- Updated dependencies [0009f08]
+- Updated dependencies [c8f7495]
+- Updated dependencies [18c8d3c]
+  - @omni-bridge/core@0.3.0
+
 ## 0.2.3
 
 ### Patch Changes
