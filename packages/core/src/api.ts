@@ -8,7 +8,20 @@ import { OmniBridgeError } from "./errors.js"
 import type { Network, OmniAddress } from "./types.js"
 
 // API response schemas
-const ChainSchema = z.enum(["Eth", "Near", "Sol", "Arb", "Base", "Bnb", "Btc", "Zcash", "Pol"])
+const ChainSchema = z.enum([
+  "Eth",
+  "Near",
+  "Sol",
+  "Arb",
+  "Base",
+  "Bnb",
+  "Btc",
+  "Zcash",
+  "Pol",
+  "Abs",
+  "HlEvm",
+  "Strk",
+])
 export type Chain = z.infer<typeof ChainSchema>
 
 const TransferStatusSchema = z.enum([
@@ -76,18 +89,29 @@ const UtxoLogTransactionSchema = z.object({
   block_time: z.number().int().min(0).nullable(),
 })
 
+const StarknetTransactionSchema = z.object({
+  block_number: z.number().int().min(0),
+  block_timestamp: z.number().int().min(0),
+  transaction_hash: z.string(),
+})
+
 const TransactionSchema = z
   .object({
     NearReceipt: NearReceiptTransactionSchema.optional(),
     EVMLog: EVMLogTransactionSchema.optional(),
     Solana: SolanaTransactionSchema.optional(),
     UtxoLog: UtxoLogTransactionSchema.optional(),
+    Starknet: StarknetTransactionSchema.optional(),
   })
   .refine(
     (data) => {
-      const definedFields = [data.NearReceipt, data.EVMLog, data.Solana, data.UtxoLog].filter(
-        (field) => field !== undefined,
-      )
+      const definedFields = [
+        data.NearReceipt,
+        data.EVMLog,
+        data.Solana,
+        data.UtxoLog,
+        data.Starknet,
+      ].filter((field) => field !== undefined)
       return definedFields.length === 1
     },
     { message: "Exactly one transaction type must be present" },
