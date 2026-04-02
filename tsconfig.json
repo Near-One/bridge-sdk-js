@@ -6,6 +6,7 @@
     { "path": "packages/near" },
     { "path": "packages/solana" },
     { "path": "packages/btc" },
+    { "path": "packages/starknet" },
     { "path": "packages/sdk" }
   ]
 }

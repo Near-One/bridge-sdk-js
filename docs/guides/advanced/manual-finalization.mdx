@@ -31,7 +31,7 @@ The proof type and wait time depends on the source:
 |--------|------------|-----------|
 | NEAR | MPC Signature | ~1-5 min |
 | Ethereum | Merkle Proof | ~15-20 min |
-| L2s (Base, Arb, etc.) | Wormhole VAA | ~1 min |
+| L2s (Base, Arb, Abs, etc.) | Wormhole VAA | ~1 min |
 | Solana | Wormhole VAA | ~15 sec |
 
 ## When is Finalization Ready?
@@ -155,7 +155,7 @@ await toNearKitTransaction(near, tx).send()
 
 ### L2s (Wormhole VAA)
 
-Base, Arbitrum, Polygon, and BNB use Wormhole:
+Base, Arbitrum, Polygon, BNB, and Abstract use Wormhole:
 
 ```typescript
 import { getWormholeVaa } from "@omni-bridge/core"

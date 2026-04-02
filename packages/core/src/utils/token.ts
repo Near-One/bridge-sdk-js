@@ -18,6 +18,8 @@ const KNOWN_BRIDGE_TOKENS: Record<string, ChainKind> = {
   "arb.omdep.near": ChainKind.Arb,
   "bnb.omdep.near": ChainKind.Bnb,
   "pol.omdep.near": ChainKind.Pol,
+  "abs.omdep.near": ChainKind.Abs,
+  "strk.omdep.near": ChainKind.Strk,
   // Testnet
   "nbtc.n-bridge.testnet": ChainKind.Btc,
   "nzcash.n-bridge.testnet": ChainKind.Zcash,
@@ -27,6 +29,8 @@ const KNOWN_BRIDGE_TOKENS: Record<string, ChainKind> = {
   "arb.omnidep.testnet": ChainKind.Arb,
   "bnb.omnidep.testnet": ChainKind.Bnb,
   "pol.omnidep.testnet": ChainKind.Pol,
+  "abs.omnidep.testnet": ChainKind.Abs,
+  "strk.omnidep.testnet": ChainKind.Strk,
 }
 
 /**
@@ -44,6 +48,8 @@ const CHAIN_PREFIXES: Record<string, ChainKind> = {
   "arb-": ChainKind.Arb,
   "bnb-": ChainKind.Bnb,
   "pol-": ChainKind.Pol,
+  "abs-": ChainKind.Abs,
+  "strk-": ChainKind.Strk,
 }
 
 /**

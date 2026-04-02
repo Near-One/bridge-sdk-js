@@ -45,6 +45,18 @@ describe("createEvmBuilder", () => {
     expect(builder.chainId).toBe(80002) // Polygon Amoy
     expect(builder.bridgeAddress).toBe("0xEC81aFc3485a425347Ac03316675e58a680b283A")
   })
+
+  it("creates builder for Abstract testnet", () => {
+    const builder = createEvmBuilder({ network: "testnet", chain: ChainKind.Abs })
+    expect(builder.chainId).toBe(11124) // Abstract Testnet
+    expect(builder.bridgeAddress).toBe("0x5C79627d2cD753d45B41839d187619f99c7B8D78")
+  })
+
+  it("creates builder for Abstract mainnet", () => {
+    const builder = createEvmBuilder({ network: "mainnet", chain: ChainKind.Abs })
+    expect(builder.chainId).toBe(2741)
+    expect(builder.bridgeAddress).toBe("0xd2490A00bDB97C1EDE4fdf207CFE2664AFB9C20D")
+  })
 })
 
 describe("EvmBuilder.buildTransfer", () => {

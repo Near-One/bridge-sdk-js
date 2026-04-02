@@ -13,6 +13,8 @@ export enum ChainKind {
   Btc = 6,
   Zcash = 7,
   Pol = 8,
+  Abs = 9,
+  Strk = 10,
 }
 
 // Network configuration
@@ -29,6 +31,8 @@ export type OmniAddress =
   | `btc:${string}`
   | `zec:${string}`
   | `pol:${string}`
+  | `abs:${string}`
+  | `strk:${string}`
 
 // Common type aliases
 export type U128 = bigint
@@ -135,4 +139,15 @@ export interface BtcUnsignedTransaction {
 }
 
 // Chain prefix type for address parsing
-export type ChainPrefix = "eth" | "near" | "sol" | "arb" | "base" | "bnb" | "btc" | "zec" | "pol"
+export type ChainPrefix =
+  | "eth"
+  | "near"
+  | "sol"
+  | "arb"
+  | "base"
+  | "bnb"
+  | "btc"
+  | "zec"
+  | "pol"
+  | "abs"
+  | "strk"

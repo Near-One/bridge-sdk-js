@@ -96,8 +96,8 @@ function getBridgeAddress(network: Network, chain: EvmChainKind): Address {
   const addresses = getAddresses(network)
   const prefix = getChainPrefix(chain)
   const chainAddresses = addresses[prefix as keyof typeof addresses]
-  if (!chainAddresses || !("bridge" in chainAddresses)) {
-    throw new Error(`No bridge address found for chain ${prefix} on ${network}`)
+  if (!chainAddresses || !("bridge" in chainAddresses) || !chainAddresses.bridge) {
+    throw new Error(`No bridge address configured for chain ${prefix} on ${network}`)
   }
   return chainAddresses.bridge as Address
 }

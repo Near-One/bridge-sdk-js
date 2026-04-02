@@ -1,6 +1,6 @@
 ---
 title: "@omni-bridge/evm"
-description: EVM transaction builder for Ethereum, Base, Arbitrum, Polygon, and BNB Chain
+description: EVM transaction builder for Ethereum, Base, Arbitrum, Polygon, BNB Chain, and Abstract
 ---
 
 ## Import
@@ -38,7 +38,7 @@ function createEvmBuilder(config: EvmBuilderConfig): EvmBuilder
     </ResponseField>
 
     <ResponseField name="chain" type="EvmChainKind" required>
-      The EVM chain to build transactions for. One of: `ChainKind.Eth`, `ChainKind.Base`, `ChainKind.Arb`, `ChainKind.Pol`, `ChainKind.Bnb`
+      The EVM chain to build transactions for. One of: `ChainKind.Eth`, `ChainKind.Base`, `ChainKind.Arb`, `ChainKind.Pol`, `ChainKind.Bnb`, `ChainKind.Abs`
     </ResponseField>
   </Expandable>
 </ResponseField>
@@ -506,7 +506,7 @@ async function getEvmProof(
 </ResponseField>
 
 <ResponseField name="chain" type="EvmChainKind" required>
-  The EVM chain where the transaction occurred. One of: `ChainKind.Eth`, `ChainKind.Base`, `ChainKind.Arb`, `ChainKind.Pol`, `ChainKind.Bnb`
+  The EVM chain where the transaction occurred. One of: `ChainKind.Eth`, `ChainKind.Base`, `ChainKind.Arb`, `ChainKind.Pol`, `ChainKind.Bnb`, `ChainKind.Abs`
 </ResponseField>
 
 <ResponseField name="network" type="Network" required>

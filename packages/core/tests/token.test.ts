@@ -13,12 +13,16 @@ describe("Token Utils", () => {
       expect(isBridgeToken("arb.omdep.near")).toBe(true)
       expect(isBridgeToken("bnb.omdep.near")).toBe(true)
       expect(isBridgeToken("pol.omdep.near")).toBe(true)
+      expect(isBridgeToken("abs.omdep.near")).toBe(true)
+      expect(isBridgeToken("strk.omdep.near")).toBe(true)
     })
 
     it("should return true for known testnet bridge tokens", () => {
       expect(isBridgeToken("nbtc.n-bridge.testnet")).toBe(true)
       expect(isBridgeToken("sol.omnidep.testnet")).toBe(true)
       expect(isBridgeToken("base.omnidep.testnet")).toBe(true)
+      expect(isBridgeToken("abs.omnidep.testnet")).toBe(true)
+      expect(isBridgeToken("strk.omnidep.testnet")).toBe(true)
     })
 
     it("should return true for wrapped tokens with factory suffix", () => {
@@ -74,6 +78,14 @@ describe("Token Utils", () => {
         expect(parseOriginChain("pol.omdep.near")).toBe(ChainKind.Pol)
       })
 
+      it("should parse mainnet Abs token", () => {
+        expect(parseOriginChain("abs.omdep.near")).toBe(ChainKind.Abs)
+      })
+
+      it("should parse mainnet Strk token", () => {
+        expect(parseOriginChain("strk.omdep.near")).toBe(ChainKind.Strk)
+      })
+
       it("should parse testnet tokens", () => {
         expect(parseOriginChain("nbtc.n-bridge.testnet")).toBe(ChainKind.Btc)
         expect(parseOriginChain("sol.omnidep.testnet")).toBe(ChainKind.Sol)
@@ -101,6 +113,14 @@ describe("Token Utils", () => {
 
       it("should parse Pol-prefixed wrapped tokens", () => {
         expect(parseOriginChain("pol-0x9999.omdep.near")).toBe(ChainKind.Pol)
+      })
+
+      it("should parse Abs-prefixed wrapped tokens", () => {
+        expect(parseOriginChain("abs-0xaaaa.omdep.near")).toBe(ChainKind.Abs)
+      })
+
+      it("should parse Strk-prefixed wrapped tokens", () => {
+        expect(parseOriginChain("strk-0xbbbb.omdep.near")).toBe(ChainKind.Strk)
       })
     })
 
