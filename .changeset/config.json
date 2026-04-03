@@ -9,6 +9,7 @@
       "@omni-bridge/near",
       "@omni-bridge/solana",
       "@omni-bridge/btc",
+      "@omni-bridge/starknet",
       "@omni-bridge/sdk"
     ]
   ],
