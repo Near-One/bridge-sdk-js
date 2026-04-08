@@ -195,6 +195,10 @@ const PostActionSchema = z.object({
 })
 export type PostAction = z.infer<typeof PostActionSchema>
 
+export interface SafeDeposit {
+  msg: string
+}
+
 const UtxoDepositAddressResponseSchema = z.object({
   address: z.string(),
 })
@@ -358,19 +362,15 @@ export class BridgeAPI {
   async getUtxoDepositAddress(
     chain: UtxoChainParam,
     recipient: string,
-    postActions?: PostAction[] | null,
-    extraMsg?: string | null,
+    safeDeposit?: SafeDeposit | null,
   ): Promise<UtxoDepositAddressResponse> {
     const body: Record<string, unknown> = {
       chain,
       recipient,
     }
 
-    if (postActions !== undefined && postActions !== null) {
-      body["post_actions"] = postActions
-    }
-    if (extraMsg !== undefined && extraMsg !== null) {
-      body["extra_msg"] = extraMsg
+    if (safeDeposit !== undefined && safeDeposit !== null) {
+      body["safe_deposit"] = safeDeposit
     }
 
     const url = this.buildUrl("/api/v3/utxo/get_user_deposit_address")
@@ -401,9 +401,8 @@ export class BridgeAPI {
   async getUtxoUserDepositAddress(
     chain: UtxoChainParam,
     recipient: string,
-    postActions?: PostAction[] | null,
-    extraMsg?: string | null,
+    safeDeposit?: SafeDeposit | null,
   ): Promise<UtxoDepositAddressResponse> {
-    return this.getUtxoDepositAddress(chain, recipient, postActions, extraMsg)
+    return this.getUtxoDepositAddress(chain, recipient, safeDeposit)
   }
 }

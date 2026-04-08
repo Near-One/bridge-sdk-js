@@ -1,7 +1,7 @@
 import { ChainKind } from "@omni-bridge/core"
 import { describe, expect, it } from "vitest"
 import { createNearBuilder } from "../src/builder.js"
-import { GAS, DEPOSIT } from "../src/types.js"
+import { DEPOSIT, GAS } from "../src/types.js"
 
 describe("NearBuilder UTXO methods", () => {
   const builder = createNearBuilder({ network: "testnet" })
@@ -97,6 +97,29 @@ describe("NearBuilder UTXO methods", () => {
       const args = JSON.parse(argsJson)
       expect(args.deposit_msg.post_actions).toHaveLength(1)
       expect(args.deposit_msg.post_actions[0].amount).toBe("1000000")
+    })
+
+    it("uses safe_verify_deposit when safe_deposit is provided", () => {
+      const tx = builder.buildUtxoDepositFinalization({
+        chain: "btc",
+        depositMsg: {
+          recipient_id: "alice.testnet",
+          safe_deposit: { msg: "safe deposit" },
+        },
+        txBytes: [0x01, 0x02],
+        vout: 0,
+        txBlockBlockhash: "00000000000000000001abc123",
+        txIndex: 1,
+        merkleProof: ["hash1"],
+        signerId: "relayer.testnet",
+      })
+
+      expect(tx.actions[0]?.methodName).toBe("safe_verify_deposit")
+      expect(tx.actions[0]?.deposit).toBe(DEPOSIT.SAFE_VERIFY_DEPOSIT)
+
+      const argsJson = new TextDecoder().decode(tx.actions[0]?.args)
+      const args = JSON.parse(argsJson)
+      expect(args.deposit_msg.safe_deposit).toEqual({ msg: "safe deposit" })
     })
   })
 
