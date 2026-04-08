@@ -38,8 +38,11 @@ export function decodeByteArray(data: string[], offset: number): [string, number
   }
 
   const pendingWordIdx = offset + 1 + numFullWords
-  const pendingWord = data[pendingWordIdx] as string
-  const pendingWordLen = data[pendingWordIdx + 1] as string
+  const pendingWord = data[pendingWordIdx]
+  const pendingWordLen = data[pendingWordIdx + 1]
+  if (pendingWord === undefined || pendingWordLen === undefined) {
+    throw new Error(`decodeByteArray: missing pending_word data at offset ${pendingWordIdx}`)
+  }
 
   const decoded = byteArray.stringFromByteArray({
     data: data.slice(offset + 1, offset + 1 + numFullWords),

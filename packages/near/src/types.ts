@@ -30,7 +30,7 @@ export const GAS = {
 export const DEPOSIT = {
   ONE_YOCTO: BigInt(parseAmount("1 yocto")),
   MPC_SIGNING: BigInt(parseAmount("0.25 NEAR")),
-  SAFE_VERIFY_DEPOSIT: 1_200_000_000_000_000_000_000n,
+  SAFE_VERIFY_DEPOSIT: BigInt(parseAmount("0.0012 NEAR")),
 } as const
 
 /**
