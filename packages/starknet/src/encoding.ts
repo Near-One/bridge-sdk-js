@@ -24,7 +24,11 @@ export function decodeByteArray(data: string[], offset: number): [string, number
     throw new Error(`decodeByteArray: offset ${offset} out of bounds (length ${data.length})`)
   }
 
-  const numFullWords = Number(BigInt(data[offset]!))
+  const numFullWordsRaw = data[offset]
+  if (numFullWordsRaw === undefined) {
+    throw new Error(`decodeByteArray: missing data at offset ${offset}`)
+  }
+  const numFullWords = Number(BigInt(numFullWordsRaw))
   const totalFelts = 1 + numFullWords + 2
 
   if (offset + totalFelts > data.length) {
@@ -34,11 +38,13 @@ export function decodeByteArray(data: string[], offset: number): [string, number
   }
 
   const pendingWordIdx = offset + 1 + numFullWords
+  const pendingWord = data[pendingWordIdx] as string
+  const pendingWordLen = data[pendingWordIdx + 1] as string
 
   const decoded = byteArray.stringFromByteArray({
     data: data.slice(offset + 1, offset + 1 + numFullWords),
-    pending_word: data[pendingWordIdx]!,
-    pending_word_len: Number(BigInt(data[pendingWordIdx + 1]!)),
+    pending_word: pendingWord,
+    pending_word_len: Number(BigInt(pendingWordLen)),
   })
 
   return [decoded, offset + totalFelts]
