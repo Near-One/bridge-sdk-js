@@ -1,5 +1,11 @@
 # @omni-bridge/core
 
+## 0.4.0
+
+### Minor Changes
+
+- c804103: Replace `postActions`/`extraMsg` with `safe_deposit` on `getUtxoDepositAddress`. NEAR builder now calls `safe_verify_deposit` when `safe_deposit` is provided.
+
 ## 0.3.0
 
 ### Minor Changes
