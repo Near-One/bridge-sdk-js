@@ -1,6 +1,6 @@
 {
   "name": "@omni-bridge/starknet",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Starknet transaction builder for Omni Bridge",
   "type": "module",
   "main": "dist/index.js",

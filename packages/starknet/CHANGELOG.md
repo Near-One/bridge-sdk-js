@@ -1,5 +1,12 @@
 # @omni-bridge/starknet
 
+## 0.4.0
+
+### Patch Changes
+
+- Updated dependencies [c804103]
+  - @omni-bridge/core@0.4.0
+
 ## 0.2.0
 
 ### Minor Changes
