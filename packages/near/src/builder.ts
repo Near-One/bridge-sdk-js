@@ -607,6 +607,7 @@ class NearBuilderImpl implements NearBuilder {
     const connector = this.getUtxoConnectorAddress(params.chain)
 
     // Build deposit_msg for the contract (convert bigint amounts to strings)
+    const isSafeDeposit = params.depositMsg.safe_deposit != null
     const depositMsg = {
       recipient_id: params.depositMsg.recipient_id,
       post_actions: params.depositMsg.post_actions?.map((action) => ({
@@ -617,6 +618,7 @@ class NearBuilderImpl implements NearBuilder {
         gas: action.gas?.toString(),
       })),
       extra_msg: params.depositMsg.extra_msg,
+      safe_deposit: params.depositMsg.safe_deposit,
     }
 
     const args = {
@@ -630,10 +632,10 @@ class NearBuilderImpl implements NearBuilder {
 
     const action: NearAction = {
       type: "FunctionCall",
-      methodName: "verify_deposit",
+      methodName: isSafeDeposit ? "safe_verify_deposit" : "verify_deposit",
       args: encodeArgs(args),
       gas: GAS.UTXO_VERIFY_DEPOSIT,
-      deposit: 0n,
+      deposit: isSafeDeposit ? DEPOSIT.SAFE_VERIFY_DEPOSIT : 0n,
     }
 
     return {

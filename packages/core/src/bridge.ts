@@ -3,7 +3,7 @@
  */
 
 import { Near } from "near-kit"
-import { BridgeAPI, type Chain, type PostAction, type UtxoChainParam } from "./api.js"
+import { BridgeAPI, type Chain, type SafeDeposit, type UtxoChainParam } from "./api.js"
 import { type ChainAddresses, getAddresses } from "./config.js"
 import { ValidationError } from "./errors.js"
 import {
@@ -28,14 +28,10 @@ export interface BridgeConfig {
  */
 export interface UtxoDepositOptions {
   /**
-   * Post-actions to execute after the deposit is finalized on NEAR.
-   * Used for automatic bridging to other chains.
+   * Safe deposit message. When provided, the deposit will use `safe_verify_deposit`
+   * which requires a NEAR deposit but doesn't need post-actions.
    */
-  postActions?: PostAction[]
-  /**
-   * Extra message to include in the deposit
-   */
-  extraMsg?: string
+  safeDeposit?: SafeDeposit
 }
 
 /**
@@ -54,10 +50,6 @@ export interface UtxoDepositResult {
    * The recipient on NEAR
    */
   recipient: string
-  /**
-   * Post-actions if any were provided
-   */
-  postActions?: PostAction[]
 }
 
 /**
@@ -331,21 +323,14 @@ class BridgeImpl implements Bridge {
     const response = await this.api.getUtxoDepositAddress(
       chainParam,
       recipient,
-      options?.postActions,
-      options?.extraMsg,
+      options?.safeDeposit,
     )
 
-    const result: UtxoDepositResult = {
+    return {
       address: response.address,
       chain: chainParam,
       recipient,
     }
-
-    if (options?.postActions) {
-      result.postActions = options.postActions
-    }
-
-    return result
   }
 }
 

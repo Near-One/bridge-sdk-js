@@ -61,6 +61,7 @@ import {
   type UtxoDepositFinalizationParams,
   type UtxoDepositMsg,
   type UtxoPostAction,
+  type UtxoSafeDeposit,
   type UtxoWithdrawalInitParams,
   type UtxoWithdrawalOutput,
   type UtxoWithdrawalVerifyParams,
@@ -785,7 +786,7 @@ Methods for interacting with the Bitcoin and Zcash UTXO connectors on NEAR.
 
 ### buildUtxoDepositFinalization
 
-Build a transaction to finalize a UTXO deposit on NEAR. Calls `verify_deposit` on the connector contract.
+Build a transaction to finalize a UTXO deposit on NEAR. Calls `verify_deposit` (or `safe_verify_deposit` when `safe_deposit` is provided) on the connector contract.
 
 #### Signature
 
@@ -813,6 +814,10 @@ buildUtxoDepositFinalization(params: UtxoDepositFinalizationParams): NearUnsigne
 
         <ResponseField name="extra_msg" type="string">
           Optional extra message.
+        </ResponseField>
+
+        <ResponseField name="safe_deposit" type="UtxoSafeDeposit">
+          Safe deposit message. When provided, uses `safe_verify_deposit` instead of `verify_deposit`.
         </ResponseField>
       </Expandable>
     </ResponseField>

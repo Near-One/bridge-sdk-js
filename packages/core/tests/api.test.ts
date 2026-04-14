@@ -262,20 +262,10 @@ describe("BridgeAPI", () => {
       })
     })
 
-    it("should handle post actions parameter", async () => {
-      const postActions = [
-        {
-          receiver_id: "receiver.near",
-          amount: "1000000000000000000000000",
-          msg: "test message",
-        },
-      ]
-      const response = await api.getUtxoDepositAddress(
-        "btc",
-        "recipient.near",
-        postActions,
-        "extra message",
-      )
+    it("should handle safe_deposit parameter", async () => {
+      const response = await api.getUtxoDepositAddress("btc", "recipient.near", {
+        msg: "safe deposit message",
+      })
       expect(response).toEqual({
         address: "tb1qssh0ejglq0v53pwrsxlhxpxw29gfu6c4ls9eyy",
       })

@@ -30,6 +30,7 @@ export const GAS = {
 export const DEPOSIT = {
   ONE_YOCTO: BigInt(parseAmount("1 yocto")),
   MPC_SIGNING: BigInt(parseAmount("0.25 NEAR")),
+  SAFE_VERIFY_DEPOSIT: BigInt(parseAmount("0.0012 NEAR")),
 } as const
 
 /**
@@ -255,12 +256,21 @@ export interface UtxoPostAction {
 }
 
 /**
+ * Safe deposit message for UTXO deposits.
+ * When present, the finalization uses `safe_verify_deposit` instead of `verify_deposit`.
+ */
+export interface UtxoSafeDeposit {
+  msg: string
+}
+
+/**
  * Deposit message for UTXO deposits
  */
 export interface UtxoDepositMsg {
   recipient_id: string
   post_actions?: UtxoPostAction[]
   extra_msg?: string
+  safe_deposit?: UtxoSafeDeposit
 }
 
 /**

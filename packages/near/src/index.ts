@@ -47,6 +47,7 @@ export {
   type UtxoDepositFinalizationParams,
   type UtxoDepositMsg,
   type UtxoPostAction,
+  type UtxoSafeDeposit,
   type UtxoWithdrawalInitParams,
   type UtxoWithdrawalOutput,
   type UtxoWithdrawalSignParams,

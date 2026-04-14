@@ -11,6 +11,7 @@ export {
   type BridgeAPIConfig,
   type Chain,
   type PostAction,
+  type SafeDeposit,
   type Transfer,
   type TransferStatus,
   type UtxoChainParam,

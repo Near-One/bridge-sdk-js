@@ -20,6 +20,7 @@ import {
   type TransferStatus,
   type Chain,
   type PostAction,
+  type SafeDeposit,
   type UtxoChainParam,
   type UtxoDepositAddressResponse,
 
@@ -427,12 +428,14 @@ bridge.getUtxoDepositAddress(
   Optional configuration for the deposit.
 
   <Expandable title="UtxoDepositOptions properties">
-    <ResponseField name="postActions" type="PostAction[]">
-      Post-actions to execute after the deposit is finalized on NEAR. Used for automatic bridging to other chains.
-    </ResponseField>
+    <ResponseField name="safeDeposit" type="SafeDeposit">
+      Safe deposit message. When provided, the deposit will use `safe_verify_deposit` on finalization.
 
-    <ResponseField name="extraMsg" type="string">
-      Extra message to include in the deposit.
+      <Expandable title="SafeDeposit properties">
+        <ResponseField name="msg" type="string" required>
+          Message for the safe deposit.
+        </ResponseField>
+      </Expandable>
     </ResponseField>
   </Expandable>
 </ResponseField>
@@ -454,10 +457,6 @@ bridge.getUtxoDepositAddress(
     <ResponseField name="recipient" type="string">
       The recipient on NEAR.
     </ResponseField>
-
-    <ResponseField name="postActions" type="PostAction[]">
-      Post-actions if any were provided.
-    </ResponseField>
   </Expandable>
 </ResponseField>
 
@@ -474,16 +473,12 @@ const deposit = await bridge.getUtxoDepositAddress(
 
 console.log(`Send BTC to: ${deposit.address}`)
 
-// With post-actions for automatic bridging to Ethereum
-const depositWithBridge = await bridge.getUtxoDepositAddress(
+// With safe deposit
+const safeDeposit = await bridge.getUtxoDepositAddress(
   ChainKind.Btc,
   "alice.near",
   {
-    postActions: [{
-      receiver_id: "omni.bridge.near",
-      amount: "0",
-      msg: JSON.stringify({ recipient: "eth:0x..." }),
-    }]
+    safeDeposit: { msg: "safe deposit" }
   }
 )
 ```
@@ -860,8 +855,7 @@ Gets a deposit address for Bitcoin or Zcash.
 api.getUtxoDepositAddress(
   chain: UtxoChainParam,
   recipient: string,
-  postActions?: PostAction[] | null,
-  extraMsg?: string | null
+  safeDeposit?: SafeDeposit | null
 ): Promise<UtxoDepositAddressResponse>
 ```
 
@@ -875,34 +869,14 @@ api.getUtxoDepositAddress(
   NEAR recipient account ID.
 </ResponseField>
 
-<ResponseField name="postActions" type="PostAction[] | null">
-  Optional post-actions to execute after deposit finalization.
+<ResponseField name="safeDeposit" type="SafeDeposit | null">
+  Optional safe deposit message.
 
-  <Expandable title="PostAction properties">
-    <ResponseField name="receiver_id" type="string" required>
-      NEAR account to receive the action.
-    </ResponseField>
-
-    <ResponseField name="amount" type="string" required>
-      Amount to send with the action.
-    </ResponseField>
-
+  <Expandable title="SafeDeposit properties">
     <ResponseField name="msg" type="string" required>
-      Message/arguments for the action.
-    </ResponseField>
-
-    <ResponseField name="gas" type="string">
-      Optional gas limit.
-    </ResponseField>
-
-    <ResponseField name="memo" type="string | null">
-      Optional memo.
+      Message for the safe deposit.
     </ResponseField>
   </Expandable>
-</ResponseField>
-
-<ResponseField name="extraMsg" type="string | null">
-  Optional extra message.
 </ResponseField>
 
 ### Returns
