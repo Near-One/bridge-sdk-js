@@ -819,6 +819,10 @@ buildUtxoDepositFinalization(params: UtxoDepositFinalizationParams): NearUnsigne
         <ResponseField name="safe_deposit" type="UtxoSafeDeposit">
           Safe deposit message. When provided, uses `safe_verify_deposit` instead of `verify_deposit`.
         </ResponseField>
+
+        <ResponseField name="refund_address" type="string">
+          Optional refund address.
+        </ResponseField>
       </Expandable>
     </ResponseField>
 

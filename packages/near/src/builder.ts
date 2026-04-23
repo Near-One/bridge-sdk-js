@@ -619,6 +619,7 @@ class NearBuilderImpl implements NearBuilder {
       })),
       extra_msg: params.depositMsg.extra_msg,
       safe_deposit: params.depositMsg.safe_deposit,
+      refund_address: params.depositMsg.refund_address,
     }
 
     const args = {
