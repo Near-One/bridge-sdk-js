@@ -1,5 +1,15 @@
 # @omni-bridge/near
 
+## 0.5.0
+
+### Minor Changes
+
+- 9d0a4c9: added refund address in DepositMsg
+
+### Patch Changes
+
+- @omni-bridge/core@0.5.0
+
 ## 0.4.0
 
 ### Minor Changes
