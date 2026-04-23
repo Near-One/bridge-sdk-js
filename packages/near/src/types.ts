@@ -271,6 +271,7 @@ export interface UtxoDepositMsg {
   post_actions?: UtxoPostAction[]
   extra_msg?: string
   safe_deposit?: UtxoSafeDeposit
+  refund_address?: string
 }
 
 /**
