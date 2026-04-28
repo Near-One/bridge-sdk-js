@@ -1,5 +1,11 @@
 # @omni-bridge/core
 
+## 0.6.0
+
+### Minor Changes
+
+- 7890c93: added refund_address in api
+
 ## 0.5.0
 
 ## 0.4.0
