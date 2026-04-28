@@ -13,14 +13,14 @@
         "@vitest/coverage-v8": "^4.1.5",
         "knip": "^5.88.1",
         "lefthook": "^2.1.6",
-        "msw": "^2.13.5",
+        "msw": "^2.13.6",
         "typescript": "^5.9.3",
         "vitest": "^4.1.5",
       },
     },
     "packages/btc": {
       "name": "@omni-bridge/btc",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "dependencies": {
         "@noble/hashes": "^2.0.1",
         "@omni-bridge/core": "workspace:*",
@@ -34,7 +34,7 @@
     },
     "packages/core": {
       "name": "@omni-bridge/core",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "dependencies": {
         "@scure/base": "^2.0.0",
         "@wormhole-foundation/sdk": "^4.7.3",
@@ -47,12 +47,12 @@
     },
     "packages/evm": {
       "name": "@omni-bridge/evm",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "dependencies": {
         "@ethereumjs/mpt": "^10.1.0",
         "@ethereumjs/rlp": "^10.1.0",
         "@ethereumjs/util": "^10.1.0",
-        "@omni-bridge/core": "^0.6.0",
+        "@omni-bridge/core": "^0.6.1",
         "viem": "^2.43.5",
       },
       "devDependencies": {
@@ -61,10 +61,10 @@
     },
     "packages/near": {
       "name": "@omni-bridge/near",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "dependencies": {
         "@noble/hashes": "^2.0.1",
-        "@omni-bridge/core": "^0.6.0",
+        "@omni-bridge/core": "^0.6.1",
         "@scure/base": "^2.0.0",
         "@zorsh/zorsh": "^0.4.0",
         "near-kit": "^0.7.0",
@@ -76,7 +76,7 @@
     },
     "packages/sdk": {
       "name": "@omni-bridge/sdk",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "dependencies": {
         "@omni-bridge/btc": "workspace:*",
         "@omni-bridge/core": "workspace:*",
@@ -91,7 +91,7 @@
     },
     "packages/solana": {
       "name": "@omni-bridge/solana",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "dependencies": {
         "@coral-xyz/anchor": "^0.32.1",
         "@noble/hashes": "^2.0.1",
@@ -107,7 +107,7 @@
     },
     "packages/starknet": {
       "name": "@omni-bridge/starknet",
-      "version": "0.6.0",
+      "version": "0.6.1",
       "dependencies": {
         "@omni-bridge/core": "workspace:*",
         "starknet": "^6.23.1",

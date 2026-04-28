@@ -1,5 +1,11 @@
 # @omni-bridge/core
 
+## 0.6.1
+
+### Patch Changes
+
+- 3629f48: chore: revert sol.omft.near back to sol.omdep.near (Solana not yet migrated)
+
 ## 0.6.0
 
 ### Minor Changes
