@@ -1,5 +1,12 @@
 # @omni-bridge/btc
 
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies [7890c93]
+  - @omni-bridge/core@0.6.0
+
 ## 0.5.0
 
 ### Patch Changes
