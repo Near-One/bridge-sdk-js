@@ -82,6 +82,85 @@ describe("StarknetBuilder.buildTransfer", () => {
     const calldata = calls[1]!.calldata as string[]
     expect(calldata.slice(-3)).toEqual(["0", "448378203247", "5"])
   })
+
+  it("folds nativeFee into approve when feeToken equals token", () => {
+    const calls = builder.buildTransfer({
+      token: TOKEN,
+      amount: 1000n,
+      fee: 10n,
+      nativeFee: 5n,
+      feeToken: TOKEN,
+      recipient: "near:alice.testnet",
+    })
+
+    expect(calls.length).toBe(2)
+    expect(calls[0]!.contractAddress).toBe(TOKEN)
+    expect(calls[0]!.entrypoint).toBe("approve")
+    expect(calls[0]!.calldata).toEqual([BRIDGE_DEC, "1005", "0"])
+  })
+
+  it("emits separate approve on feeToken when distinct from token", () => {
+    const FEE_TOKEN = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d"
+    const FEE_TOKEN_DEC = BigInt(FEE_TOKEN).toString()
+
+    const calls = builder.buildTransfer({
+      token: TOKEN,
+      amount: 1000n,
+      fee: 10n,
+      nativeFee: 5n,
+      feeToken: FEE_TOKEN,
+      recipient: "near:alice.testnet",
+    })
+
+    expect(calls.length).toBe(3)
+    // approve on deposit token
+    expect(calls[0]!.contractAddress).toBe(TOKEN)
+    expect(calls[0]!.entrypoint).toBe("approve")
+    expect(calls[0]!.calldata).toEqual([BRIDGE_DEC, "1000", "0"])
+    // approve on fee token
+    expect(calls[1]!.contractAddress).toBe(FEE_TOKEN)
+    expect(calls[1]!.entrypoint).toBe("approve")
+    expect(calls[1]!.calldata).toEqual([BRIDGE_DEC, "5", "0"])
+    // init_transfer
+    expect(calls[2]!.contractAddress).toBe(BRIDGE)
+    expect(calls[2]!.entrypoint).toBe("init_transfer")
+    expect((calls[2]!.calldata as string[]).slice(0, 4)).toEqual([
+      TOKEN_DEC,
+      "1000",
+      "10",
+      "5",
+    ])
+  })
+
+  it("skips fee approve when feeToken differs but nativeFee is zero", () => {
+    const FEE_TOKEN = "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d"
+
+    const calls = builder.buildTransfer({
+      token: TOKEN,
+      amount: 1000n,
+      fee: 10n,
+      nativeFee: 0n,
+      feeToken: FEE_TOKEN,
+      recipient: "near:alice.testnet",
+    })
+
+    expect(calls.length).toBe(2)
+    expect(calls[0]!.contractAddress).toBe(TOKEN)
+    expect(calls[1]!.contractAddress).toBe(BRIDGE)
+  })
+
+  it("preserves legacy behavior when feeToken omitted", () => {
+    const calls = builder.buildTransfer({
+      token: TOKEN,
+      amount: 1000n,
+      fee: 10n,
+      nativeFee: 5n,
+      recipient: "near:alice.testnet",
+    })
+
+    expect(calls.length).toBe(2)
+    expect(calls[0]!.calldata).toEqual([BRIDGE_DEC, "1000", "0"])
+  })
 })
 
 describe("StarknetBuilder.buildLogMetadata", () => {
