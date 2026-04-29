@@ -39,7 +39,14 @@ export interface StarknetTransferPayload {
 export interface StarknetBuilder {
   readonly bridgeAddress: string
 
-  /** Build an init_transfer (includes ERC-20 approve + init_transfer). */
+  /**
+   * Build an init_transfer (includes ERC-20 approve + init_transfer).
+   *
+   * If `feeToken` is provided, the builder also covers the `nativeFee` allowance:
+   * folded into the deposit-token approve when `feeToken === token`, or emitted
+   * as a second approve on `feeToken` otherwise. Omit `feeToken` to keep the
+   * legacy behavior where the caller manages fee approvals externally.
+   */
   buildTransfer(params: {
     token: string
     amount: bigint
@@ -47,6 +54,7 @@ export interface StarknetBuilder {
     nativeFee: bigint
     recipient: string
     message?: string
+    feeToken?: string
   }): Call[]
 
   /** Build a log_metadata call. */
@@ -85,26 +93,42 @@ class StarknetBuilderImpl implements StarknetBuilder {
     nativeFee: bigint
     recipient: string
     message?: string
+    feeToken?: string
   }): Call[] {
-    return [
+    const sameFeeToken =
+      params.feeToken !== undefined && BigInt(params.feeToken) === BigInt(params.token)
+    const tokenAllowance = sameFeeToken ? params.amount + params.nativeFee : params.amount
+
+    const calls: Call[] = [
       {
         contractAddress: params.token,
         entrypoint: "approve",
-        calldata: compileCalldata([this.bridgeAddress, params.amount.toString(), "0"]),
-      },
-      {
-        contractAddress: this.bridgeAddress,
-        entrypoint: "init_transfer",
-        calldata: compileCalldata([
-          params.token,
-          params.amount.toString(),
-          params.fee.toString(),
-          params.nativeFee.toString(),
-          ...encodeByteArray(params.recipient),
-          ...encodeByteArray(params.message ?? ""),
-        ]),
+        calldata: compileCalldata([this.bridgeAddress, tokenAllowance.toString(), "0"]),
       },
     ]
+
+    if (params.feeToken !== undefined && !sameFeeToken && params.nativeFee > 0n) {
+      calls.push({
+        contractAddress: params.feeToken,
+        entrypoint: "approve",
+        calldata: compileCalldata([this.bridgeAddress, params.nativeFee.toString(), "0"]),
+      })
+    }
+
+    calls.push({
+      contractAddress: this.bridgeAddress,
+      entrypoint: "init_transfer",
+      calldata: compileCalldata([
+        params.token,
+        params.amount.toString(),
+        params.fee.toString(),
+        params.nativeFee.toString(),
+        ...encodeByteArray(params.recipient),
+        ...encodeByteArray(params.message ?? ""),
+      ]),
+    })
+
+    return calls
   }
 
   buildLogMetadata(token: string): Call[] {
