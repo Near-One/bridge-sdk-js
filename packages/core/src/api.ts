@@ -364,6 +364,7 @@ export class BridgeAPI {
     recipient: string,
     safeDeposit?: SafeDeposit | null,
     refundAddress?: string | null,
+    skipTx?: boolean | null,
   ): Promise<UtxoDepositAddressResponse> {
     const body: Record<string, unknown> = {
       chain,
@@ -376,6 +377,10 @@ export class BridgeAPI {
 
     if (refundAddress !== undefined && refundAddress !== null) {
       body["refund_address"] = refundAddress
+    }
+
+    if (skipTx !== undefined && skipTx !== null) {
+      body["skip_tx"] = skipTx
     }
 
     const url = this.buildUrl("/api/v3/utxo/get_user_deposit_address")
