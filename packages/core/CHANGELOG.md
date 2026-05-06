@@ -1,5 +1,11 @@
 # @omni-bridge/core
 
+## 0.7.0
+
+### Minor Changes
+
+- 5cf6866: added `skip_tx` flag in utxo deposit address api
+
 ## 0.6.1
 
 ### Patch Changes

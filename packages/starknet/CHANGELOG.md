@@ -1,5 +1,16 @@
 # @omni-bridge/starknet
 
+## 0.7.0
+
+### Minor Changes
+
+- af45c90: starknet approve for native tokens
+
+### Patch Changes
+
+- Updated dependencies [5cf6866]
+  - @omni-bridge/core@0.7.0
+
 ## 0.6.1
 
 ### Patch Changes
