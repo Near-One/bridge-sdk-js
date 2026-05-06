@@ -1,5 +1,12 @@
 # @omni-bridge/near
 
+## 0.7.0
+
+### Patch Changes
+
+- Updated dependencies [5cf6866]
+  - @omni-bridge/core@0.7.0
+
 ## 0.6.1
 
 ### Patch Changes
