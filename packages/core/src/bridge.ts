@@ -174,6 +174,14 @@ class BridgeImpl implements Bridge {
     const destChain = getChain(params.recipient)
     const tokenChain = getChain(params.token)
 
+    // BTC/Zcash connector rejects mixed/upper-case addresses; normalize to lowercase.
+    if (destChain === ChainKind.Btc || destChain === ChainKind.Zcash) {
+      const lowerRecipient = params.recipient.toLowerCase() as OmniAddress
+      if (lowerRecipient !== params.recipient) {
+        params = { ...params, recipient: lowerRecipient }
+      }
+    }
+
     // Basic validation
     if (params.amount <= 0n) {
       throw new ValidationError("Amount must be positive", "INVALID_AMOUNT", {

@@ -237,6 +237,81 @@ describe("Bridge.validateTransfer", () => {
       const result = await bridge.validateTransfer(params)
       expect(result.sourceChain).toBe(ChainKind.Eth)
     })
+
+    it("lowercases BTC recipient address", async () => {
+      mockNearView.mockImplementation(async (_contract: string, method: string, args: unknown) => {
+        if (method === "get_token_decimals") return { decimals: 8, origin_decimals: 8 }
+        if (method === "get_bridged_token") {
+          const { chain } = args as { chain: string }
+          if (chain === "Btc") return "btc:placeholder"
+        }
+        return null
+      })
+
+      const params: TransferParams = {
+        token: "near:nbtc.bridge.near" as OmniAddress,
+        amount: 100000n,
+        fee: 0n,
+        nativeFee: 0n,
+        sender: "near:alice.near" as OmniAddress,
+        recipient: "btc:BC1QAR0SRRR7XFKVY5L643LYDNW9RE59GTZZWF5MDQ" as OmniAddress,
+      }
+
+      const result = await bridge.validateTransfer(params)
+
+      expect(result.destChain).toBe(ChainKind.Btc)
+      expect(result.params.recipient).toBe("btc:bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq")
+    })
+
+    it("lowercases Zcash recipient address", async () => {
+      mockNearView.mockImplementation(async (_contract: string, method: string, args: unknown) => {
+        if (method === "get_token_decimals") return { decimals: 8, origin_decimals: 8 }
+        if (method === "get_bridged_token") {
+          const { chain } = args as { chain: string }
+          if (chain === "Zcash") return "zec:placeholder"
+        }
+        return null
+      })
+
+      const params: TransferParams = {
+        token: "near:zec.bridge.near" as OmniAddress,
+        amount: 100000n,
+        fee: 0n,
+        nativeFee: 0n,
+        sender: "near:alice.near" as OmniAddress,
+        recipient: "zec:T1XYZABCDEF0123456789ABCDEF0123456789ABC" as OmniAddress,
+      }
+
+      const result = await bridge.validateTransfer(params)
+
+      expect(result.destChain).toBe(ChainKind.Zcash)
+      expect(result.params.recipient).toBe("zec:t1xyzabcdef0123456789abcdef0123456789abc")
+    })
+
+    it("does not mutate input params when lowercasing recipient", async () => {
+      mockNearView.mockImplementation(async (_contract: string, method: string, args: unknown) => {
+        if (method === "get_token_decimals") return { decimals: 8, origin_decimals: 8 }
+        if (method === "get_bridged_token") {
+          const { chain } = args as { chain: string }
+          if (chain === "Btc") return "btc:placeholder"
+        }
+        return null
+      })
+
+      const originalRecipient = "btc:BC1QAR0SRRR7XFKVY5L643LYDNW9RE59GTZZWF5MDQ" as OmniAddress
+      const params: TransferParams = {
+        token: "near:nbtc.bridge.near" as OmniAddress,
+        amount: 100000n,
+        fee: 0n,
+        nativeFee: 0n,
+        sender: "near:alice.near" as OmniAddress,
+        recipient: originalRecipient,
+      }
+
+      await bridge.validateTransfer(params)
+
+      expect(params.recipient).toBe(originalRecipient)
+    })
   })
 
   describe("token registration", () => {
