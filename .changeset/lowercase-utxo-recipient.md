@@ -2,4 +2,4 @@
 "@omni-bridge/core": minor
 ---
 
-normalize BTC/Zcash recipient address to lowercase in `validateTransfer`
+normalize uppercase BTC bech32 recipient address to lowercase in `validateTransfer`

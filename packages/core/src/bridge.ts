@@ -174,11 +174,13 @@ class BridgeImpl implements Bridge {
     const destChain = getChain(params.recipient)
     const tokenChain = getChain(params.token)
 
-    // BTC/Zcash connector rejects mixed/upper-case addresses; normalize to lowercase.
-    if (destChain === ChainKind.Btc || destChain === ChainKind.Zcash) {
-      const lowerRecipient = params.recipient.toLowerCase() as OmniAddress
-      if (lowerRecipient !== params.recipient) {
-        params = { ...params, recipient: lowerRecipient }
+    // BTC connector rejects upper-case bech32 addresses; lowercase them. Base58
+    // P2PKH/P2SH addresses are case-sensitive and must not be touched.
+    if (destChain === ChainKind.Btc) {
+      const rawAddr = getAddress(params.recipient)
+      const lower = rawAddr.toLowerCase()
+      if (rawAddr !== lower && (lower.startsWith("bc1") || lower.startsWith("tb1"))) {
+        params = { ...params, recipient: `btc:${lower}` as OmniAddress }
       }
     }
 
