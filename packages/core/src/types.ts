@@ -2,7 +2,13 @@
  * Core types for Omni Bridge SDK
  */
 
-// Chain enumeration matching on-chain values
+// Chain enumeration matching on-chain values.
+//
+// Declaration order MUST match `omni_types::ChainKind` in the Rust omni-bridge
+// repo. `b.nativeEnum(ChainKind)` borsh-serializes the *position* of each
+// member in declaration order, not its numeric value, so a misaligned order
+// here would silently send the wrong discriminant byte for `fin_transfer`,
+// `deploy_token`, and `bind_token` payloads.
 export enum ChainKind {
   Eth = 0,
   Near = 1,
@@ -13,8 +19,9 @@ export enum ChainKind {
   Btc = 6,
   Zcash = 7,
   Pol = 8,
-  Abs = 9,
+  HyperEvm = 9,
   Strk = 10,
+  Abs = 11,
 }
 
 // Network configuration
@@ -31,6 +38,7 @@ export type OmniAddress =
   | `btc:${string}`
   | `zcash:${string}`
   | `pol:${string}`
+  | `hlevm:${string}`
   | `abs:${string}`
   | `strk:${string}`
 
@@ -149,5 +157,6 @@ export type ChainPrefix =
   | "btc"
   | "zcash"
   | "pol"
+  | "hlevm"
   | "abs"
   | "strk"

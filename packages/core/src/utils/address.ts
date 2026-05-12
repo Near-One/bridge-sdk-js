@@ -16,6 +16,7 @@ const CHAIN_PREFIX_MAP: Record<ChainPrefix, ChainKind> = {
   btc: ChainKind.Btc,
   zcash: ChainKind.Zcash,
   pol: ChainKind.Pol,
+  hlevm: ChainKind.HyperEvm,
   abs: ChainKind.Abs,
   strk: ChainKind.Strk,
 }
@@ -31,6 +32,7 @@ const CHAIN_KIND_PREFIX_MAP: Record<ChainKind, ChainPrefix> = {
   [ChainKind.Btc]: "btc",
   [ChainKind.Zcash]: "zcash",
   [ChainKind.Pol]: "pol",
+  [ChainKind.HyperEvm]: "hlevm",
   [ChainKind.Abs]: "abs",
   [ChainKind.Strk]: "strk",
 }

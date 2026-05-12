@@ -114,6 +114,7 @@ function chainKindToApiChain(chain: ChainKind): Chain {
     [ChainKind.Btc]: "Btc",
     [ChainKind.Zcash]: "Zcash",
     [ChainKind.Pol]: "Pol",
+    [ChainKind.HyperEvm]: "HlEvm",
     [ChainKind.Abs]: "Abs",
     [ChainKind.Strk]: "Strk",
   }
@@ -135,6 +136,8 @@ function getContractAddress(addresses: ChainAddresses, chain: ChainKind): string
       return addresses.bnb.bridge
     case ChainKind.Pol:
       return addresses.pol.bridge
+    case ChainKind.HyperEvm:
+      throw new Error("HyperEVM bridge is not yet configured in the SDK")
     case ChainKind.Abs:
       return addresses.abs.bridge
     case ChainKind.Strk:
