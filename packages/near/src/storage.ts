@@ -6,6 +6,8 @@ import { sha256 } from "@noble/hashes/sha2.js"
 import { base58, hex } from "@scure/base"
 import { b } from "@zorsh/zorsh"
 
+// Variant order must match `omni_types::OmniAddress` in the Rust omni-bridge
+// repo — borsh enum discriminants are positional.
 const OmniAddressSchema = b.enum({
   Eth: b.array(b.u8(), 20),
   Near: b.string(),
@@ -16,6 +18,9 @@ const OmniAddressSchema = b.enum({
   Btc: b.string(),
   Zcash: b.string(),
   Pol: b.array(b.u8(), 20),
+  HyperEvm: b.array(b.u8(), 20),
+  Strk: b.array(b.u8(), 32),
+  Abs: b.array(b.u8(), 20),
 })
 
 /**
@@ -102,10 +107,16 @@ function parseOmniAddress(token: string) {
       return { Bnb: decodeHex(address) }
     case "pol":
       return { Pol: decodeHex(address) }
+    case "hlevm":
+      return { HyperEvm: decodeHex(address) }
     case "btc":
       return { Btc: address }
     case "zcash":
       return { Zcash: address }
+    case "strk":
+      return { Strk: decodeHex(address) }
+    case "abs":
+      return { Abs: decodeHex(address) }
     default:
       throw new Error(`Unknown chain: ${chain}`)
   }
