@@ -29,7 +29,7 @@ export type OmniAddress =
   | `base:${string}`
   | `bnb:${string}`
   | `btc:${string}`
-  | `zec:${string}`
+  | `zcash:${string}`
   | `pol:${string}`
   | `abs:${string}`
   | `strk:${string}`
@@ -147,7 +147,7 @@ export type ChainPrefix =
   | "base"
   | "bnb"
   | "btc"
-  | "zec"
+  | "zcash"
   | "pol"
   | "abs"
   | "strk"

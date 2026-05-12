@@ -13,6 +13,9 @@ describe("Omni Address Utils", () => {
       expect(omniAddress(ChainKind.Bnb, "0xbnb123")).toBe("bnb:0xbnb123")
       expect(omniAddress(ChainKind.Abs, "0xabs456")).toBe("abs:0xabs456")
       expect(omniAddress(ChainKind.Strk, "0xstrk789")).toBe("strk:0xstrk789")
+      expect(omniAddress(ChainKind.Zcash, "t1Rv4exT7bqhZqi2j7xz8bUHDMxwosrjADU")).toBe(
+        "zcash:t1Rv4exT7bqhZqi2j7xz8bUHDMxwosrjADU",
+      )
     })
 
     it("should work with empty addresses", () => {
@@ -40,6 +43,7 @@ describe("Omni Address Utils", () => {
         "bnb:0xbnb123",
         "abs:0xabs456",
         "strk:0xstrk789",
+        "zcash:t1Rv4exT7bqhZqi2j7xz8bUHDMxwosrjADU",
       ]
 
       const expected = [
@@ -51,6 +55,7 @@ describe("Omni Address Utils", () => {
         ChainKind.Bnb,
         ChainKind.Abs,
         ChainKind.Strk,
+        ChainKind.Zcash,
       ]
 
       addresses.forEach((addr, i) => {
