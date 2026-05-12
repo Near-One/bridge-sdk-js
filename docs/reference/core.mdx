@@ -917,7 +917,7 @@ type OmniAddress =
   | `base:${string}`
   | `bnb:${string}`
   | `btc:${string}`
-  | `zec:${string}`
+  | `zcash:${string}`
   | `pol:${string}`
   | `abs:${string}`
   | `strk:${string}`
@@ -958,7 +958,7 @@ enum ChainKind {
 Chain prefix strings used in OmniAddress format.
 
 ```typescript
-type ChainPrefix = "eth" | "near" | "sol" | "arb" | "base" | "bnb" | "btc" | "zec" | "pol" | "abs" | "strk"
+type ChainPrefix = "eth" | "near" | "sol" | "arb" | "base" | "bnb" | "btc" | "zcash" | "pol" | "abs" | "strk"
 ```
 
 ---
@@ -1539,7 +1539,7 @@ function getChainPrefix(chain: ChainKind): ChainPrefix
 import { getChainPrefix, ChainKind } from "@omni-bridge/core"
 
 const prefix = getChainPrefix(ChainKind.Zcash)
-console.log(prefix) // "zec"
+console.log(prefix) // "zcash"
 ```
 
 ---

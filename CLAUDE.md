@@ -53,7 +53,7 @@ packages/
 - `BtcWithdrawalPlan` → UTXO inputs/outputs for signing
 
 **OmniAddress System**: Cross-chain addresses use chain prefixes:
-`eth:0x...`, `near:account.near`, `sol:...`, `base:0x...`, `arb:0x...`, `btc:...`, `zec:...`
+`eth:0x...`, `near:account.near`, `sol:...`, `base:0x...`, `arb:0x...`, `btc:...`, `zcash:...`
 
 ### Transfer Flow
 
