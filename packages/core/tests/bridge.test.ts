@@ -348,6 +348,48 @@ describe("Bridge.validateTransfer", () => {
     })
   })
 
+  describe("HyperEVM rejection", () => {
+    it("throws when source chain is HyperEVM (hlevm -> NEAR)", async () => {
+      const params: TransferParams = {
+        token: "hlevm:0x1234567890123456789012345678901234567890" as OmniAddress,
+        amount: 1000000000000000000n,
+        fee: 0n,
+        nativeFee: 0n,
+        sender: "hlevm:0xABCDEF0123456789ABCDEF0123456789ABCDEF01" as OmniAddress,
+        recipient: "near:alice.testnet" as OmniAddress,
+      }
+
+      await expect(bridge.validateTransfer(params)).rejects.toThrow(ValidationError)
+      await expect(bridge.validateTransfer(params)).rejects.toThrow(
+        "HyperEVM transfers are not yet supported by the SDK",
+      )
+      await expect(bridge.validateTransfer(params)).rejects.toMatchObject({
+        code: "UNSUPPORTED_CHAIN",
+        details: { chain: "HyperEvm" },
+      })
+    })
+
+    it("throws when destination chain is HyperEVM (NEAR -> hlevm)", async () => {
+      const params: TransferParams = {
+        token: "near:wrap.testnet" as OmniAddress,
+        amount: 1000000000000000000n,
+        fee: 0n,
+        nativeFee: 0n,
+        sender: "near:alice.testnet" as OmniAddress,
+        recipient: "hlevm:0xABCDEF0123456789ABCDEF0123456789ABCDEF01" as OmniAddress,
+      }
+
+      await expect(bridge.validateTransfer(params)).rejects.toThrow(ValidationError)
+      await expect(bridge.validateTransfer(params)).rejects.toThrow(
+        "HyperEVM transfers are not yet supported by the SDK",
+      )
+      await expect(bridge.validateTransfer(params)).rejects.toMatchObject({
+        code: "UNSUPPORTED_CHAIN",
+        details: { chain: "HyperEvm" },
+      })
+    })
+  })
+
   describe("contract address resolution", () => {
     it("returns correct contract for ETH source", async () => {
       const params: TransferParams = {

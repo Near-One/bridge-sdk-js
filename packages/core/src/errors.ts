@@ -21,6 +21,7 @@ export type ValidationErrorCode =
   | "DECIMAL_OVERFLOW"
   | "AMOUNT_TOO_SMALL"
   | "INVALID_CHECKSUM"
+  | "UNSUPPORTED_CHAIN"
 
 export class ValidationError extends OmniBridgeError {
   constructor(message: string, code: ValidationErrorCode, details?: Record<string, unknown>) {

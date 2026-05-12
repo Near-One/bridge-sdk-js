@@ -919,6 +919,7 @@ type OmniAddress =
   | `btc:${string}`
   | `zcash:${string}`
   | `pol:${string}`
+  | `hlevm:${string}`
   | `abs:${string}`
   | `strk:${string}`
 ```
@@ -946,8 +947,9 @@ enum ChainKind {
   Btc = 6,
   Zcash = 7,
   Pol = 8,
-  Abs = 9,
+  HyperEvm = 9,
   Strk = 10,
+  Abs = 11,
 }
 ```
 
@@ -958,7 +960,7 @@ enum ChainKind {
 Chain prefix strings used in OmniAddress format.
 
 ```typescript
-type ChainPrefix = "eth" | "near" | "sol" | "arb" | "base" | "bnb" | "btc" | "zcash" | "pol" | "abs" | "strk"
+type ChainPrefix = "eth" | "near" | "sol" | "arb" | "base" | "bnb" | "btc" | "zcash" | "pol" | "hlevm" | "abs" | "strk"
 ```
 
 ---
@@ -978,7 +980,7 @@ type Network = "mainnet" | "testnet"
 API chain name strings.
 
 ```typescript
-type Chain = "Eth" | "Near" | "Sol" | "Arb" | "Base" | "Bnb" | "Btc" | "Zcash" | "Pol"
+type Chain = "Eth" | "Near" | "Sol" | "Arb" | "Base" | "Bnb" | "Btc" | "Zcash" | "Pol" | "Abs" | "HlEvm" | "Strk"
 ```
 
 ---
