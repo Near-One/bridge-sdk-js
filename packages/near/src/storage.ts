@@ -6,6 +6,9 @@ import { sha256 } from "@noble/hashes/sha2.js"
 import { base58, hex } from "@scure/base"
 import { b } from "@zorsh/zorsh"
 
+// Variant order must match `omni_types::OmniAddress` in the Rust omni-bridge
+// repo — borsh enum discriminants are positional. `HyperEvm` corresponds to
+// the JSON/API chain name `HlEvm` and the address prefix `hlevm:`.
 const OmniAddressSchema = b.enum({
   Eth: b.array(b.u8(), 20),
   Near: b.string(),
@@ -16,6 +19,9 @@ const OmniAddressSchema = b.enum({
   Btc: b.string(),
   Zcash: b.string(),
   Pol: b.array(b.u8(), 20),
+  HyperEvm: b.array(b.u8(), 20),
+  Strk: b.array(b.u8(), 32),
+  Abs: b.array(b.u8(), 20),
 })
 
 /**
@@ -86,6 +92,16 @@ function parseOmniAddress(token: string) {
   }
   const decodeHex = (addr: string) => Array.from(hex.decode(addr.slice(2)))
   const decodeBase58 = (addr: string) => Array.from(base58.decode(addr))
+  // Starknet addresses are felts and often arrive with leading zero bytes
+  // stripped (e.g. `strk:0x1234`). The borsh schema needs exactly 32 bytes,
+  // so left-pad to 64 hex chars before decoding.
+  const decodeStrk = (addr: string) => {
+    const stripped = addr.startsWith("0x") || addr.startsWith("0X") ? addr.slice(2) : addr
+    if (stripped.length > 64) {
+      throw new Error(`Starknet address exceeds 32 bytes: ${addr}`)
+    }
+    return Array.from(hex.decode(stripped.padStart(64, "0")))
+  }
 
   switch (chain) {
     case "eth":
@@ -102,10 +118,16 @@ function parseOmniAddress(token: string) {
       return { Bnb: decodeHex(address) }
     case "pol":
       return { Pol: decodeHex(address) }
+    case "hlevm":
+      return { HyperEvm: decodeHex(address) }
     case "btc":
       return { Btc: address }
     case "zcash":
       return { Zcash: address }
+    case "strk":
+      return { Strk: decodeStrk(address) }
+    case "abs":
+      return { Abs: decodeHex(address) }
     default:
       throw new Error(`Unknown chain: ${chain}`)
   }

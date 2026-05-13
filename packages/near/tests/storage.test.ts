@@ -92,6 +92,33 @@ describe("calculateStorageAccountId", () => {
         sender: "near:sender.near" as const,
         msg: "",
       },
+      {
+        token: "near:strk.omdep.near",
+        amount: 1000000n,
+        recipient:
+          "strk:0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7" as const,
+        fee: { fee: 0n, native_fee: 0n },
+        sender: "near:intents.near" as const,
+        msg: "",
+      },
+      {
+        token: "near:abs.omdep.near",
+        amount: 1000000n,
+        recipient: "abs:0x742d35Cc6734C0532925a3b8D84f8FBf4D7bE86f" as const,
+        fee: { fee: 0n, native_fee: 0n },
+        sender: "near:intents.near" as const,
+        msg: "",
+      },
+      {
+        // Starknet felts often arrive with leading zero bytes stripped — must
+        // be left-padded to 32 bytes for borsh serialization to succeed.
+        token: "near:strk.omdep.near",
+        amount: 1000000n,
+        recipient: "strk:0x1234" as const,
+        fee: { fee: 0n, native_fee: 0n },
+        sender: "near:intents.near" as const,
+        msg: "",
+      },
     ]
 
     const accountIds = messages.map(calculateStorageAccountId)
