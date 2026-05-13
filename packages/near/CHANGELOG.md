@@ -1,5 +1,14 @@
 # @omni-bridge/near
 
+## 0.8.0
+
+### Patch Changes
+
+- 03e0c36: fix `calculateStorageAccountId` borsh schema to include the `HyperEvm`, `Strk`, and `Abs` `OmniAddress` variants. Without these, Starknet (and Abstract / HyperEVM) transfers fail to compute the correct NEAR storage account ID.
+- Updated dependencies [7b89281]
+- Updated dependencies [bd2c317]
+  - @omni-bridge/core@0.8.0
+
 ## 0.7.0
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @omni-bridge/starknet
 
+## 0.8.0
+
+### Patch Changes
+
+- Updated dependencies [7b89281]
+- Updated dependencies [bd2c317]
+  - @omni-bridge/core@0.8.0
+
 ## 0.7.0
 
 ### Minor Changes
