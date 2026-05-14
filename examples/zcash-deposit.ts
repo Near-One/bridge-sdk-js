@@ -161,9 +161,10 @@ async function main() {
 
   try {
     const result = await toNearKitTransaction(near, finalizeTx).send({ waitUntil: "FINAL" })
+    const explorerHost = NETWORK === "mainnet" ? "nearblocks.io" : "testnet.nearblocks.io"
     console.log("\n✓ Deposit finalized!")
     console.log(`  TX Hash: ${result.transaction.hash}`)
-    console.log(`  Explorer: https://testnet.nearblocks.io/txns/${result.transaction.hash}`)
+    console.log(`  Explorer: https://${explorerHost}/txns/${result.transaction.hash}`)
 
     const newBalance = await nearBuilder.getUtxoTokenBalance("zcash", NEAR_ACCOUNT)
     console.log(`\n  Previous balance: ${balance} zatoshis`)
