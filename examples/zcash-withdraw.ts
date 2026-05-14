@@ -14,8 +14,10 @@
  * Setup:
  * 1. Replace NEAR_ACCOUNT with your testnet account
  * 2. Replace ZCASH_ADDRESS with your Zcash testnet address
- * 3. Set ZCASH_RPC_URL to a Zcash JSON-RPC endpoint (bake auth into the URL
- *    if your provider requires it)
+ * 3. Set ZCASH_RPC_URL to a Zcash JSON-RPC endpoint. If your provider's auth
+ *    fits in the URL path or query string, just include it there. For HTTP
+ *    Basic or header-based auth, pass `rpcHeaders` to `createBtcBuilder`
+ *    directly instead of using this env var.
  * 4. Ensure you have nZEC balance
  *
  * Usage: ZCASH_RPC_URL=https://... bun run examples/zcash-withdraw.ts

@@ -13,8 +13,10 @@
  * 1. Ensure NEAR credentials are in ~/.near-credentials or set NEAR_PRIVATE_KEY
  * 2. For step 1: Run without TX_HASH to get a deposit address
  * 3. For step 2: Set TX_HASH and VOUT after sending Zcash
- * 4. Set ZCASH_RPC_URL to a Zcash JSON-RPC endpoint (bake auth into the URL
- *    if your provider requires it)
+ * 4. Set ZCASH_RPC_URL to a Zcash JSON-RPC endpoint. If your provider's auth
+ *    fits in the URL path or query string, just include it there. For HTTP
+ *    Basic or header-based auth, pass `rpcHeaders` to `createBtcBuilder`
+ *    directly instead of using this env var.
  *
  * Usage:
  *   Step 1 (get address): ZCASH_RPC_URL=https://... bun run examples/zcash-deposit.ts

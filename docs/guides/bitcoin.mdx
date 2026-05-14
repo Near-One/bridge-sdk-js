@@ -21,7 +21,7 @@ const nearBuilder = createNearBuilder({ network: "mainnet" })
 const near = new Near({ network: "mainnet", privateKey: "ed25519:..." })
 ```
 
-For Zcash, change `chain: "zcash"` and supply a Zcash JSON-RPC URL (bake any required auth into the URL itself):
+For Zcash, change `chain: "zcash"` and supply a Zcash JSON-RPC URL. If your provider's auth fits in the URL path or query string, include it there; otherwise pass `rpcHeaders` directly (e.g. `{ Authorization: "Basic ..." }` or `{ "x-api-key": "..." }`):
 
 ```typescript
 const zec = createBtcBuilder({

@@ -82,7 +82,7 @@ Environment variables:
 
 ### 📥 Zcash Deposit (`zcash-deposit.ts`)
 
-Same flow as Bitcoin but uses Zcash-specific RPC. Set `ZCASH_RPC_URL` to a Zcash JSON-RPC endpoint and bake any required auth (e.g. API keys) into the URL itself.
+Same flow as Bitcoin but uses Zcash-specific RPC. Set `ZCASH_RPC_URL` to a Zcash JSON-RPC endpoint — if your provider's auth fits in the URL path or query string, include it there. For HTTP Basic or header-based auth, pass `rpcHeaders` to `createBtcBuilder` directly.
 
 ```bash
 ZCASH_RPC_URL=https://... bun run examples/zcash-deposit.ts
