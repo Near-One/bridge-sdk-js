@@ -73,7 +73,8 @@ function createBtcBuilder(config: BtcBuilderConfig): BtcBuilder
 
     <ResponseField name="rpcUrl" type="string">
       Bitcoin/Zcash JSON-RPC URL for proof generation.
-      Defaults to `https://bitcoin-rpc.publicnode.com` (mainnet) or `https://bitcoin-testnet-rpc.publicnode.com` (testnet).
+      For Bitcoin, defaults to `https://bitcoin-rpc.publicnode.com` (mainnet) or `https://bitcoin-testnet-rpc.publicnode.com` (testnet).
+      **Required when `chain` is `"zcash"`** — there is no public Zcash default, and the builder will throw at construction if omitted.
     </ResponseField>
 
     <ResponseField name="rpcHeaders" type="Record<string, string>">
