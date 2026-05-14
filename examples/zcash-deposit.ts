@@ -62,12 +62,6 @@ async function main() {
   console.log(`Account: ${NEAR_ACCOUNT}`)
   console.log(`Network: ${NETWORK}`)
 
-  if (!ZCASH_RPC_URL) {
-    console.error("Set ZCASH_RPC_URL environment variable before running")
-    console.error("(Bake any required auth into the URL itself)")
-    process.exit(1)
-  }
-
   const bridge = createBridge({ network: NETWORK })
   const nearBuilder = createNearBuilder({ network: NETWORK })
   const addresses = getAddresses(NETWORK)
@@ -105,6 +99,12 @@ async function main() {
   console.log("\n=== Step 2: Finalize deposit ===")
   console.log(`TX Hash: ${TX_HASH}`)
   console.log(`VOUT: ${VOUT}`)
+
+  // Zcash RPC is only needed for proof generation in step 2.
+  if (!ZCASH_RPC_URL) {
+    console.error("Set ZCASH_RPC_URL environment variable before finalizing")
+    process.exit(1)
+  }
 
   const zcashBuilder = createBtcBuilder({
     network: NETWORK,
