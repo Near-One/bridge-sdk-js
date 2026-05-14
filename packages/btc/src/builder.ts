@@ -138,6 +138,14 @@ class BtcBuilderImpl implements BtcBuilder {
     this.apiUrl = config.apiUrl ?? DEFAULT_API_URLS[config.network]
 
     const chainKind = this.chain === "zcash" ? ChainKind.Zcash : ChainKind.Btc
+    // No sensible public Zcash RPC default exists, and silently falling back
+    // to the Bitcoin default would fail later with a confusing RPC-method
+    // error. Force callers to bring their own URL for Zcash.
+    if (this.chain === "zcash" && !config.rpcUrl) {
+      throw new Error(
+        "Zcash builder requires an explicit rpcUrl — pass `rpcUrl` in BtcBuilderConfig",
+      )
+    }
     const rpcUrl = config.rpcUrl ?? DEFAULT_RPC_URLS[config.network]
 
     this.rpc = new UtxoRpcClient({

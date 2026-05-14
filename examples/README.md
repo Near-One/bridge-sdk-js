@@ -82,10 +82,10 @@ Environment variables:
 
 ### 📥 Zcash Deposit (`zcash-deposit.ts`)
 
-Same flow as Bitcoin but uses Zcash-specific RPC.
+Same flow as Bitcoin but uses Zcash-specific RPC. Set `ZCASH_RPC_URL` to a Zcash JSON-RPC endpoint and bake any required auth (e.g. API keys) into the URL itself.
 
 ```bash
-ZCASH_API_KEY=your_key bun run examples/zcash-deposit.ts
+ZCASH_RPC_URL=https://... bun run examples/zcash-deposit.ts
 ```
 
 ### 📤 Zcash Withdrawal (`zcash-withdraw.ts`)
@@ -93,7 +93,7 @@ ZCASH_API_KEY=your_key bun run examples/zcash-deposit.ts
 Uses ZIP-317 fee calculation automatically.
 
 ```bash
-ZCASH_API_KEY=your_key bun run examples/zcash-withdraw.ts
+ZCASH_RPC_URL=https://... bun run examples/zcash-withdraw.ts
 ```
 
 ## Getting Testnet Funds

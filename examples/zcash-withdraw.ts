@@ -14,10 +14,11 @@
  * Setup:
  * 1. Replace NEAR_ACCOUNT with your testnet account
  * 2. Replace ZCASH_ADDRESS with your Zcash testnet address
- * 3. Set ZCASH_API_KEY environment variable
+ * 3. Set ZCASH_RPC_URL to a Zcash JSON-RPC endpoint (bake auth into the URL
+ *    if your provider requires it)
  * 4. Ensure you have nZEC balance
  *
- * Usage: ZCASH_API_KEY=your_key bun run examples/zcash-withdraw.ts
+ * Usage: ZCASH_RPC_URL=https://... bun run examples/zcash-withdraw.ts
  */
 
 import { createBtcBuilder, getZcashScript } from "@omni-bridge/btc"
@@ -28,14 +29,15 @@ import { Near } from "near-kit"
 const NEAR_ACCOUNT = "bridge-sdk-test.testnet"
 const ZCASH_ADDRESS = "tmXxJxBHuNhDD5nca3uCQwcSGgsJ7qLfvWg"
 const NETWORK: Network = "testnet"
-const ZCASH_API_KEY = process.env.ZCASH_API_KEY ?? ""
+const ZCASH_RPC_URL = process.env.ZCASH_RPC_URL ?? ""
 
 async function main() {
   console.log("Zcash Withdrawal Example (New SDK)")
   console.log(`Withdrawing from ${NEAR_ACCOUNT} to ${ZCASH_ADDRESS}`)
 
-  if (!ZCASH_API_KEY) {
-    console.error("Set ZCASH_API_KEY environment variable before running")
+  if (!ZCASH_RPC_URL) {
+    console.error("Set ZCASH_RPC_URL environment variable before running")
+    console.error("(Bake any required auth into the URL itself)")
     process.exit(1)
   }
 
@@ -44,7 +46,7 @@ async function main() {
   const zcashBuilder = createBtcBuilder({
     network: NETWORK,
     chain: "zcash",
-    rpcHeaders: { "x-api-key": ZCASH_API_KEY },
+    rpcUrl: ZCASH_RPC_URL,
   })
   const addresses = getAddresses(NETWORK)
   const near = new Near({ network: NETWORK })

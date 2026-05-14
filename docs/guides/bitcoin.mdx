@@ -21,10 +21,14 @@ const nearBuilder = createNearBuilder({ network: "mainnet" })
 const near = new Near({ network: "mainnet", privateKey: "ed25519:..." })
 ```
 
-For Zcash, change `chain: "zcash"`:
+For Zcash, change `chain: "zcash"` and supply a Zcash JSON-RPC URL (bake any required auth into the URL itself):
 
 ```typescript
-const zec = createBtcBuilder({ network: "mainnet", chain: "zcash" })
+const zec = createBtcBuilder({
+  network: "mainnet",
+  chain: "zcash",
+  rpcUrl: "https://your-zcash-rpc.example.com",
+})
 ```
 
 ## Deposits: Bitcoin → NEAR
@@ -195,10 +199,14 @@ console.log("Explorer:", `https://mempool.space/tx/${btcTxHash}`)
 
 ## Zcash
 
-Zcash works identically — just change the chain parameter:
+Zcash works identically — change the chain parameter and supply a Zcash JSON-RPC URL (required for `chain: "zcash"`):
 
 ```typescript
-const zec = createBtcBuilder({ network: "mainnet", chain: "zcash" })
+const zec = createBtcBuilder({
+  network: "mainnet",
+  chain: "zcash",
+  rpcUrl: "https://your-zcash-rpc.example.com",
+})
 
 // Deposit
 const { address } = await bridge.getUtxoDepositAddress(

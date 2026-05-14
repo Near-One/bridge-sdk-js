@@ -10,97 +10,174 @@
  * This example demonstrates the new @omni-bridge packages architecture.
  *
  * Setup:
- * 1. Replace NEAR_ACCOUNT with your testnet account
- * 2. Replace TX_HASH and VOUT with your Zcash transaction details
- * 3. Set ZCASH_API_KEY environment variable
+ * 1. Ensure NEAR credentials are in ~/.near-credentials or set NEAR_PRIVATE_KEY
+ * 2. For step 1: Run without TX_HASH to get a deposit address
+ * 3. For step 2: Set TX_HASH and VOUT after sending Zcash
+ * 4. Set ZCASH_RPC_URL to a Zcash JSON-RPC endpoint (bake auth into the URL
+ *    if your provider requires it)
  *
- * Usage: ZCASH_API_KEY=your_key bun run examples/zcash-deposit.ts
+ * Usage:
+ *   Step 1 (get address): ZCASH_RPC_URL=https://... bun run examples/zcash-deposit.ts
+ *   Step 2 (finalize):    ZCASH_RPC_URL=https://... TX_HASH=abc123 VOUT=0 bun run examples/zcash-deposit.ts
  */
 
 import { createBtcBuilder } from "@omni-bridge/btc"
 import { ChainKind, createBridge, getAddresses, type Network } from "@omni-bridge/core"
+import { createNearBuilder, toNearKitTransaction } from "@omni-bridge/near"
 import { Near } from "near-kit"
 
-// Configuration - Replace with your values
-const NEAR_ACCOUNT = "bridge-sdk-test.testnet"
-const NETWORK: Network = "testnet"
-const ZCASH_API_KEY = process.env.ZCASH_API_KEY ?? ""
+// Configuration - can be overridden via environment variables
+const NEAR_ACCOUNT = process.env.NEAR_ACCOUNT ?? "omni-sdk-test.testnet"
+const NETWORK: Network = (process.env.NETWORK as Network) ?? "testnet"
+const ZCASH_RPC_URL = process.env.ZCASH_RPC_URL ?? ""
 
-// Step 2 configuration - Add these after sending Zcash
-const TX_HASH = "" // Your Zcash transaction hash (leave empty for step 1 only)
-const VOUT = 0 // Output index (usually 0 or 1)
+// Step 2 configuration - set via environment variables
+const TX_HASH = process.env.TX_HASH ?? ""
+const VOUT = Number.parseInt(process.env.VOUT ?? "0", 10)
+
+async function createNearInstance(): Promise<Near> {
+  const privateKey = process.env.NEAR_PRIVATE_KEY
+
+  if (privateKey) {
+    return new Near({
+      network: NETWORK,
+      privateKey: privateKey as `ed25519:${string}`,
+      defaultSignerId: NEAR_ACCOUNT,
+    })
+  }
+
+  const { FileKeyStore } = await import("near-kit/keys/file")
+  const os = await import("node:os")
+  const path = await import("node:path")
+
+  return new Near({
+    network: NETWORK,
+    keyStore: new FileKeyStore(path.join(os.homedir(), ".near-credentials"), NETWORK),
+    defaultSignerId: NEAR_ACCOUNT,
+  })
+}
 
 async function main() {
   console.log("Zcash Deposit Example (New SDK)")
+  console.log(`Account: ${NEAR_ACCOUNT}`)
+  console.log(`Network: ${NETWORK}`)
 
-  if (!ZCASH_API_KEY) {
-    console.error("Set ZCASH_API_KEY environment variable before running")
+  if (!ZCASH_RPC_URL) {
+    console.error("Set ZCASH_RPC_URL environment variable before running")
+    console.error("(Bake any required auth into the URL itself)")
     process.exit(1)
   }
 
-  // Initialize the Bridge for API access
   const bridge = createBridge({ network: NETWORK })
+  const nearBuilder = createNearBuilder({ network: NETWORK })
   const addresses = getAddresses(NETWORK)
 
-  // Initialize near-kit for NEAR interactions
-  const near = new Near({ network: NETWORK })
+  // Get connector config
+  const config = await nearBuilder.getUtxoConnectorConfig("zcash")
+  console.log(`\nConnector: ${addresses.zcash.zcashConnector}`)
+  console.log(`Min deposit: ${config.min_deposit_amount} zatoshis`)
 
-  // Get connector config to check minimum deposit
-  const connectorConfig = await near.view<{
-    min_deposit_amount: string
-    deposit_bridge_fee: { fee_min: string }
-  }>(addresses.zcash.zcashConnector, "get_config", {})
+  // Check current balance
+  const balance = await nearBuilder.getUtxoTokenBalance("zcash", NEAR_ACCOUNT)
+  console.log(`Current nZEC balance: ${balance} zatoshis`)
 
-  if (connectorConfig) {
-    const minDeposit =
-      BigInt(connectorConfig.min_deposit_amount) +
-      BigInt(connectorConfig.deposit_bridge_fee.fee_min)
-    console.log(`Minimum deposit: ${minDeposit} zatoshis`)
-  }
-
-  // Step 1: Generate Zcash deposit address using the new Bridge API
-  console.log("\nStep 1: Generate deposit address")
-
-  const depositResult = await bridge.getUtxoDepositAddress(ChainKind.Zcash, NEAR_ACCOUNT)
-
-  console.log(`Send Zcash to: ${depositResult.address}`)
-  console.log(`Chain: ${depositResult.chain}`)
-  console.log(`Recipient: ${depositResult.recipient}`)
-
-  // Check if user has provided transaction details
+  // Step 1: Generate deposit address if no TX_HASH provided
   if (!TX_HASH) {
-    console.log("\nNext steps:")
+    console.log("\n=== Step 1: Generate deposit address ===")
+
+    const depositResult = await bridge.getUtxoDepositAddress(ChainKind.Zcash, NEAR_ACCOUNT)
+
+    console.log(`\nSend Zcash to: ${depositResult.address}`)
+    console.log(`Chain: ${depositResult.chain}`)
+    console.log(`Recipient: ${depositResult.recipient}`)
+
+    console.log("\n=== Next steps ===")
     console.log("1. Send Zcash to the address above")
     console.log("2. Wait for Zcash network confirmation")
-    console.log("3. Update TX_HASH and VOUT in this script")
-    console.log("4. Run script again to finalize")
+    console.log("3. Run again with TX_HASH and VOUT:")
+    console.log(
+      "   ZCASH_RPC_URL=<url> TX_HASH=<hash> VOUT=<index> bun run examples/zcash-deposit.ts",
+    )
     return
   }
 
-  // Step 2: Get deposit proof and finalize on NEAR
-  console.log("\nStep 2: Finalize deposit")
-  console.log(`Using TX: ${TX_HASH}`)
+  // Step 2: Finalize deposit
+  console.log("\n=== Step 2: Finalize deposit ===")
+  console.log(`TX Hash: ${TX_HASH}`)
+  console.log(`VOUT: ${VOUT}`)
 
-  // Create Zcash builder for proof generation
-  // Note: Zcash uses the same builder with chain: "zcash" config
   const zcashBuilder = createBtcBuilder({
     network: NETWORK,
     chain: "zcash",
-    rpcHeaders: { "x-api-key": ZCASH_API_KEY },
+    rpcUrl: ZCASH_RPC_URL,
   })
 
-  try {
-    // Get the deposit proof from the Zcash blockchain
-    const proof = await zcashBuilder.getDepositProof(TX_HASH, VOUT)
-    console.log(`Proof generated for ${proof.amount} zatoshis`)
+  // Get the deposit proof
+  console.log("\nFetching deposit proof from Zcash network...")
+  let proof: Awaited<ReturnType<typeof zcashBuilder.getDepositProof>>
 
-    console.log("\nDeposit proof ready!")
-    console.log("To finalize, call verify_deposit on the Zcash connector contract")
-    console.log(`Contract: ${addresses.zcash.zcashConnector}`)
+  try {
+    proof = await zcashBuilder.getDepositProof(TX_HASH, VOUT)
+    console.log(`✓ Proof generated for ${proof.amount} zatoshis`)
+    console.log(`  Block hash: ${proof.tx_block_blockhash}`)
+    console.log(`  TX index: ${proof.tx_index}`)
+    console.log(`  Merkle proof: ${proof.merkle_proof.length} hashes`)
   } catch (error) {
-    console.log("Proof generation failed:")
-    console.log((error as Error).message)
-    console.log("\nMake sure the transaction is confirmed on the Zcash network")
+    console.error("✗ Failed to get deposit proof:")
+    console.error((error as Error).message)
+    console.log("\nMake sure:")
+    console.log("- The transaction is confirmed on the Zcash network")
+    console.log("- The TX_HASH and VOUT are correct")
+    console.log("- ZCASH_RPC_URL is reachable and accepts JSON-RPC")
+    return
+  }
+
+  // Check minimum deposit
+  if (proof.amount < BigInt(config.min_deposit_amount)) {
+    console.error(
+      `\n✗ Deposit amount ${proof.amount} is below minimum ${config.min_deposit_amount}`,
+    )
+    return
+  }
+
+  // Build the finalization transaction
+  console.log("\nBuilding finalization transaction...")
+  const finalizeTx = nearBuilder.buildUtxoDepositFinalization({
+    chain: "zcash",
+    depositMsg: {
+      recipient_id: NEAR_ACCOUNT,
+    },
+    txBytes: proof.tx_bytes,
+    vout: VOUT,
+    txBlockBlockhash: proof.tx_block_blockhash,
+    txIndex: proof.tx_index,
+    merkleProof: proof.merkle_proof,
+    signerId: NEAR_ACCOUNT,
+  })
+
+  // Send the transaction
+  console.log("Sending verify_deposit transaction...")
+  const near = await createNearInstance()
+
+  try {
+    const result = await toNearKitTransaction(near, finalizeTx).send({ waitUntil: "FINAL" })
+    console.log("\n✓ Deposit finalized!")
+    console.log(`  TX Hash: ${result.transaction.hash}`)
+    console.log(`  Explorer: https://testnet.nearblocks.io/txns/${result.transaction.hash}`)
+
+    const newBalance = await nearBuilder.getUtxoTokenBalance("zcash", NEAR_ACCOUNT)
+    console.log(`\n  Previous balance: ${balance} zatoshis`)
+    console.log(`  New balance: ${newBalance} zatoshis`)
+    console.log(`  Deposited: ${newBalance - balance} zatoshis`)
+  } catch (error) {
+    console.error("\n✗ Finalization failed:")
+    console.error((error as Error).message)
+
+    if ((error as Error).message.includes("already")) {
+      console.log("\nThe deposit may have already been finalized by relayers.")
+      const currentBalance = await nearBuilder.getUtxoTokenBalance("zcash", NEAR_ACCOUNT)
+      console.log(`Current balance: ${currentBalance} zatoshis`)
+    }
   }
 }
 
