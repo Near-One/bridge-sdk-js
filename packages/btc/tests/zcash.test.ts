@@ -4,7 +4,11 @@ import type { UTXO } from "../src/types.js"
 import * as zcashUtils from "../src/zcash.js"
 
 describe("ZcashBuilder", () => {
-  const builder = createBtcBuilder({ network: "testnet", chain: "zcash" })
+  const builder = createBtcBuilder({
+    network: "testnet",
+    chain: "zcash",
+    rpcUrl: "https://example.com/zcash",
+  })
 
   describe("buildWithdrawalPlan", () => {
     it("creates plan with change output when needed", () => {

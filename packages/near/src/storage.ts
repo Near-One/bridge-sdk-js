@@ -3,6 +3,7 @@
  */
 
 import { sha256 } from "@noble/hashes/sha2.js"
+import type { ChainPrefix } from "@omni-bridge/core"
 import { base58, hex } from "@scure/base"
 import { b } from "@zorsh/zorsh"
 
@@ -85,7 +86,10 @@ export function calculateStorageAccountId(transferMessage: TransferMessageForSto
 
 function parseOmniAddress(token: string) {
   const parts = token.split(":", 2)
-  const chain = parts[0]
+  // Cast through ChainPrefix so the switch below is exhaustive at compile
+  // time — adding a new variant to ChainPrefix without a case here will
+  // trip the `never` assignment in the default branch.
+  const chain = parts[0] as ChainPrefix
   const address = parts[1]
   if (!address) {
     throw new Error(`Invalid token address format: ${token}`)
@@ -128,7 +132,9 @@ function parseOmniAddress(token: string) {
       return { Strk: decodeStrk(address) }
     case "abs":
       return { Abs: decodeHex(address) }
-    default:
-      throw new Error(`Unknown chain: ${chain}`)
+    default: {
+      const _exhaustive: never = chain
+      throw new Error(`Unknown chain: ${_exhaustive as string}`)
+    }
   }
 }

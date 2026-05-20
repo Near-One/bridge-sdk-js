@@ -138,7 +138,7 @@ interface BtcBuilderConfig {
   network: "mainnet" | "testnet"
   chain?: "btc" | "zcash" // defaults to "btc"
   apiUrl?: string // Blockstream API URL (optional)
-  rpcUrl?: string // Bitcoin RPC URL for proofs (optional)
+  rpcUrl?: string // RPC URL for proofs — required when chain is "zcash"
   rpcHeaders?: Record<string, string> // Custom RPC headers (optional)
 }
 ```

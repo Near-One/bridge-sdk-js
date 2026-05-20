@@ -73,7 +73,8 @@ function createBtcBuilder(config: BtcBuilderConfig): BtcBuilder
 
     <ResponseField name="rpcUrl" type="string">
       Bitcoin/Zcash JSON-RPC URL for proof generation.
-      Defaults to `https://bitcoin-rpc.publicnode.com` (mainnet) or `https://bitcoin-testnet-rpc.publicnode.com` (testnet).
+      For Bitcoin, defaults to `https://bitcoin-rpc.publicnode.com` (mainnet) or `https://bitcoin-testnet-rpc.publicnode.com` (testnet).
+      **Required when `chain` is `"zcash"`** — there is no public Zcash default, and the builder will throw at construction if omitted.
     </ResponseField>
 
     <ResponseField name="rpcHeaders" type="Record<string, string>">
@@ -99,10 +100,11 @@ const btc = createBtcBuilder({
   chain: "btc",
 })
 
-// Zcash mainnet
+// Zcash mainnet — rpcUrl is required for Zcash (no public default exists)
 const zec = createBtcBuilder({
   network: "mainnet",
   chain: "zcash",
+  rpcUrl: "https://your-zcash-rpc.example.com",
 })
 
 // With custom RPC
@@ -381,7 +383,11 @@ const btcScript = btc.addressToScriptPubkey("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7
 // "0014751e76e8199196d454941c45d1b3a323f1433bd6"
 
 // Zcash t-address
-const zec = createBtcBuilder({ network: "mainnet", chain: "zcash" })
+const zec = createBtcBuilder({
+  network: "mainnet",
+  chain: "zcash",
+  rpcUrl: "https://your-zcash-rpc.example.com",
+})
 const zecScript = zec.addressToScriptPubkey("t1Rv4exT7bqhZqi2j7xz8bUHDMxwosrjADU")
 // "76a914..."
 ```
@@ -1028,7 +1034,7 @@ interface BtcBuilderConfig {
   /** Custom Blockstream API URL */
   apiUrl?: string
   
-  /** Custom RPC URL */
+  /** Custom RPC URL. Required when `chain` is `"zcash"` — there is no public default. */
   rpcUrl?: string
   
   /** RPC authentication headers */

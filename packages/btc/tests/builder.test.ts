@@ -142,4 +142,22 @@ describe("BtcBuilder", () => {
       expect(() => builder.addressToScriptPubkey("invalid_address")).toThrow()
     })
   })
+
+  describe("zcash rpcUrl requirement", () => {
+    it("throws when chain is zcash and no rpcUrl is provided", () => {
+      expect(() => createBtcBuilder({ network: "mainnet", chain: "zcash" })).toThrow(
+        /Zcash builder requires an explicit rpcUrl/,
+      )
+    })
+
+    it("accepts an explicit rpcUrl for zcash", () => {
+      expect(() =>
+        createBtcBuilder({
+          network: "mainnet",
+          chain: "zcash",
+          rpcUrl: "https://example.com/zcash",
+        }),
+      ).not.toThrow()
+    })
+  })
 })
