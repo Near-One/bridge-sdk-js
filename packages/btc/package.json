@@ -1,6 +1,6 @@
 {
   "name": "@omni-bridge/btc",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Bitcoin/UTXO transaction builder for Omni Bridge",
   "type": "module",
   "main": "dist/index.js",

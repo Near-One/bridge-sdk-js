@@ -1,5 +1,17 @@
 # @omni-bridge/sdk
 
+## 0.8.1
+
+### Patch Changes
+
+- Updated dependencies [5fd7424]
+  - @omni-bridge/btc@0.8.1
+  - @omni-bridge/near@0.8.1
+  - @omni-bridge/core@0.8.1
+  - @omni-bridge/evm@0.8.1
+  - @omni-bridge/solana@0.8.1
+  - @omni-bridge/starknet@0.8.1
+
 ## 0.8.0
 
 ### Patch Changes
