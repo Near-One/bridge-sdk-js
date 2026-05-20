@@ -1,5 +1,11 @@
 # @omni-bridge/evm
 
+## 0.8.1
+
+### Patch Changes
+
+- @omni-bridge/core@0.8.1
+
 ## 0.8.0
 
 ### Patch Changes

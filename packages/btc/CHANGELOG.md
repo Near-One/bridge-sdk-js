@@ -1,5 +1,12 @@
 # @omni-bridge/btc
 
+## 0.8.1
+
+### Patch Changes
+
+- 5fd7424: Require an explicit `rpcUrl` when constructing a `BtcBuilder` with `chain: "zcash"` — the previous silent fallback to the Bitcoin RPC default produced confusing downstream errors. Also tighten `parseOmniAddress` in the NEAR storage helper with an exhaustive switch over `ChainPrefix` so future chain additions fail at compile time.
+  - @omni-bridge/core@0.8.1
+
 ## 0.8.0
 
 ### Patch Changes
