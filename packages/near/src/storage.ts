@@ -23,6 +23,7 @@ const OmniAddressSchema = b.enum({
   HyperEvm: b.array(b.u8(), 20),
   Strk: b.array(b.u8(), 32),
   Abs: b.array(b.u8(), 20),
+  Fogo: b.array(b.u8(), 32),
 })
 
 /**
@@ -132,6 +133,8 @@ function parseOmniAddress(token: string) {
       return { Strk: decodeStrk(address) }
     case "abs":
       return { Abs: decodeHex(address) }
+    case "fogo":
+      return { Fogo: decodeBase58(address) }
     default: {
       const _exhaustive: never = chain
       throw new Error(`Unknown chain: ${_exhaustive as string}`)

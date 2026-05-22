@@ -117,6 +117,7 @@ function chainKindToApiChain(chain: ChainKind): Chain {
     [ChainKind.HyperEvm]: "HlEvm",
     [ChainKind.Abs]: "Abs",
     [ChainKind.Strk]: "Strk",
+    [ChainKind.Fogo]: "Fogo",
   }
   return mapping[chain]
 }
@@ -150,6 +151,15 @@ function getContractAddress(addresses: ChainAddresses, chain: ChainKind): string
       return addresses.near.contract
     case ChainKind.Sol:
       return addresses.sol.locker
+    case ChainKind.Fogo:
+      if (!addresses.fogo) {
+        throw new ValidationError(
+          "FOGO bridge is not yet deployed on this network",
+          "UNSUPPORTED_CHAIN",
+          { chain: "Fogo" },
+        )
+      }
+      return addresses.fogo.locker
     case ChainKind.Btc:
       return addresses.btc.btcConnector
     case ChainKind.Zcash:

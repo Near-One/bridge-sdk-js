@@ -6,7 +6,9 @@
  */
 
 export {
+  createFogoBuilder,
   createSolanaBuilder,
+  type FogoBuilderConfig,
   type SolanaBuilder,
   type SolanaBuilderConfig,
 } from "./builder.js"

@@ -16,6 +16,9 @@ describe("Omni Address Utils", () => {
       expect(omniAddress(ChainKind.Zcash, "t1Rv4exT7bqhZqi2j7xz8bUHDMxwosrjADU")).toBe(
         "zcash:t1Rv4exT7bqhZqi2j7xz8bUHDMxwosrjADU",
       )
+      expect(omniAddress(ChainKind.Fogo, "dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe")).toBe(
+        "fogo:dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe",
+      )
     })
 
     it("should work with empty addresses", () => {
@@ -44,6 +47,7 @@ describe("Omni Address Utils", () => {
         "abs:0xabs456",
         "strk:0xstrk789",
         "zcash:t1Rv4exT7bqhZqi2j7xz8bUHDMxwosrjADU",
+        "fogo:dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe",
       ]
 
       const expected = [
@@ -56,6 +60,7 @@ describe("Omni Address Utils", () => {
         ChainKind.Abs,
         ChainKind.Strk,
         ChainKind.Zcash,
+        ChainKind.Fogo,
       ]
 
       addresses.forEach((addr, i) => {
@@ -75,9 +80,10 @@ describe("Omni Address Utils", () => {
         "bnb:0xbnb123",
         "abs:0xabs456",
         "strk:0xstrk789",
+        "fogo:dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe",
       ]
 
-      expect(validAddresses.length).toBe(8) // Just to use the array
+      expect(validAddresses.length).toBe(9) // Just to use the array
     })
 
     it("should allow construction via omniAddress helper", () => {
