@@ -1,5 +1,11 @@
 # @omni-bridge/core
 
+## 0.9.0
+
+### Minor Changes
+
+- 3e7892b: support for fogo chain
+
 ## 0.8.1
 
 ## 0.8.0
