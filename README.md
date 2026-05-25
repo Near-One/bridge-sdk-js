@@ -3,7 +3,7 @@
 ![Status](https://img.shields.io/badge/Status-Beta-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-TypeScript SDK for cross-chain token transfers via the [Omni Bridge](https://github.com/Near-one/omni-bridge) protocol. Transfer tokens between Ethereum, NEAR, Solana, Base, Arbitrum, Polygon, BNB Chain, Abstract, Starknet, Bitcoin, and Zcash.
+TypeScript SDK for cross-chain token transfers via the [Omni Bridge](https://github.com/Near-one/omni-bridge) protocol. Transfer tokens between Ethereum, NEAR, Solana, Base, Arbitrum, Polygon, BNB Chain, Abstract, Starknet, Fogo, Bitcoin, and Zcash.
 
 ## Install
 

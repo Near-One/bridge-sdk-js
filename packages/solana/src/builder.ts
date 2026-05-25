@@ -11,6 +11,7 @@ import {
   type Network,
   type OmniAddress,
   type ValidatedTransfer,
+  ValidationError,
 } from "@omni-bridge/core"
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -587,7 +588,11 @@ export function createSolanaBuilder(config: SolanaBuilderConfig): SolanaBuilder 
 export function createFogoBuilder(config: FogoBuilderConfig): SolanaBuilder {
   const addresses = getAddresses(config.network)
   if (!addresses.fogo) {
-    throw new Error(`FOGO bridge is not yet deployed on ${config.network}`)
+    throw new ValidationError(
+      `FOGO bridge is not yet deployed on ${config.network}`,
+      "UNSUPPORTED_CHAIN",
+      { chain: ChainKind[ChainKind.Fogo] },
+    )
   }
   const connection = config.connection ?? new Connection(DEFAULT_FOGO_RPC_URLS[config.network])
   return new SolanaBuilderImpl({

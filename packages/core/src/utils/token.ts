@@ -20,6 +20,7 @@ const KNOWN_BRIDGE_TOKENS: Record<string, ChainKind> = {
   "pol.omdep.near": ChainKind.Pol,
   "abs.omdep.near": ChainKind.Abs,
   "strk.omdep.near": ChainKind.Strk,
+  "fogo.omdep.near": ChainKind.Fogo,
   // Testnet
   "nbtc.n-bridge.testnet": ChainKind.Btc,
   "nzcash.n-bridge.testnet": ChainKind.Zcash,
@@ -50,6 +51,7 @@ const CHAIN_PREFIXES: Record<string, ChainKind> = {
   "pol-": ChainKind.Pol,
   "abs-": ChainKind.Abs,
   "strk-": ChainKind.Strk,
+  "fogo-": ChainKind.Fogo,
 }
 
 /**

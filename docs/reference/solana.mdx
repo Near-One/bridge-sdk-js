@@ -1,6 +1,6 @@
 ---
 title: "@omni-bridge/solana"
-description: Solana instruction builder
+description: Instruction builder for SVM chains (Solana and Fogo)
 ---
 
 ## Import
@@ -8,8 +8,10 @@ description: Solana instruction builder
 ```typescript
 import {
   createSolanaBuilder,
+  createFogoBuilder,
   type SolanaBuilder,
   type SolanaBuilderConfig,
+  type FogoBuilderConfig,
   type SolanaTransferMessagePayload,
   type SolanaMPCSignature,
   type SolanaTokenMetadata,
@@ -18,6 +20,8 @@ import {
   type BridgeTokenFactory,
 } from "@omni-bridge/solana"
 ```
+
+This package exposes two factories — `createSolanaBuilder` and `createFogoBuilder` — that share the same `SolanaBuilder` interface. Fogo is SVM-compatible and runs the same Anchor program as Solana; only the Wormhole core program and default RPC endpoint differ.
 
 ---
 
@@ -68,6 +72,53 @@ const solanaWithCustomRpc = createSolanaBuilder({
   network: "mainnet",
   connection,
 })
+```
+
+---
+
+## createFogoBuilder
+
+Factory function to create a Fogo instruction builder. Returns the same `SolanaBuilder` interface as `createSolanaBuilder` — Fogo runs the same Anchor program as Solana.
+
+### Signature
+
+```typescript
+function createFogoBuilder(config: FogoBuilderConfig): SolanaBuilder
+```
+
+### Parameters
+
+<ResponseField name="config" type="FogoBuilderConfig" required>
+  <Expandable title="FogoBuilderConfig">
+    <ResponseField name="network" type="'mainnet' | 'testnet'" required>
+      The network to connect to. Fogo testnet is not yet deployed — passing `"testnet"` throws a `ValidationError` with code `UNSUPPORTED_CHAIN`.
+    </ResponseField>
+
+    <ResponseField name="connection" type="Connection">
+      Optional Solana-web3.js `Connection`. If not provided, uses the Fogo public RPC:
+      - `mainnet`: `https://mainnet.fogo.io`
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Returns
+
+<ResponseField name="SolanaBuilder" type="object">
+  Same interface as `createSolanaBuilder` — all `buildTransfer`, `buildFinalization`, `buildLogMetadata`, `buildDeployToken`, and PDA derivation methods work identically. Source/destination chain is `ChainKind.Fogo` and addresses use the `fogo:` prefix.
+</ResponseField>
+
+### Example
+
+```typescript
+import { createFogoBuilder } from "@omni-bridge/solana"
+import { Connection } from "@solana/web3.js"
+
+// Default public RPC
+const fogo = createFogoBuilder({ network: "mainnet" })
+
+// Custom connection
+const connection = new Connection("https://my-fogo-rpc.example.com")
+const fogoCustom = createFogoBuilder({ network: "mainnet", connection })
 ```
 
 ---
@@ -534,6 +585,20 @@ Configuration for creating a Solana builder.
 interface SolanaBuilderConfig {
   network: Network
   /** Optional - uses public RPC endpoint if not provided */
+  connection?: Connection
+}
+```
+
+---
+
+### FogoBuilderConfig
+
+Configuration for creating a Fogo builder. Same shape as `SolanaBuilderConfig`.
+
+```typescript
+interface FogoBuilderConfig {
+  network: Network
+  /** Optional - uses Fogo public RPC if not provided */
   connection?: Connection
 }
 ```
