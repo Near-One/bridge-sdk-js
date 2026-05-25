@@ -54,6 +54,7 @@ export interface ChainAddresses {
   btc: BtcAddresses
   zcash: ZcashAddresses
   strk: StarknetAddresses
+  fogo?: SolanaAddresses
 }
 
 const MAINNET_ADDRESSES: ChainAddresses = {
@@ -90,6 +91,12 @@ const MAINNET_ADDRESSES: ChainAddresses = {
     zcashToken: "nzec.bridge.near",
   },
   strk: { bridge: "0x05f9a4a841dfb7bb3cde33073b2450fe45dcd407fb6c0985a274b0e943ad8598" },
+  fogo: {
+    locker: "dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe",
+    wormhole: "worm2mrQkG1B1KTz37erMfWN8anHkSK24nzca7UD8BB",
+    shimProgram: "EtZMZM22ViKMo4r5y4Anovs3wKQ2owUmDpjygnMMcdEX",
+    eventAuthority: "HQS31aApX3DDkuXgSpV9XyDUNtFgQ31pUn5BNWHG2PSp",
+  },
 }
 
 const TESTNET_ADDRESSES: ChainAddresses = {

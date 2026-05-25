@@ -181,6 +181,35 @@ const instructions = await solana.buildFinalization(payload, signature, payer)
 
 See [Manual Finalization](/guides/advanced/manual-finalization) for details.
 
+## Fogo (SVM-Compatible)
+
+Fogo is an SVM-compatible chain that runs the same Anchor bridge program as Solana. The Solana package exports a dedicated `createFogoBuilder` factory that exposes the exact same `SolanaBuilder` interface — the only differences from Solana are the Wormhole core program address and the default RPC endpoint.
+
+```typescript
+import { ChainKind, createBridge } from "@omni-bridge/core"
+import { createFogoBuilder } from "@omni-bridge/solana"
+
+const bridge = createBridge({ network: "mainnet" })
+const fogo = createFogoBuilder({ network: "mainnet" })  // uses https://mainnet.fogo.io by default
+
+const validated = await bridge.validateTransfer({
+  token: "fogo:dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe",
+  amount: 1_000_000_000n,
+  sender: `fogo:${user.toBase58()}`,
+  recipient: "near:alice.near",
+  fee: 0n,
+  nativeFee: 0n,
+})
+
+const instructions = await fogo.buildTransfer(validated, user)
+```
+
+Addresses use the `fogo:` OmniAddress prefix. Source/destination chain is `ChainKind.Fogo` (discriminant `12`).
+
+<Warning>
+Fogo testnet is not yet deployed. Calling `createFogoBuilder({ network: "testnet" })` throws a `ValidationError` with code `UNSUPPORTED_CHAIN`. Likewise, transfers involving `fogo:` addresses on testnet throw the same error from `bridge.validateTransfer`.
+</Warning>
+
 ## Differences from EVM
 
 | Aspect | EVM | Solana |

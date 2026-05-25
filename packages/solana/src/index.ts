@@ -6,6 +6,7 @@
  */
 
 export {
+  createFogoBuilder,
   createSolanaBuilder,
   type SolanaBuilder,
   type SolanaBuilderConfig,

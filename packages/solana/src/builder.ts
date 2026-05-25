@@ -11,6 +11,7 @@ import {
   type Network,
   type OmniAddress,
   type ValidatedTransfer,
+  ValidationError,
 } from "@omni-bridge/core"
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -40,18 +41,29 @@ import type {
 
 const MPL_PROGRAM_ID = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
 
-/**
- * Default RPC endpoints per network
- */
 const DEFAULT_RPC_URLS: Record<Network, string> = {
   mainnet: "https://api.mainnet-beta.solana.com",
   testnet: "https://api.devnet.solana.com",
 }
 
+const DEFAULT_FOGO_RPC_URLS: Record<Network, string> = {
+  mainnet: "https://mainnet.fogo.io",
+  testnet: "https://testnet.fogo.io",
+}
+
 export interface SolanaBuilderConfig {
   network: Network
-  /** Optional - uses public RPC endpoint if not provided */
+  /** Optional - uses chain's public RPC endpoint if not provided */
   connection?: Connection
+}
+
+interface SvmConfig {
+  connection: Connection
+  programId: PublicKey
+  wormholeProgramId: PublicKey
+  shimProgramId: PublicKey
+  eventAuthorityId: PublicKey
+  chain: ChainKind.Sol | ChainKind.Fogo
 }
 
 /**
@@ -155,19 +167,16 @@ function tokenSeedBytes(token: string): Uint8Array {
   return padded
 }
 
-/**
- * Extract address from OmniAddress format (e.g., "sol:...")
- */
-function extractSolanaAddress(address: OmniAddress | string): string {
-  if (getChain(address as OmniAddress) !== ChainKind.Sol) {
-    throw new Error("Address must be on Solana")
+function extractSvmAddress(address: OmniAddress | string, chain: ChainKind): string {
+  if (getChain(address as OmniAddress) !== chain) {
+    throw new Error(`Address must be on ${ChainKind[chain]}`)
   }
   const parts = address.split(":")
-  const solAddress = parts[1]
-  if (!solAddress) {
-    throw new Error("Invalid Solana address format")
+  const svmAddress = parts[1]
+  if (!svmAddress) {
+    throw new Error(`Invalid ${ChainKind[chain]} address format`)
   }
-  return solAddress
+  return svmAddress
 }
 
 class SolanaBuilderImpl implements SolanaBuilder {
@@ -176,15 +185,15 @@ class SolanaBuilderImpl implements SolanaBuilder {
   private readonly wormholeProgramId: PublicKey
   private readonly shimProgramId: PublicKey
   private readonly eventAuthorityId: PublicKey
+  private readonly chain: ChainKind.Sol | ChainKind.Fogo
 
-  constructor(config: SolanaBuilderConfig) {
-    this.connection = config.connection ?? new Connection(DEFAULT_RPC_URLS[config.network])
-
-    const addresses = getAddresses(config.network)
-    this.programId = new PublicKey(addresses.sol.locker)
-    this.wormholeProgramId = new PublicKey(addresses.sol.wormhole)
-    this.shimProgramId = new PublicKey(addresses.sol.shimProgram)
-    this.eventAuthorityId = new PublicKey(addresses.sol.eventAuthority)
+  constructor(config: SvmConfig) {
+    this.connection = config.connection
+    this.programId = config.programId
+    this.wormholeProgramId = config.wormholeProgramId
+    this.shimProgramId = config.shimProgramId
+    this.eventAuthorityId = config.eventAuthorityId
+    this.chain = config.chain
   }
 
   private getProgram(): Program<BridgeTokenFactory> {
@@ -302,8 +311,8 @@ class SolanaBuilderImpl implements SolanaBuilder {
     user: PublicKey,
     payer?: PublicKey,
   ): Promise<TransactionInstruction[]> {
-    if (validated.sourceChain !== ChainKind.Sol) {
-      throw new Error(`Source chain ${validated.sourceChain} is not Solana`)
+    if (validated.sourceChain !== this.chain) {
+      throw new Error(`Source chain ${validated.sourceChain} is not ${ChainKind[this.chain]}`)
     }
 
     // Default payer to user if not provided
@@ -314,7 +323,7 @@ class SolanaBuilderImpl implements SolanaBuilder {
     const config = this.deriveConfig()
     const authority = this.deriveAuthority()
 
-    const tokenAddress = extractSolanaAddress(validated.params.token)
+    const tokenAddress = extractSvmAddress(validated.params.token, this.chain)
     const isNativeSol = tokenAddress === PublicKey.default.toBase58()
 
     const payload = {
@@ -404,8 +413,8 @@ class SolanaBuilderImpl implements SolanaBuilder {
       feeRecipient: transferMessage.fee_recipient ?? "",
     }
 
-    const recipientAddress = extractSolanaAddress(transferMessage.recipient)
-    const tokenAddress = extractSolanaAddress(transferMessage.token_address)
+    const recipientAddress = extractSvmAddress(transferMessage.recipient, this.chain)
+    const tokenAddress = extractSvmAddress(transferMessage.token_address, this.chain)
 
     const recipientPubkey = new PublicKey(recipientAddress)
     const tokenPubkey = new PublicKey(tokenAddress)
@@ -557,9 +566,35 @@ class SolanaBuilderImpl implements SolanaBuilder {
   }
 }
 
-/**
- * Create a Solana transaction builder
- */
 export function createSolanaBuilder(config: SolanaBuilderConfig): SolanaBuilder {
-  return new SolanaBuilderImpl(config)
+  const addresses = getAddresses(config.network)
+  const connection = config.connection ?? new Connection(DEFAULT_RPC_URLS[config.network])
+  return new SolanaBuilderImpl({
+    connection,
+    programId: new PublicKey(addresses.sol.locker),
+    wormholeProgramId: new PublicKey(addresses.sol.wormhole),
+    shimProgramId: new PublicKey(addresses.sol.shimProgram),
+    eventAuthorityId: new PublicKey(addresses.sol.eventAuthority),
+    chain: ChainKind.Sol,
+  })
+}
+
+export function createFogoBuilder(config: SolanaBuilderConfig): SolanaBuilder {
+  const addresses = getAddresses(config.network)
+  if (!addresses.fogo) {
+    throw new ValidationError(
+      `FOGO bridge is not yet deployed on ${config.network}`,
+      "UNSUPPORTED_CHAIN",
+      { chain: ChainKind[ChainKind.Fogo] },
+    )
+  }
+  const connection = config.connection ?? new Connection(DEFAULT_FOGO_RPC_URLS[config.network])
+  return new SolanaBuilderImpl({
+    connection,
+    programId: new PublicKey(addresses.fogo.locker),
+    wormholeProgramId: new PublicKey(addresses.fogo.wormhole),
+    shimProgramId: new PublicKey(addresses.fogo.shimProgram),
+    eventAuthorityId: new PublicKey(addresses.fogo.eventAuthority),
+    chain: ChainKind.Fogo,
+  })
 }

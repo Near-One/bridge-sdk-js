@@ -21,6 +21,7 @@ const ChainSchema = z.enum([
   "Abs",
   "HlEvm",
   "Strk",
+  "Fogo",
 ])
 export type Chain = z.infer<typeof ChainSchema>
 

@@ -20,6 +20,7 @@ describe("ChainKindSchema borsh discriminants", () => {
     ["HyperEvm", 9],
     ["Strk", 10],
     ["Abs", 11],
+    ["Fogo", 12],
   ]
 
   for (const [name, expectedByte] of cases) {

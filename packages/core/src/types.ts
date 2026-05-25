@@ -22,6 +22,7 @@ export enum ChainKind {
   HyperEvm = 9,
   Strk = 10,
   Abs = 11,
+  Fogo = 12,
 }
 
 // Network configuration
@@ -41,6 +42,7 @@ export type OmniAddress =
   | `hlevm:${string}`
   | `abs:${string}`
   | `strk:${string}`
+  | `fogo:${string}`
 
 // Common type aliases
 export type U128 = bigint
@@ -160,3 +162,4 @@ export type ChainPrefix =
   | "hlevm"
   | "abs"
   | "strk"
+  | "fogo"
