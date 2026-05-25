@@ -11,7 +11,6 @@ import {
   createFogoBuilder,
   type SolanaBuilder,
   type SolanaBuilderConfig,
-  type FogoBuilderConfig,
   type SolanaTransferMessagePayload,
   type SolanaMPCSignature,
   type SolanaTokenMetadata,
@@ -83,22 +82,22 @@ Factory function to create a Fogo instruction builder. Returns the same `SolanaB
 ### Signature
 
 ```typescript
-function createFogoBuilder(config: FogoBuilderConfig): SolanaBuilder
+function createFogoBuilder(config: SolanaBuilderConfig): SolanaBuilder
 ```
 
 ### Parameters
 
-<ResponseField name="config" type="FogoBuilderConfig" required>
-  <Expandable title="FogoBuilderConfig">
-    <ResponseField name="network" type="'mainnet' | 'testnet'" required>
-      The network to connect to. Fogo testnet is not yet deployed — passing `"testnet"` throws a `ValidationError` with code `UNSUPPORTED_CHAIN`.
-    </ResponseField>
+<ResponseField name="config" type="SolanaBuilderConfig" required>
+  Same shape as [`createSolanaBuilder`'s config](#createsolanabuilder).
 
-    <ResponseField name="connection" type="Connection">
-      Optional Solana-web3.js `Connection`. If not provided, uses the Fogo public RPC:
-      - `mainnet`: `https://mainnet.fogo.io`
-    </ResponseField>
-  </Expandable>
+  <ResponseField name="network" type="'mainnet' | 'testnet'" required>
+    The network to connect to. Fogo testnet is not yet deployed — passing `"testnet"` throws a `ValidationError` with code `UNSUPPORTED_CHAIN`.
+  </ResponseField>
+
+  <ResponseField name="connection" type="Connection">
+    Optional Solana-web3.js `Connection`. If not provided, uses the Fogo public RPC:
+    - `mainnet`: `https://mainnet.fogo.io`
+  </ResponseField>
 </ResponseField>
 
 ### Returns
@@ -585,20 +584,6 @@ Configuration for creating a Solana builder.
 interface SolanaBuilderConfig {
   network: Network
   /** Optional - uses public RPC endpoint if not provided */
-  connection?: Connection
-}
-```
-
----
-
-### FogoBuilderConfig
-
-Configuration for creating a Fogo builder. Same shape as `SolanaBuilderConfig`.
-
-```typescript
-interface FogoBuilderConfig {
-  network: Network
-  /** Optional - uses Fogo public RPC if not provided */
   connection?: Connection
 }
 ```

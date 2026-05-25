@@ -53,13 +53,7 @@ const DEFAULT_FOGO_RPC_URLS: Record<Network, string> = {
 
 export interface SolanaBuilderConfig {
   network: Network
-  /** Optional - uses public RPC endpoint if not provided */
-  connection?: Connection
-}
-
-export interface FogoBuilderConfig {
-  network: Network
-  /** Optional - uses Fogo public RPC if not provided */
+  /** Optional - uses chain's public RPC endpoint if not provided */
   connection?: Connection
 }
 
@@ -585,7 +579,7 @@ export function createSolanaBuilder(config: SolanaBuilderConfig): SolanaBuilder 
   })
 }
 
-export function createFogoBuilder(config: FogoBuilderConfig): SolanaBuilder {
+export function createFogoBuilder(config: SolanaBuilderConfig): SolanaBuilder {
   const addresses = getAddresses(config.network)
   if (!addresses.fogo) {
     throw new ValidationError(
