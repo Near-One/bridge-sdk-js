@@ -1,5 +1,16 @@
 # @omni-bridge/near
 
+## 0.9.0
+
+### Minor Changes
+
+- 3e7892b: support for fogo chain
+
+### Patch Changes
+
+- Updated dependencies [3e7892b]
+  - @omni-bridge/core@0.9.0
+
 ## 0.8.1
 
 ### Patch Changes

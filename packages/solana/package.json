@@ -1,6 +1,6 @@
 {
   "name": "@omni-bridge/solana",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "description": "SVM transaction builder for Omni Bridge (Solana and Fogo)",
   "type": "module",
   "main": "dist/index.js",
