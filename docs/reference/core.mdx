@@ -1971,7 +1971,7 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
 import { ProofError } from "@omni-bridge/core"
 
 try {
-  const proof = await getEvmProof(txHash, topic, chain)
+  const proof = await getEvmProof(txHash, topic, chain, network)
 } catch (error) {
   if (error instanceof ProofError) {
     if (error.code === "PROOF_NOT_READY") {
