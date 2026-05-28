@@ -71,6 +71,7 @@ const txResponse = await wallet.sendTransaction(tx)
 | BNB      | 56         | 97 (BSC Testnet) |
 | Polygon  | 137        | 80002 (Amoy) |
 | Abstract | 2741       | 11124 (Abstract Testnet) |
+| HyperEVM | 999        | 998 (HyperEVM Testnet) |
 
 ```typescript
 import { ChainKind } from "@omni-bridge/core"
@@ -92,7 +93,7 @@ console.log(ethBuilder.bridgeAddress) // 0xe00c629afaccb0510995a2b95560e446a24c8
 ```typescript
 const builder = createEvmBuilder({
   network: "mainnet" | "testnet",
-  chain: ChainKind.Eth | ChainKind.Arb | ChainKind.Base | ChainKind.Bnb | ChainKind.Pol | ChainKind.Abs
+  chain: ChainKind.Eth | ChainKind.Arb | ChainKind.Base | ChainKind.Bnb | ChainKind.Pol | ChainKind.Abs | ChainKind.HyperEvm
 })
 
 // Properties
