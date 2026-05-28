@@ -86,15 +86,28 @@ const initResult = await toNearKitTransaction(near, initTx).send()
 After the transfer is initialized, you must call `signTransfer` to trigger MPC signing:
 
 ```typescript
-// Extract the transfer ID from the InitTransferEvent in the logs
-const initEvent = parseInitTransferEvent(initResult)
+import { ChainKind } from "@omni-bridge/core"
+import type { InitTransferEvent } from "@omni-bridge/near"
+
+// Parse the InitTransferEvent from NEAR logs
+const initEventLog = initResult.receipts_outcome
+  .flatMap((r) => r.outcome.logs)
+  .find((log) => log.includes("InitTransferEvent"))
+
+if (!initEventLog) throw new Error("InitTransferEvent not found in logs")
+const initEvent: InitTransferEvent = JSON.parse(initEventLog).InitTransferEvent
 
 const signTx = nearBuilder.buildSignTransfer(
   {
-    origin_chain: "Near",
-    origin_nonce: initEvent.nonce,
+    origin_chain: ChainKind.Near,
+    origin_nonce: BigInt(initEvent.transfer_message.origin_nonce),
   },
-  signerId
+  signerId, // fee recipient
+  {
+    fee: initEvent.transfer_message.fee.fee,
+    native_fee: initEvent.transfer_message.fee.native_fee,
+  },
+  signerId,
 )
 
 const signResult = await toNearKitTransaction(near, signTx).send()
@@ -105,24 +118,46 @@ const signResult = await toNearKitTransaction(near, signTx).send()
 Parse the `SignTransferEvent` from the sign transaction logs and finalize on EVM:
 
 ```typescript
-import { createEvmBuilder } from "@omni-bridge/evm"
+import { createEvmBuilder, type TransferPayload } from "@omni-bridge/evm"
 import { ChainKind } from "@omni-bridge/core"
-import { MPCSignature } from "@omni-bridge/near"
+import { MPCSignature, type SignTransferEvent } from "@omni-bridge/near"
 
 const evm = createEvmBuilder({ network: "mainnet", chain: ChainKind.Eth })
 
-// Parse SignTransferEvent from signResult logs
-const signEvent = parseSignTransferEvent(signResult)
+// Parse SignTransferEvent from NEAR logs
+const signEventLog = signResult.receipts_outcome
+  .flatMap((r) => r.outcome.logs)
+  .find((log) => log.includes("SignTransferEvent"))
 
-// Convert signature for EVM (adds 27 to recovery ID)
-const signature = MPCSignature.fromSignTransferEvent(signEvent).toBytes(true)
+if (!signEventLog) throw new Error("SignTransferEvent not found in logs")
+const signEvent: SignTransferEvent = JSON.parse(signEventLog).SignTransferEvent
 
-const tx = evm.buildFinalization(signEvent.message_payload, signature)
+// Convert signature to EVM format (adds 27 to recovery_id)
+const signature = MPCSignature.fromRaw(signEvent.signature).toBytes(true)
+
+// Convert the NEAR payload (snake_case OmniAddresses) into the EVM TransferPayload
+const stripPrefix = (addr: string) => (addr.includes(":") ? addr.split(":")[1] : addr)
+let originChain = signEvent.message_payload.transfer_id.origin_chain
+if (typeof originChain === "string") {
+  originChain = ChainKind[originChain as keyof typeof ChainKind]
+}
+
+const payload: TransferPayload = {
+  destinationNonce: BigInt(signEvent.message_payload.destination_nonce),
+  originChain: Number(originChain),
+  originNonce: BigInt(signEvent.message_payload.transfer_id.origin_nonce),
+  tokenAddress: stripPrefix(signEvent.message_payload.token_address) as `0x${string}`,
+  amount: BigInt(signEvent.message_payload.amount),
+  recipient: stripPrefix(signEvent.message_payload.recipient) as `0x${string}`,
+  feeRecipient: signEvent.message_payload.fee_recipient ?? "",
+}
+
+const tx = evm.buildFinalization(payload, signature)
 await walletClient.sendTransaction(tx)
 ```
 
 <Note>
-The MPC signature needs format conversion for EVM — use `MPCSignature.toBytes(true)` to add 27 to the recovery ID. For Solana, use `toBytes(false)`.
+The MPC signature needs format conversion for EVM — use `MPCSignature.fromRaw(raw).toBytes(true)` to add 27 to the recovery ID. For Solana, pass the `MPCSignature` instance directly to the builder.
 </Note>
 
 ## From EVM to NEAR
@@ -132,24 +167,27 @@ The MPC signature needs format conversion for EVM — use `MPCSignature.toBytes(
 Ethereum uses the NEAR light client for verification:
 
 ```typescript
-import { createNearBuilder, toNearKitTransaction } from "@omni-bridge/near"
-import { getEvmProof, ProofKind } from "@omni-bridge/evm"
+import { ChainKind } from "@omni-bridge/core"
+import { createNearBuilder, ProofKind, toNearKitTransaction } from "@omni-bridge/near"
+import { getEvmProof, getInitTransferTopic } from "@omni-bridge/evm"
 
 const nearBuilder = createNearBuilder({ network: "mainnet" })
 
 // Wait for light client to sync (~15-20 min after source tx confirms)
 
-// Generate Merkle proof
-const proof = await getEvmProof(txHash, ChainKind.Eth)
+// Generate Merkle proof — needs the InitTransfer event topic and the source network
+const proof = await getEvmProof(txHash, getInitTransferTopic(), ChainKind.Eth, "mainnet")
 
-// Serialize for NEAR
-const proverArgs = nearBuilder.serializeEvmProofArgs({
-  proof_kind: ProofKind.InitTransfer,
-  proof,
+// Build and send finalization. `buildFinalization` serializes the proof internally.
+const tx = nearBuilder.buildFinalization({
+  sourceChain: ChainKind.Eth,
+  signerId,
+  evmProof: {
+    proof_kind: ProofKind.InitTransfer,
+    proof,
+  },
+  storageDepositActions: [], // add entries for recipient/fee_recipient if needed
 })
-
-// Build and send finalization
-const tx = nearBuilder.buildFinalization(ChainKind.Eth, proverArgs, signerId)
 await toNearKitTransaction(near, tx).send()
 ```
 
@@ -163,14 +201,13 @@ import { getWormholeVaa } from "@omni-bridge/core"
 // Wait for Wormhole guardians to sign (~1 min)
 const vaa = await getWormholeVaa(txSignature, "Mainnet")
 
-// Serialize for NEAR
-const proverArgs = nearBuilder.serializeWormholeProofArgs({
-  proof_kind: ProofKind.InitTransfer,
+// Finalize. `buildFinalization` serializes the VAA internally.
+const tx = nearBuilder.buildFinalization({
+  sourceChain: ChainKind.Base,
+  signerId,
   vaa,
+  storageDepositActions: [],
 })
-
-// Finalize
-const tx = nearBuilder.buildFinalization(ChainKind.Base, proverArgs, signerId)
 await toNearKitTransaction(near, tx).send()
 ```
 
@@ -183,12 +220,12 @@ import { getWormholeVaa } from "@omni-bridge/core"
 
 const vaa = await getWormholeVaa(solanaSignature, "Mainnet")
 
-const proverArgs = nearBuilder.serializeWormholeProofArgs({
-  proof_kind: ProofKind.InitTransfer,
+const tx = nearBuilder.buildFinalization({
+  sourceChain: ChainKind.Sol,
+  signerId,
   vaa,
+  storageDepositActions: [],
 })
-
-const tx = nearBuilder.buildFinalization(ChainKind.Sol, proverArgs, signerId)
 await toNearKitTransaction(near, tx).send()
 ```
 
@@ -199,7 +236,7 @@ Each destination has a `buildFinalization` method:
 | Destination | Method |
 |-------------|--------|
 | EVM | `evmBuilder.buildFinalization(payload, signature)` |
-| NEAR | `nearBuilder.buildFinalization(chain, proverArgs, signerId)` |
+| NEAR | `nearBuilder.buildFinalization({ sourceChain, signerId, vaa \| evmProof, storageDepositActions })` |
 | Solana | `solanaBuilder.buildFinalization(payload, signature, payer)` |
 
 ## Working Examples

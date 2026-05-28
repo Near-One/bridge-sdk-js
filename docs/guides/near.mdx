@@ -64,12 +64,13 @@ console.log("Transfer initiated:", result.transaction.hash)
 <Accordion title="Using @near-js/* instead of near-kit">
 ```typescript
 import { createBridge } from "@omni-bridge/core"
-import { createNearBuilder, sendWithNearApiJs } from "@omni-bridge/near"
+import { createNearBuilder, toNearApiJsActions } from "@omni-bridge/near"
 import { Account } from "@near-js/accounts"
 import { JsonRpcProvider } from "@near-js/providers"
 import { InMemoryKeyStore } from "@near-js/keystores"
 import { KeyPair } from "@near-js/crypto"
 import { InMemorySigner } from "@near-js/signers"
+import type { Action } from "@near-js/transactions"
 
 const bridge = createBridge({ network: "mainnet" })
 const nearBuilder = createNearBuilder({ network: "mainnet" })
@@ -82,11 +83,18 @@ const account = new Account({ accountId: "alice.near", provider, signer })
 
 const signerId = "alice.near"
 
+// Helper: convert an SDK unsigned tx and dispatch via near-api-js
+const send = (tx: ReturnType<typeof nearBuilder.buildTransfer>) =>
+  account.signAndSendTransaction({
+    receiverId: tx.receiverId,
+    actions: toNearApiJsActions(tx) as Action[],
+  })
+
 // 1. Storage deposit
 const deposit = await nearBuilder.getRequiredStorageDeposit(signerId)
 if (deposit > 0n) {
   const depositTx = nearBuilder.buildStorageDeposit(signerId, deposit)
-  await sendWithNearApiJs(account, depositTx)
+  await send(depositTx)
 }
 
 // 2. Validate
@@ -101,7 +109,7 @@ const validated = await bridge.validateTransfer({
 
 // 3. Transfer
 const tx = nearBuilder.buildTransfer(validated, signerId)
-const result = await sendWithNearApiJs(account, tx)
+const result = await send(tx)
 
 console.log("Transfer initiated:", result.transaction.hash)
 ```
@@ -148,8 +156,7 @@ NEAR transactions need runtime context (nonce, block hash) that the SDK doesn't 
 | Function | Library | What it does |
 |----------|---------|--------------|
 | `toNearKitTransaction()` | near-kit | Returns a chainable TransactionBuilder |
-| `sendWithNearApiJs()` | @near-js/* | Signs and sends in one call |
-| `toNearApiJsActions()` | @near-js/* | Returns raw Actions for manual handling |
+| `toNearApiJsActions()` | @near-js/* / near-api-js | Returns plain action objects for `Account.signAndSendTransaction` |
 
 The SDK returns a plain object:
 

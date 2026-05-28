@@ -111,15 +111,17 @@ const metadataEvent = JSON.parse(eventLog).LogMetadataEvent
 ### Step 2: Deploy Token (EVM)
 
 ```typescript
-const tx = evm.buildDeployToken(
-  metadataEvent.signature,
-  {
-    token: metadataEvent.metadata_payload.token,
-    name: metadataEvent.metadata_payload.name,
-    symbol: metadataEvent.metadata_payload.symbol,
-    decimals: metadataEvent.metadata_payload.decimals,
-  }
-)
+import { MPCSignature } from "@omni-bridge/near"
+
+// Convert the MPC signature to EVM format (adds 27 to recovery_id)
+const signature = MPCSignature.fromRaw(metadataEvent.signature).toBytes(true)
+
+const tx = evm.buildDeployToken(signature, {
+  token: metadataEvent.metadata_payload.token,
+  name: metadataEvent.metadata_payload.name,
+  symbol: metadataEvent.metadata_payload.symbol,
+  decimals: metadataEvent.metadata_payload.decimals,
+})
 
 await walletClient.sendTransaction(tx)
 ```
@@ -167,13 +169,16 @@ Solana doesn't require a separate bind step — the mapping is established durin
 ## Checking If Already Deployed
 
 ```typescript
-import { BridgeAPI } from "@omni-bridge/core"
+import { createBridge, ChainKind } from "@omni-bridge/core"
 
-const api = new BridgeAPI("mainnet")
-const tokenInfo = await api.getTokenInfo("eth:0xTokenAddress...")
+const bridge = createBridge({ network: "mainnet" })
+const bridgedToken = await bridge.getBridgedToken(
+  "eth:0xTokenAddress...",
+  ChainKind.Near,
+)
 
-if (tokenInfo.nearTokenId) {
-  console.log("Already deployed:", tokenInfo.nearTokenId)
+if (bridgedToken) {
+  console.log("Already deployed:", bridgedToken)
 } else {
   console.log("Needs deployment")
 }

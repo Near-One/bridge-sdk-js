@@ -17,6 +17,7 @@ export type ValidationErrorCode =
   | "INVALID_AMOUNT"
   | "INVALID_ADDRESS"
   | "INVALID_CHAIN"
+  | "INVALID_MEMO"
   | "TOKEN_NOT_REGISTERED"
   | "DECIMAL_OVERFLOW"
   | "AMOUNT_TOO_SMALL"
