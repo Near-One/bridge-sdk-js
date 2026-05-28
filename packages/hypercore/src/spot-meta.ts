@@ -9,7 +9,14 @@ export interface SpotTokenInfo {
   spotId: string
   /** HlBridgeToken ERC-20 on HyperEVM — the action JSON's `destinationRecipient`. */
   hlBridgeToken: Address
-  /** szDecimals + evmExtraWeiDecimals — used by `formatAmount`. */
+  /**
+   * HlBridgeToken ERC-20 `.decimals()`, used by `formatAmount` when converting
+   * the bridge-wei `amount` to the action JSON's decimal string. By the
+   * HyperEVM↔HyperCore linking invariant this equals
+   * `weiDecimals + evm_extra_wei_decimals`. Note: `szDecimals` is order-size
+   * precision and is unrelated — using it would over-divide for tokens like
+   * PURR/HFUN where `szDecimals < weiDecimals`.
+   */
   decimals: number
 }
 
@@ -80,7 +87,7 @@ export async function resolveSpotToken(
   return {
     spotId: `${match.name}:${match.tokenId}`,
     hlBridgeToken: match.evmContract.address as Address,
-    decimals: match.szDecimals + match.evmContract.evm_extra_wei_decimals,
+    decimals: match.weiDecimals + match.evmContract.evm_extra_wei_decimals,
   }
 }
 
@@ -120,7 +127,7 @@ export async function resolveSpotTokenCached(
   return {
     spotId: `${match.name}:${match.tokenId}`,
     hlBridgeToken: match.evmContract.address as Address,
-    decimals: match.szDecimals + match.evmContract.evm_extra_wei_decimals,
+    decimals: match.weiDecimals + match.evmContract.evm_extra_wei_decimals,
   }
 }
 

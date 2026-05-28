@@ -24,7 +24,7 @@ const builder = createHyperCoreBuilder({ network: "mainnet" })
 //    and spot token id from Hyperliquid /info { type: "spotMeta" }.
 const unsigned = await builder.buildTransfer({
   spotToken: "USDC",                  // Hyperliquid-native spot identifier
-  amount: 1_00000000n,                // 1 USDC at 8 decimals (szDecimals + evmExtraWeiDecimals)
+  amount: 1_000000n,                  // 1 USDC at 6 decimals (weiDecimals + evm_extra_wei_decimals)
   recipient: "near:alice.near",       // any OmniAddress
   fee: 0n,
   message: "",
@@ -104,7 +104,7 @@ Returns `{ action, typedData: { domain, types, primaryType, message, digest }, h
 
 ## Decimals
 
-The action JSON's `amount` is a decimal string. `formatAmount` converts a raw bigint using `szDecimals + evmExtraWeiDecimals` from `/info spotMeta` — the HyperEVM↔HyperCore linking invariant. If the bridge token's `decimals()` doesn't match this sum, formatted amounts won't line up with the user's Core spot balance precision.
+The action JSON's `amount` is a decimal string. `formatAmount` converts the raw bridge-wei bigint using **`weiDecimals + evm_extra_wei_decimals`** from `/info spotMeta` — that sum is the HlBridgeToken ERC-20's `.decimals()` per the HyperEVM↔HyperCore linking invariant. (`szDecimals` is order-size precision in the orderbook and is **not** the same thing — using it would over-divide for tokens where `szDecimals < weiDecimals`, e.g. PURR/HFUN.)
 
 ## Confirmation
 
