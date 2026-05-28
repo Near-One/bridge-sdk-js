@@ -80,6 +80,7 @@ describe("Bridge.validateTransfer", () => {
         if (address === "near:wrap.testnet") {
           if (chain === "Eth") return "eth:0x1234567890123456789012345678901234567890"
           if (chain === "Sol") return "sol:So11111111111111111111111111111111111111112"
+          if (chain === "HlEvm") return "hlevm:0x1234567890123456789012345678901234567890"
         }
         return null
       }
@@ -348,8 +349,8 @@ describe("Bridge.validateTransfer", () => {
     })
   })
 
-  describe("HyperEVM rejection", () => {
-    it("throws when source chain is HyperEVM (hlevm -> NEAR)", async () => {
+  describe("HyperEVM support", () => {
+    it("validates a HyperEVM -> NEAR transfer", async () => {
       const params: TransferParams = {
         token: "hlevm:0x1234567890123456789012345678901234567890" as OmniAddress,
         amount: 1000000000000000000n,
@@ -359,17 +360,14 @@ describe("Bridge.validateTransfer", () => {
         recipient: "near:alice.testnet" as OmniAddress,
       }
 
-      await expect(bridge.validateTransfer(params)).rejects.toThrow(ValidationError)
-      await expect(bridge.validateTransfer(params)).rejects.toThrow(
-        "HyperEVM transfers are not yet supported by the SDK",
-      )
-      await expect(bridge.validateTransfer(params)).rejects.toMatchObject({
-        code: "UNSUPPORTED_CHAIN",
-        details: { chain: "HyperEvm" },
-      })
+      const result = await bridge.validateTransfer(params)
+
+      expect(result.sourceChain).toBe(ChainKind.HyperEvm)
+      expect(result.destChain).toBe(ChainKind.Near)
+      expect(result.contractAddress).toBe("0xf353b40fC144d1c6c5BCdda712fa6De833016aF9")
     })
 
-    it("throws when destination chain is HyperEVM (NEAR -> hlevm)", async () => {
+    it("validates a NEAR -> HyperEVM transfer (used for Hyperliquid bridging)", async () => {
       const params: TransferParams = {
         token: "near:wrap.testnet" as OmniAddress,
         amount: 1000000000000000000n,
@@ -377,16 +375,14 @@ describe("Bridge.validateTransfer", () => {
         nativeFee: 0n,
         sender: "near:alice.testnet" as OmniAddress,
         recipient: "hlevm:0xABCDEF0123456789ABCDEF0123456789ABCDEF01" as OmniAddress,
+        message: "hypercore",
       }
 
-      await expect(bridge.validateTransfer(params)).rejects.toThrow(ValidationError)
-      await expect(bridge.validateTransfer(params)).rejects.toThrow(
-        "HyperEVM transfers are not yet supported by the SDK",
-      )
-      await expect(bridge.validateTransfer(params)).rejects.toMatchObject({
-        code: "UNSUPPORTED_CHAIN",
-        details: { chain: "HyperEvm" },
-      })
+      const result = await bridge.validateTransfer(params)
+
+      expect(result.sourceChain).toBe(ChainKind.Near)
+      expect(result.destChain).toBe(ChainKind.HyperEvm)
+      expect(result.bridgedToken).toBe("hlevm:0x1234567890123456789012345678901234567890")
     })
   })
 

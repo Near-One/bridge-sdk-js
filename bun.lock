@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "omni-bridge-sdk",
@@ -59,6 +58,17 @@
         "typescript": "^5.9.3",
       },
     },
+    "packages/hypercore": {
+      "name": "@omni-bridge/hypercore",
+      "version": "0.9.0",
+      "dependencies": {
+        "@omni-bridge/core": "workspace:*",
+        "viem": "^2.43.5",
+      },
+      "devDependencies": {
+        "typescript": "^5.9.3",
+      },
+    },
     "packages/near": {
       "name": "@omni-bridge/near",
       "version": "0.9.0",
@@ -81,6 +91,7 @@
         "@omni-bridge/btc": "workspace:*",
         "@omni-bridge/core": "workspace:*",
         "@omni-bridge/evm": "workspace:*",
+        "@omni-bridge/hypercore": "workspace:*",
         "@omni-bridge/near": "workspace:*",
         "@omni-bridge/solana": "workspace:*",
         "@omni-bridge/starknet": "workspace:*",
@@ -429,6 +440,8 @@
     "@omni-bridge/core": ["@omni-bridge/core@workspace:packages/core"],
 
     "@omni-bridge/evm": ["@omni-bridge/evm@workspace:packages/evm"],
+
+    "@omni-bridge/hypercore": ["@omni-bridge/hypercore@workspace:packages/hypercore"],
 
     "@omni-bridge/near": ["@omni-bridge/near@workspace:packages/near"],
 
