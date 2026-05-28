@@ -18,6 +18,8 @@ import {
 import { getAddress, getChain, isEvmChain } from "./utils/address.js"
 import { normalizeAmount, validateTransferAmount } from "./utils/decimals.js"
 
+const MAX_ZCASH_MEMO_BYTES = 512
+
 export interface BridgeConfig {
   network: Network
   rpcUrls?: Partial<Record<ChainKind, string>>
@@ -238,6 +240,28 @@ class BridgeImpl implements Bridge {
         throw new ValidationError("Invalid EVM recipient address", "INVALID_ADDRESS", {
           address: params.recipient,
         })
+      }
+    }
+
+    if (params.destinationMemo !== undefined) {
+      if (destChain !== ChainKind.Zcash) {
+        throw new ValidationError(
+          "Destination memo is only supported for Zcash transfers",
+          "INVALID_MEMO",
+          { destChain: ChainKind[destChain], supportedChain: ChainKind[ChainKind.Zcash] },
+        )
+      }
+
+      const byteLength = new TextEncoder().encode(params.destinationMemo).length
+      if (byteLength > MAX_ZCASH_MEMO_BYTES) {
+        throw new ValidationError(
+          `Destination memo exceeds ${MAX_ZCASH_MEMO_BYTES} bytes`,
+          "INVALID_MEMO",
+          {
+            byteLength,
+            maxByteLength: MAX_ZCASH_MEMO_BYTES,
+          },
+        )
       }
     }
 

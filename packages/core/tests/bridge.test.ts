@@ -80,6 +80,7 @@ describe("Bridge.validateTransfer", () => {
         if (address === "near:wrap.testnet") {
           if (chain === "Eth") return "eth:0x1234567890123456789012345678901234567890"
           if (chain === "Sol") return "sol:So11111111111111111111111111111111111111112"
+          if (chain === "Zcash") return "zcash:u1testrecipient"
         }
         return null
       }
@@ -193,6 +194,78 @@ describe("Bridge.validateTransfer", () => {
       }
 
       await expect(bridge.validateTransfer(params)).rejects.toThrow("Native fee cannot be negative")
+    })
+  })
+
+  describe("destinationMemo validation", () => {
+    const baseParams: TransferParams = {
+      token: "near:wrap.testnet" as OmniAddress,
+      amount: 1000000000000000000n,
+      fee: 0n,
+      nativeFee: 0n,
+      sender: "near:alice.testnet" as OmniAddress,
+      recipient: "zcash:u1testrecipient" as OmniAddress,
+    }
+
+    it("accepts a memo at the 512-byte Zcash limit", async () => {
+      const params: TransferParams = {
+        ...baseParams,
+        destinationMemo: "x".repeat(512),
+      }
+
+      const result = await bridge.validateTransfer(params)
+      expect(result.destChain).toBe(ChainKind.Zcash)
+      expect(result.params.destinationMemo).toBe(params.destinationMemo)
+    })
+
+    it("throws for a memo exceeding 512 bytes", async () => {
+      const params: TransferParams = {
+        ...baseParams,
+        destinationMemo: "x".repeat(513),
+      }
+
+      await expect(bridge.validateTransfer(params)).rejects.toThrow(ValidationError)
+      await expect(bridge.validateTransfer(params)).rejects.toMatchObject({
+        code: "INVALID_MEMO",
+        details: { byteLength: 513, maxByteLength: 512 },
+      })
+      await expect(bridge.validateTransfer(params)).rejects.toThrow(
+        "Destination memo exceeds 512 bytes",
+      )
+    })
+
+    it("counts bytes (not characters) for multi-byte UTF-8", async () => {
+      // Each "\u00e9" is 2 UTF-8 bytes, so 257 of them = 514 bytes.
+      const params: TransferParams = {
+        ...baseParams,
+        destinationMemo: "\u00e9".repeat(257),
+      }
+
+      await expect(bridge.validateTransfer(params)).rejects.toMatchObject({
+        code: "INVALID_MEMO",
+        details: { byteLength: 514, maxByteLength: 512 },
+      })
+    })
+
+    it("accepts an undefined memo", async () => {
+      // Sanity check: omitting destinationMemo doesn't trip the memo validator.
+      await expect(bridge.validateTransfer(baseParams)).resolves.toBeDefined()
+    })
+
+    it("rejects a destination memo on non-Zcash destinations", async () => {
+      const params: TransferParams = {
+        ...baseParams,
+        recipient: "near:bob.testnet" as OmniAddress,
+        destinationMemo: "memo for a non-Zcash transfer",
+      }
+
+      await expect(bridge.validateTransfer(params)).rejects.toMatchObject({
+        code: "INVALID_MEMO",
+        details: { destChain: "Near", supportedChain: "Zcash" },
+      })
+      await expect(bridge.validateTransfer(params)).rejects.toThrow(
+        "Destination memo is only supported for Zcash transfers",
+      )
     })
   })
 

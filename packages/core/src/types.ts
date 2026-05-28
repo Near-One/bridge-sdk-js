@@ -83,6 +83,11 @@ export interface TransferParams {
   sender: OmniAddress
   recipient: OmniAddress
   message?: string
+  /**
+   * Optional memo to attach on the destination chain. Currently supported for
+   * Zcash shielded recipients, where memos are limited to 512 bytes.
+   */
+  destinationMemo?: string
 }
 
 // Validated transfer (output from validation)
