@@ -21,10 +21,15 @@ import { privateKeyToAccount } from "viem/accounts"
 const builder = createHyperCoreBuilder({ network: "mainnet" })
 
 // 1. Build the unsigned action. The SDK resolves the HlBridgeToken contract
-//    and spot token id from Hyperliquid /info { type: "spotMeta" }.
+//    address and decimals from Hyperliquid /info { type: "spotMeta" }.
+//
+//    `spotId` is the canonical Hyperliquid spot identifier "NAME:0x<32hex>"
+//    — names alone are NOT accepted because Hyperliquid allows multiple
+//    tokens to share a `name`. Look the tokenId up in /info, or copy it
+//    from a Hyperliquid spot explorer.
 const unsigned = await builder.buildTransfer({
-  spotToken: "USDC",                  // Hyperliquid-native spot identifier
-  amount: 1_000000n,                  // 1 USDC at 6 decimals (weiDecimals + evm_extra_wei_decimals)
+  spotId: "USDC:0x6d1e7cde53ba9467b783cb7c530ce054",
+  amount: 1_000_000n,                 // 1 USDC at 6 decimals (weiDecimals + evm_extra_wei_decimals)
   recipient: "near:alice.near",       // any OmniAddress
   fee: 0n,
   message: "",
@@ -57,16 +62,15 @@ The first byte of the `data` payload routes the on-chain call inside `HlBridgeTo
 
 ## Skipping the `/info` lookup
 
-`buildTransfer` calls `/info spotMeta` once per process (cached by api URL) to resolve `spotId`, `hlBridgeToken`, and `decimals`. Pre-supply all three to skip the network round-trip:
+`buildTransfer` calls `/info spotMeta` once per process (cached by api URL) to resolve `hlBridgeToken` and `decimals`. Pre-supply both to skip the network round-trip:
 
 ```typescript
 const unsigned = await builder.buildTransfer({
-  spotToken: "USDC",
-  amount: 1_00000000n,
-  recipient: "near:alice.near",
   spotId: "USDC:0x6d1e7cde53ba9467b783cb7c530ce054",
+  amount: 1_000_000n,
+  recipient: "near:alice.near",
   hlBridgeToken: "0x1234567890123456789012345678901234567890",
-  decimals: 8,
+  decimals: 6,
 })
 ```
 
@@ -91,7 +95,8 @@ Returns `{ action, typedData: { domain, types, primaryType, message, digest }, h
 
 - `postExchangeAction({ apiUrl, action, signature })` — POSTs to `/exchange`, throws on non-2xx or `status: "err"` response.
 - `splitSignature(sig)` — splits a 65-byte hex signature into the `{ r, s, v }` envelope expected by `/exchange`.
-- `resolveSpotToken(apiUrl, name)` / `resolveSpotTokenCached(...)` — direct access to the `/info spotMeta` resolver.
+- `resolveSpotToken(apiUrl, spotId)` / `resolveSpotTokenCached(...)` — direct access to the `/info spotMeta` resolver. Takes a full `NAME:0x<32hex>` identifier.
+- `parseSpotId(spotId)` — validates and splits a spot identifier into `{ name, tokenId }`.
 - `encodeTransferAction(address)` / `encodeInitTransferAction(fee, recipient, message)` — low-level `data` encoders.
 - `formatAmount(amount, decimals)` — bigint → Hyperliquid decimal string.
 

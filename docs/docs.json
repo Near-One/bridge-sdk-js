@@ -64,7 +64,8 @@
               "reference/evm",
               "reference/near",
               "reference/solana",
-              "reference/btc"
+              "reference/btc",
+              "reference/hypercore"
             ]
           }
         ]

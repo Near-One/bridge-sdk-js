@@ -16,6 +16,7 @@ import {
 } from "./encoders.js"
 import { formatAmount } from "./format-amount.js"
 import {
+  parseSpotId,
   resolveSpotTokenCached,
   type SpotMetaFetchOptions,
   type SpotTokenInfo,
@@ -34,13 +35,19 @@ export interface HyperCoreBuilderConfig {
 }
 
 export interface HyperCoreTransferParams {
-  /** Hyperliquid spot token name (e.g. "USDC", "PURR"). */
-  spotToken: string
-  /** Amount in bridge ERC-20 wei units. */
+  /**
+   * Hyperliquid spot identifier in the canonical `NAME:0x<32hex>` form (e.g.
+   * `"USDC:0x6d1e7cde53ba9467b783cb7c530ce054"`).
+   */
+  spotId: string
+  /** Amount in bridge ERC-20 wei units. Must be `> 0n`. */
   amount: bigint
   /** Recipient as an OmniAddress. HyperEVM destination → pool release; any other chain → routed via `OmniBridge.initTransfer`. */
   recipient: OmniAddress
-  /** Bridge fee in bridge ERC-20 wei (only used when `recipient` is not HyperEVM). */
+  /**
+   * Bridge fee in bridge ERC-20 wei (only used when `recipient` is not HyperEVM).
+   * Must satisfy `0n <= fee < amount`.
+   */
   fee?: bigint
   /** Optional message forwarded with the bridge event (only used for non-HyperEVM recipients). */
   message?: string
@@ -51,10 +58,11 @@ export interface HyperCoreTransferParams {
    * skips the `/info spotMeta` lookup — useful for offline/deterministic builds.
    */
   hlBridgeToken?: Address
-  /** Pre-resolved bridge-token decimals (szDecimals + evmExtraWeiDecimals). */
+  /**
+   * Pre-resolved HlBridgeToken ERC-20 `.decimals()` (= `weiDecimals + evm_extra_wei_decimals`
+   * from `/info spotMeta`). Required together with `hlBridgeToken` to skip the lookup.
+   */
   decimals?: number
-  /** Pre-resolved Hyperliquid spot identifier (`NAME:0x<32hex>`). */
-  spotId?: string
 }
 
 export interface HyperCoreUnsignedAction {
@@ -86,8 +94,9 @@ class HyperCoreBuilderImpl implements HyperCoreBuilder {
   }
 
   async buildTransfer(params: HyperCoreTransferParams): Promise<HyperCoreUnsignedAction> {
-    const spotInfo = await this.resolveSpotInfo(params)
+    this.validateParams(params)
 
+    const spotInfo = await this.resolveSpotInfo(params)
     const data = this.encodeData(params)
     const isPoolRelease = data.actionTag === ACTION_TRANSFER
     const gasLimit =
@@ -116,12 +125,33 @@ class HyperCoreBuilderImpl implements HyperCoreBuilder {
     }
   }
 
+  private validateParams(params: HyperCoreTransferParams): void {
+    if (params.amount <= 0n) {
+      throw new Error(`amount must be > 0, got ${params.amount}`)
+    }
+    const fee = params.fee ?? 0n
+    if (fee < 0n) {
+      throw new Error(`fee must be >= 0, got ${fee}`)
+    }
+    const recipientChain = getChain(params.recipient)
+    if (recipientChain !== ChainKind.HyperEvm && fee >= params.amount) {
+      throw new Error(
+        `fee (${fee}) must be strictly less than amount (${params.amount}) for ${ChainKind[recipientChain]} recipients`,
+      )
+    }
+    if (params.hlBridgeToken !== undefined && params.decimals === undefined) {
+      throw new Error("decimals must be supplied together with hlBridgeToken")
+    }
+    if (params.decimals !== undefined && params.hlBridgeToken === undefined) {
+      throw new Error("hlBridgeToken must be supplied together with decimals")
+    }
+  }
+
   private async resolveSpotInfo(params: HyperCoreTransferParams): Promise<SpotTokenInfo> {
-    if (
-      params.hlBridgeToken !== undefined &&
-      params.decimals !== undefined &&
-      params.spotId !== undefined
-    ) {
+    if (params.hlBridgeToken !== undefined && params.decimals !== undefined) {
+      // Validate the spotId format up front even on the offline path so callers
+      // can't sign a malformed `token` field.
+      parseSpotId(params.spotId)
       return {
         spotId: params.spotId,
         hlBridgeToken: params.hlBridgeToken,
@@ -129,12 +159,7 @@ class HyperCoreBuilderImpl implements HyperCoreBuilder {
       }
     }
     const fetchOpts: SpotMetaFetchOptions = this.fetchImpl ? { fetch: this.fetchImpl } : {}
-    const resolved = await resolveSpotTokenCached(this.apiUrl, params.spotToken, fetchOpts)
-    return {
-      spotId: params.spotId ?? resolved.spotId,
-      hlBridgeToken: params.hlBridgeToken ?? resolved.hlBridgeToken,
-      decimals: params.decimals ?? resolved.decimals,
-    }
+    return resolveSpotTokenCached(this.apiUrl, params.spotId, fetchOpts)
   }
 
   private encodeData(params: HyperCoreTransferParams): { hex: Hex; actionTag: number } {

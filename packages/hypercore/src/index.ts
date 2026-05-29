@@ -22,6 +22,7 @@ export {
 export { formatAmount } from "./format-amount.js"
 export {
   fetchSpotMeta,
+  parseSpotId,
   resolveSpotToken,
   resolveSpotTokenCached,
   type SpotMetaFetchOptions,
