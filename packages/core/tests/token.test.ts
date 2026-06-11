@@ -131,6 +131,11 @@ describe("Token Utils", () => {
       it("should parse Fogo-prefixed wrapped tokens", () => {
         expect(parseOriginChain("fogo-ABC123.omdep.near")).toBe(ChainKind.Fogo)
       })
+
+      it("should parse Aptos-prefixed wrapped tokens", () => {
+        expect(parseOriginChain("aptos-0xcccc.omdep.near")).toBe(ChainKind.Aptos)
+        expect(parseOriginChain("aptos-0xcccc.omnidep.testnet")).toBe(ChainKind.Aptos)
+      })
     })
 
     describe("factory.bridge pattern", () => {

@@ -71,6 +71,32 @@ const mockStarknetTransfer = {
   utxo_transfer: null,
 }
 
+const mockAptosTransfer = {
+  id: {
+    origin_chain: "Aptos",
+    kind: {
+      Nonce: 789,
+    },
+  },
+  initialized: {
+    Aptos: {
+      version: 123456,
+      block_height: 777,
+      block_timestamp: 1730000000,
+      transaction_hash: "0xaptostx",
+    },
+  },
+  signed: null,
+  fast_finalised_on_near: null,
+  finalised_on_near: null,
+  fast_finalised: null,
+  finalised: null,
+  claimed: null,
+  transfer_message: null,
+  updated_fee: [],
+  utxo_transfer: null,
+}
+
 const mockFee = {
   native_token_fee: 5000,
   gas_fee: null,
@@ -212,6 +238,17 @@ describe("BridgeAPI", () => {
 
       const transfers = await api.getTransfer({ originChain: "Strk", originNonce: 456 })
       expect(transfers).toEqual([mockStarknetTransfer])
+    })
+
+    it("should parse Aptos transaction payloads", async () => {
+      server.use(
+        http.get(`${BASE_URL}/api/v3/transfers/transfer`, () => {
+          return HttpResponse.json([mockAptosTransfer])
+        }),
+      )
+
+      const transfers = await api.getTransfer({ originChain: "Aptos", originNonce: 789 })
+      expect(transfers).toEqual([mockAptosTransfer])
     })
   })
 

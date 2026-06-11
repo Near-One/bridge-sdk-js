@@ -52,6 +52,7 @@ const CHAIN_PREFIXES: Record<string, ChainKind> = {
   "abs-": ChainKind.Abs,
   "strk-": ChainKind.Strk,
   "fogo-": ChainKind.Fogo,
+  "aptos-": ChainKind.Aptos,
 }
 
 /**

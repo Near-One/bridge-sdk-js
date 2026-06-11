@@ -29,6 +29,7 @@ export {
 // Config
 export {
   API_BASE_URLS,
+  type AptosAddresses,
   type BtcAddresses,
   type ChainAddresses,
   EVM_CHAIN_IDS,
@@ -36,6 +37,7 @@ export {
   getAddresses,
   type NearAddresses,
   type SolanaAddresses,
+  type StarknetAddresses,
   type ZcashAddresses,
 } from "./config.js"
 // Errors

@@ -120,6 +120,7 @@ function chainKindToApiChain(chain: ChainKind): Chain {
     [ChainKind.Abs]: "Abs",
     [ChainKind.Strk]: "Strk",
     [ChainKind.Fogo]: "Fogo",
+    [ChainKind.Aptos]: "Aptos",
   }
   return mapping[chain]
 }
@@ -162,6 +163,15 @@ function getContractAddress(addresses: ChainAddresses, chain: ChainKind): string
         )
       }
       return addresses.fogo.locker
+    case ChainKind.Aptos:
+      if (!addresses.aptos) {
+        throw new ValidationError(
+          "Aptos bridge is not yet deployed on this network",
+          "UNSUPPORTED_CHAIN",
+          { chain: "Aptos" },
+        )
+      }
+      return addresses.aptos.bridge
     case ChainKind.Btc:
       return addresses.btc.btcConnector
     case ChainKind.Zcash:
