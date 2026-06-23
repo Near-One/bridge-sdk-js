@@ -1,5 +1,12 @@
 # @omni-bridge/core
 
+## 0.9.1
+
+### Patch Changes
+
+- f432983: chore: update sol.omdep.near to sol.omft.near for Solana migration
+- 1d355dc: Add destination memo typing and validation for Zcash memo handoff.
+
 ## 0.9.0
 
 ### Minor Changes
