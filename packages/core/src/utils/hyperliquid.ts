@@ -6,14 +6,15 @@ import { ChainKind, type OmniAddress, type TransferParams } from "../types.js"
 import { omniAddress } from "./address.js"
 
 /**
- * Marker placed in `TransferParams.message` to signal a Hyperliquid-bound
- * transfer. The on-chain `HlBridgeToken` only checks whether the message is
- * non-empty to choose the 3-arg `mint` path (which forwards the minted balance
- * to the configured system address so HyperCore credits it to the user's
- * spot balance). The content itself is ignored — we use a self-describing
- * string so it's clear in logs and the indexer.
+ * `TransferParams.message` value that routes the destination-side
+ * `OmniBridge.finTransfer` through the 3-arg `mint(addr, amt, bytes)` path
+ * on `HlBridgeToken`. The bridge contract parses the message as JSON with a
+ * `DestHexMsg` field whose value is the hex-encoded destination directive;
+ * `"636F7265"` is ASCII `"core"`, which `HlBridgeToken` interprets as
+ * "redirect the mint to the system-address pool so HyperCore credits the
+ * user's spot balance."
  */
-export const HYPERLIQUID_MESSAGE = "hypercore"
+export const HYPERLIQUID_MESSAGE = '{"DestHexMsg":"636F7265"}'
 
 /**
  * Build `TransferParams` for a NEAR → Hyperliquid (HyperCore) transfer.

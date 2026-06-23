@@ -448,7 +448,7 @@ describe("Bridge.validateTransfer", () => {
         nativeFee: 0n,
         sender: "near:alice.testnet" as OmniAddress,
         recipient: "hlevm:0xABCDEF0123456789ABCDEF0123456789ABCDEF01" as OmniAddress,
-        message: "hypercore",
+        message: '{"DestHexMsg":"636F7265"}',
       }
 
       const result = await bridge.validateTransfer(params)
