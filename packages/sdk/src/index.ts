@@ -4,6 +4,7 @@
 export * from "@omni-bridge/btc"
 export * from "@omni-bridge/core"
 export * from "@omni-bridge/evm"
+export * from "@omni-bridge/hypercore"
 export * from "@omni-bridge/near"
 export * from "@omni-bridge/solana"
 export * from "@omni-bridge/starknet"

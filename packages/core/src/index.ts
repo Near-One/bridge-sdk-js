@@ -87,6 +87,9 @@ export {
   verifyTransferAmount,
 } from "./utils/decimals.js"
 
+// Hyperliquid helpers
+export { buildHyperliquidTransferParams, HYPERLIQUID_MESSAGE } from "./utils/hyperliquid.js"
+
 // Token utilities
 export { isBridgeToken, parseOriginChain } from "./utils/token.js"
 

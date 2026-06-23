@@ -140,11 +140,7 @@ function getContractAddress(addresses: ChainAddresses, chain: ChainKind): string
     case ChainKind.Pol:
       return addresses.pol.bridge
     case ChainKind.HyperEvm:
-      throw new ValidationError(
-        "HyperEVM bridge is not yet configured in the SDK",
-        "UNSUPPORTED_CHAIN",
-        { chain: ChainKind[chain] },
-      )
+      return addresses.hlevm.bridge
     case ChainKind.Abs:
       return addresses.abs.bridge
     case ChainKind.Strk:
@@ -210,18 +206,6 @@ class BridgeImpl implements Bridge {
       throw new ValidationError("Native fee cannot be negative", "INVALID_AMOUNT", {
         nativeFee: params.nativeFee.toString(),
       })
-    }
-
-    // HyperEVM is present in the ChainKind enum so borsh discriminants align
-    // with the on-chain contract, but transfers involving it are not yet
-    // supported by the SDK until RPC URLs and chain configs are added.
-    if (sourceChain === ChainKind.HyperEvm || destChain === ChainKind.HyperEvm) {
-      const offending = sourceChain === ChainKind.HyperEvm ? sourceChain : destChain
-      throw new ValidationError(
-        "HyperEVM transfers are not yet supported by the SDK",
-        "UNSUPPORTED_CHAIN",
-        { chain: ChainKind[offending] },
-      )
     }
 
     // Validate EVM addresses have proper checksum

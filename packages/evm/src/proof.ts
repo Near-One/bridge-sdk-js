@@ -10,7 +10,11 @@ import { ChainKind, type Network } from "@omni-bridge/core"
 import { type Chain, createPublicClient, type Hex, http, numberToHex } from "viem"
 import * as chains from "viem/chains"
 // `abstract` is a reserved keyword, so we import the chain definition directly
-import { abstract as abstractChain } from "viem/chains"
+import {
+  abstract as abstractChain,
+  hyperEvm as hyperEvmChain,
+  hyperliquidEvmTestnet as hyperEvmTestnet,
+} from "viem/chains"
 
 export interface EvmProof {
   log_index: bigint
@@ -68,6 +72,7 @@ const RPC_URLS: Record<Network, Record<EvmChainKind, string>> = {
     [ChainKind.Bnb]: "https://bsc-rpc.publicnode.com",
     [ChainKind.Pol]: "https://polygon-bor-rpc.publicnode.com",
     [ChainKind.Abs]: "https://api.mainnet.abs.xyz",
+    [ChainKind.HyperEvm]: "https://rpc.hyperliquid.xyz/evm",
   },
   testnet: {
     [ChainKind.Eth]: "https://ethereum-sepolia.publicnode.com",
@@ -76,6 +81,7 @@ const RPC_URLS: Record<Network, Record<EvmChainKind, string>> = {
     [ChainKind.Bnb]: "https://bsc-testnet-rpc.publicnode.com",
     [ChainKind.Pol]: "https://polygon-amoy-bor-rpc.publicnode.com",
     [ChainKind.Abs]: "https://api.testnet.abs.xyz",
+    [ChainKind.HyperEvm]: "https://rpc.hyperliquid-testnet.xyz/evm",
   },
 }
 
@@ -94,6 +100,8 @@ function getChainConfig(network: Network, chain: EvmChainKind): Chain {
         return chains.polygon
       case ChainKind.Abs:
         return abstractChain
+      case ChainKind.HyperEvm:
+        return hyperEvmChain
     }
   } else {
     switch (chain) {
@@ -109,6 +117,8 @@ function getChainConfig(network: Network, chain: EvmChainKind): Chain {
         return chains.polygonAmoy
       case ChainKind.Abs:
         return chains.abstractTestnet
+      case ChainKind.HyperEvm:
+        return hyperEvmTestnet
     }
   }
 }

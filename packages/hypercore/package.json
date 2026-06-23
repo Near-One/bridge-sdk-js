@@ -1,7 +1,7 @@
 {
-  "name": "@omni-bridge/sdk",
-  "version": "0.9.1",
-  "description": "Omni Bridge SDK - Umbrella package re-exporting all chain packages",
+  "name": "@omni-bridge/hypercore",
+  "version": "0.9.0",
+  "description": "HyperCore (Hyperliquid L1) action builder for Omni Bridge",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -25,18 +25,13 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/Near-One/bridge-sdk-js",
-    "directory": "packages/sdk"
+    "directory": "packages/hypercore"
   },
   "license": "MIT",
   "author": "NEAR One",
   "dependencies": {
     "@omni-bridge/core": "workspace:*",
-    "@omni-bridge/evm": "workspace:*",
-    "@omni-bridge/near": "workspace:*",
-    "@omni-bridge/solana": "workspace:*",
-    "@omni-bridge/btc": "workspace:*",
-    "@omni-bridge/starknet": "workspace:*",
-    "@omni-bridge/hypercore": "workspace:*"
+    "viem": "^2.43.5"
   },
   "devDependencies": {
     "typescript": "^5.9.3"

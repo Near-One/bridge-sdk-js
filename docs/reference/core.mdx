@@ -1751,6 +1751,80 @@ console.log(vaa) // Hex-encoded VAA
 
 ---
 
+## Hyperliquid Inbound Helpers
+
+Helpers for bridging *into* Hyperliquid (HyperCore L1) from NEAR or any other chain. These run alongside the standard `Bridge.validateTransfer` flow; they only set the `recipient` and `message` fields correctly. For *outbound* HyperCore transfers (signed `sendToEvmWithData` actions), use [`@omni-bridge/hypercore`](/reference/hypercore).
+
+### buildHyperliquidTransferParams
+
+Build `TransferParams` for a transfer that lands on the recipient's HyperCore spot balance (instead of their HyperEVM EOA). Sets `recipient` to `hlevm:0x…` and `message` to the JSON envelope OmniBridge parses to route the destination-side mint through `HlBridgeToken`'s system-address pool.
+
+#### Signature
+
+```typescript
+function buildHyperliquidTransferParams(params: {
+  token: OmniAddress
+  amount: bigint
+  sender: OmniAddress
+  hypercoreRecipient: string
+  fee?: bigint
+  nativeFee?: bigint
+}): TransferParams
+```
+
+#### Parameters
+
+<ResponseField name="params" type="object" required>
+  <Expandable title="params">
+    <ResponseField name="token" type="OmniAddress" required>Source-chain token (e.g. `near:wrap.near`).</ResponseField>
+    <ResponseField name="amount" type="bigint" required>Transfer amount in source-chain units.</ResponseField>
+    <ResponseField name="sender" type="OmniAddress" required>Source-chain sender (e.g. `near:alice.near`).</ResponseField>
+    <ResponseField name="hypercoreRecipient" type="string" required>The recipient's 20-byte EVM-style address on HyperEVM/HyperCore (`0x…`). HyperCore reuses the same address bytes as HyperEVM.</ResponseField>
+    <ResponseField name="fee" type="bigint">Bridge fee in source-chain units. Defaults to `0n`. Quote via `bridge.api.getFee`.</ResponseField>
+    <ResponseField name="nativeFee" type="bigint">Native (source-chain gas-token) fee. Defaults to `0n`.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Returns
+
+`TransferParams` ready to pass to `bridge.validateTransfer`. The returned `message` is `HYPERLIQUID_MESSAGE`.
+
+#### Example
+
+```typescript
+import { createBridge, buildHyperliquidTransferParams } from "@omni-bridge/core"
+import { createNearBuilder, toNearKitTransaction } from "@omni-bridge/near"
+
+const bridge = createBridge({ network: "mainnet" })
+const builder = createNearBuilder({ network: "mainnet" })
+
+const validated = await bridge.validateTransfer(
+  buildHyperliquidTransferParams({
+    token: "near:wrap.near",
+    amount: 1_000_000_000_000_000_000_000_000n, // 1 wNEAR (24 decimals)
+    sender: "near:alice.near",
+    hypercoreRecipient: "0xRecipient...",
+    fee: 5_303_672_632_808_810_741_760n,
+  }),
+)
+const tx = builder.buildTransfer(validated, "alice.near")
+await toNearKitTransaction(near, tx).send({ waitUntil: "FINAL" })
+```
+
+---
+
+### HYPERLIQUID_MESSAGE
+
+```typescript
+const HYPERLIQUID_MESSAGE: string
+```
+
+The exact `TransferParams.message` value that routes the destination-side mint through `HlBridgeToken`'s system-address pool. Currently `'{"DestHexMsg":"636F7265"}'` — JSON envelope with `DestHexMsg` set to the hex of `"core"`. OmniBridge parses this envelope on HyperEVM and invokes the 3-arg `mint(addr, amt, bytes)` path; the resulting tokens are deposited into `_systemAddress` and Hyperliquid credits the recipient's HyperCore spot balance.
+
+Exposed mostly for tests and indexer code that inspects `message`. End-user code should call `buildHyperliquidTransferParams` instead of setting `message` directly.
+
+---
+
 ## Configuration Constants
 
 ### EVM_CHAIN_IDS

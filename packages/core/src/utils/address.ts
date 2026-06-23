@@ -93,6 +93,7 @@ export type EvmChainKind =
   | ChainKind.Bnb
   | ChainKind.Pol
   | ChainKind.Abs
+  | ChainKind.HyperEvm
 
 /**
  * Checks if a chain is an EVM-compatible chain
@@ -104,7 +105,8 @@ export function isEvmChain(chain: ChainKind): chain is EvmChainKind {
     chain === ChainKind.Arb ||
     chain === ChainKind.Bnb ||
     chain === ChainKind.Pol ||
-    chain === ChainKind.Abs
+    chain === ChainKind.Abs ||
+    chain === ChainKind.HyperEvm
   )
 }
 
