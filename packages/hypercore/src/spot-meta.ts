@@ -24,7 +24,7 @@ export interface SpotTokenInfo {
  * Shape of Hyperliquid `/info { type: "spotMeta" }` token entries we depend on.
  * The endpoint returns additional fields we ignore.
  */
-interface SpotMetaToken {
+export interface SpotMetaToken {
   name: string
   fullName?: string | null
   szDecimals: number

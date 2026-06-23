@@ -26,9 +26,14 @@ export {
   resolveSpotToken,
   resolveSpotTokenCached,
   type SpotMetaFetchOptions,
+  type SpotMetaToken,
   type SpotTokenInfo,
 } from "./spot-meta.js"
-export { type PostExchangeActionOptions, postExchangeAction } from "./submit.js"
+export {
+  type PostExchangeActionOptions,
+  type PostExchangeResult,
+  postExchangeAction,
+} from "./submit.js"
 export {
   buildSendToEvmWithDataTypedData,
   type HyperCoreTypedData,

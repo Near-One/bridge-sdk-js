@@ -103,7 +103,7 @@ buildTransfer(params: HyperCoreTransferParams): Promise<HyperCoreUnsignedAction>
 <ResponseField name="params" type="HyperCoreTransferParams" required>
   <Expandable title="HyperCoreTransferParams">
     <ResponseField name="spotId" type="string" required>
-      Hyperliquid spot identifier in the canonical `"NAME:0x<32hex>"` form (e.g. `"USDC:0x6d1e7cde53ba9467b783cb7c530ce054"`). Names alone are **not** accepted: Hyperliquid permits multiple tokens to share a `name`, so the 32-byte `tokenId` is the only unambiguous handle.
+      Hyperliquid spot identifier in the canonical `"NAME:0x<32hex>"` form (e.g. `"USDC:0x6d1e7cde53ba9467b783cb7c530ce054"`). The tokenId is 16 bytes (32 hex chars) following the `0x` prefix. Names alone are **not** accepted: Hyperliquid permits multiple tokens to share a `name`, so the tokenId is the only unambiguous handle.
     </ResponseField>
 
     <ResponseField name="amount" type="bigint" required>
