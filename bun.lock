@@ -18,6 +18,18 @@
         "vitest": "^4.1.7",
       },
     },
+    "packages/aptos": {
+      "name": "@omni-bridge/aptos",
+      "version": "0.9.0",
+      "dependencies": {
+        "@noble/hashes": "^2.0.1",
+        "@omni-bridge/core": "workspace:*",
+        "@scure/base": "^2.0.0",
+      },
+      "devDependencies": {
+        "typescript": "^5.9.3",
+      },
+    },
     "packages/btc": {
       "name": "@omni-bridge/btc",
       "version": "0.9.1",
@@ -78,6 +90,7 @@
       "name": "@omni-bridge/sdk",
       "version": "0.9.1",
       "dependencies": {
+        "@omni-bridge/aptos": "workspace:*",
         "@omni-bridge/btc": "workspace:*",
         "@omni-bridge/core": "workspace:*",
         "@omni-bridge/evm": "workspace:*",
@@ -423,6 +436,8 @@
     "@nodelib/fs.stat": ["@nodelib/fs.stat@2.0.5", "", {}, "sha512-RkhPPp2zrqDAQA/2jNhnztcPAlv64XdhIp7a7454A5ovI7Bukxgt7MX7udwAu3zg1DcpPU0rz3VV1SeaqvY4+A=="],
 
     "@nodelib/fs.walk": ["@nodelib/fs.walk@1.2.8", "", { "dependencies": { "@nodelib/fs.scandir": "2.1.5", "fastq": "^1.6.0" } }, "sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg=="],
+
+    "@omni-bridge/aptos": ["@omni-bridge/aptos@workspace:packages/aptos"],
 
     "@omni-bridge/btc": ["@omni-bridge/btc@workspace:packages/btc"],
 

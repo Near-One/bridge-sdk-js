@@ -22,6 +22,7 @@ const ChainSchema = z.enum([
   "HlEvm",
   "Strk",
   "Fogo",
+  "Aptos",
 ])
 export type Chain = z.infer<typeof ChainSchema>
 
@@ -96,6 +97,13 @@ const StarknetTransactionSchema = z.object({
   transaction_hash: z.string(),
 })
 
+const AptosTransactionSchema = z.object({
+  version: z.number().int().min(0),
+  block_height: z.number().int().min(0),
+  block_timestamp: z.number().int().min(0),
+  transaction_hash: z.string(),
+})
+
 const TransactionSchema = z
   .object({
     NearReceipt: NearReceiptTransactionSchema.optional(),
@@ -103,6 +111,7 @@ const TransactionSchema = z
     Solana: SolanaTransactionSchema.optional(),
     UtxoLog: UtxoLogTransactionSchema.optional(),
     Starknet: StarknetTransactionSchema.optional(),
+    Aptos: AptosTransactionSchema.optional(),
   })
   .refine(
     (data) => {
@@ -112,6 +121,7 @@ const TransactionSchema = z
         data.Solana,
         data.UtxoLog,
         data.Starknet,
+        data.Aptos,
       ].filter((field) => field !== undefined)
       return definedFields.length === 1
     },

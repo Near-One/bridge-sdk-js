@@ -19,6 +19,12 @@ describe("Omni Address Utils", () => {
       expect(omniAddress(ChainKind.Fogo, "dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe")).toBe(
         "fogo:dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe",
       )
+      expect(
+        omniAddress(
+          ChainKind.Aptos,
+          "0x05558831a603eca8cd69a42d4251f08de3573039b69f23972265cac76639f1cf",
+        ),
+      ).toBe("aptos:0x05558831a603eca8cd69a42d4251f08de3573039b69f23972265cac76639f1cf")
     })
 
     it("should work with empty addresses", () => {
@@ -48,6 +54,7 @@ describe("Omni Address Utils", () => {
         "strk:0xstrk789",
         "zcash:t1Rv4exT7bqhZqi2j7xz8bUHDMxwosrjADU",
         "fogo:dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe",
+        "aptos:0x05558831a603eca8cd69a42d4251f08de3573039b69f23972265cac76639f1cf",
       ]
 
       const expected = [
@@ -61,6 +68,7 @@ describe("Omni Address Utils", () => {
         ChainKind.Strk,
         ChainKind.Zcash,
         ChainKind.Fogo,
+        ChainKind.Aptos,
       ]
 
       addresses.forEach((addr, i) => {
@@ -81,9 +89,10 @@ describe("Omni Address Utils", () => {
         "abs:0xabs456",
         "strk:0xstrk789",
         "fogo:dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe",
+        "aptos:0x05558831a603eca8cd69a42d4251f08de3573039b69f23972265cac76639f1cf",
       ]
 
-      expect(validAddresses.length).toBe(9) // Just to use the array
+      expect(validAddresses.length).toBe(10) // Just to use the array
     })
 
     it("should allow construction via omniAddress helper", () => {
@@ -125,6 +134,7 @@ describe("Omni Address Utils", () => {
       expect(isEvmChain(ChainKind.Near)).toBe(false)
       expect(isEvmChain(ChainKind.Sol)).toBe(false)
       expect(isEvmChain(ChainKind.Strk)).toBe(false)
+      expect(isEvmChain(ChainKind.Aptos)).toBe(false)
     })
 
     it("should work with type checking", () => {

@@ -31,6 +31,8 @@ packages/
 ├── evm/         # @omni-bridge/evm - EVM transaction builder (viem-based)
 ├── near/        # @omni-bridge/near - NEAR transaction builder + shims
 ├── solana/      # @omni-bridge/solana - Solana instruction builder (Anchor-based)
+├── starknet/    # @omni-bridge/starknet - Starknet transaction builder
+├── aptos/       # @omni-bridge/aptos - Aptos entry-function payload builder
 ├── btc/         # @omni-bridge/btc - Bitcoin/Zcash UTXO operations
 └── sdk/         # @omni-bridge/sdk - Umbrella re-export of all packages
 ```
@@ -43,6 +45,8 @@ packages/
 - `createEvmBuilder({ network, chain })` → EVM transaction building
 - `createNearBuilder({ network })` → NEAR transaction building
 - `createSolanaBuilder({ network, connection? })` → Solana instruction building
+- `createStarknetBuilder({ network, bridgeAddress? })` → Starknet Call[] building
+- `createAptosBuilder({ network, bridgeAddress? })` → Aptos entry-function payloads
 - `createBtcBuilder({ network, chain })` → Bitcoin/Zcash UTXO operations
 
 **Unsigned Transaction Types**: SDK returns library-agnostic plain objects:
@@ -50,10 +54,12 @@ packages/
 - `EvmUnsignedTransaction` → Compatible with viem and ethers v6 directly
 - `NearUnsignedTransaction` → Use shims: `toNearKitTransaction()` or `sendWithNearApiJs()`
 - `TransactionInstruction[]` → Native @solana/web3.js instructions
+- `Call[]` → Native starknet.js calls
+- `AptosFunctionPayload` → Compatible with @aptos-labs/ts-sdk `InputEntryFunctionData`
 - `BtcWithdrawalPlan` → UTXO inputs/outputs for signing
 
 **OmniAddress System**: Cross-chain addresses use chain prefixes:
-`eth:0x...`, `near:account.near`, `sol:...`, `base:0x...`, `arb:0x...`, `btc:...`, `zcash:...`
+`eth:0x...`, `near:account.near`, `sol:...`, `base:0x...`, `arb:0x...`, `strk:0x...`, `aptos:0x...`, `btc:...`, `zcash:...`
 
 ### Transfer Flow
 
@@ -71,6 +77,8 @@ packages/
 - `packages/near/src/builder.ts` - NEAR transaction builder
 - `packages/near/src/shims.ts` - near-kit and near-api-js conversion helpers
 - `packages/solana/src/builder.ts` - Solana instruction builder
+- `packages/starknet/src/builder.ts` - Starknet transaction builder
+- `packages/aptos/src/builder.ts` - Aptos payload builder
 - `packages/btc/src/builder.ts` - Bitcoin/Zcash UTXO builder
 
 ## Testing Patterns

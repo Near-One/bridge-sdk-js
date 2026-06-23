@@ -42,6 +42,11 @@ export interface StarknetAddresses {
   bridge: string
 }
 
+export interface AptosAddresses {
+  /** Account address the `omni_bridge` Move package is published under. */
+  bridge: string
+}
+
 export interface ChainAddresses {
   eth: EvmAddresses
   arb: EvmAddresses
@@ -55,6 +60,7 @@ export interface ChainAddresses {
   zcash: ZcashAddresses
   strk: StarknetAddresses
   fogo?: SolanaAddresses
+  aptos?: AptosAddresses
 }
 
 const MAINNET_ADDRESSES: ChainAddresses = {

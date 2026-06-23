@@ -463,6 +463,67 @@ describe("Bridge.validateTransfer", () => {
     })
   })
 
+  describe("Aptos contract address", () => {
+    it("validates a NEAR to Aptos transfer (contract address only resolved for source)", async () => {
+      mockNearView.mockImplementation(async (_contract: string, method: string, args: unknown) => {
+        if (method === "get_token_decimals") {
+          return { decimals: 8, origin_decimals: 24 }
+        }
+        if (method === "get_bridged_token") {
+          const { chain, address } = args as { chain: string; address: string }
+          if (chain === "Aptos" && address === "near:wrap.testnet") {
+            return "aptos:0x2ebb2ccac5e027a87fa0e2e5f656a3a4238d6a48d93ec9b610d570fc0aa0df12"
+          }
+          return null
+        }
+        return null
+      })
+
+      const params: TransferParams = {
+        token: "near:wrap.testnet" as OmniAddress,
+        amount: 1000000000000000000000000n, // 1 wNEAR (24 decimals)
+        fee: 0n,
+        nativeFee: 0n,
+        sender: "near:alice.testnet" as OmniAddress,
+        recipient:
+          "aptos:0x05558831a603eca8cd69a42d4251f08de3573039b69f23972265cac76639f1cf" as OmniAddress,
+      }
+
+      const result = await bridge.validateTransfer(params)
+
+      expect(result.destChain).toBe(ChainKind.Aptos)
+      expect(result.bridgedToken).toBe(
+        "aptos:0x2ebb2ccac5e027a87fa0e2e5f656a3a4238d6a48d93ec9b610d570fc0aa0df12",
+      )
+      // The bridged token lookup must use the omni-types serde variant name.
+      expect(mockNearView).toHaveBeenCalledWith(expect.any(String), "get_bridged_token", {
+        chain: "Aptos",
+        address: "near:wrap.testnet",
+      })
+    })
+
+    it("throws when source chain is Aptos (bridge not yet deployed)", async () => {
+      const params: TransferParams = {
+        token: "aptos:0x000000000000000000000000000000000000000000000000000000000000000a" as OmniAddress,
+        amount: 1000000000n,
+        fee: 0n,
+        nativeFee: 0n,
+        sender:
+          "aptos:0x05558831a603eca8cd69a42d4251f08de3573039b69f23972265cac76639f1cf" as OmniAddress,
+        recipient: "near:alice.testnet" as OmniAddress,
+      }
+
+      await expect(bridge.validateTransfer(params)).rejects.toThrow(ValidationError)
+      await expect(bridge.validateTransfer(params)).rejects.toThrow(
+        "Aptos bridge is not yet deployed on this network",
+      )
+      await expect(bridge.validateTransfer(params)).rejects.toMatchObject({
+        code: "UNSUPPORTED_CHAIN",
+        details: { chain: "Aptos" },
+      })
+    })
+  })
+
   describe("contract address resolution", () => {
     it("returns correct contract for ETH source", async () => {
       const params: TransferParams = {

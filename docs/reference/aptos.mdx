@@ -1,0 +1,407 @@
+---
+title: "@omni-bridge/aptos"
+description: Entry-function payload builder for Aptos
+---
+
+## Import
+
+```typescript
+import {
+  createAptosBuilder,
+  type AptosBuilder,
+  type AptosBuilderConfig,
+  type AptosFunctionPayload,
+  type AptosTokenMetadata,
+  type AptosTransferPayload,
+  type AptosEventLog,
+  type AptosInitTransferEvent,
+  normalizeAptosAddress,
+  aptosAddressToBytes,
+  deriveAptosBridgeObjectAddress,
+  deriveAptosBridgedTokenAddress,
+  getAptosEventLog,
+  getAptosInitTransferLog,
+  getAptosDeployTokenLog,
+  getAptosFinTransferLog,
+  getAptosInitTransferEvent,
+  parseAptosInitTransferEvent,
+  isAptosTransferFinalised,
+  normalizeAptosEventData,
+} from "@omni-bridge/aptos"
+```
+
+This package builds entry-function payloads for the `omni_bridge` Move package. Payloads are plain objects structurally compatible with `InputEntryFunctionData` from `@aptos-labs/ts-sdk` — pass them to `aptos.transaction.build.simple({ sender, data })` or to a wallet adapter's `signAndSubmitTransaction({ data })`.
+
+---
+
+## createAptosBuilder
+
+Factory function to create an Aptos payload builder.
+
+### Signature
+
+```typescript
+function createAptosBuilder(config: AptosBuilderConfig): AptosBuilder
+```
+
+### Parameters
+
+<ResponseField name="config" type="AptosBuilderConfig" required>
+  <Expandable title="AptosBuilderConfig">
+    <ResponseField name="network" type="'mainnet' | 'testnet'" required>
+      The network to use for config lookups.
+    </ResponseField>
+
+    <ResponseField name="bridgeAddress" type="string">
+      Address the `omni_bridge` Move package is published under. Required until the
+      bridge contract is deployed and its address ships in the SDK config — the factory
+      throws if neither the override nor a configured address is available. Short-form
+      addresses are normalized to the canonical zero-padded form.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Returns
+
+`AptosBuilder` — payload builder instance with a readonly `bridgeAddress`.
+
+### Example
+
+```typescript
+import { createAptosBuilder } from "@omni-bridge/aptos"
+
+const builder = createAptosBuilder({
+  network: "testnet",
+  bridgeAddress: "0x05558831a603eca8cd69a42d4251f08de3573039b69f23972265cac76639f1cf",
+})
+```
+
+---
+
+## AptosBuilder Methods
+
+### buildTransfer
+
+Build an `init_transfer` payload. No approval step is needed — the Move contract pulls funds directly from the transaction signer.
+
+#### Signature
+
+```typescript
+buildTransfer(params: {
+  token: string
+  amount: bigint
+  fee: bigint
+  nativeFee: bigint
+  recipient: string
+  message?: string
+}): AptosFunctionPayload
+```
+
+#### Parameters
+
+<ResponseField name="params.token" type="string" required>
+  Fungible Asset metadata object address of the token. Native APT is the canonical FA at `0xa`.
+</ResponseField>
+
+<ResponseField name="params.amount" type="bigint" required>
+  Amount in token base units. Must fit in u64 (Aptos FA amounts are u64) and includes the token fee.
+</ResponseField>
+
+<ResponseField name="params.fee" type="bigint" required>
+  Token-denominated relayer fee. Must be strictly less than `amount`.
+</ResponseField>
+
+<ResponseField name="params.nativeFee" type="bigint" required>
+  Relayer fee in APT base units (octas), transferred separately from `amount`.
+</ResponseField>
+
+<ResponseField name="params.recipient" type="string" required>
+  Destination as an OmniAddress string, e.g. `near:alice.near` or `eth:0x...`.
+</ResponseField>
+
+<ResponseField name="params.message" type="string">
+  Optional UTF-8 message forwarded to the destination chain.
+</ResponseField>
+
+#### Returns
+
+`AptosFunctionPayload` — an `init_transfer` entry-function payload.
+
+#### Example
+
+```typescript
+const payload = builder.buildTransfer({
+  token: "0xa",
+  amount: 100_000_000n, // 1 APT
+  fee: 0n,
+  nativeFee: 0n,
+  recipient: "near:alice.near",
+})
+
+const transaction = await aptos.transaction.build.simple({
+  sender: account.accountAddress,
+  data: payload,
+})
+```
+
+---
+
+### buildLogMetadata
+
+Build a `log_metadata` payload for an existing Fungible Asset (permissionless). The NEAR side picks up the emitted event to allow deploying the wrapped token.
+
+#### Signature
+
+```typescript
+buildLogMetadata(token: string): AptosFunctionPayload
+```
+
+#### Parameters
+
+<ResponseField name="token" type="string" required>
+  Fungible Asset metadata object address.
+</ResponseField>
+
+#### Returns
+
+`AptosFunctionPayload` — a `log_metadata` entry-function payload.
+
+---
+
+### buildDeployToken
+
+Build a `deploy_token` payload from a NEAR `LogMetadataEvent` MPC signature. Permissionless — the signature is the authorization.
+
+#### Signature
+
+```typescript
+buildDeployToken(
+  signature: Uint8Array,
+  metadata: AptosTokenMetadata
+): AptosFunctionPayload
+```
+
+#### Parameters
+
+<ResponseField name="signature" type="Uint8Array" required>
+  65-byte Ethereum-style MPC signature (`r || s || v`) over the metadata payload.
+</ResponseField>
+
+<ResponseField name="metadata" type="AptosTokenMetadata" required>
+  <Expandable title="AptosTokenMetadata">
+    <ResponseField name="token" type="string" required>
+      Source-chain token id signed in the payload (e.g. the NEAR account id).
+    </ResponseField>
+    <ResponseField name="name" type="string" required>
+      Token name.
+    </ResponseField>
+    <ResponseField name="symbol" type="string" required>
+      Token symbol.
+    </ResponseField>
+    <ResponseField name="decimals" type="number" required>
+      Origin decimals as signed in the payload. The contract clamps the deployed FA to at most 8 decimals.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Returns
+
+`AptosFunctionPayload` — a `deploy_token` entry-function payload.
+
+---
+
+### buildFinalization
+
+Build a `fin_transfer` payload from a NEAR `SignTransferEvent`. Permissionless — the signature is the authorization.
+
+#### Signature
+
+```typescript
+buildFinalization(
+  signature: Uint8Array,
+  payload: AptosTransferPayload
+): AptosFunctionPayload
+```
+
+#### Parameters
+
+<ResponseField name="signature" type="Uint8Array" required>
+  65-byte Ethereum-style MPC signature (`r || s || v`) over the transfer message payload.
+</ResponseField>
+
+<ResponseField name="payload" type="AptosTransferPayload" required>
+  <Expandable title="AptosTransferPayload">
+    <ResponseField name="destinationNonce" type="bigint" required>
+      Destination nonce assigned by the NEAR bridge.
+    </ResponseField>
+    <ResponseField name="originChain" type="number" required>
+      Origin `ChainKind` value (e.g. `ChainKind.Near` = 1).
+    </ResponseField>
+    <ResponseField name="originNonce" type="bigint" required>
+      Origin nonce of the transfer.
+    </ResponseField>
+    <ResponseField name="tokenAddress" type="string" required>
+      Fungible Asset metadata object address on Aptos.
+    </ResponseField>
+    <ResponseField name="amount" type="bigint" required>
+      Amount in token base units (must fit in u64).
+    </ResponseField>
+    <ResponseField name="recipient" type="string" required>
+      Aptos account address of the recipient.
+    </ResponseField>
+    <ResponseField name="feeRecipient" type="string">
+      NEAR account id of the fee recipient (omit for none).
+    </ResponseField>
+    <ResponseField name="message" type="string">
+      UTF-8 message (omit or empty for none).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Returns
+
+`AptosFunctionPayload` — a `fin_transfer` entry-function payload.
+
+---
+
+## Event Helpers
+
+All event helpers take an Aptos fullnode REST endpoint (including the `/v1` segment), the bridge module address, and a transaction hash.
+
+### getAptosInitTransferEvent
+
+Fetch a committed transaction and decode its `InitTransfer` event.
+
+```typescript
+function getAptosInitTransferEvent(
+  rpcUrl: string,
+  bridgeAddress: string,
+  txHash: string
+): Promise<AptosInitTransferEvent>
+```
+
+```typescript
+interface AptosInitTransferEvent {
+  sender: string        // canonical Aptos address
+  tokenAddress: string  // canonical Aptos address
+  originNonce: bigint
+  amount: bigint
+  fee: bigint
+  nativeFee: bigint
+  recipient: string     // OmniAddress string
+  message: string       // UTF-8 decoded; raw 0x… hex kept if not valid UTF-8
+}
+```
+
+### getAptosInitTransferLog / getAptosDeployTokenLog / getAptosFinTransferLog
+
+Extract a raw bridge event log with the metadata needed for MPC proof construction (transaction hash + event index, with canonical sorted-key JSON data).
+
+```typescript
+function getAptosInitTransferLog(
+  rpcUrl: string,
+  bridgeAddress: string,
+  txHash: string
+): Promise<AptosEventLog>
+```
+
+```typescript
+interface AptosEventLog {
+  accountAddress: string // event GUID account address, zero-padded
+  sequenceNumber: bigint
+  typeTag: string        // e.g. "0x…::omni_bridge::InitTransfer" (verbatim)
+  data: string           // canonical JSON (recursively sorted keys)
+  eventIndex: number     // index in the transaction's events array
+}
+```
+
+### parseAptosInitTransferEvent
+
+Parse an `InitTransfer` event from its decoded `data` object (as returned by the fullnode REST API).
+
+```typescript
+function parseAptosInitTransferEvent(data: unknown): AptosInitTransferEvent
+```
+
+### isAptosTransferFinalised
+
+Check whether a transfer with the given destination nonce has been finalised, via the `is_transfer_finalised` view function.
+
+```typescript
+function isAptosTransferFinalised(
+  rpcUrl: string,
+  bridgeAddress: string,
+  nonce: bigint
+): Promise<boolean>
+```
+
+### normalizeAptosEventData
+
+Canonical string form of an event's `data`: JSON with recursively sorted object keys, so consumers hash identical bytes regardless of provider key ordering. This is the form carried in `AptosEventLog.data` for MPC proof construction.
+
+```typescript
+function normalizeAptosEventData(value: unknown): string
+```
+
+---
+
+## Address Utilities
+
+### normalizeAptosAddress
+
+Normalize an Aptos account address to its canonical form (`0x` + 64 lowercase hex chars). Accepts short-form addresses with or without the `0x` prefix.
+
+```typescript
+normalizeAptosAddress("0xa")
+// "0x000000000000000000000000000000000000000000000000000000000000000a"
+```
+
+### aptosAddressToBytes
+
+Decode an Aptos account address into its 32 raw bytes.
+
+```typescript
+function aptosAddressToBytes(address: string): Uint8Array
+```
+
+### deriveAptosBridgeObjectAddress
+
+Compute the deterministic bridge state object address for an `omni_bridge` deployment (named object with seed `"omni_bridge::state"`). This object custodies locked tokens and is the address registered as the Aptos factory on the NEAR bridge.
+
+```typescript
+function deriveAptosBridgeObjectAddress(moduleAddress: string): string
+```
+
+### deriveAptosBridgedTokenAddress
+
+Compute the deterministic Fungible Asset address of a bridge-deployed token (named object created by the bridge object with the NEAR token id as seed).
+
+```typescript
+const bridgeObject = deriveAptosBridgeObjectAddress("0x...")
+const fa = deriveAptosBridgedTokenAddress(bridgeObject, "wrap.near")
+```
+
+---
+
+## Types
+
+### AptosFunctionPayload
+
+```typescript
+interface AptosFunctionPayload {
+  function: `${string}::${string}::${string}` // "0x…::omni_bridge::init_transfer"
+  typeArguments: string[]
+  functionArguments: (string | number | number[] | null)[]
+}
+```
+
+Argument encoding conventions (accepted by the ts-sdk argument converter):
+
+| Move type | Encoding |
+|-----------|----------|
+| `address` / `Object<Metadata>` | canonical `0x`-prefixed 64-hex string |
+| `u64` / `u128` | decimal string |
+| `u8` | number |
+| `String` | string |
+| `vector<u8>` | plain byte array (`number[]`) |
+| `Option<T>` | inner value, or `null` for None |

@@ -3,7 +3,7 @@
 ![Status](https://img.shields.io/badge/Status-Beta-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-TypeScript SDK for cross-chain token transfers via the [Omni Bridge](https://github.com/Near-one/omni-bridge) protocol. Transfer tokens between Ethereum, NEAR, Solana, Base, Arbitrum, Polygon, BNB Chain, Abstract, Starknet, Fogo, Bitcoin, and Zcash.
+TypeScript SDK for cross-chain token transfers via the [Omni Bridge](https://github.com/Near-one/omni-bridge) protocol. Transfer tokens between Ethereum, NEAR, Solana, Base, Arbitrum, Polygon, BNB Chain, Abstract, Starknet, Aptos, Fogo, Bitcoin, and Zcash.
 
 ## Install
 
@@ -52,25 +52,31 @@ The SDK uses **OmniAddress** format — a chain prefix followed by the native ad
 eth:0x1234...      → Ethereum
 base:0x1234...     → Base
 arb:0x1234...      → Arbitrum
+pol:0x1234...      → Polygon
 near:alice.near    → NEAR
 sol:ABC123...      → Solana
+fogo:ABC123...     → Fogo
 abs:0x1234...      → Abstract
 strk:0x1234...     → Starknet
+aptos:0x1234...    → Aptos
 btc:bc1q...        → Bitcoin
+zcash:t1abc...     → Zcash
 ```
 
 This makes it unambiguous which chain an address belongs to, which is essential for cross-chain operations.
 
 ## Packages
 
-| Package               | Description                                    |
-| --------------------- | ---------------------------------------------- |
-| `@omni-bridge/core`   | Validation, types, configuration, API client   |
-| `@omni-bridge/evm`    | Ethereum, Base, Arbitrum, Polygon, BNB Chain, Abstract |
-| `@omni-bridge/near`   | NEAR Protocol                                  |
-| `@omni-bridge/solana` | Solana                                         |
-| `@omni-bridge/btc`    | Bitcoin, Zcash                                 |
-| `@omni-bridge/sdk`    | Umbrella package (re-exports all of the above) |
+| Package                 | Description                                    |
+| ----------------------- | ---------------------------------------------- |
+| `@omni-bridge/core`     | Validation, types, configuration, API client   |
+| `@omni-bridge/evm`      | Ethereum, Base, Arbitrum, Polygon, BNB Chain, Abstract |
+| `@omni-bridge/near`     | NEAR Protocol                                  |
+| `@omni-bridge/solana`   | Solana, Fogo                                   |
+| `@omni-bridge/starknet` | Starknet                                       |
+| `@omni-bridge/aptos`    | Aptos                                          |
+| `@omni-bridge/btc`      | Bitcoin, Zcash                                 |
+| `@omni-bridge/sdk`      | Umbrella package (re-exports all of the above) |
 
 Install `@omni-bridge/sdk` for everything, or pick individual packages to minimize bundle size.
 
