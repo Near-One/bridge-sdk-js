@@ -1,5 +1,12 @@
 # @omni-bridge/solana
 
+## 0.10.0
+
+### Patch Changes
+
+- Updated dependencies [e6574bb]
+  - @omni-bridge/core@0.10.0
+
 ## 0.9.1
 
 ### Patch Changes

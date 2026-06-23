@@ -1,5 +1,11 @@
 # @omni-bridge/core
 
+## 0.10.0
+
+### Minor Changes
+
+- e6574bb: support transfers from HyperEVM and HyperCore
+
 ## 0.9.1
 
 ### Patch Changes
