@@ -33,16 +33,16 @@
   "author": "NEAR One",
   "license": "MIT",
   "devDependencies": {
-    "@arethetypeswrong/cli": "^0.18.2",
-    "@biomejs/biome": "^2.4.15",
+    "@arethetypeswrong/cli": "^0.18.4",
+    "@biomejs/biome": "^2.5.0",
     "@changesets/cli": "^2.31.0",
     "@types/bun": "^1.3.14",
-    "@types/node": "^25.9.1",
-    "@vitest/coverage-v8": "^4.1.7",
+    "@types/node": "^25.9.4",
+    "@vitest/coverage-v8": "^4.1.9",
     "knip": "^5.88.1",
-    "lefthook": "^2.1.8",
+    "lefthook": "^2.1.9",
     "msw": "^2.14.6",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.9"
   }
 }
