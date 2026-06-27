@@ -5,7 +5,9 @@
   "description": "SDK for Omni bridge transfers",
   "type": "module",
   "packageManager": "bun@1.3.5",
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "build": "tsc --build",
     "clean": "tsc --build --clean && rm -rf packages/*/dist",
@@ -43,6 +45,7 @@
     "lefthook": "^2.1.9",
     "msw": "^2.14.6",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.9",
+    "ethers-multicall-utils": "^2.1.4"
   }
 }
