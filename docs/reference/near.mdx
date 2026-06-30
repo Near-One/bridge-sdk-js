@@ -786,7 +786,7 @@ Methods for interacting with the Bitcoin and Zcash UTXO connectors on NEAR.
 
 ### buildUtxoDepositFinalization
 
-Build a transaction to finalize a UTXO deposit on NEAR. Calls `verify_deposit` (or `safe_verify_deposit` when `safe_deposit` is provided) on the connector contract.
+Build a transaction to finalize a UTXO deposit on NEAR. Calls `verify_deposit_v2` on the connector contract. The contract selects the safe vs. standard deposit path from `depositMsg.safe_deposit`; when a safe deposit is provided the builder attaches the NEAR required to pre-fund the user's token storage.
 
 #### Signature
 
@@ -817,7 +817,7 @@ buildUtxoDepositFinalization(params: UtxoDepositFinalizationParams): NearUnsigne
         </ResponseField>
 
         <ResponseField name="safe_deposit" type="UtxoSafeDeposit">
-          Safe deposit message. When provided, uses `safe_verify_deposit` instead of `verify_deposit`.
+          Safe deposit message. When provided, `verify_deposit_v2` routes through the safe-deposit path (reverts on failure) and the builder attaches NEAR for the user's token storage.
         </ResponseField>
 
         <ResponseField name="refund_address" type="string">
@@ -846,6 +846,14 @@ buildUtxoDepositFinalization(params: UtxoDepositFinalizationParams): NearUnsigne
       Merkle proof for transaction inclusion.
     </ResponseField>
 
+    <ResponseField name="coinbaseTxId" type="string" required>
+      Coinbase transaction ID for the block (first transaction).
+    </ResponseField>
+
+    <ResponseField name="coinbaseMerkleProof" type="string[]" required>
+      Merkle proof for the coinbase transaction.
+    </ResponseField>
+
     <ResponseField name="signerId" type="string" required>
       The NEAR account ID that will sign the transaction.
     </ResponseField>
@@ -855,7 +863,7 @@ buildUtxoDepositFinalization(params: UtxoDepositFinalizationParams): NearUnsigne
 #### Returns
 
 <ResponseField name="NearUnsignedTransaction" type="object">
-  An unsigned verify_deposit transaction.
+  An unsigned verify_deposit_v2 transaction.
 </ResponseField>
 
 ---
@@ -922,7 +930,7 @@ buildUtxoWithdrawalInit(params: UtxoWithdrawalInitParams): NearUnsignedTransacti
 
 ### buildUtxoWithdrawalVerify
 
-Build a transaction to verify a UTXO withdrawal on NEAR. Calls `btc_verify_withdraw` on the connector.
+Build a transaction to verify a UTXO withdrawal on NEAR. Calls `verify_withdraw_v2` on the connector. Use `BtcBuilder.getWithdrawProof()` to obtain the proof fields.
 
 #### Signature
 
@@ -938,16 +946,28 @@ buildUtxoWithdrawalVerify(params: UtxoWithdrawalVerifyParams): NearUnsignedTrans
       The UTXO chain.
     </ResponseField>
 
-    <ResponseField name="blockHeight" type="number" required>
-      Block height of the transaction.
+    <ResponseField name="txId" type="string" required>
+      Transaction ID of the broadcast withdrawal transaction.
     </ResponseField>
 
-    <ResponseField name="merkle" type="string[]" required>
-      Merkle proof hashes.
+    <ResponseField name="txBlockBlockhash" type="string" required>
+      Block hash containing the transaction.
     </ResponseField>
 
-    <ResponseField name="pos" type="number" required>
-      Position in the merkle tree.
+    <ResponseField name="txIndex" type="number" required>
+      Transaction index in the block.
+    </ResponseField>
+
+    <ResponseField name="merkleProof" type="string[]" required>
+      Merkle proof for transaction inclusion.
+    </ResponseField>
+
+    <ResponseField name="coinbaseTxId" type="string" required>
+      Coinbase transaction ID for the block (first transaction).
+    </ResponseField>
+
+    <ResponseField name="coinbaseMerkleProof" type="string[]" required>
+      Merkle proof for the coinbase transaction.
     </ResponseField>
 
     <ResponseField name="signerId" type="string" required>
@@ -959,7 +979,7 @@ buildUtxoWithdrawalVerify(params: UtxoWithdrawalVerifyParams): NearUnsignedTrans
 #### Returns
 
 <ResponseField name="NearUnsignedTransaction" type="object">
-  An unsigned btc_verify_withdraw transaction.
+  An unsigned verify_withdraw_v2 transaction.
 </ResponseField>
 
 ---

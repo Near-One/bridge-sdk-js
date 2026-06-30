@@ -23,7 +23,7 @@ export const GAS = {
   UTXO_INIT_WITHDRAWAL: BigInt(parseGas("100 Tgas")),
   UTXO_SUBMIT_WITHDRAWAL: BigInt(parseGas("300 Tgas")),
   UTXO_SIGN_WITHDRAWAL: BigInt(parseGas("300 Tgas")),
-  UTXO_VERIFY_WITHDRAWAL: BigInt(parseGas("5 Tgas")),
+  UTXO_VERIFY_WITHDRAWAL: BigInt(parseGas("300 Tgas")),
 } as const
 
 // Deposit constants
@@ -257,7 +257,8 @@ export interface UtxoPostAction {
 
 /**
  * Safe deposit message for UTXO deposits.
- * When present, the finalization uses `safe_verify_deposit` instead of `verify_deposit`.
+ * When present, `verify_deposit_v2` routes through the safe-deposit path (reverts
+ * on failure, charges no fee) and the caller must attach NEAR for token storage.
  */
 export interface UtxoSafeDeposit {
   msg: string
@@ -275,14 +276,14 @@ export interface UtxoDepositMsg {
 }
 
 /**
- * Arguments for finalizing a UTXO deposit on NEAR
+ * Arguments for finalizing a UTXO deposit on NEAR via `verify_deposit_v2`.
  */
 export interface UtxoDepositFinalizationParams {
   /** The UTXO chain (BTC or Zcash) */
   chain: "btc" | "zcash"
   /** Deposit message matching what was used to generate the address */
   depositMsg: UtxoDepositMsg
-  /** Raw transaction bytes */
+  /** Raw transaction bytes (base64-encoded for the contract by the builder) */
   txBytes: number[]
   /** Output index in the transaction */
   vout: number
@@ -292,6 +293,10 @@ export interface UtxoDepositFinalizationParams {
   txIndex: number
   /** Merkle proof for transaction inclusion */
   merkleProof: string[]
+  /** Coinbase transaction ID for the block (first transaction) */
+  coinbaseTxId: string
+  /** Merkle proof for the coinbase transaction */
+  coinbaseMerkleProof: string[]
   /** Signer account ID */
   signerId: string
 }
@@ -362,17 +367,23 @@ export interface UtxoWithdrawalSignParams {
 }
 
 /**
- * Parameters for verifying a UTXO withdrawal on NEAR
+ * Parameters for verifying a UTXO withdrawal on NEAR via `verify_withdraw_v2`.
  */
 export interface UtxoWithdrawalVerifyParams {
   /** The UTXO chain (BTC or Zcash) */
   chain: "btc" | "zcash"
-  /** Block height of the transaction */
-  blockHeight: number
-  /** Merkle proof hashes */
-  merkle: string[]
-  /** Position in the merkle tree */
-  pos: number
+  /** Transaction ID of the broadcast withdrawal transaction */
+  txId: string
+  /** Block hash containing the transaction */
+  txBlockBlockhash: string
+  /** Transaction index in the block */
+  txIndex: number
+  /** Merkle proof for transaction inclusion */
+  merkleProof: string[]
+  /** Coinbase transaction ID for the block (first transaction) */
+  coinbaseTxId: string
+  /** Merkle proof for the coinbase transaction */
+  coinbaseMerkleProof: string[]
   /** Signer account ID */
   signerId: string
 }

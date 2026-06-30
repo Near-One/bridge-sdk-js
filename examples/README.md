@@ -134,6 +134,8 @@ const finalizeTx = nearBuilder.buildUtxoDepositFinalization({
   txBlockBlockhash: proof.tx_block_blockhash,
   txIndex: proof.tx_index,
   merkleProof: proof.merkle_proof,
+  coinbaseTxId: proof.coinbase_tx_id,
+  coinbaseMerkleProof: proof.coinbase_merkle_proof,
   signerId: "recipient.near",
 })
 

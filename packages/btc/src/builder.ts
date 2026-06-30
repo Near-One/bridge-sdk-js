@@ -11,6 +11,7 @@ import type {
   BtcDepositProof,
   BtcMerkleProof,
   BtcWithdrawalPlan,
+  BtcWithdrawalProof,
   FeeCalculator,
   LinearFeeParameters,
   NormalizedUTXO,
@@ -90,6 +91,13 @@ export interface BtcBuilder {
    * Get deposit proof for verifying a BTC deposit
    */
   getDepositProof(txHash: string, vout: number): Promise<BtcDepositProof>
+
+  /**
+   * Get a withdrawal proof for verifying a BTC/ZEC withdrawal on NEAR via
+   * `verify_withdraw_v2`. Includes the transaction inclusion proof with coinbase
+   * verification.
+   */
+  getWithdrawProof(txHash: string): Promise<BtcWithdrawalProof>
 
   /**
    * Get Merkle proof for a transaction
@@ -211,6 +219,10 @@ class BtcBuilderImpl implements BtcBuilder {
 
   async getDepositProof(txHash: string, vout: number): Promise<BtcDepositProof> {
     return await this.rpc.buildDepositProof(txHash, vout)
+  }
+
+  async getWithdrawProof(txHash: string): Promise<BtcWithdrawalProof> {
+    return await this.rpc.buildWithdrawProof(txHash)
   }
 
   async getMerkleProof(txHash: string): Promise<BtcMerkleProof> {

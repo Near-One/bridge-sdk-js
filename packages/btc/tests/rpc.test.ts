@@ -96,6 +96,9 @@ describe("UtxoRpcClient", () => {
       expect(proof.tx_index).toBe(0)
       expect(proof.tx_bytes.length).toBeGreaterThan(0)
       expect(proof.merkle_proof.length).toBeGreaterThan(0)
+      // coinbase is the first transaction in the block
+      expect(proof.coinbase_tx_id).toBe(mockTxHash)
+      expect(proof.coinbase_merkle_proof.length).toBeGreaterThan(0)
     })
 
     it("should throw for unconfirmed transaction", async () => {
@@ -125,6 +128,39 @@ describe("UtxoRpcClient", () => {
     it("should throw for invalid vout", async () => {
       await expect(client.buildDepositProof(mockTxHash, 999)).rejects.toThrow(
         "UTXO: Output 999 not found in transaction",
+      )
+    })
+  })
+
+  describe("buildWithdrawProof", () => {
+    it("should build withdrawal proof for confirmed transaction", async () => {
+      const proof = await client.buildWithdrawProof(mockTxHash)
+
+      expect(proof.tx_id).toBe(mockTxHash)
+      expect(proof.tx_block_blockhash).toBe(mockBlockHash)
+      expect(proof.tx_index).toBe(0)
+      expect(proof.merkle_proof.length).toBeGreaterThan(0)
+      expect(proof.coinbase_tx_id).toBe(mockTxHash)
+      expect(proof.coinbase_merkle_proof.length).toBeGreaterThan(0)
+    })
+
+    it("should throw for unconfirmed transaction", async () => {
+      server.use(
+        http.post(BITCOIN_RPC_URL, async ({ request }) => {
+          const body = (await request.json()) as { method: string }
+          if (body.method === "getrawtransaction") {
+            return HttpResponse.json({
+              jsonrpc: "2.0",
+              id: "1",
+              result: { hex: "0200000001abcdef", vout: [{ n: 0, value: 0.001 }] },
+            })
+          }
+          return HttpResponse.json({ jsonrpc: "2.0", id: "1", result: null })
+        }),
+      )
+
+      await expect(client.buildWithdrawProof(mockTxHash)).rejects.toThrow(
+        "UTXO: Transaction not confirmed",
       )
     })
   })
