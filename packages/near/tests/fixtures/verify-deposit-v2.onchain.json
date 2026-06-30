@@ -1,0 +1,54 @@
+{
+  "_comment": "Golden-master: real on-chain verify_deposit_v2 args from a successful mainnet tx. Guarantees the near builder reproduces the exact contract wire format. Regenerate from source rather than editing by hand.",
+  "source": "https://nearblocks.io/txns/DrUqbfZ8w3XcNe9nGjQAA38x2XkHghd4tJr5gvRX2fhG?tab=execution",
+  "txHash": "DrUqbfZ8w3XcNe9nGjQAA38x2XkHghd4tJr5gvRX2fhG",
+  "signerId": "omni-relayer.bridge.near",
+  "receiverId": "btc-connector.bridge.near",
+  "method": "verify_deposit_v2",
+  "depositYocto": "1200000000000000000000",
+  "gas": "300000000000000",
+  "args": {
+    "vout": 0,
+    "proof": {
+      "tx_index": 2827,
+      "merkle_proof": [
+        "36cf52b5dc577f9188b9ed6b37574e3d30cbd121f775334007c3dfa9bcc4faf6",
+        "b1a625ff8653c8c7786847de4dc01c3da4fb01f606d9a1d5eb504c6113a93bb5",
+        "e2a4d24c313c5b0e86d4efd541fb7d0fa698301567bf7a1c56b5e8e1c1a92e20",
+        "862d5c12ba129c8d84e434d71fa8ea1b71eded3ed6d2b94f415bb0269a7f8f3f",
+        "5744d723676cf79cff467a6bd2bc5ee8b582669b232f6623043e447dc114ecfa",
+        "faee396df061350fbd36ac6837a8862e816df2231953707814de451773cd2e42",
+        "c6f7d9bddf5da4cdbbefa1c407bb95ade9cc87e122105406210ea25a7bcb704a",
+        "fd4f228f76c1f42faae36d7767d21f4e2a405bc6f438bdf380108cf3cd765c0a",
+        "0aef8051e95707604f6323726252c7efa254fe8e78ad43f4586cffdea2dedbcb",
+        "b65748cfb8758b5b46aef51117b13de3b9ef5748bc6e79be62a5e483e2b80b82",
+        "b7e75bd86f949bb8265d955b2337fb11c4fef1b07e6d01e3368d1faea835bd7e",
+        "ea6d6467334aa3aea94a9f645734bf32a0771a37c0c46125b9751a728d08f91b"
+      ],
+      "coinbase_tx_id": "1ae42223c4e3478212954e9216217557fce491c49d442825be1285f2c7775918",
+      "tx_block_blockhash": "000000000000000000020fd44fcc242c0015516f81b39786103ca347231513cb",
+      "coinbase_merkle_proof": [
+        "0a7935347ced5bd93d8007ff2c9b98c6b62c0792c8130ff07ca348d497bdd2a1",
+        "870fb8cbd697b35d7f5bdf93a058109e4512068e976fbda428d82aee1f843fcb",
+        "626ff6d4d87165d74bb2206a26170d10732b1256f1d60773e69230bb2fa9bb9d",
+        "495f65259e50bf1cdf470593fe3a9168da0b940f087281640148a13f0590a9c8",
+        "05b2005e500a1fe704c7ac39d6c60647e237592b5bb65967c124f493ce92d853",
+        "8cd2cc6d3d9c2ea14967a053cb776df9d37b80f3d4b4b2fba2b494009a0266db",
+        "2b0c7640eb58f29addbb3ce758896d0028f197521910dc34788970403d31dc58",
+        "4ff8ac7aad23eecba5f3b2e4ee842a1c30f214b6a8ffffeaf2a416f4b6a3e9d3",
+        "37a39361383304e7521610522707d91cf1e0e1f60a504febf0929b95145e81c7",
+        "56e32f4be3c94ee87501e3ebde871908cba552429314a1f0a37bcfbcad599171",
+        "91147280d7312978a269bf20b1d819fcef6ebb90781fd8b55054af30621eab11",
+        "7cc8188013a5dad82dc4168c8e27c8327f8120bccc16517a1a6c18ace83282b2"
+      ]
+    },
+    "tx_bytes": "AgAAAAABAZiqQMyJzEGNZvO+v0rqAw2w8mWEyFc2hly1BAkHR3UIAwAAAAD9////AzpLBQAAAAAAFgAUq+rShXiY11WBdSe1ueRltCMIwO/2CwAAAAAAACJRIK6zlVVhOY1ZEv4EqLSbo4mBL2Y6pZeC6zgPxRCuj/LMcz4PAAAAAAAWABSvmzAQEITCO5SPy3Ngt6Hsk1X03wJHMEQCIHHb1BhExhf+A3iaLWfrvUjFlrP4buw8EPQ8fWVCO39nAiBk/iINfucb+DjHu+Ctf2qgN2WJxhtNYly331Pm8Ck2VwEhA8z3ZA5cRUZH9JhXVYJd6YxpUVXHZCV1y/iISOsTUbWespYOAA==",
+    "deposit_msg": {
+      "recipient_id": "intents.near",
+      "safe_deposit": {
+        "msg": "{\\\\\\\"receiver_id\\\\\\\":\\\\\\\"c503bf4dd111804a329e522d1c04d1c621e96b12bfc0587216ce5733f0344517\\\\\\\"}"
+      },
+      "refund_address": "bc1qr8xjqgd7plmm3ehf4tgl56u6g32utnny68hz5p"
+    }
+  }
+}

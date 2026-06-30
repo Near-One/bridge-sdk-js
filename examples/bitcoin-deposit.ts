@@ -137,11 +137,13 @@ async function main() {
     txBlockBlockhash: proof.tx_block_blockhash,
     txIndex: proof.tx_index,
     merkleProof: proof.merkle_proof,
+    coinbaseTxId: proof.coinbase_tx_id,
+    coinbaseMerkleProof: proof.coinbase_merkle_proof,
     signerId: NEAR_ACCOUNT,
   })
 
   // Send the transaction
-  console.log("Sending verify_deposit transaction...")
+  console.log("Sending verify_deposit_v2 transaction...")
   const near = await createNearInstance()
 
   try {
