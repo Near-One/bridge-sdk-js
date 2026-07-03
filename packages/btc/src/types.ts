@@ -65,14 +65,34 @@ export interface BtcMerkleProof {
 }
 
 /**
+ * Transaction inclusion proof with coinbase verification.
+ *
+ * Mirrors the connector contract's `TxInclusionProof` struct used by the v2
+ * verification methods (`verify_deposit_v2`, `verify_withdraw_v2`). The coinbase
+ * fields prove the coinbase transaction is part of the same merkle root, which
+ * the contract uses to validate the block's transaction count.
+ */
+export interface TxInclusionProof {
+  tx_block_blockhash: string
+  tx_index: number
+  merkle_proof: string[]
+  coinbase_tx_id: string
+  coinbase_merkle_proof: string[]
+}
+
+/**
  * Deposit proof for verifying BTC deposits on NEAR
  */
-export interface BtcDepositProof {
-  merkle_proof: string[]
-  tx_block_blockhash: string
+export interface BtcDepositProof extends TxInclusionProof {
   tx_bytes: number[]
-  tx_index: number
   amount: bigint
+}
+
+/**
+ * Withdrawal proof for verifying BTC withdrawals on NEAR via `verify_withdraw_v2`.
+ */
+export interface BtcWithdrawalProof extends TxInclusionProof {
+  tx_id: string
 }
 
 /**

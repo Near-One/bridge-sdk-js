@@ -31,17 +31,19 @@ describe("NearBuilder UTXO methods", () => {
   })
 
   describe("buildUtxoDepositFinalization", () => {
-    it("builds verify_deposit transaction for BTC", () => {
+    it("builds verify_deposit_v2 transaction for BTC", () => {
       const tx = builder.buildUtxoDepositFinalization({
         chain: "btc",
         depositMsg: {
           recipient_id: "alice.testnet",
         },
-        txBytes: [0x01, 0x02, 0x03],
+        txBytes: [0x02, 0x00, 0x00, 0x00],
         vout: 0,
         txBlockBlockhash: "00000000000000000001abc123",
         txIndex: 5,
         merkleProof: ["hash1", "hash2"],
+        coinbaseTxId: "coinbasetxid",
+        coinbaseMerkleProof: ["cb1", "cb2"],
         signerId: "relayer.testnet",
       })
 
@@ -49,12 +51,24 @@ describe("NearBuilder UTXO methods", () => {
       expect(tx.signerId).toBe("relayer.testnet")
       expect(tx.receiverId).toBe("btc-connector.n-bridge.testnet")
       expect(tx.actions).toHaveLength(1)
-      expect(tx.actions[0]?.methodName).toBe("verify_deposit")
+      expect(tx.actions[0]?.methodName).toBe("verify_deposit_v2")
       expect(tx.actions[0]?.gas).toBe(GAS.UTXO_VERIFY_DEPOSIT)
       expect(tx.actions[0]?.deposit).toBe(0n)
+
+      const args = JSON.parse(new TextDecoder().decode(tx.actions[0]?.args))
+      // tx_bytes must be a base64 string, not a JSON number array
+      expect(args.tx_bytes).toBe("AgAAAA==")
+      // proof fields are nested with coinbase verification
+      expect(args.proof).toEqual({
+        tx_block_blockhash: "00000000000000000001abc123",
+        tx_index: 5,
+        merkle_proof: ["hash1", "hash2"],
+        coinbase_tx_id: "coinbasetxid",
+        coinbase_merkle_proof: ["cb1", "cb2"],
+      })
     })
 
-    it("builds verify_deposit transaction for Zcash", () => {
+    it("builds verify_deposit_v2 transaction for Zcash", () => {
       const tx = builder.buildUtxoDepositFinalization({
         chain: "zcash",
         depositMsg: {
@@ -65,11 +79,13 @@ describe("NearBuilder UTXO methods", () => {
         txBlockBlockhash: "00000000000000000002def456",
         txIndex: 3,
         merkleProof: ["hash3", "hash4"],
+        coinbaseTxId: "coinbasetxid",
+        coinbaseMerkleProof: ["cb3"],
         signerId: "relayer.testnet",
       })
 
       expect(tx.receiverId).toBe("zcash_connector.n-bridge.testnet")
-      expect(tx.actions[0]?.methodName).toBe("verify_deposit")
+      expect(tx.actions[0]?.methodName).toBe("verify_deposit_v2")
     })
 
     it("includes post_actions when provided", () => {
@@ -90,6 +106,8 @@ describe("NearBuilder UTXO methods", () => {
         txBlockBlockhash: "blockhash",
         txIndex: 0,
         merkleProof: [],
+        coinbaseTxId: "coinbasetxid",
+        coinbaseMerkleProof: [],
         signerId: "relayer.testnet",
       })
 
@@ -99,7 +117,7 @@ describe("NearBuilder UTXO methods", () => {
       expect(args.deposit_msg.post_actions[0].amount).toBe("1000000")
     })
 
-    it("uses safe_verify_deposit when safe_deposit is provided", () => {
+    it("uses verify_deposit_v2 with a deposit when safe_deposit is provided", () => {
       const tx = builder.buildUtxoDepositFinalization({
         chain: "btc",
         depositMsg: {
@@ -111,10 +129,12 @@ describe("NearBuilder UTXO methods", () => {
         txBlockBlockhash: "00000000000000000001abc123",
         txIndex: 1,
         merkleProof: ["hash1"],
+        coinbaseTxId: "coinbasetxid",
+        coinbaseMerkleProof: ["cb1"],
         signerId: "relayer.testnet",
       })
 
-      expect(tx.actions[0]?.methodName).toBe("safe_verify_deposit")
+      expect(tx.actions[0]?.methodName).toBe("verify_deposit_v2")
       expect(tx.actions[0]?.deposit).toBe(DEPOSIT.SAFE_VERIFY_DEPOSIT)
 
       const argsJson = new TextDecoder().decode(tx.actions[0]?.args)
@@ -290,12 +310,15 @@ describe("NearBuilder UTXO methods", () => {
   })
 
   describe("buildUtxoWithdrawalVerify", () => {
-    it("builds btc_verify_withdraw transaction for BTC", () => {
+    it("builds verify_withdraw_v2 transaction for BTC", () => {
       const tx = builder.buildUtxoWithdrawalVerify({
         chain: "btc",
-        blockHeight: 800000,
-        merkle: ["hash1", "hash2", "hash3"],
-        pos: 5,
+        txId: "withdrawtxid",
+        txBlockBlockhash: "00000000000000000003fff789",
+        txIndex: 5,
+        merkleProof: ["hash1", "hash2", "hash3"],
+        coinbaseTxId: "coinbasetxid",
+        coinbaseMerkleProof: ["cb1", "cb2"],
         signerId: "relayer.testnet",
       })
 
@@ -303,28 +326,37 @@ describe("NearBuilder UTXO methods", () => {
       expect(tx.signerId).toBe("relayer.testnet")
       expect(tx.receiverId).toBe("btc-connector.n-bridge.testnet")
       expect(tx.actions).toHaveLength(1)
-      expect(tx.actions[0]?.methodName).toBe("btc_verify_withdraw")
+      expect(tx.actions[0]?.methodName).toBe("verify_withdraw_v2")
       expect(tx.actions[0]?.gas).toBe(GAS.UTXO_VERIFY_WITHDRAWAL)
-      expect(tx.actions[0]?.deposit).toBe(DEPOSIT.ONE_YOCTO)
+      // verify_withdraw_v2 is not payable
+      expect(tx.actions[0]?.deposit).toBe(0n)
 
       const argsJson = new TextDecoder().decode(tx.actions[0]?.args)
       const args = JSON.parse(argsJson)
-      expect(args.tx_proof.block_height).toBe(800000)
-      expect(args.tx_proof.merkle).toEqual(["hash1", "hash2", "hash3"])
-      expect(args.tx_proof.pos).toBe(5)
+      expect(args.tx_id).toBe("withdrawtxid")
+      expect(args.proof).toEqual({
+        tx_block_blockhash: "00000000000000000003fff789",
+        tx_index: 5,
+        merkle_proof: ["hash1", "hash2", "hash3"],
+        coinbase_tx_id: "coinbasetxid",
+        coinbase_merkle_proof: ["cb1", "cb2"],
+      })
     })
 
-    it("builds btc_verify_withdraw transaction for Zcash", () => {
+    it("builds verify_withdraw_v2 transaction for Zcash", () => {
       const tx = builder.buildUtxoWithdrawalVerify({
         chain: "zcash",
-        blockHeight: 2000000,
-        merkle: ["zechash1"],
-        pos: 0,
+        txId: "zecwithdrawtxid",
+        txBlockBlockhash: "00000000000000000004aaa321",
+        txIndex: 0,
+        merkleProof: ["zechash1"],
+        coinbaseTxId: "zeccoinbase",
+        coinbaseMerkleProof: [],
         signerId: "relayer.testnet",
       })
 
       expect(tx.receiverId).toBe("zcash_connector.n-bridge.testnet")
-      expect(tx.actions[0]?.methodName).toBe("btc_verify_withdraw")
+      expect(tx.actions[0]?.methodName).toBe("verify_withdraw_v2")
     })
   })
 

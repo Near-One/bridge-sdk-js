@@ -1,0 +1,46 @@
+{
+  "_comment": "Golden-master: real on-chain verify_withdraw_v2 args from a successful mainnet tx. Guarantees the near builder reproduces the exact contract wire format. Regenerate from source rather than editing by hand.",
+  "source": "https://nearblocks.io/txns/FayhPQvNcvVE6nr9UHHyeJ6cbCfix5exZ5MKSk9LZQaJ?tab=execution",
+  "txHash": "FayhPQvNcvVE6nr9UHHyeJ6cbCfix5exZ5MKSk9LZQaJ",
+  "signerId": "omni-relayer.bridge.near",
+  "receiverId": "btc-connector.bridge.near",
+  "method": "verify_withdraw_v2",
+  "depositYocto": "0",
+  "gas": "300000000000000",
+  "args": {
+    "proof": {
+      "tx_index": 1013,
+      "merkle_proof": [
+        "430420d46304f3128a58880cfdf6d2fc3206133af0990256440f213c7f1082c3",
+        "1577af26cb8748e01b56fa9af4af8f1bc80a81fa8db8af24cc84782af83672f4",
+        "2d6df98c37316f20a8a811e59bf633acd7aeafd9a21eca3b5dc89ba3beee0442",
+        "6cfb42af41e8ce29d2007e0c7cbf5d37ffb6fd92d435b8f34dff84c173d090dc",
+        "148b938cc37e6649f8e9720675998a17b65f111c4e44f318a198ff585baf5791",
+        "3ee0ebff0c5ecdbd63cdbad48c4ebfe53abc54bbea483ee6f91027143c417e35",
+        "235df31c61538e964f16a315af6d6f4aedb9f5441a48ad4d91dddab3d13ade88",
+        "78c2fba855b806f74dba5f6135ed1686654c85990d7fdbf81f5b64cb2fb92eb9",
+        "573427ffc1096f202fb44a5d718e077a02e37185e9f66c01df9125c37b632e90",
+        "173947cdd9953cee3b5bb359e7533795f414e15c902dee007625bd1cee1a60ac",
+        "4d7b025c490efbd1130aa553e7b4a5a54aecf168942672affc6290a8415ffc59",
+        "1eceb0a95eb4415246ff259b55124dd377c89d3857dbdc6c1492fa182ebd0c2f"
+      ],
+      "coinbase_tx_id": "8bd80c1e5786f8d24464ba101a463deb287c2b0e99f60f399f7aae306ac63444",
+      "tx_block_blockhash": "00000000000000000001493048640b9ce73ce55d37097ffb3e04e18c954a14b1",
+      "coinbase_merkle_proof": [
+        "14369d0606040b2c0dedec8265ff491430fad127113d62807cb24ab39b9c379a",
+        "e2a3aebb7e8edac830619cc192a13fa74b0fce41a881b71d9fa1b3b4e2327b69",
+        "0b8f7f2a47b0ff3745eabbe2313cd5c5c84967b5e017268f6f8fbf10bc3ac0af",
+        "8ee92ffe153db511f9176e4d033d56eeff2b49c32105993c36e6c9f267f47706",
+        "a6d728b98ec7320aae79f56efb0826700686bfb9dfb2c8d3a253310aca49ea15",
+        "6ef4cf2499cd08ceb10a3a4688a70264969df976ea10d31a1ae80957b571b91e",
+        "b415dd3bf383ea02618a2071e20a258e737c57ee91716f2222e97edbba112ba6",
+        "456fd45a1162f34261dcec488b5831df069f3729b09082226e2636b273bdd192",
+        "6885fc052d89f1fbd709c553ff646174c99134e3132cc1acbdfd6294c67ddc63",
+        "5b42285ecf0d0972ccf9e0305d5020f81e045867e94a24051161d8ecee5ecff9",
+        "4d7b025c490efbd1130aa553e7b4a5a54aecf168942672affc6290a8415ffc59",
+        "1eceb0a95eb4415246ff259b55124dd377c89d3857dbdc6c1492fa182ebd0c2f"
+      ]
+    },
+    "tx_id": "cf91114629171fa4adb0614ff1c4ecc156058893d7dff87ce41c3ec35a5e5ddb"
+  }
+}
