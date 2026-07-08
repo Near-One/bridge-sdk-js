@@ -531,19 +531,18 @@ Gets the status of a transfer.
 ### Signature
 
 ```typescript
-api.getTransferStatus(
-  options: { originChain: Chain; originNonce: number } | { transactionHash: string }
-): Promise<TransferStatus[]>
+api.getTransferStatus(options: TransferLookupParams): Promise<TransferStatus[]>
 ```
 
 ### Parameters
 
-<ResponseField name="options" type="object" required>
-  Lookup options. Provide either `transactionHash` OR `originChain` + `originNonce`.
+<ResponseField name="options" type="TransferLookupParams" required>
+  Lookup options. Provide `transactionHash`, OR `originChain` + `originNonce`,
+  OR `utxoChain` + `utxoTxHash` + `utxoVout`.
 
   <Expandable title="options">
     <ResponseField name="transactionHash" type="string">
-      The transaction hash on the source chain.
+      Any transaction hash involved in the transfer.
     </ResponseField>
 
     <ResponseField name="originChain" type="Chain">
@@ -553,22 +552,37 @@ api.getTransferStatus(
     <ResponseField name="originNonce" type="number">
       The transfer nonce on the origin chain.
     </ResponseField>
+
+    <ResponseField name="utxoChain" type='"Btc" | "Zcash"'>
+      UTXO chain of the reference.
+    </ResponseField>
+
+    <ResponseField name="utxoTxHash" type="string">
+      UTXO transaction hash (deposit or payout).
+    </ResponseField>
+
+    <ResponseField name="utxoVout" type="number">
+      UTXO output index.
+    </ResponseField>
   </Expandable>
 </ResponseField>
 
 ### Returns
 
 <ResponseField name="TransferStatus[]" type="TransferStatus[]">
-  Array of status values representing the transfer's progression.
+  Array of status values, one per matching transfer.
 
-  Possible values:
+  Known values:
   - `"Initialized"` - Transfer initiated on source chain
   - `"Signed"` - MPC signature obtained
   - `"FastFinalisedOnNear"` - Fast finalized on NEAR
   - `"FinalisedOnNear"` - Finalized on NEAR
   - `"FastFinalised"` - Fast finalized on destination
   - `"Finalised"` - Fully finalized
-  - `"Claimed"` - Tokens claimed
+  - `"Settled"` - Terminal state (fee claimed, or UTXO payout verified on NEAR)
+
+  The set is open for extension — new statuses may be added server-side and
+  pass through as plain strings.
 </ResponseField>
 
 ### Example
@@ -583,6 +597,13 @@ const status = await api.getTransferStatus({
 const status = await api.getTransferStatus({
   originChain: "Eth",
   originNonce: 12345
+})
+
+// By UTXO reference
+const status = await api.getTransferStatus({
+  utxoChain: "Btc",
+  utxoTxHash: "abc123...",
+  utxoVout: 0
 })
 
 console.log(`Latest status: ${status[status.length - 1]}`)
@@ -683,9 +704,7 @@ Gets full details of a transfer.
 ### Signature
 
 ```typescript
-api.getTransfer(
-  options: { originChain: Chain; originNonce: number } | { transactionHash: string }
-): Promise<Transfer[]>
+api.getTransfer(options: TransferLookupParams): Promise<Transfer[]>
 ```
 
 ### Parameters
@@ -698,48 +717,110 @@ Same as `getTransferStatus`.
   Array of transfer objects with full details.
 
   <Expandable title="Transfer properties">
-    <ResponseField name="id" type="object | null">
-      Transfer identifier containing `origin_chain` and `kind` (either `Nonce` or `Utxo`).
+    <ResponseField name="transfer_id" type="OmniTransferId | null">
+      Canonical transfer id — a discriminated union on `type`: either
+      `{ type: "nonce", chain, nonce }` or `{ type: "utxo", chain, tx_hash, vout }`.
+      Null only on a partially-aggregated transfer whose identifying event
+      hasn't been indexed yet.
     </ResponseField>
 
-    <ResponseField name="initialized" type="Transaction | null">
-      Transaction when transfer was initialized.
+    <ResponseField name="source_chain" type="Chain | null">
+      Source chain of the transfer.
     </ResponseField>
 
-    <ResponseField name="signed" type="Transaction | null">
-      Transaction when MPC signature was obtained.
+    <ResponseField name="destination_chain" type="Chain | null">
+      Destination chain of the transfer.
     </ResponseField>
 
-    <ResponseField name="fast_finalised_on_near" type="Transaction | null">
+    <ResponseField name="sender" type="string | null">
+      Sender in OmniAddress format.
+    </ResponseField>
+
+    <ResponseField name="recipient" type="string | null">
+      Recipient in OmniAddress format.
+    </ResponseField>
+
+    <ResponseField name="token_id" type="string | null">
+      Token in OmniAddress format.
+    </ResponseField>
+
+    <ResponseField name="amount" type="string | null">
+      Transfer amount in the token's smallest unit.
+    </ResponseField>
+
+    <ResponseField name="fee" type="string | null">
+      Relayer fee in the transfer token.
+    </ResponseField>
+
+    <ResponseField name="native_fee" type="string | null">
+      Relayer fee in the source chain's native token.
+    </ResponseField>
+
+    <ResponseField name="msg" type="string | null">
+      Attached message, if any.
+    </ResponseField>
+
+    <ResponseField name="destination_nonce" type="number | null">
+      Nonce assigned on the destination chain.
+    </ResponseField>
+
+    <ResponseField name="status" type="TransferStatus">
+      Current transfer status — no separate status call needed.
+    </ResponseField>
+
+    <ResponseField name="initialized" type="TransactionRef | null">
+      Transaction that initiated the transfer.
+    </ResponseField>
+
+    <ResponseField name="signed" type="TransactionRef[]">
+      MPC signings of the transfer message. May hold several entries when the
+      transfer was re-signed — the latest is `signed.at(-1)`.
+    </ResponseField>
+
+    <ResponseField name="fast_finalised_on_near" type="TransactionRef | null">
       Transaction when fast finalized on NEAR.
     </ResponseField>
 
-    <ResponseField name="finalised_on_near" type="Transaction | null">
+    <ResponseField name="finalised_on_near" type="TransactionRef | null">
       Transaction when finalized on NEAR.
     </ResponseField>
 
-    <ResponseField name="fast_finalised" type="Transaction | null">
+    <ResponseField name="fast_finalised" type="TransactionRef | null">
       Transaction when fast finalized on destination.
     </ResponseField>
 
-    <ResponseField name="finalised" type="Transaction | null">
-      Transaction when fully finalized.
+    <ResponseField name="finalised" type="TransactionRef | null">
+      Transaction when fully finalized on the destination chain.
     </ResponseField>
 
-    <ResponseField name="claimed" type="Transaction | null">
-      Transaction when tokens were claimed.
+    <ResponseField name="claimed" type="TransactionRef | null">
+      Transaction when the relayer claimed their fee.
     </ResponseField>
 
-    <ResponseField name="transfer_message" type="object | null">
-      Transfer message containing `token`, `amount`, `sender`, `recipient`, `fee`, and `msg`.
+    <ResponseField name="verified" type="TransactionRef | null">
+      NEAR-side settlement of a transfer to a UTXO chain (`verify_withdraw`).
     </ResponseField>
 
-    <ResponseField name="updated_fee" type="Transaction[]">
-      Array of fee update transactions.
+    <ResponseField name="fee_updates" type="TransactionRef[]">
+      Fee update transactions.
     </ResponseField>
 
-    <ResponseField name="utxo_transfer" type="object | null">
-      UTXO-specific transfer data for BTC/Zcash transfers.
+    <ResponseField name="utxo_signs" type="UtxoSign[]">
+      UTXO signing transactions (`TransactionRef` plus `destination_chain`,
+      `relayer`, and `pending_sign_id`). Multiple entries are expected on RBF.
+    </ResponseField>
+
+    <ResponseField name="utxo_winning_tx_hash" type="string | null">
+      The UTXO transaction that won the payout race, if any.
+    </ResponseField>
+
+    <ResponseField name="utxo_meta" type="UtxoMeta | null">
+      UTXO-specific metadata: `chain`, `pending_sign_id`, `relayer_fee`,
+      `protocol_fee`, `relayer_account_id`.
+    </ResponseField>
+
+    <ResponseField name="tx_ids" type="string[]">
+      Every transaction hash involved in the transfer.
     </ResponseField>
   </Expandable>
 </ResponseField>
@@ -753,8 +834,10 @@ const transfers = await api.getTransfer({
 
 if (transfers.length > 0) {
   const transfer = transfers[0]
-  console.log(`Token: ${transfer.transfer_message?.token}`)
-  console.log(`Amount: ${transfer.transfer_message?.amount}`)
+  console.log(`Token: ${transfer.token_id}`)
+  console.log(`Amount: ${transfer.amount}`)
+  console.log(`Status: ${transfer.status}`)
+  console.log(`Destination TX: ${transfer.finalised?.transaction_hash}`)
 }
 ```
 
@@ -794,7 +877,7 @@ api.findTransfers(params: {
     </ResponseField>
 
     <ResponseField name="limit" type="number">
-      Maximum results to return. Defaults to `10`.
+      Maximum results to return. Defaults to `10`, capped at `50` by the API.
     </ResponseField>
   </Expandable>
 </ResponseField>

@@ -165,8 +165,10 @@ for (let i = 0; i < 60; i++) {
   })
   const transfer = transfers[0]
 
-  if (transfer?.signed?.NearReceipt?.transaction_hash) {
-    signedTxHash = transfer.signed.NearReceipt.transaction_hash
+  // `signed` is an array — the transfer may be re-signed (RBF)
+  const latestSigned = transfer?.signed.at(-1)?.transaction_hash
+  if (latestSigned) {
+    signedTxHash = latestSigned
     break
   }
 

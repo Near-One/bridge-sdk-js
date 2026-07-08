@@ -74,8 +74,9 @@ async function waitForSigning(api: BridgeAPI, nearTxHash: string): Promise<strin
       const transfers = await api.getTransfer({ transactionHash: nearTxHash })
       const transfer = transfers[0]
 
-      if (transfer?.signed?.NearReceipt?.transaction_hash) {
-        return transfer.signed.NearReceipt.transaction_hash
+      const signedTxHash = transfer?.signed.at(-1)?.transaction_hash
+      if (signedTxHash) {
+        return signedTxHash
       }
 
       console.log(`  Waiting for MPC signing... (attempt ${attempt}/${SIGNING_MAX_ATTEMPTS})`)

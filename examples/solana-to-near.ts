@@ -126,16 +126,16 @@ async function main() {
       const statuses = await api.getTransferStatus({ transactionHash: signature })
       const latestStatus = statuses[statuses.length - 1]
 
-      if (latestStatus === "Finalised" || latestStatus === "Claimed") {
+      if (latestStatus === "Finalised" || latestStatus === "Settled") {
         console.log("\n✓ Transfer finalized!")
 
         const transfers = await api.getTransfer({ transactionHash: signature })
         const transfer = transfers[0]
-        if (transfer?.initialized?.Solana) {
-          console.log(`  Origin TX: ${transfer.initialized.Solana.signature}`)
+        if (transfer?.initialized) {
+          console.log(`  Origin TX: ${transfer.initialized.transaction_hash}`)
         }
-        if (transfer?.finalised?.NearReceipt) {
-          console.log(`  Destination TX: ${transfer.finalised.NearReceipt.transaction_hash}`)
+        if (transfer?.finalised) {
+          console.log(`  Destination TX: ${transfer.finalised.transaction_hash}`)
         }
         return
       }

@@ -33,6 +33,16 @@ const statuses = await api.getTransferStatus({
 })
 ```
 
+Or by a UTXO reference (Bitcoin/Zcash deposits and payouts):
+
+```typescript
+const statuses = await api.getTransferStatus({
+  utxoChain: "Btc",
+  utxoTxHash: "abc123...",
+  utxoVout: 0
+})
+```
+
 ## Status Progression
 
 Transfers move through these statuses:
@@ -43,7 +53,7 @@ Transfers move through these statuses:
 | `Signed` | MPC signature obtained |
 | `FinalisedOnNear` | Finalized on NEAR |
 | `Finalised` | Finalized on destination chain |
-| `Claimed` | Relayer claimed their fee |
+| `Settled` | Terminal state — relayer claimed their fee, or the UTXO payout was verified on NEAR |
 
 For fast transfers (relayer fronts liquidity):
 
@@ -56,12 +66,12 @@ For fast transfers (relayer fronts liquidity):
 
 **Standard (with relayer fees):**
 ```
-Initialized → Signed → FinalisedOnNear → Finalised → Claimed
+Initialized → Signed → FinalisedOnNear → Finalised → Settled
 ```
 
 **Fast transfer:**
 ```
-Initialized → FastFinalisedOnNear → FastFinalised → ... → Claimed
+Initialized → FastFinalisedOnNear → FastFinalised → ... → Settled
 ```
 
 **Manual (no fees):**
@@ -79,7 +89,7 @@ async function waitForCompletion(txHash: string, timeoutMs = 300_000) {
     const statuses = await api.getTransferStatus({ transactionHash: txHash })
     const latest = statuses[statuses.length - 1]
     
-    if (latest === "Finalised" || latest === "Claimed") {
+    if (latest === "Finalised" || latest === "Settled") {
       return latest
     }
     
@@ -106,22 +116,25 @@ const transfers = await api.getTransfer({
 
 const transfer = transfers[0]
 
-if (transfer?.transfer_message) {
+if (transfer) {
   console.log({
-    token: transfer.transfer_message.token,
-    amount: transfer.transfer_message.amount,
-    sender: transfer.transfer_message.sender,
-    recipient: transfer.transfer_message.recipient,
+    token: transfer.token_id,
+    amount: transfer.amount,
+    sender: transfer.sender,
+    recipient: transfer.recipient,
+    status: transfer.status,
   })
 }
 
 // Transaction hashes at each stage
-if (transfer?.initialized?.EVMLog) {
-  console.log("Source TX:", transfer.initialized.EVMLog.transaction_hash)
+if (transfer?.initialized) {
+  console.log("Source TX:", transfer.initialized.transaction_hash)
 }
-if (transfer?.finalised?.NearReceipt) {
-  console.log("Destination TX:", transfer.finalised.NearReceipt.transaction_hash)
+if (transfer?.finalised) {
+  console.log("Destination TX:", transfer.finalised.transaction_hash)
 }
+// `signed` is an array — the transfer may be re-signed
+const signedTx = transfer?.signed.at(-1)?.transaction_hash
 ```
 
 ## Find Transfers
@@ -225,7 +238,7 @@ while (true) {
     lastStatus = latest
   }
   
-  if (latest === "Finalised" || latest === "Claimed") {
+  if (latest === "Finalised" || latest === "Settled") {
     console.log("Done!")
     break
   }

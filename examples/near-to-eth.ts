@@ -139,18 +139,18 @@ async function main() {
       })
       const latestStatus = statuses[statuses.length - 1]
 
-      if (latestStatus === "Finalised" || latestStatus === "Claimed") {
+      if (latestStatus === "Finalised" || latestStatus === "Settled") {
         console.log("\n✓ Transfer finalized!")
 
         const transfers = await api.getTransfer({
           transactionHash: result.transaction.hash,
         })
         const transfer = transfers[0]
-        if (transfer?.initialized?.NearReceipt) {
-          console.log(`  Origin TX: ${transfer.initialized.NearReceipt.transaction_hash}`)
+        if (transfer?.initialized) {
+          console.log(`  Origin TX: ${transfer.initialized.transaction_hash}`)
         }
-        if (transfer?.finalised?.EVMLog) {
-          console.log(`  Destination TX: ${transfer.finalised.EVMLog.transaction_hash}`)
+        if (transfer?.finalised) {
+          console.log(`  Destination TX: ${transfer.finalised.transaction_hash}`)
         }
         return
       }
