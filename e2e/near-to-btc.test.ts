@@ -50,8 +50,9 @@ async function waitForSigning(
       const transfers = await api.getTransfer({ transactionHash: nearTxHash })
       const transfer = transfers[0]
 
-      if (transfer?.signed?.NearReceipt?.transaction_hash) {
-        return transfer.signed.NearReceipt.transaction_hash
+      const signedTxHash = transfer?.utxo_signs.at(-1)?.transaction_hash
+      if (signedTxHash) {
+        return signedTxHash
       }
 
       console.log(`    Waiting for signing... (attempt ${attempt}/${maxAttempts})`)

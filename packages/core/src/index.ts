@@ -10,12 +10,18 @@ export {
   BridgeAPI,
   type BridgeAPIConfig,
   type Chain,
+  type OmniTransferId,
   type PostAction,
   type SafeDeposit,
+  type TransactionDetails,
+  type TransactionRef,
   type Transfer,
+  type TransferLookupParams,
   type TransferStatus,
   type UtxoChainParam,
   type UtxoDepositAddressResponse,
+  type UtxoMeta,
+  type UtxoSign,
 } from "./api.js"
 // Bridge factory
 export {
