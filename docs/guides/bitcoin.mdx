@@ -165,8 +165,9 @@ for (let i = 0; i < 60; i++) {
   })
   const transfer = transfers[0]
 
-  // `signed` is an array — the transfer may be re-signed (RBF)
-  const latestSigned = transfer?.signed.at(-1)?.transaction_hash
+  // UTXO signings land in `utxo_signs` — several entries can appear when a
+  // multi-UTXO withdrawal needs multiple signatures or on re-sign (RBF)
+  const latestSigned = transfer?.utxo_signs.at(-1)?.transaction_hash
   if (latestSigned) {
     signedTxHash = latestSigned
     break

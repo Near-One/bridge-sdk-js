@@ -79,6 +79,8 @@ const safeBigInt = (nullable = false) => {
 // The v4 API omits absent optional fields instead of serializing null — normalize to null
 const orNull = <T extends z.ZodType>(schema: T) => schema.nullish().default(null)
 
+const UtxoChainSchema = ChainSchema.extract(["Btc", "Zcash"])
+
 const TransactionDetailsSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("near"),
@@ -123,7 +125,7 @@ export type TransactionDetails = z.infer<typeof TransactionDetailsSchema>
 const TransactionRefSchema = z.object({
   transaction_hash: z.string(),
   chain: ChainSchema,
-  timestamp_seconds: z.number().int(),
+  timestamp_seconds: z.number().int().min(0),
   details: TransactionDetailsSchema,
 })
 export type TransactionRef = z.infer<typeof TransactionRefSchema>
@@ -136,6 +138,7 @@ const TransferIdSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("utxo"),
+    // Mostly Btc/Zcash, but we use `Near` for the final leg of Near->UTXO transfers
     chain: ChainSchema,
     tx_hash: z.string(),
     vout: z.number().int().min(0),
@@ -144,14 +147,14 @@ const TransferIdSchema = z.discriminatedUnion("type", [
 export type OmniTransferId = z.infer<typeof TransferIdSchema>
 
 const UtxoSignSchema = TransactionRefSchema.extend({
-  destination_chain: ChainSchema,
+  destination_chain: UtxoChainSchema,
   relayer: z.string(),
   pending_sign_id: z.string(),
 })
 export type UtxoSign = z.infer<typeof UtxoSignSchema>
 
 const UtxoMetaSchema = z.object({
-  chain: ChainSchema,
+  chain: UtxoChainSchema,
   pending_sign_id: orNull(z.string()),
   relayer_fee: orNull(z.string()),
   protocol_fee: orNull(z.string()),
@@ -194,7 +197,7 @@ const TransferStatusesResponseSchema = z.object({ statuses: z.array(TransferStat
 export type TransferLookupParams =
   | { originChain: Chain; originNonce: number }
   | { transactionHash: string }
-  | { utxoChain: Extract<Chain, "Btc" | "Zcash">; utxoTxHash: string; utxoVout: number }
+  | { utxoChain: z.infer<typeof UtxoChainSchema>; utxoTxHash: string; utxoVout: number }
 
 const ApiFeeResponseSchema = z.object({
   native_token_fee: safeBigInt(),

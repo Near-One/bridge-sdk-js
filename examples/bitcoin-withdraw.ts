@@ -74,7 +74,7 @@ async function waitForSigning(api: BridgeAPI, nearTxHash: string): Promise<strin
       const transfers = await api.getTransfer({ transactionHash: nearTxHash })
       const transfer = transfers[0]
 
-      const signedTxHash = transfer?.signed.at(-1)?.transaction_hash
+      const signedTxHash = transfer?.utxo_signs.at(-1)?.transaction_hash
       if (signedTxHash) {
         return signedTxHash
       }

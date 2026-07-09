@@ -570,7 +570,10 @@ api.getTransferStatus(options: TransferLookupParams): Promise<TransferStatus[]>
 ### Returns
 
 <ResponseField name="TransferStatus[]" type="TransferStatus[]">
-  Array of status values, one per matching transfer.
+  Array of status values, one per matching transfer. A nonce or UTXO-ref
+  lookup matches a single transfer, so the array holds one element; a
+  transaction-hash lookup can match several transfers if the transaction
+  initiated more than one.
 
   Known values:
   - `"Initialized"` - Transfer initiated on source chain
@@ -606,7 +609,7 @@ const status = await api.getTransferStatus({
   utxoVout: 0
 })
 
-console.log(`Latest status: ${status[status.length - 1]}`)
+console.log(`Status: ${status[0]}`)
 ```
 
 ---
@@ -807,7 +810,8 @@ Same as `getTransferStatus`.
 
     <ResponseField name="utxo_signs" type="UtxoSign[]">
       UTXO signing transactions (`TransactionRef` plus `destination_chain`,
-      `relayer`, and `pending_sign_id`). Multiple entries are expected on RBF.
+      `relayer`, and `pending_sign_id`). Multiple entries are expected when a
+      multi-UTXO withdrawal needs several signatures, and on re-sign (RBF).
     </ResponseField>
 
     <ResponseField name="utxo_winning_tx_hash" type="string | null">

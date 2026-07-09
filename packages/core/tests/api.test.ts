@@ -167,6 +167,26 @@ describe("BridgeAPI", () => {
       expect(status).toEqual(["Settled"])
     })
 
+    it("should send UTXO ref lookup params", async () => {
+      let requestUrl: URL | undefined
+      server.use(
+        http.get(`${BASE_URL}/api/v4/transfers/transfer/status`, ({ request }) => {
+          requestUrl = new URL(request.url)
+          return HttpResponse.json({ statuses: ["Settled"] })
+        }),
+      )
+
+      const status = await api.getTransferStatus({
+        utxoChain: "Btc",
+        utxoTxHash: "btc_txid",
+        utxoVout: 1,
+      })
+      expect(status).toEqual(["Settled"])
+      expect(requestUrl?.searchParams.get("utxo_chain")).toBe("Btc")
+      expect(requestUrl?.searchParams.get("utxo_tx_hash")).toBe("btc_txid")
+      expect(requestUrl?.searchParams.get("utxo_vout")).toBe("1")
+    })
+
     it("should pass through unrecognized statuses", async () => {
       server.use(
         http.get(`${BASE_URL}/api/v4/transfers/transfer/status`, () => {
