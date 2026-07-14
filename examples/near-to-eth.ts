@@ -146,8 +146,8 @@ async function main() {
           transactionHash: result.transaction.hash,
         })
         const transfer = transfers[0]
-        if (transfer?.initialized) {
-          console.log(`  Origin TX: ${transfer.initialized.transaction_hash}`)
+        if (transfer?.initialised) {
+          console.log(`  Origin TX: ${transfer.initialised.transaction_hash}`)
         }
         if (transfer?.finalised) {
           console.log(`  Destination TX: ${transfer.finalised.transaction_hash}`)
