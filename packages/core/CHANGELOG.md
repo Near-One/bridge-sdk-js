@@ -1,5 +1,11 @@
 # @omni-bridge/core
 
+## 0.14.0
+
+### Minor Changes
+
+- b120987: BREAKING: rename `source_chain` to `origin_chain` in the v4 transfer shape, matching the `originChain` lookup param and protocol vocabulary. Requires an indexer deployment that serves the renamed field.
+
 ## 0.13.0
 
 ### Minor Changes
