@@ -9,7 +9,7 @@ const BASE_URL = "https://testnet.api.bridge.nearone.org"
 // Mock data
 const mockTransfer = {
   transfer_id: { type: "nonce", chain: "Eth", nonce: 123 },
-  source_chain: "Eth",
+  origin_chain: "Eth",
   destination_chain: "Near",
   sender: "eth:0xsender",
   recipient: "near:recipient.near",
@@ -47,7 +47,7 @@ const normalizedTransfer = {
 
 const mockStarknetTransfer = {
   transfer_id: { type: "nonce", chain: "Strk", nonce: 456 },
-  source_chain: "Strk",
+  origin_chain: "Strk",
   destination_chain: "Near",
   status: "Initialised",
   initialised: {
