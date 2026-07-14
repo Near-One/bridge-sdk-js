@@ -164,7 +164,7 @@ export type UtxoMeta = z.infer<typeof UtxoMetaSchema>
 
 const TransferSchema = z.object({
   transfer_id: orNull(TransferIdSchema),
-  source_chain: orNull(ChainSchema),
+  origin_chain: orNull(ChainSchema),
   destination_chain: orNull(ChainSchema),
   sender: orNull(z.string()),
   recipient: orNull(z.string()),
