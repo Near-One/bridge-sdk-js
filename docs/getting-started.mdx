@@ -141,7 +141,7 @@ const api = new BridgeAPI("mainnet")
 const status = await api.getTransferStatus({ transactionHash: hash })
 
 console.log("Current status:", status[status.length - 1])
-// "Initialized" → "Signed" → "FinalisedOnNear" → "Finalised"
+// "Initialised" → "Signed" → "FinalisedOnNear" → "Finalised"
 ```
 
 See [Tracking Transfers](/guides/tracking) for polling patterns and status meanings.

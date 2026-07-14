@@ -49,7 +49,7 @@ Transfers move through these statuses:
 
 | Status | Meaning |
 |--------|---------|
-| `Initialized` | Transfer submitted on source chain |
+| `Initialised` | Transfer submitted on source chain |
 | `Signed` | MPC signature obtained |
 | `FinalisedOnNear` | Finalized on NEAR |
 | `Finalised` | Finalized on destination chain |
@@ -66,17 +66,17 @@ For fast transfers (relayer fronts liquidity):
 
 **Standard (with relayer fees):**
 ```
-Initialized → Signed → FinalisedOnNear → Finalised → Settled
+Initialised → Signed → FinalisedOnNear → Finalised → Settled
 ```
 
 **Fast transfer:**
 ```
-Initialized → FastFinalisedOnNear → FastFinalised → ... → Settled
+Initialised → FastFinalisedOnNear → FastFinalised → ... → Settled
 ```
 
 **Manual (no fees):**
 ```
-Initialized → Signed → (you finalize manually)
+Initialised → Signed → (you finalize manually)
 ```
 
 ## Polling Pattern
@@ -127,8 +127,8 @@ if (transfer) {
 }
 
 // Transaction hashes at each stage
-if (transfer?.initialized) {
-  console.log("Source TX:", transfer.initialized.transaction_hash)
+if (transfer?.initialised) {
+  console.log("Source TX:", transfer.initialised.transaction_hash)
 }
 if (transfer?.finalised) {
   console.log("Destination TX:", transfer.finalised.transaction_hash)
@@ -182,7 +182,7 @@ if (statuses.includes("Signed")) {
 For EVM → NEAR (Ethereum mainnet only), you need to wait for the light client instead:
 
 ```typescript
-if (statuses.includes("Initialized")) {
+if (statuses.includes("Initialised")) {
   // Wait ~15-20 minutes for NEAR light client to sync
   // Then generate Merkle proof and finalize
 }

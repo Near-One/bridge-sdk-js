@@ -576,7 +576,7 @@ api.getTransferStatus(options: TransferLookupParams): Promise<TransferStatus[]>
   initiated more than one.
 
   Known values:
-  - `"Initialized"` - Transfer initiated on source chain
+  - `"Initialised"` - Transfer initiated on source chain
   - `"Signed"` - MPC signature obtained
   - `"FastFinalisedOnNear"` - Fast finalized on NEAR
   - `"FinalisedOnNear"` - Finalized on NEAR
@@ -771,7 +771,7 @@ Same as `getTransferStatus`.
       Current transfer status — no separate status call needed.
     </ResponseField>
 
-    <ResponseField name="initialized" type="TransactionRef | null">
+    <ResponseField name="initialised" type="TransactionRef | null">
       Transaction that initiated the transfer.
     </ResponseField>
 

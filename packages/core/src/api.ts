@@ -26,7 +26,7 @@ const ChainSchema = z.enum([
 export type Chain = z.infer<typeof ChainSchema>
 
 const KNOWN_TRANSFER_STATUSES = [
-  "Initialized",
+  "Initialised",
   "Signed",
   "FastFinalisedOnNear",
   "FinalisedOnNear",
@@ -175,7 +175,7 @@ const TransferSchema = z.object({
   msg: orNull(z.string()),
   destination_nonce: orNull(z.number().int().min(0)),
   status: TransferStatusSchema,
-  initialized: orNull(TransactionRefSchema),
+  initialised: orNull(TransactionRefSchema),
   signed: z.array(TransactionRefSchema),
   fast_finalised_on_near: orNull(TransactionRefSchema),
   finalised_on_near: orNull(TransactionRefSchema),

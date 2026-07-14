@@ -18,8 +18,8 @@ const mockTransfer = {
   fee: "1000",
   native_fee: "2000",
   msg: "test transfer",
-  status: "Initialized",
-  initialized: {
+  status: "Initialised",
+  initialised: {
     transaction_hash: "0x123...",
     chain: "Eth",
     timestamp_seconds: 1234567890,
@@ -49,8 +49,8 @@ const mockStarknetTransfer = {
   transfer_id: { type: "nonce", chain: "Strk", nonce: 456 },
   source_chain: "Strk",
   destination_chain: "Near",
-  status: "Initialized",
-  initialized: {
+  status: "Initialised",
+  initialised: {
     transaction_hash: "0xstarknettx",
     chain: "Strk",
     timestamp_seconds: 1730000000,
@@ -115,7 +115,7 @@ const mockBtcAddress = {
 
 const restHandlers = [
   http.get(`${BASE_URL}/api/v4/transfers/transfer/status`, () => {
-    return HttpResponse.json({ statuses: ["Initialized"] })
+    return HttpResponse.json({ statuses: ["Initialised"] })
   }),
   http.get(`${BASE_URL}/api/v4/transfers/transfer`, () => {
     return HttpResponse.json({ transfers: [mockTransfer] })
@@ -143,17 +143,17 @@ describe("BridgeAPI", () => {
   describe("getTransferStatus", () => {
     it("should fetch transfer status successfully", async () => {
       const status = await api.getTransferStatus({ originChain: "Eth", originNonce: 123 })
-      expect(status).toEqual(["Initialized"])
+      expect(status).toEqual(["Initialised"])
     })
 
     it("should handle transaction hash parameter", async () => {
       const status = await api.getTransferStatus({ transactionHash: "0x123..." })
-      expect(status).toEqual(["Initialized"])
+      expect(status).toEqual(["Initialised"])
     })
 
     it("should accept new chain enums", async () => {
       const status = await api.getTransferStatus({ originChain: "HlEvm", originNonce: 123 })
-      expect(status).toEqual(["Initialized"])
+      expect(status).toEqual(["Initialised"])
     })
 
     it("should return Settled status", async () => {

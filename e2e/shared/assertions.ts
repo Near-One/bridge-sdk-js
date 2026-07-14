@@ -11,7 +11,7 @@ export class TransferAssertions {
   async validateTransferStatus(
     originChain: "Near" | "Eth" | "Sol" | "Arb" | "Base",
     originNonce: number,
-    expectedStatus?: "initialized" | "signed" | "finalised",
+    expectedStatus?: "initialised" | "signed" | "finalised",
   ): Promise<void> {
     const statuses = await this.api.getTransferStatus({
       originChain,
@@ -48,7 +48,7 @@ export class TransferAssertions {
     }
 
     expect(transfer).toHaveProperty("transfer_id")
-    expect(transfer).toHaveProperty("initialized")
+    expect(transfer).toHaveProperty("initialised")
     expect(transfer).toHaveProperty("status")
 
     // Verify the transfer has progressed beyond initialization
