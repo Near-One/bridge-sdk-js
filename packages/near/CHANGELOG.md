@@ -1,5 +1,15 @@
 # @omni-bridge/near
 
+## 0.15.0
+
+### Minor Changes
+
+- 29536e6: `calculateStorageAccountId` accepts an optional second `externalId` argument, mixed into the hash so otherwise-identical transfers can derive distinct storage accounts. Limited to 64 UTF-8 bytes, matching the Rust `MAX_EXTERNAL_ID_LEN`; longer values throw.
+
+### Patch Changes
+
+- @omni-bridge/core@0.15.0
+
 ## 0.14.0
 
 ### Patch Changes

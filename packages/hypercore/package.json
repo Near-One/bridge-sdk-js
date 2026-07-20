@@ -1,6 +1,6 @@
 {
   "name": "@omni-bridge/hypercore",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "HyperCore (Hyperliquid L1) action builder for Omni Bridge",
   "type": "module",
   "main": "dist/index.js",
