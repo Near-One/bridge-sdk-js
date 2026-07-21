@@ -314,7 +314,51 @@ const proof = await btc.getDepositProof(
 
 console.log("Block hash:", proof.tx_block_blockhash)
 console.log("Merkle proof:", proof.merkle_proof)
+console.log("Coinbase tx:", proof.coinbase_tx_id)
 console.log("Amount:", proof.amount)
+```
+
+The returned proof includes `coinbase_tx_id` and `coinbase_merkle_proof`, which the connector's `verify_deposit_v2` method requires. Pass them through to `buildUtxoDepositFinalization`.
+
+---
+
+### getWithdrawProof
+
+Generates a withdrawal proof for verifying a broadcast BTC/ZEC withdrawal on NEAR via `verify_withdraw_v2`.
+
+#### Signature
+
+```typescript
+getWithdrawProof(txHash: string): Promise<BtcWithdrawalProof>
+```
+
+#### Parameters
+
+<ResponseField name="txHash" type="string" required>
+  The transaction hash of the broadcast withdrawal.
+</ResponseField>
+
+#### Returns
+
+<ResponseField name="BtcWithdrawalProof" type="Promise<BtcWithdrawalProof>">
+  Transaction inclusion proof (with coinbase verification) plus the `tx_id`.
+</ResponseField>
+
+#### Example
+
+```typescript
+const proof = await btc.getWithdrawProof("a1b2c3d4e5f6...")
+
+const verifyTx = nearBuilder.buildUtxoWithdrawalVerify({
+  chain: "btc",
+  txId: proof.tx_id,
+  txBlockBlockhash: proof.tx_block_blockhash,
+  txIndex: proof.tx_index,
+  merkleProof: proof.merkle_proof,
+  coinbaseTxId: proof.coinbase_tx_id,
+  coinbaseMerkleProof: proof.coinbase_merkle_proof,
+  signerId: "relayer.near",
+})
 ```
 
 ---

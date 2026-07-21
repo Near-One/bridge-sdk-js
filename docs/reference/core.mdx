@@ -531,19 +531,18 @@ Gets the status of a transfer.
 ### Signature
 
 ```typescript
-api.getTransferStatus(
-  options: { originChain: Chain; originNonce: number } | { transactionHash: string }
-): Promise<TransferStatus[]>
+api.getTransferStatus(options: TransferLookupParams): Promise<TransferStatus[]>
 ```
 
 ### Parameters
 
-<ResponseField name="options" type="object" required>
-  Lookup options. Provide either `transactionHash` OR `originChain` + `originNonce`.
+<ResponseField name="options" type="TransferLookupParams" required>
+  Lookup options. Provide `transactionHash`, OR `originChain` + `originNonce`,
+  OR `utxoChain` + `utxoTxHash` + `utxoVout`.
 
   <Expandable title="options">
     <ResponseField name="transactionHash" type="string">
-      The transaction hash on the source chain.
+      Any transaction hash involved in the transfer.
     </ResponseField>
 
     <ResponseField name="originChain" type="Chain">
@@ -553,22 +552,40 @@ api.getTransferStatus(
     <ResponseField name="originNonce" type="number">
       The transfer nonce on the origin chain.
     </ResponseField>
+
+    <ResponseField name="utxoChain" type='"Btc" | "Zcash"'>
+      UTXO chain of the reference.
+    </ResponseField>
+
+    <ResponseField name="utxoTxHash" type="string">
+      UTXO transaction hash (deposit or payout).
+    </ResponseField>
+
+    <ResponseField name="utxoVout" type="number">
+      UTXO output index.
+    </ResponseField>
   </Expandable>
 </ResponseField>
 
 ### Returns
 
 <ResponseField name="TransferStatus[]" type="TransferStatus[]">
-  Array of status values representing the transfer's progression.
+  Array of status values, one per matching transfer. A nonce or UTXO-ref
+  lookup matches a single transfer, so the array holds one element; a
+  transaction-hash lookup can match several transfers if the transaction
+  initiated more than one.
 
-  Possible values:
-  - `"Initialized"` - Transfer initiated on source chain
+  Known values:
+  - `"Initialised"` - Transfer initiated on source chain
   - `"Signed"` - MPC signature obtained
   - `"FastFinalisedOnNear"` - Fast finalized on NEAR
   - `"FinalisedOnNear"` - Finalized on NEAR
   - `"FastFinalised"` - Fast finalized on destination
   - `"Finalised"` - Fully finalized
-  - `"Claimed"` - Tokens claimed
+  - `"Settled"` - Terminal state (fee claimed, or UTXO payout verified on NEAR)
+
+  The set is open for extension — new statuses may be added server-side and
+  pass through as plain strings.
 </ResponseField>
 
 ### Example
@@ -585,7 +602,14 @@ const status = await api.getTransferStatus({
   originNonce: 12345
 })
 
-console.log(`Latest status: ${status[status.length - 1]}`)
+// By UTXO reference
+const status = await api.getTransferStatus({
+  utxoChain: "Btc",
+  utxoTxHash: "abc123...",
+  utxoVout: 0
+})
+
+console.log(`Status: ${status[0]}`)
 ```
 
 ---
@@ -683,9 +707,7 @@ Gets full details of a transfer.
 ### Signature
 
 ```typescript
-api.getTransfer(
-  options: { originChain: Chain; originNonce: number } | { transactionHash: string }
-): Promise<Transfer[]>
+api.getTransfer(options: TransferLookupParams): Promise<Transfer[]>
 ```
 
 ### Parameters
@@ -698,48 +720,111 @@ Same as `getTransferStatus`.
   Array of transfer objects with full details.
 
   <Expandable title="Transfer properties">
-    <ResponseField name="id" type="object | null">
-      Transfer identifier containing `origin_chain` and `kind` (either `Nonce` or `Utxo`).
+    <ResponseField name="transfer_id" type="OmniTransferId | null">
+      Canonical transfer id — a discriminated union on `type`: either
+      `{ type: "nonce", chain, nonce }` or `{ type: "utxo", chain, tx_hash, vout }`.
+      Null only on a partially-aggregated transfer whose identifying event
+      hasn't been indexed yet.
     </ResponseField>
 
-    <ResponseField name="initialized" type="Transaction | null">
-      Transaction when transfer was initialized.
+    <ResponseField name="origin_chain" type="Chain | null">
+      Source chain of the transfer.
     </ResponseField>
 
-    <ResponseField name="signed" type="Transaction | null">
-      Transaction when MPC signature was obtained.
+    <ResponseField name="destination_chain" type="Chain | null">
+      Destination chain of the transfer.
     </ResponseField>
 
-    <ResponseField name="fast_finalised_on_near" type="Transaction | null">
+    <ResponseField name="sender" type="string | null">
+      Sender in OmniAddress format.
+    </ResponseField>
+
+    <ResponseField name="recipient" type="string | null">
+      Recipient in OmniAddress format.
+    </ResponseField>
+
+    <ResponseField name="token_id" type="string | null">
+      Token in OmniAddress format.
+    </ResponseField>
+
+    <ResponseField name="amount" type="string | null">
+      Transfer amount in the token's smallest unit.
+    </ResponseField>
+
+    <ResponseField name="fee" type="string | null">
+      Relayer fee in the transfer token.
+    </ResponseField>
+
+    <ResponseField name="native_fee" type="string | null">
+      Relayer fee in the source chain's native token.
+    </ResponseField>
+
+    <ResponseField name="msg" type="string | null">
+      Attached message, if any.
+    </ResponseField>
+
+    <ResponseField name="destination_nonce" type="number | null">
+      Nonce assigned on the destination chain.
+    </ResponseField>
+
+    <ResponseField name="status" type="TransferStatus">
+      Current transfer status — no separate status call needed.
+    </ResponseField>
+
+    <ResponseField name="initialised" type="TransactionRef | null">
+      Transaction that initiated the transfer.
+    </ResponseField>
+
+    <ResponseField name="signed" type="TransactionRef[]">
+      MPC signings of the transfer message. May hold several entries when the
+      transfer was re-signed — the latest is `signed.at(-1)`.
+    </ResponseField>
+
+    <ResponseField name="fast_finalised_on_near" type="TransactionRef | null">
       Transaction when fast finalized on NEAR.
     </ResponseField>
 
-    <ResponseField name="finalised_on_near" type="Transaction | null">
+    <ResponseField name="finalised_on_near" type="TransactionRef | null">
       Transaction when finalized on NEAR.
     </ResponseField>
 
-    <ResponseField name="fast_finalised" type="Transaction | null">
+    <ResponseField name="fast_finalised" type="TransactionRef | null">
       Transaction when fast finalized on destination.
     </ResponseField>
 
-    <ResponseField name="finalised" type="Transaction | null">
-      Transaction when fully finalized.
+    <ResponseField name="finalised" type="TransactionRef | null">
+      Transaction when fully finalized on the destination chain.
     </ResponseField>
 
-    <ResponseField name="claimed" type="Transaction | null">
-      Transaction when tokens were claimed.
+    <ResponseField name="claimed" type="TransactionRef | null">
+      Transaction when the relayer claimed their fee.
     </ResponseField>
 
-    <ResponseField name="transfer_message" type="object | null">
-      Transfer message containing `token`, `amount`, `sender`, `recipient`, `fee`, and `msg`.
+    <ResponseField name="verified" type="TransactionRef | null">
+      NEAR-side settlement of a transfer to a UTXO chain (`verify_withdraw`).
     </ResponseField>
 
-    <ResponseField name="updated_fee" type="Transaction[]">
-      Array of fee update transactions.
+    <ResponseField name="fee_updates" type="TransactionRef[]">
+      Fee update transactions.
     </ResponseField>
 
-    <ResponseField name="utxo_transfer" type="object | null">
-      UTXO-specific transfer data for BTC/Zcash transfers.
+    <ResponseField name="utxo_signs" type="UtxoSign[]">
+      UTXO signing transactions (`TransactionRef` plus `destination_chain`,
+      `relayer`, and `pending_sign_id`). Multiple entries are expected when a
+      multi-UTXO withdrawal needs several signatures, and on re-sign (RBF).
+    </ResponseField>
+
+    <ResponseField name="utxo_winning_tx_hash" type="string | null">
+      The UTXO transaction that won the payout race, if any.
+    </ResponseField>
+
+    <ResponseField name="utxo_meta" type="UtxoMeta | null">
+      UTXO-specific metadata: `chain`, `pending_sign_id`, `relayer_fee`,
+      `protocol_fee`, `relayer_account_id`.
+    </ResponseField>
+
+    <ResponseField name="tx_ids" type="string[]">
+      Every transaction hash involved in the transfer.
     </ResponseField>
   </Expandable>
 </ResponseField>
@@ -753,8 +838,10 @@ const transfers = await api.getTransfer({
 
 if (transfers.length > 0) {
   const transfer = transfers[0]
-  console.log(`Token: ${transfer.transfer_message?.token}`)
-  console.log(`Amount: ${transfer.transfer_message?.amount}`)
+  console.log(`Token: ${transfer.token_id}`)
+  console.log(`Amount: ${transfer.amount}`)
+  console.log(`Status: ${transfer.status}`)
+  console.log(`Destination TX: ${transfer.finalised?.transaction_hash}`)
 }
 ```
 
@@ -794,7 +881,7 @@ api.findTransfers(params: {
     </ResponseField>
 
     <ResponseField name="limit" type="number">
-      Maximum results to return. Defaults to `10`.
+      Maximum results to return. Defaults to `10`, capped at `50` by the API.
     </ResponseField>
   </Expandable>
 </ResponseField>
@@ -1784,6 +1871,80 @@ const vaa = await getWormholeVaa(
 )
 console.log(vaa) // Hex-encoded VAA
 ```
+
+---
+
+## Hyperliquid Inbound Helpers
+
+Helpers for bridging *into* Hyperliquid (HyperCore L1) from NEAR or any other chain. These run alongside the standard `Bridge.validateTransfer` flow; they only set the `recipient` and `message` fields correctly. For *outbound* HyperCore transfers (signed `sendToEvmWithData` actions), use [`@omni-bridge/hypercore`](/reference/hypercore).
+
+### buildHyperliquidTransferParams
+
+Build `TransferParams` for a transfer that lands on the recipient's HyperCore spot balance (instead of their HyperEVM EOA). Sets `recipient` to `hlevm:0x…` and `message` to the JSON envelope OmniBridge parses to route the destination-side mint through `HlBridgeToken`'s system-address pool.
+
+#### Signature
+
+```typescript
+function buildHyperliquidTransferParams(params: {
+  token: OmniAddress
+  amount: bigint
+  sender: OmniAddress
+  hypercoreRecipient: string
+  fee?: bigint
+  nativeFee?: bigint
+}): TransferParams
+```
+
+#### Parameters
+
+<ResponseField name="params" type="object" required>
+  <Expandable title="params">
+    <ResponseField name="token" type="OmniAddress" required>Source-chain token (e.g. `near:wrap.near`).</ResponseField>
+    <ResponseField name="amount" type="bigint" required>Transfer amount in source-chain units.</ResponseField>
+    <ResponseField name="sender" type="OmniAddress" required>Source-chain sender (e.g. `near:alice.near`).</ResponseField>
+    <ResponseField name="hypercoreRecipient" type="string" required>The recipient's 20-byte EVM-style address on HyperEVM/HyperCore (`0x…`). HyperCore reuses the same address bytes as HyperEVM.</ResponseField>
+    <ResponseField name="fee" type="bigint">Bridge fee in source-chain units. Defaults to `0n`. Quote via `bridge.api.getFee`.</ResponseField>
+    <ResponseField name="nativeFee" type="bigint">Native (source-chain gas-token) fee. Defaults to `0n`.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### Returns
+
+`TransferParams` ready to pass to `bridge.validateTransfer`. The returned `message` is `HYPERLIQUID_MESSAGE`.
+
+#### Example
+
+```typescript
+import { createBridge, buildHyperliquidTransferParams } from "@omni-bridge/core"
+import { createNearBuilder, toNearKitTransaction } from "@omni-bridge/near"
+
+const bridge = createBridge({ network: "mainnet" })
+const builder = createNearBuilder({ network: "mainnet" })
+
+const validated = await bridge.validateTransfer(
+  buildHyperliquidTransferParams({
+    token: "near:wrap.near",
+    amount: 1_000_000_000_000_000_000_000_000n, // 1 wNEAR (24 decimals)
+    sender: "near:alice.near",
+    hypercoreRecipient: "0xRecipient...",
+    fee: 5_303_672_632_808_810_741_760n,
+  }),
+)
+const tx = builder.buildTransfer(validated, "alice.near")
+await toNearKitTransaction(near, tx).send({ waitUntil: "FINAL" })
+```
+
+---
+
+### HYPERLIQUID_MESSAGE
+
+```typescript
+const HYPERLIQUID_MESSAGE: string
+```
+
+The exact `TransferParams.message` value that routes the destination-side mint through `HlBridgeToken`'s system-address pool. Currently `'{"DestHexMsg":"636F7265"}'` — JSON envelope with `DestHexMsg` set to the hex of `"core"`. OmniBridge parses this envelope on HyperEVM and invokes the 3-arg `mint(addr, amt, bytes)` path; the resulting tokens are deposited into `_systemAddress` and Hyperliquid credits the recipient's HyperCore spot balance.
+
+Exposed mostly for tests and indexer code that inspects `message`. End-user code should call `buildHyperliquidTransferParams` instead of setting `message` directly.
 
 ---
 

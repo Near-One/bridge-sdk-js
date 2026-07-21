@@ -10,12 +10,18 @@ export {
   BridgeAPI,
   type BridgeAPIConfig,
   type Chain,
+  type OmniTransferId,
   type PostAction,
   type SafeDeposit,
+  type TransactionDetails,
+  type TransactionRef,
   type Transfer,
+  type TransferLookupParams,
   type TransferStatus,
   type UtxoChainParam,
   type UtxoDepositAddressResponse,
+  type UtxoMeta,
+  type UtxoSign,
 } from "./api.js"
 // Bridge factory
 export {
@@ -88,6 +94,9 @@ export {
   validateTransferAmount,
   verifyTransferAmount,
 } from "./utils/decimals.js"
+
+// Hyperliquid helpers
+export { buildHyperliquidTransferParams, HYPERLIQUID_MESSAGE } from "./utils/hyperliquid.js"
 
 // Token utilities
 export { isBridgeToken, parseOriginChain } from "./utils/token.js"

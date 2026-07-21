@@ -8,6 +8,7 @@
     { "path": "packages/btc" },
     { "path": "packages/starknet" },
     { "path": "packages/aptos" },
+    { "path": "packages/hypercore" },
     { "path": "packages/sdk" }
   ]
 }

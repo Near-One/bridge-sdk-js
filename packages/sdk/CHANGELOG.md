@@ -1,5 +1,96 @@
 # @omni-bridge/sdk
 
+## 0.15.0
+
+### Patch Changes
+
+- Updated dependencies [29536e6]
+  - @omni-bridge/near@0.15.0
+  - @omni-bridge/core@0.15.0
+  - @omni-bridge/evm@0.15.0
+  - @omni-bridge/solana@0.15.0
+  - @omni-bridge/btc@0.15.0
+  - @omni-bridge/starknet@0.15.0
+  - @omni-bridge/hypercore@0.15.0
+
+## 0.14.0
+
+### Patch Changes
+
+- Updated dependencies [b120987]
+  - @omni-bridge/core@0.14.0
+  - @omni-bridge/btc@0.14.0
+  - @omni-bridge/evm@0.14.0
+  - @omni-bridge/hypercore@0.14.0
+  - @omni-bridge/near@0.14.0
+  - @omni-bridge/solana@0.14.0
+  - @omni-bridge/starknet@0.14.0
+
+## 0.13.0
+
+### Patch Changes
+
+- Updated dependencies [b1a4547]
+  - @omni-bridge/core@0.13.0
+  - @omni-bridge/btc@0.13.0
+  - @omni-bridge/evm@0.13.0
+  - @omni-bridge/hypercore@0.13.0
+  - @omni-bridge/near@0.13.0
+  - @omni-bridge/solana@0.13.0
+  - @omni-bridge/starknet@0.13.0
+
+## 0.12.0
+
+### Patch Changes
+
+- Updated dependencies [fa7238c]
+  - @omni-bridge/core@0.12.0
+  - @omni-bridge/btc@0.12.0
+  - @omni-bridge/evm@0.12.0
+  - @omni-bridge/hypercore@0.12.0
+  - @omni-bridge/near@0.12.0
+  - @omni-bridge/solana@0.12.0
+  - @omni-bridge/starknet@0.12.0
+
+## 0.11.0
+
+### Patch Changes
+
+- Updated dependencies [399059b]
+  - @omni-bridge/near@0.11.0
+  - @omni-bridge/btc@0.11.0
+  - @omni-bridge/core@0.11.0
+  - @omni-bridge/evm@0.11.0
+  - @omni-bridge/solana@0.11.0
+  - @omni-bridge/starknet@0.11.0
+  - @omni-bridge/hypercore@0.11.0
+
+## 0.10.0
+
+### Patch Changes
+
+- Updated dependencies [e6574bb]
+  - @omni-bridge/hypercore@0.10.0
+  - @omni-bridge/core@0.10.0
+  - @omni-bridge/evm@0.10.0
+  - @omni-bridge/btc@0.10.0
+  - @omni-bridge/near@0.10.0
+  - @omni-bridge/solana@0.10.0
+  - @omni-bridge/starknet@0.10.0
+
+## 0.9.1
+
+### Patch Changes
+
+- Updated dependencies [f432983]
+- Updated dependencies [1d355dc]
+  - @omni-bridge/core@0.9.1
+  - @omni-bridge/btc@0.9.1
+  - @omni-bridge/solana@0.9.1
+  - @omni-bridge/starknet@0.9.1
+  - @omni-bridge/evm@0.9.1
+  - @omni-bridge/near@0.9.1
+
 ## 0.9.0
 
 ### Patch Changes

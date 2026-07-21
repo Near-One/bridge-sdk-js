@@ -26,16 +26,27 @@ const ChainSchema = z.enum([
 ])
 export type Chain = z.infer<typeof ChainSchema>
 
-const TransferStatusSchema = z.enum([
-  "Initialized",
+const KNOWN_TRANSFER_STATUSES = [
+  "Initialised",
   "Signed",
   "FastFinalisedOnNear",
   "FinalisedOnNear",
   "FastFinalised",
   "Finalised",
-  "Claimed",
-])
-export type TransferStatus = z.infer<typeof TransferStatusSchema>
+  "Settled",
+] as const
+
+/**
+ * Transfer lifecycle status. `Settled` is the terminal state.
+ *
+ * The set is open for extension — the API may introduce new statuses without
+ * an SDK release, and such values pass through as plain strings.
+ */
+export type TransferStatus = (typeof KNOWN_TRANSFER_STATUSES)[number] | (string & {})
+
+const TransferStatusSchema = z
+  .enum(KNOWN_TRANSFER_STATUSES)
+  .or(z.string()) as z.ZodType<TransferStatus>
 
 // Custom transformer for safe BigInt coercion
 const safeBigInt = (nullable = false) => {
@@ -66,121 +77,133 @@ const safeBigInt = (nullable = false) => {
   )
 }
 
-// Transaction type schemas
-const NearReceiptTransactionSchema = z.object({
-  block_height: z.number().int().min(0),
-  block_timestamp_seconds: z.number().int().min(0),
-  transaction_hash: z.string(),
-})
+// The v4 API omits absent optional fields instead of serializing null — normalize to null
+const orNull = <T extends z.ZodType>(schema: T) => schema.nullish().default(null)
 
-const EVMLogTransactionSchema = z.object({
-  block_height: z.number().int().min(0),
-  block_timestamp_seconds: z.number().int().min(0),
-  transaction_hash: z.string(),
-})
+const UtxoChainSchema = ChainSchema.extract(["Btc", "Zcash"])
 
-const SolanaTransactionSchema = z.object({
-  slot: z.number().int().min(0).optional(),
-  block_timestamp_seconds: z.number().int().min(0).optional(),
-  signature: z.string().optional(),
-})
-
-const UtxoLogTransactionSchema = z.object({
-  transaction_hash: z.string(),
-  block_height: z.number().int().min(0).nullable(),
-  block_time: z.number().int().min(0).nullable(),
-})
-
-const StarknetTransactionSchema = z.object({
-  block_number: z.number().int().min(0),
-  block_timestamp: z.number().int().min(0),
-  transaction_hash: z.string(),
-})
-
-const AptosTransactionSchema = z.object({
-  version: z.number().int().min(0),
-  block_height: z.number().int().min(0),
-  block_timestamp: z.number().int().min(0),
-  transaction_hash: z.string(),
-})
-
-const TransactionSchema = z
-  .object({
-    NearReceipt: NearReceiptTransactionSchema.optional(),
-    EVMLog: EVMLogTransactionSchema.optional(),
-    Solana: SolanaTransactionSchema.optional(),
-    UtxoLog: UtxoLogTransactionSchema.optional(),
-    Starknet: StarknetTransactionSchema.optional(),
-    Aptos: AptosTransactionSchema.optional(),
-  })
-  .refine(
-    (data) => {
-      const definedFields = [
-        data.NearReceipt,
-        data.EVMLog,
-        data.Solana,
-        data.UtxoLog,
-        data.Starknet,
-        data.Aptos,
-      ].filter((field) => field !== undefined)
-      return definedFields.length === 1
-    },
-    { message: "Exactly one transaction type must be present" },
-  )
-
-const TransferMessageSchema = z.object({
-  token: z.string(),
-  amount: z.string(),
-  sender: z.string(),
-  recipient: z.string(),
-  fee: z.object({
-    fee: z.string(),
-    native_fee: z.string(),
+const TransactionDetailsSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("near"),
+    block_height: z.number().int().min(0),
+    receipt_id: z.string(),
   }),
-  msg: z.string().nullable(),
-})
+  z.object({
+    type: z.literal("evm"),
+    block_number: z.number().int().min(0),
+    transaction_index: orNull(z.number().int().min(0)),
+    log_index: orNull(z.number().int().min(0)),
+  }),
+  z.object({
+    type: z.literal("evm_on_near"),
+    block_number: z.number().int().min(0),
+    transaction_index: orNull(z.number().int().min(0)),
+    log_index: orNull(z.number().int().min(0)),
+  }),
+  z.object({
+    type: z.literal("solana"),
+    slot: z.number().int().min(0),
+    instruction_index: z.number().int().min(0),
+  }),
+  z.object({
+    type: z.literal("utxo"),
+    block_height: z.number().int().min(0),
+    block_hash: z.string(),
+  }),
+  z.object({
+    type: z.literal("starknet"),
+    block_number: z.number().int().min(0),
+    event_index: orNull(z.number().int().min(0)),
+  }),
+  z.object({
+    type: z.literal("aptos"),
+    version: z.number().int().min(0),
+    event_index: orNull(z.number().int().min(0)),
+  }),
+])
+export type TransactionDetails = z.infer<typeof TransactionDetailsSchema>
 
-const UtxoTransferSchema = z.object({
-  chain: z.string(),
-  amount: z.string(),
-  recipient: z.string(),
-  relayer_fee: z.string(),
-  protocol_fee: z.string(),
-  relayer_account_id: z.string(),
-  sender: z.union([z.string(), z.null()]),
-  btc_pending_id: z.string().optional(),
+/**
+ * A transaction that advanced the transfer. `transaction_hash` is the
+ * chain-agnostic identifier (EVM tx hash, Solana signature, UTXO txid, NEAR tx
+ * hash) — no need to switch on the chain to read it.
+ */
+const TransactionRefSchema = z.object({
+  transaction_hash: z.string(),
+  chain: ChainSchema,
+  timestamp_seconds: z.number().int().min(0),
+  details: TransactionDetailsSchema,
 })
+export type TransactionRef = z.infer<typeof TransactionRefSchema>
+
+const TransferIdSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("nonce"),
+    chain: ChainSchema,
+    nonce: z.number().int().min(0),
+  }),
+  z.object({
+    type: z.literal("utxo"),
+    // Mostly Btc/Zcash, but we use `Near` for the final leg of Near->UTXO transfers
+    chain: ChainSchema,
+    tx_hash: z.string(),
+    vout: z.number().int().min(0),
+  }),
+])
+export type OmniTransferId = z.infer<typeof TransferIdSchema>
+
+const UtxoSignSchema = TransactionRefSchema.extend({
+  destination_chain: UtxoChainSchema,
+  relayer: z.string(),
+  pending_sign_id: z.string(),
+})
+export type UtxoSign = z.infer<typeof UtxoSignSchema>
+
+const UtxoMetaSchema = z.object({
+  chain: UtxoChainSchema,
+  pending_sign_id: orNull(z.string()),
+  relayer_fee: orNull(z.string()),
+  protocol_fee: orNull(z.string()),
+  relayer_account_id: orNull(z.string()),
+})
+export type UtxoMeta = z.infer<typeof UtxoMetaSchema>
 
 const TransferSchema = z.object({
-  id: z
-    .object({
-      origin_chain: ChainSchema,
-      kind: z.union([
-        z.object({
-          Nonce: z.number().int().min(0),
-        }),
-        z.object({
-          Utxo: z.object({
-            tx_hash: z.string(),
-            vout: z.number().int(),
-          }),
-        }),
-      ]),
-    })
-    .optional()
-    .nullable(),
-  initialized: z.union([z.null(), TransactionSchema]),
-  signed: z.union([z.null(), TransactionSchema]),
-  fast_finalised_on_near: z.union([z.null(), TransactionSchema]),
-  finalised_on_near: z.union([z.null(), TransactionSchema]),
-  fast_finalised: z.union([z.null(), TransactionSchema]),
-  finalised: z.union([z.null(), TransactionSchema]),
-  claimed: z.union([z.null(), TransactionSchema]),
-  transfer_message: z.union([z.null(), TransferMessageSchema]),
-  updated_fee: z.array(TransactionSchema),
-  utxo_transfer: z.union([z.null(), UtxoTransferSchema]),
+  transfer_id: orNull(TransferIdSchema),
+  origin_chain: orNull(ChainSchema),
+  destination_chain: orNull(ChainSchema),
+  sender: orNull(z.string()),
+  recipient: orNull(z.string()),
+  token_id: orNull(z.string()),
+  amount: orNull(z.string()),
+  fee: orNull(z.string()),
+  native_fee: orNull(z.string()),
+  msg: orNull(z.string()),
+  destination_nonce: orNull(z.number().int().min(0)),
+  status: TransferStatusSchema,
+  initialised: orNull(TransactionRefSchema),
+  signed: z.array(TransactionRefSchema),
+  fast_finalised_on_near: orNull(TransactionRefSchema),
+  finalised_on_near: orNull(TransactionRefSchema),
+  fast_finalised: orNull(TransactionRefSchema),
+  finalised: orNull(TransactionRefSchema),
+  claimed: orNull(TransactionRefSchema),
+  verified: orNull(TransactionRefSchema),
+  fee_updates: z.array(TransactionRefSchema),
+  utxo_signs: z.array(UtxoSignSchema),
+  utxo_winning_tx_hash: orNull(z.string()),
+  utxo_meta: orNull(UtxoMetaSchema),
+  tx_ids: z.array(z.string()),
 })
 export type Transfer = z.infer<typeof TransferSchema>
+
+const TransfersResponseSchema = z.object({ transfers: z.array(TransferSchema) })
+const TransferStatusesResponseSchema = z.object({ statuses: z.array(TransferStatusSchema) })
+
+export type TransferLookupParams =
+  | { originChain: Chain; originNonce: number }
+  | { transactionHash: string }
+  | { utxoChain: z.infer<typeof UtxoChainSchema>; utxoTxHash: string; utxoVout: number }
 
 const ApiFeeResponseSchema = z.object({
   native_token_fee: safeBigInt(),
@@ -275,23 +298,36 @@ export class BridgeAPI {
     return url
   }
 
-  /**
-   * Get the status of a transfer
-   */
-  async getTransferStatus(
-    options: { originChain: Chain; originNonce: number } | { transactionHash: string },
-  ): Promise<TransferStatus[]> {
-    const params: Record<string, string | undefined> = {}
-
+  private static transferLookupParams(options: TransferLookupParams): Record<string, string> {
     if ("originChain" in options) {
-      params["origin_chain"] = options.originChain
-      params["origin_nonce"] = options.originNonce.toString()
-    } else {
-      params["transaction_hash"] = options.transactionHash
+      return {
+        origin_chain: options.originChain,
+        origin_nonce: options.originNonce.toString(),
+      }
     }
+    if ("utxoChain" in options) {
+      return {
+        utxo_chain: options.utxoChain,
+        utxo_tx_hash: options.utxoTxHash,
+        utxo_vout: options.utxoVout.toString(),
+      }
+    }
+    return { transaction_hash: options.transactionHash }
+  }
 
-    const url = this.buildUrl("/api/v3/transfers/transfer/status", params)
-    return this.fetchWithValidation(url, z.array(TransferStatusSchema))
+  /**
+   * Get the status of a transfer.
+   *
+   * Statuses outside the known {@link TransferStatus} set may appear as the
+   * API evolves
+   */
+  async getTransferStatus(options: TransferLookupParams): Promise<TransferStatus[]> {
+    const url = this.buildUrl(
+      "/api/v4/transfers/transfer/status",
+      BridgeAPI.transferLookupParams(options),
+    )
+    const { statuses } = await this.fetchWithValidation(url, TransferStatusesResponseSchema)
+    return statuses
   }
 
   /**
@@ -315,20 +351,10 @@ export class BridgeAPI {
   /**
    * Get details of a transfer
    */
-  async getTransfer(
-    options: { originChain: Chain; originNonce: number } | { transactionHash: string },
-  ): Promise<Transfer[]> {
-    const params: Record<string, string | undefined> = {}
-
-    if ("originChain" in options) {
-      params["origin_chain"] = options.originChain
-      params["origin_nonce"] = options.originNonce.toString()
-    } else {
-      params["transaction_hash"] = options.transactionHash
-    }
-
-    const url = this.buildUrl("/api/v3/transfers/transfer", params)
-    return this.fetchWithValidation(url, z.array(TransferSchema))
+  async getTransfer(options: TransferLookupParams): Promise<Transfer[]> {
+    const url = this.buildUrl("/api/v4/transfers/transfer", BridgeAPI.transferLookupParams(options))
+    const { transfers } = await this.fetchWithValidation(url, TransfersResponseSchema)
+    return transfers
   }
 
   /**
@@ -354,8 +380,9 @@ export class BridgeAPI {
       transaction_id: params.transactionId,
     }
 
-    const url = this.buildUrl("/api/v3/transfers", urlParams)
-    return this.fetchWithValidation(url, z.array(TransferSchema))
+    const url = this.buildUrl("/api/v4/transfers", urlParams)
+    const { transfers } = await this.fetchWithValidation(url, TransfersResponseSchema)
+    return transfers
   }
 
   /**

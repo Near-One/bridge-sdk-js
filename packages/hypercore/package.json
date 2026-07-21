@@ -1,0 +1,39 @@
+{
+  "name": "@omni-bridge/hypercore",
+  "version": "0.15.0",
+  "description": "HyperCore (Hyperliquid L1) action builder for Omni Bridge",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Near-One/bridge-sdk-js",
+    "directory": "packages/hypercore"
+  },
+  "license": "MIT",
+  "author": "NEAR One",
+  "dependencies": {
+    "@omni-bridge/core": "workspace:*",
+    "viem": "^2.43.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

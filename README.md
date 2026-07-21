@@ -75,6 +75,7 @@ This makes it unambiguous which chain an address belongs to, which is essential 
 | `@omni-bridge/solana`   | Solana, Fogo                                   |
 | `@omni-bridge/starknet` | Starknet                                       |
 | `@omni-bridge/aptos`    | Aptos                                          |
+| `@omni-bridge/hypercore` | HyperCore (Hyperliquid L1) outbound actions   |
 | `@omni-bridge/btc`      | Bitcoin, Zcash                                 |
 | `@omni-bridge/sdk`      | Umbrella package (re-exports all of the above) |
 
@@ -223,10 +224,10 @@ import { BridgeAPI } from "@omni-bridge/core"
 const api = new BridgeAPI("mainnet")
 
 // Check status by transaction hash
-const status = await api.getTransferStatus({ txHash: "0x..." })
+const status = await api.getTransferStatus({ transactionHash: "0x..." })
 
-// Or by nonce
-const status = await api.getTransferStatus({ nonce: "123" })
+// Or by origin chain and nonce
+const status = await api.getTransferStatus({ originChain: "Eth", originNonce: 123 })
 
 // Find transfers for an address
 const transfers = await api.findTransfers({
@@ -347,7 +348,7 @@ Every transfer goes through these stages:
 | `Signed` | MPC network has signed the transfer (ready for finalization) |
 | `FinalisedOnNear` | Completed on NEAR (for transfers to NEAR) |
 | `Finalised` | Completed on destination chain |
-| `Claimed` | Fee claimed by relayer (if applicable) |
+| `Settled` | Terminal state — fee claimed by relayer, or UTXO payout verified on NEAR |
 
 Additional statuses for fast transfers:
 - `FastFinalisedOnNear` — Fast-finalized on NEAR before full confirmation
@@ -366,10 +367,10 @@ console.log("Current status:", statuses[statuses.length - 1])
 const transfers = await api.getTransfer({ transactionHash: "0x..." })
 const transfer = transfers[0]
 
-// Check specific milestones
-if (transfer.initialized) console.log("Initialized:", transfer.initialized)
-if (transfer.signed) console.log("Signed:", transfer.signed)
-if (transfer.finalised) console.log("Finalized:", transfer.finalised)
+// Check specific milestones — each stage has a chain-agnostic transaction_hash
+if (transfer.initialized) console.log("Initialized:", transfer.initialized.transaction_hash)
+if (transfer.signed.length > 0) console.log("Signed:", transfer.signed.at(-1)?.transaction_hash)
+if (transfer.finalised) console.log("Finalized:", transfer.finalised.transaction_hash)
 ```
 
 ## License

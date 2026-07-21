@@ -58,6 +58,9 @@ export type TransferMessageForStorage = {
   msg: string
 }
 
+// Matches `MAX_EXTERNAL_ID_LEN` in the Rust omni-bridge repo (near/omni-types/src/lib.rs).
+const MAX_EXTERNAL_ID_LEN = 64
+
 /**
  * Calculates the storage account ID for a transfer message
  *
@@ -67,9 +70,14 @@ export type TransferMessageForStorage = {
  * 3. Converts the hash to hex to create an implicit NEAR account ID
  *
  * @param transferMessage - The transfer message data with bigint amounts
+ * @param externalId - Optional caller-supplied identifier mixed into the hash so otherwise-identical
+ *   transfers derive distinct storage accounts. Limited to `MAX_EXTERNAL_ID_LEN` (64) UTF-8 bytes.
  * @returns The calculated storage account ID as a hex string
  */
-export function calculateStorageAccountId(transferMessage: TransferMessageForStorage): string {
+export function calculateStorageAccountId(
+  transferMessage: TransferMessageForStorage,
+  externalId?: string,
+): string {
   const serializedData = TransferMessageStorageAccountSchema.serialize({
     token: parseOmniAddress(transferMessage.token),
     amount: transferMessage.amount,
@@ -82,8 +90,18 @@ export function calculateStorageAccountId(transferMessage: TransferMessageForSto
     msg: transferMessage.msg,
   })
 
-  const hash = sha256(serializedData)
-  return hex.encode(hash)
+  const hash = sha256.create().update(serializedData)
+  if (externalId) {
+    const externalIdBytes = new TextEncoder().encode(externalId)
+    if (externalIdBytes.length > MAX_EXTERNAL_ID_LEN) {
+      throw new Error(
+        `externalId exceeds ${MAX_EXTERNAL_ID_LEN} bytes: got ${externalIdBytes.length} bytes`,
+      )
+    }
+    hash.update(externalIdBytes)
+  }
+
+  return hex.encode(hash.digest())
 }
 
 function parseOmniAddress(token: string) {

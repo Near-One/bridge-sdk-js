@@ -12,6 +12,7 @@
     { "path": "../solana" },
     { "path": "../btc" },
     { "path": "../starknet" },
-    { "path": "../aptos" }
+    { "path": "../aptos" },
+    { "path": "../hypercore" }
   ]
 }

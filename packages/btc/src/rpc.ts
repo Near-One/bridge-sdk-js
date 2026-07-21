@@ -6,7 +6,7 @@ import { sha256 } from "@noble/hashes/sha2.js"
 import { ChainKind } from "@omni-bridge/core"
 import { hex } from "@scure/base"
 import { MerkleTree } from "merkletreejs"
-import type { BtcDepositProof, BtcMerkleProof, UtxoRpcConfig } from "./types.js"
+import type { BtcDepositProof, BtcMerkleProof, BtcWithdrawalProof, UtxoRpcConfig } from "./types.js"
 
 type JsonRpcResponse<T> = {
   jsonrpc: "2.0"
@@ -57,6 +57,26 @@ export function buildBitcoinMerkleProof(
 }
 
 /**
+ * Build the transaction inclusion proof fields (target + coinbase) required by
+ * the connector's v2 verification methods. The coinbase transaction is always
+ * the first transaction in a block (index 0).
+ */
+function buildCoinbaseInclusion(blockTxids: string[], targetTxid: string) {
+  const { merkle, index } = buildBitcoinMerkleProof(blockTxids, targetTxid)
+  const coinbaseTxId = blockTxids[0]
+  if (!coinbaseTxId) {
+    throw new Error("UTXO: block has no coinbase transaction")
+  }
+  const coinbase = buildBitcoinMerkleProof(blockTxids, coinbaseTxId)
+  return {
+    tx_index: index,
+    merkle_proof: merkle,
+    coinbase_tx_id: coinbaseTxId,
+    coinbase_merkle_proof: coinbase.merkle,
+  }
+}
+
+/**
  * RPC client for Bitcoin/Zcash nodes
  */
 export class UtxoRpcClient {
@@ -103,7 +123,7 @@ export class UtxoRpcClient {
     }
 
     const block = await this.getBlock(txInfo.blockhash)
-    const { merkle, index } = buildBitcoinMerkleProof(block.tx, txHash)
+    const inclusion = buildCoinbaseInclusion(block.tx, txHash)
 
     const output = txInfo.vout?.find((item) => item.n === vout)
     if (!output) {
@@ -113,11 +133,26 @@ export class UtxoRpcClient {
     const amount = parseAmountToSatoshis(output.value)
 
     return {
-      merkle_proof: merkle,
       tx_block_blockhash: txInfo.blockhash,
       tx_bytes: Array.from(hex.decode(txInfo.hex)),
-      tx_index: index,
       amount,
+      ...inclusion,
+    }
+  }
+
+  async buildWithdrawProof(txHash: string): Promise<BtcWithdrawalProof> {
+    const txInfo = await this.getTransaction(txHash)
+    if (!txInfo.blockhash) {
+      throw new Error("UTXO: Transaction not confirmed")
+    }
+
+    const block = await this.getBlock(txInfo.blockhash)
+    const inclusion = buildCoinbaseInclusion(block.tx, txHash)
+
+    return {
+      tx_id: txHash,
+      tx_block_blockhash: txInfo.blockhash,
+      ...inclusion,
     }
   }
 

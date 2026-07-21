@@ -74,6 +74,8 @@ const finalizeTx = nearBuilder.buildUtxoDepositFinalization({
   txBlockBlockhash: proof.tx_block_blockhash,
   txIndex: proof.tx_index,
   merkleProof: proof.merkle_proof,
+  coinbaseTxId: proof.coinbase_tx_id,
+  coinbaseMerkleProof: proof.coinbase_merkle_proof,
   signerId: "alice.near",
 })
 
@@ -163,8 +165,11 @@ for (let i = 0; i < 60; i++) {
   })
   const transfer = transfers[0]
 
-  if (transfer?.signed?.NearReceipt?.transaction_hash) {
-    signedTxHash = transfer.signed.NearReceipt.transaction_hash
+  // UTXO signings land in `utxo_signs` — several entries can appear when a
+  // multi-UTXO withdrawal needs multiple signatures or on re-sign (RBF)
+  const latestSigned = transfer?.utxo_signs.at(-1)?.transaction_hash
+  if (latestSigned) {
+    signedTxHash = latestSigned
     break
   }
 

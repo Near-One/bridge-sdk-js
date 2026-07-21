@@ -8,93 +8,115 @@ const BASE_URL = "https://testnet.api.bridge.nearone.org"
 
 // Mock data
 const mockTransfer = {
-  id: {
-    origin_chain: "Eth",
-    kind: {
-      Nonce: 123,
-    },
+  transfer_id: { type: "nonce", chain: "Eth", nonce: 123 },
+  origin_chain: "Eth",
+  destination_chain: "Near",
+  sender: "eth:0xsender",
+  recipient: "near:recipient.near",
+  token_id: "eth:0xtoken",
+  amount: "1000000",
+  fee: "1000",
+  native_fee: "2000",
+  msg: "test transfer",
+  status: "Initialised",
+  initialised: {
+    transaction_hash: "0x123...",
+    chain: "Eth",
+    timestamp_seconds: 1234567890,
+    details: { type: "evm", block_number: 1000, transaction_index: 1, log_index: 2 },
   },
-  initialized: {
-    EVMLog: {
-      block_height: 1000,
-      block_timestamp_seconds: 1234567890,
-      transaction_hash: "0x123...",
-    },
-  },
-  signed: null,
+  signed: [],
+  fee_updates: [],
+  utxo_signs: [],
+  tx_ids: ["0x123..."],
+}
+
+// The SDK normalizes omitted optional fields to null
+const normalizedTransfer = {
+  ...mockTransfer,
+  destination_nonce: null,
   fast_finalised_on_near: null,
   finalised_on_near: null,
   fast_finalised: null,
   finalised: null,
   claimed: null,
-  transfer_message: {
-    token: "token.near",
-    amount: "1000000",
-    sender: "sender.near",
-    recipient: "recipient.near",
-    fee: {
-      fee: "1000",
-      native_fee: "2000",
-    },
-    msg: "test transfer",
-  },
-  updated_fee: [],
-  utxo_transfer: null,
-}
-
-const normalizedTransfer = {
-  ...mockTransfer,
+  verified: null,
+  utxo_winning_tx_hash: null,
+  utxo_meta: null,
 }
 
 const mockStarknetTransfer = {
-  id: {
-    origin_chain: "Strk",
-    kind: {
-      Nonce: 456,
-    },
+  transfer_id: { type: "nonce", chain: "Strk", nonce: 456 },
+  origin_chain: "Strk",
+  destination_chain: "Near",
+  status: "Initialised",
+  initialised: {
+    transaction_hash: "0xstarknettx",
+    chain: "Strk",
+    timestamp_seconds: 1730000000,
+    details: { type: "starknet", block_number: 100, event_index: 0 },
   },
-  initialized: {
-    Starknet: {
-      block_number: 100,
-      block_timestamp: 1730000000,
-      transaction_hash: "0xstarknettx",
-    },
-  },
-  signed: null,
+  signed: [],
+  fee_updates: [],
+  utxo_signs: [],
+  tx_ids: ["0xstarknettx"],
+}
+
+const normalizedStarknetTransfer = {
+  ...mockStarknetTransfer,
+  sender: null,
+  recipient: null,
+  token_id: null,
+  amount: null,
+  fee: null,
+  native_fee: null,
+  msg: null,
+  destination_nonce: null,
   fast_finalised_on_near: null,
   finalised_on_near: null,
   fast_finalised: null,
   finalised: null,
   claimed: null,
-  transfer_message: null,
-  updated_fee: [],
-  utxo_transfer: null,
+  verified: null,
+  utxo_winning_tx_hash: null,
+  utxo_meta: null,
 }
 
 const mockAptosTransfer = {
-  id: {
-    origin_chain: "Aptos",
-    kind: {
-      Nonce: 789,
-    },
+  transfer_id: { type: "nonce", chain: "Aptos", nonce: 789 },
+  origin_chain: "Aptos",
+  destination_chain: "Near",
+  status: "Initialised",
+  initialised: {
+    transaction_hash: "0xaptostx",
+    chain: "Aptos",
+    timestamp_seconds: 1730000000,
+    details: { type: "aptos", version: 123456, event_index: 0 },
   },
-  initialized: {
-    Aptos: {
-      version: 123456,
-      block_height: 777,
-      block_timestamp: 1730000000,
-      transaction_hash: "0xaptostx",
-    },
-  },
-  signed: null,
+  signed: [],
+  fee_updates: [],
+  utxo_signs: [],
+  tx_ids: ["0xaptostx"],
+}
+
+const normalizedAptosTransfer = {
+  ...mockAptosTransfer,
+  sender: null,
+  recipient: null,
+  token_id: null,
+  amount: null,
+  fee: null,
+  native_fee: null,
+  msg: null,
+  destination_nonce: null,
   fast_finalised_on_near: null,
   finalised_on_near: null,
   fast_finalised: null,
   finalised: null,
   claimed: null,
-  transfer_message: null,
-  updated_fee: [],
-  utxo_transfer: null,
+  verified: null,
+  utxo_winning_tx_hash: null,
+  utxo_meta: null,
 }
 
 const mockFee = {
@@ -129,17 +151,17 @@ const mockBtcAddress = {
 }
 
 const restHandlers = [
-  http.get(`${BASE_URL}/api/v3/transfers/transfer/status`, () => {
-    return HttpResponse.json(["Initialized"])
+  http.get(`${BASE_URL}/api/v4/transfers/transfer/status`, () => {
+    return HttpResponse.json({ statuses: ["Initialised"] })
   }),
-  http.get(`${BASE_URL}/api/v3/transfers/transfer`, () => {
-    return HttpResponse.json([mockTransfer])
+  http.get(`${BASE_URL}/api/v4/transfers/transfer`, () => {
+    return HttpResponse.json({ transfers: [mockTransfer] })
   }),
   http.get(`${BASE_URL}/api/v3/transfer-fee`, () => {
     return HttpResponse.json(mockFee)
   }),
-  http.get(`${BASE_URL}/api/v3/transfers`, () => {
-    return HttpResponse.json([mockTransfer])
+  http.get(`${BASE_URL}/api/v4/transfers`, () => {
+    return HttpResponse.json({ transfers: [mockTransfer] })
   }),
   http.get(`${BASE_URL}/api/v3/transfer-fee/allowlisted-tokens`, () => {
     return HttpResponse.json(mockAllowlistedTokens)
@@ -158,22 +180,64 @@ describe("BridgeAPI", () => {
   describe("getTransferStatus", () => {
     it("should fetch transfer status successfully", async () => {
       const status = await api.getTransferStatus({ originChain: "Eth", originNonce: 123 })
-      expect(status).toEqual(["Initialized"])
+      expect(status).toEqual(["Initialised"])
     })
 
     it("should handle transaction hash parameter", async () => {
       const status = await api.getTransferStatus({ transactionHash: "0x123..." })
-      expect(status).toEqual(["Initialized"])
+      expect(status).toEqual(["Initialised"])
     })
 
     it("should accept new chain enums", async () => {
       const status = await api.getTransferStatus({ originChain: "HlEvm", originNonce: 123 })
-      expect(status).toEqual(["Initialized"])
+      expect(status).toEqual(["Initialised"])
+    })
+
+    it("should return Settled status", async () => {
+      server.use(
+        http.get(`${BASE_URL}/api/v4/transfers/transfer/status`, () => {
+          return HttpResponse.json({ statuses: ["Settled"] })
+        }),
+      )
+
+      const status = await api.getTransferStatus({ originChain: "Eth", originNonce: 123 })
+      expect(status).toEqual(["Settled"])
+    })
+
+    it("should send UTXO ref lookup params", async () => {
+      let requestUrl: URL | undefined
+      server.use(
+        http.get(`${BASE_URL}/api/v4/transfers/transfer/status`, ({ request }) => {
+          requestUrl = new URL(request.url)
+          return HttpResponse.json({ statuses: ["Settled"] })
+        }),
+      )
+
+      const status = await api.getTransferStatus({
+        utxoChain: "Btc",
+        utxoTxHash: "btc_txid",
+        utxoVout: 1,
+      })
+      expect(status).toEqual(["Settled"])
+      expect(requestUrl?.searchParams.get("utxo_chain")).toBe("Btc")
+      expect(requestUrl?.searchParams.get("utxo_tx_hash")).toBe("btc_txid")
+      expect(requestUrl?.searchParams.get("utxo_vout")).toBe("1")
+    })
+
+    it("should pass through unrecognized statuses", async () => {
+      server.use(
+        http.get(`${BASE_URL}/api/v4/transfers/transfer/status`, () => {
+          return HttpResponse.json({ statuses: ["Refunded"] })
+        }),
+      )
+
+      const status = await api.getTransferStatus({ originChain: "Eth", originNonce: 123 })
+      expect(status).toEqual(["Refunded"])
     })
 
     it("should handle 404 error", async () => {
       server.use(
-        http.get(`${BASE_URL}/api/v3/transfers/transfer/status`, () => {
+        http.get(`${BASE_URL}/api/v4/transfers/transfer/status`, () => {
           return new HttpResponse(null, { status: 404 })
         }),
       )
@@ -231,24 +295,24 @@ describe("BridgeAPI", () => {
 
     it("should parse Starknet transaction payloads", async () => {
       server.use(
-        http.get(`${BASE_URL}/api/v3/transfers/transfer`, () => {
-          return HttpResponse.json([mockStarknetTransfer])
+        http.get(`${BASE_URL}/api/v4/transfers/transfer`, () => {
+          return HttpResponse.json({ transfers: [mockStarknetTransfer] })
         }),
       )
 
       const transfers = await api.getTransfer({ originChain: "Strk", originNonce: 456 })
-      expect(transfers).toEqual([mockStarknetTransfer])
+      expect(transfers).toEqual([normalizedStarknetTransfer])
     })
 
     it("should parse Aptos transaction payloads", async () => {
       server.use(
-        http.get(`${BASE_URL}/api/v3/transfers/transfer`, () => {
-          return HttpResponse.json([mockAptosTransfer])
+        http.get(`${BASE_URL}/api/v4/transfers/transfer`, () => {
+          return HttpResponse.json({ transfers: [mockAptosTransfer] })
         }),
       )
 
       const transfers = await api.getTransfer({ originChain: "Aptos", originNonce: 789 })
-      expect(transfers).toEqual([mockAptosTransfer])
+      expect(transfers).toEqual([normalizedAptosTransfer])
     })
   })
 

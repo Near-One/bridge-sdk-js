@@ -11,7 +11,7 @@ export class TransferAssertions {
   async validateTransferStatus(
     originChain: "Near" | "Eth" | "Sol" | "Arb" | "Base",
     originNonce: number,
-    expectedStatus?: "initialized" | "signed" | "finalised",
+    expectedStatus?: "initialised" | "signed" | "finalised",
   ): Promise<void> {
     const statuses = await this.api.getTransferStatus({
       originChain,
@@ -47,13 +47,13 @@ export class TransferAssertions {
       throw new Error("No transfer found")
     }
 
-    expect(transfer).toHaveProperty("id")
-    expect(transfer).toHaveProperty("initialized")
-    expect(transfer).toHaveProperty("transfer_message")
+    expect(transfer).toHaveProperty("transfer_id")
+    expect(transfer).toHaveProperty("initialised")
+    expect(transfer).toHaveProperty("status")
 
     // Verify the transfer has progressed beyond initialization
     const hasProgression =
-      transfer.signed !== null || transfer.finalised !== null || transfer.claimed !== null
+      transfer.signed.length > 0 || transfer.finalised !== null || transfer.claimed !== null
 
     if (hasProgression) {
       console.log("✓ Transfer has progressed beyond initialization")
@@ -62,19 +62,18 @@ export class TransferAssertions {
     }
 
     console.log(`✓ Transfer details retrieved for ${originChain}:${originNonce}`)
-    if (transfer.id) {
-      const kindStr =
-        "Nonce" in transfer.id.kind
-          ? transfer.id.kind.Nonce
-          : `${transfer.id.kind.Utxo.tx_hash}:${transfer.id.kind.Utxo.vout}`
-      console.log(`  Transfer ID: ${transfer.id.origin_chain}:${kindStr}`)
+    if (transfer.transfer_id) {
+      const idStr =
+        transfer.transfer_id.type === "nonce"
+          ? transfer.transfer_id.nonce
+          : `${transfer.transfer_id.tx_hash}:${transfer.transfer_id.vout}`
+      console.log(`  Transfer ID: ${transfer.transfer_id.chain}:${idStr}`)
     }
-    if (transfer.transfer_message) {
-      console.log(`  Token: ${transfer.transfer_message.token}`)
-      console.log(`  Amount: ${transfer.transfer_message.amount}`)
-      console.log(`  Sender: ${transfer.transfer_message.sender}`)
-      console.log(`  Recipient: ${transfer.transfer_message.recipient}`)
-    }
+    console.log(`  Status: ${transfer.status}`)
+    console.log(`  Token: ${transfer.token_id}`)
+    console.log(`  Amount: ${transfer.amount}`)
+    console.log(`  Sender: ${transfer.sender}`)
+    console.log(`  Recipient: ${transfer.recipient}`)
   }
 
   async waitForTransferProgression(
@@ -98,7 +97,7 @@ export class TransferAssertions {
         // Check if transfer has progressed beyond initialization
         if (
           transfer &&
-          (transfer.signed !== null || transfer.finalised !== null || transfer.claimed !== null)
+          (transfer.signed.length > 0 || transfer.finalised !== null || transfer.claimed !== null)
         ) {
           console.log("✓ Transfer has progressed!")
           return

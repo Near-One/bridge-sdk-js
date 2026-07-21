@@ -10,6 +10,7 @@ import {
   type Network,
   type ValidatedTransfer,
 } from "@omni-bridge/core"
+import { base64 } from "@scure/base"
 import { Near } from "near-kit"
 import {
   BindTokenArgsSchema,
@@ -145,10 +146,10 @@ export interface NearBuilder {
 
   /**
    * Build a transaction to finalize a UTXO deposit on NEAR.
-   * This calls `verify_deposit` on the BTC/Zcash connector contract.
+   * This calls `verify_deposit_v2` on the BTC/Zcash connector contract.
    *
    * @param params - Deposit finalization parameters including proof data
-   * @returns Unsigned transaction for verify_deposit
+   * @returns Unsigned transaction for verify_deposit_v2
    */
   buildUtxoDepositFinalization(params: UtxoDepositFinalizationParams): NearUnsignedTransaction
 
@@ -183,10 +184,10 @@ export interface NearBuilder {
 
   /**
    * Build a transaction to verify a UTXO withdrawal on NEAR.
-   * This calls `btc_verify_withdraw` on the connector after broadcasting.
+   * This calls `verify_withdraw_v2` on the connector after broadcasting.
    *
-   * @param params - Verification parameters including merkle proof
-   * @returns Unsigned transaction for btc_verify_withdraw
+   * @param params - Verification parameters including the transaction inclusion proof
+   * @returns Unsigned transaction for verify_withdraw_v2
    */
   buildUtxoWithdrawalVerify(params: UtxoWithdrawalVerifyParams): NearUnsignedTransaction
 
@@ -624,16 +625,25 @@ class NearBuilderImpl implements NearBuilder {
 
     const args = {
       deposit_msg: depositMsg,
-      tx_bytes: params.txBytes,
+      // The contract's `verify_deposit_v2` expects `tx_bytes` as a base64 string
+      // (Base64VecU8), not a JSON array of bytes.
+      tx_bytes: base64.encode(Uint8Array.from(params.txBytes)),
       vout: params.vout,
-      tx_block_blockhash: params.txBlockBlockhash,
-      tx_index: params.txIndex,
-      merkle_proof: params.merkleProof,
+      proof: {
+        tx_block_blockhash: params.txBlockBlockhash,
+        tx_index: params.txIndex,
+        merkle_proof: params.merkleProof,
+        coinbase_tx_id: params.coinbaseTxId,
+        coinbase_merkle_proof: params.coinbaseMerkleProof,
+      },
     }
 
+    // v2 always uses `verify_deposit_v2`; the contract selects the safe vs.
+    // standard path from `deposit_msg.safe_deposit`. Only the attached deposit
+    // differs (safe deposits must pre-fund the user's token storage).
     const action: NearAction = {
       type: "FunctionCall",
-      methodName: isSafeDeposit ? "safe_verify_deposit" : "verify_deposit",
+      methodName: "verify_deposit_v2",
       args: encodeArgs(args),
       gas: GAS.UTXO_VERIFY_DEPOSIT,
       deposit: isSafeDeposit ? DEPOSIT.SAFE_VERIFY_DEPOSIT : 0n,
@@ -752,19 +762,22 @@ class NearBuilderImpl implements NearBuilder {
     const connector = this.getUtxoConnectorAddress(params.chain)
 
     const args = {
-      tx_proof: {
-        block_height: params.blockHeight,
-        merkle: params.merkle,
-        pos: params.pos,
+      tx_id: params.txId,
+      proof: {
+        tx_block_blockhash: params.txBlockBlockhash,
+        tx_index: params.txIndex,
+        merkle_proof: params.merkleProof,
+        coinbase_tx_id: params.coinbaseTxId,
+        coinbase_merkle_proof: params.coinbaseMerkleProof,
       },
     }
 
     const action: NearAction = {
       type: "FunctionCall",
-      methodName: "btc_verify_withdraw",
+      methodName: "verify_withdraw_v2",
       args: encodeArgs(args),
       gas: GAS.UTXO_VERIFY_WITHDRAWAL,
-      deposit: DEPOSIT.ONE_YOCTO,
+      deposit: 0n,
     }
 
     return {

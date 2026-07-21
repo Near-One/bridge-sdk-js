@@ -265,4 +265,79 @@ describe("calculateStorageAccountId", () => {
     expect(results.every((result) => result === firstResult)).toBe(true)
     expect(firstResult).toMatch(/^[a-f0-9]{64}$/)
   })
+
+  describe("externalId", () => {
+    const transferMessage = {
+      token: "near:token.near" as const,
+      amount: 1000000000000000000000000n,
+      recipient: "eth:0x742d35Cc6734C0532925a3b8D84f8FBf4D7bE86f" as const,
+      fee: {
+        fee: 100000000000000000000000n,
+        native_fee: 1000000000000000000000n,
+      },
+      sender: "near:sender.near" as const,
+      msg: "test transfer",
+    }
+
+    it("changes the account ID compared to omitting externalId", () => {
+      const withoutExternalId = calculateStorageAccountId(transferMessage)
+      const withExternalId = calculateStorageAccountId(transferMessage, "external-id")
+
+      expect(withExternalId).not.toBe(withoutExternalId)
+      expect(withExternalId).toMatch(/^[a-f0-9]{64}$/)
+    })
+
+    it("treats an empty string the same as omitting externalId", () => {
+      const withoutExternalId = calculateStorageAccountId(transferMessage)
+      const withEmptyExternalId = calculateStorageAccountId(transferMessage, "")
+
+      expect(withEmptyExternalId).toBe(withoutExternalId)
+    })
+
+    it("is deterministic for the same externalId", () => {
+      const accountId1 = calculateStorageAccountId(transferMessage, "external-id")
+      const accountId2 = calculateStorageAccountId(transferMessage, "external-id")
+
+      expect(accountId1).toBe(accountId2)
+    })
+
+    it("produces different account IDs for different externalId values", () => {
+      const accountId1 = calculateStorageAccountId(transferMessage, "external-id-1")
+      const accountId2 = calculateStorageAccountId(transferMessage, "external-id-2")
+
+      expect(accountId1).not.toBe(accountId2)
+    })
+
+    it("handles unicode externalId values", () => {
+      const accountId = calculateStorageAccountId(transferMessage, "🚀 external 特殊文字")
+
+      expect(accountId).toMatch(/^[a-f0-9]{64}$/)
+    })
+
+    it("accepts an externalId at exactly the 64-byte limit", () => {
+      const externalId = "a".repeat(64)
+      const accountId = calculateStorageAccountId(transferMessage, externalId)
+
+      expect(accountId).toMatch(/^[a-f0-9]{64}$/)
+    })
+
+    it("throws when externalId exceeds the 64-byte limit", () => {
+      const externalId = "a".repeat(65)
+
+      expect(() => calculateStorageAccountId(transferMessage, externalId)).toThrow(
+        /externalId exceeds 64 bytes/,
+      )
+    })
+
+    it("enforces the limit on UTF-8 byte length, not string length", () => {
+      // Each "🚀" is 2 UTF-16 code units but 4 UTF-8 bytes, so 17 copies are
+      // only 34 code units long yet 68 bytes — over the limit.
+      const externalId = "🚀".repeat(17)
+
+      expect(externalId.length).toBeLessThan(64)
+      expect(() => calculateStorageAccountId(transferMessage, externalId)).toThrow(
+        /externalId exceeds 64 bytes/,
+      )
+    })
+  })
 })

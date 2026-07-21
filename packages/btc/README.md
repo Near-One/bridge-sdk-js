@@ -155,7 +155,11 @@ Builds a withdrawal transaction plan with optimal UTXO selection.
 
 ### `BtcBuilder.getDepositProof(txHash, vout)`
 
-Generates a deposit proof for verifying BTC deposits on NEAR.
+Generates a deposit proof (including coinbase verification) for verifying BTC deposits on NEAR via `verify_deposit_v2`.
+
+### `BtcBuilder.getWithdrawProof(txHash)`
+
+Generates a withdrawal proof (including coinbase verification) for verifying BTC withdrawals on NEAR via `verify_withdraw_v2`.
 
 ### `BtcBuilder.getMerkleProof(txHash)`
 
