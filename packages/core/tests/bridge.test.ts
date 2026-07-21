@@ -498,6 +498,76 @@ describe("Bridge.validateTransfer", () => {
       })
     })
 
+    it("accepts a short-form Aptos recipient address", async () => {
+      mockNearView.mockImplementation(async (_contract: string, method: string, _args: unknown) => {
+        if (method === "get_token_decimals") {
+          return { decimals: 8, origin_decimals: 24 }
+        }
+        if (method === "get_bridged_token") {
+          return "aptos:0x2ebb2ccac5e027a87fa0e2e5f656a3a4238d6a48d93ec9b610d570fc0aa0df12"
+        }
+        return null
+      })
+
+      const params: TransferParams = {
+        token: "near:wrap.testnet" as OmniAddress,
+        amount: 1000000000000000000000000n,
+        fee: 0n,
+        nativeFee: 0n,
+        sender: "near:alice.testnet" as OmniAddress,
+        recipient: "aptos:0xa" as OmniAddress,
+      }
+
+      const result = await bridge.validateTransfer(params)
+      expect(result.destChain).toBe(ChainKind.Aptos)
+    })
+
+    it("rejects a non-hex Aptos recipient address", async () => {
+      const params: TransferParams = {
+        token: "near:wrap.testnet" as OmniAddress,
+        amount: 1000000000000000000000000n,
+        fee: 0n,
+        nativeFee: 0n,
+        sender: "near:alice.testnet" as OmniAddress,
+        recipient: "aptos:not-an-address" as OmniAddress,
+      }
+
+      await expect(bridge.validateTransfer(params)).rejects.toThrow(
+        "Invalid Aptos recipient address",
+      )
+      await expect(bridge.validateTransfer(params)).rejects.toMatchObject({
+        code: "INVALID_ADDRESS",
+      })
+    })
+
+    it("rejects an Aptos recipient address longer than 32 bytes", async () => {
+      const params: TransferParams = {
+        token: "near:wrap.testnet" as OmniAddress,
+        amount: 1000000000000000000000000n,
+        fee: 0n,
+        nativeFee: 0n,
+        sender: "near:alice.testnet" as OmniAddress,
+        recipient: `aptos:0x${"1".repeat(65)}` as OmniAddress,
+      }
+
+      await expect(bridge.validateTransfer(params)).rejects.toThrow(
+        "Invalid Aptos recipient address",
+      )
+    })
+
+    it("rejects an invalid Aptos sender address", async () => {
+      const params: TransferParams = {
+        token: "aptos:0x000000000000000000000000000000000000000000000000000000000000000a" as OmniAddress,
+        amount: 1000000000n,
+        fee: 0n,
+        nativeFee: 0n,
+        sender: "aptos:0xnothex" as OmniAddress,
+        recipient: "near:alice.testnet" as OmniAddress,
+      }
+
+      await expect(bridge.validateTransfer(params)).rejects.toThrow("Invalid Aptos sender address")
+    })
+
     it("throws when source chain is Aptos (bridge not yet deployed)", async () => {
       const params: TransferParams = {
         token: "aptos:0x000000000000000000000000000000000000000000000000000000000000000a" as OmniAddress,

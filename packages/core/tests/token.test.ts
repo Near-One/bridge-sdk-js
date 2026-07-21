@@ -16,6 +16,7 @@ describe("Token Utils", () => {
       expect(isBridgeToken("abs.omdep.near")).toBe(true)
       expect(isBridgeToken("strk.omdep.near")).toBe(true)
       expect(isBridgeToken("fogo.omdep.near")).toBe(true)
+      expect(isBridgeToken("aptos.omft.near")).toBe(true)
     })
 
     it("should return true for known testnet bridge tokens", () => {
@@ -61,6 +62,10 @@ describe("Token Utils", () => {
 
       it("should parse mainnet SOL token", () => {
         expect(parseOriginChain("sol.omft.near")).toBe(ChainKind.Sol)
+      })
+
+      it("should parse mainnet APT token", () => {
+        expect(parseOriginChain("aptos.omft.near")).toBe(ChainKind.Aptos)
       })
 
       it("should parse mainnet Base token", () => {

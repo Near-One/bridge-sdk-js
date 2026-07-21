@@ -21,6 +21,7 @@ const KNOWN_BRIDGE_TOKENS: Record<string, ChainKind> = {
   "abs.omdep.near": ChainKind.Abs,
   "strk.omdep.near": ChainKind.Strk,
   "fogo.omdep.near": ChainKind.Fogo,
+  "aptos.omft.near": ChainKind.Aptos,
   // Testnet
   "nbtc.n-bridge.testnet": ChainKind.Btc,
   "nzcash.n-bridge.testnet": ChainKind.Zcash,

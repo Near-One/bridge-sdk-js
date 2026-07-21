@@ -237,6 +237,18 @@ class BridgeImpl implements Bridge {
       }
     }
 
+    if (sourceChain === ChainKind.Aptos && !isValidAptosAddress(getAddress(params.sender))) {
+      throw new ValidationError("Invalid Aptos sender address", "INVALID_ADDRESS", {
+        address: params.sender,
+      })
+    }
+
+    if (destChain === ChainKind.Aptos && !isValidAptosAddress(getAddress(params.recipient))) {
+      throw new ValidationError("Invalid Aptos recipient address", "INVALID_ADDRESS", {
+        address: params.recipient,
+      })
+    }
+
     if (params.destinationMemo !== undefined) {
       if (destChain !== ChainKind.Zcash) {
         throw new ValidationError(
@@ -386,6 +398,16 @@ class BridgeImpl implements Bridge {
  */
 function isValidEvmAddress(address: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(address)
+}
+
+/**
+ * Validate Aptos account address format: optional `0x` prefix, 1-64 hex
+ * chars. Short forms are accepted and zero-padded on-chain, matching
+ * `omni_types::H256` parsing
+ */
+function isValidAptosAddress(address: string): boolean {
+  const stripped = address.startsWith("0x") || address.startsWith("0X") ? address.slice(2) : address
+  return /^[a-fA-F0-9]{1,64}$/.test(stripped)
 }
 
 /**
