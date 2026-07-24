@@ -6,11 +6,7 @@ description: Bridge tokens from Aptos
 This guide covers bridging tokens from Aptos to other chains. The Aptos builder returns plain entry-function payloads compatible with `InputEntryFunctionData` from `@aptos-labs/ts-sdk` — pass them straight to the transaction builder or a wallet adapter.
 
 <Note>
-  The Aptos bridge contract is not yet deployed, so no bridge address ships in the SDK config.
-  Until then, `bridge.validateTransfer()` throws `UNSUPPORTED_CHAIN` for Aptos-source transfers,
-  and the full validate-then-build flow below only works once the address ships. Against your own
-  deployment you can already use the builder payload APIs (pass the module address via
-  `bridgeAddress`), the event helpers, and the address utilities.
+The Aptos bridge contract is not yet deployed, so no bridge address ships in the SDK config. Until then, `bridge.validateTransfer()` throws `UNSUPPORTED_CHAIN` for Aptos-source transfers, and the full validate-then-build flow below only works once the address ships. Against your own deployment you can already use the builder payload APIs (pass the module address via `bridgeAddress`), the event helpers, and the address utilities.
 </Note>
 
 ## Setup
@@ -80,30 +76,22 @@ const { hash } = await signAndSubmitTransaction({ data: payload })
 
 A few things differ from other chains:
 
-- **No approval step.** The Move contract pulls funds directly from the
-  transaction signer, so `buildTransfer` returns a single payload.
-- **Tokens are Fungible Assets.** The `token` is the FA metadata object
-  address. Native APT is the canonical FA at `0xa` and goes through the same
-  flow — there is no separate native-token path.
-- **`fee` is inclusive.** The token fee is part of `amount` (it must be
-  strictly less than `amount`). The `nativeFee` is charged separately in APT.
-- **Amounts must fit in u64.** Aptos FA balances are `u64`; the contract
-  rejects larger amounts.
-- **No storage deposits.** Primary fungible stores are auto-created on
-  deposit.
+- **No approval step.** The Move contract pulls funds directly from the transaction signer, so `buildTransfer` returns a single payload.
+- **Tokens are Fungible Assets.** The `token` is the FA metadata object address. Native APT is the canonical FA at `0xa` and goes through the same flow — there is no separate native-token path.
+- **`fee` is inclusive.** The token fee is part of `amount` (it must be strictly less than `amount`). The `nativeFee` is charged separately in APT.
+- **Amounts must fit in u64.** Aptos FA balances are `u64`; the contract rejects larger amounts.
+- **No storage deposits.** Primary fungible stores are auto-created on deposit.
 
 ## Token Metadata
 
-Before a token can be bridged for the first time, its metadata must be logged
-on the source chain and the wrapped token deployed on the destination.
+Before a token can be bridged for the first time, its metadata must be logged on the source chain and the wrapped token deployed on the destination.
 
 ```typescript
 // Log an existing Fungible Asset's metadata (permissionless)
 const payload = aptosBuilder.buildLogMetadata("0x...") // FA metadata object address
 ```
 
-To deploy a NEAR-originated token on Aptos, use the MPC signature from the
-NEAR `LogMetadataEvent`:
+To deploy a NEAR-originated token on Aptos, use the MPC signature from the NEAR `LogMetadataEvent`:
 
 ```typescript
 const payload = aptosBuilder.buildDeployToken(signature, {
@@ -128,8 +116,7 @@ const tokenAddress = deriveAptosBridgedTokenAddress(bridgeObject, "wrap.near")
 
 ## Manual Finalization
 
-To finalize a transfer **to** Aptos yourself (instead of paying a relayer),
-fetch the signed transfer from NEAR and build a `fin_transfer` payload:
+To finalize a transfer **to** Aptos yourself (instead of paying a relayer), fetch the signed transfer from NEAR and build a `fin_transfer` payload:
 
 ```typescript
 import { ChainKind } from "@omni-bridge/core"
@@ -159,8 +146,7 @@ const done = await isAptosTransferFinalised(
 
 ## Reading Events
 
-After initiating a transfer, you can extract the `InitTransfer` event (e.g.
-for relayers building MPC proofs):
+After initiating a transfer, you can extract the `InitTransfer` event (e.g. for relayers building MPC proofs):
 
 ```typescript
 import { getAptosInitTransferEvent, getAptosInitTransferLog } from "@omni-bridge/aptos"
