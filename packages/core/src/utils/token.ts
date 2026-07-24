@@ -19,7 +19,7 @@ const KNOWN_BRIDGE_TOKENS: Record<string, ChainKind> = {
   "bnb.omdep.near": ChainKind.Bnb,
   "pol.omdep.near": ChainKind.Pol,
   "abs.omdep.near": ChainKind.Abs,
-  "strk.omdep.near": ChainKind.Strk,
+  "strk-0x65a839eb3847105820d4a2eee84e137f33525e8f.omdep.near": ChainKind.Strk,
   "fogo.omdep.near": ChainKind.Fogo,
   "aptos.omft.near": ChainKind.Aptos,
   // Testnet
