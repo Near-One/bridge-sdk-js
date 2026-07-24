@@ -119,6 +119,25 @@ describe("calculateStorageAccountId", () => {
         sender: "near:intents.near" as const,
         msg: "",
       },
+      {
+        token: "near:wrap.near",
+        amount: 1000000n,
+        recipient:
+          "aptos:0x05558831a603eca8cd69a42d4251f08de3573039b69f23972265cac76639f1cf" as const,
+        fee: { fee: 0n, native_fee: 0n },
+        sender: "near:intents.near" as const,
+        msg: "",
+      },
+      {
+        // Aptos short-form addresses (e.g. the canonical APT FA at 0xa) must
+        // also be left-padded to 32 bytes.
+        token: "near:wrap.near",
+        amount: 1000000n,
+        recipient: "aptos:0xa" as const,
+        fee: { fee: 0n, native_fee: 0n },
+        sender: "near:intents.near" as const,
+        msg: "",
+      },
     ]
 
     const accountIds = messages.map(calculateStorageAccountId)
@@ -130,6 +149,24 @@ describe("calculateStorageAccountId", () => {
 
     // All should be different
     expect(new Set(accountIds).size).toBe(accountIds.length)
+  })
+
+  it("serializes short-form and zero-padded Aptos addresses identically", () => {
+    const base = {
+      token: "near:wrap.near" as const,
+      amount: 1000000n,
+      fee: { fee: 0n, native_fee: 0n },
+      sender: "near:intents.near" as const,
+      msg: "",
+    }
+
+    const shortForm = calculateStorageAccountId({ ...base, recipient: "aptos:0xa" })
+    const padded = calculateStorageAccountId({
+      ...base,
+      recipient: "aptos:0x000000000000000000000000000000000000000000000000000000000000000a",
+    })
+
+    expect(shortForm).toBe(padded)
   })
 
   it("handles zero amounts", () => {

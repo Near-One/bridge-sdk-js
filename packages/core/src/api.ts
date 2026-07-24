@@ -22,6 +22,7 @@ const ChainSchema = z.enum([
   "HlEvm",
   "Strk",
   "Fogo",
+  "Aptos",
 ])
 export type Chain = z.infer<typeof ChainSchema>
 
@@ -112,6 +113,11 @@ const TransactionDetailsSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("starknet"),
     block_number: z.number().int().min(0),
+    event_index: orNull(z.number().int().min(0)),
+  }),
+  z.object({
+    type: z.literal("aptos"),
+    version: z.number().int().min(0),
     event_index: orNull(z.number().int().min(0)),
   }),
 ])
