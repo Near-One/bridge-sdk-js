@@ -33,6 +33,8 @@ const KNOWN_BRIDGE_TOKENS: Record<string, ChainKind> = {
   "pol.omnidep.testnet": ChainKind.Pol,
   "abs.omnidep.testnet": ChainKind.Abs,
   "strk.omnidep.testnet": ChainKind.Strk,
+  "fogo.omnidep.near": ChainKind.Fogo,
+  "aptos.omnidep.near": ChainKind.Aptos,
 }
 
 /**
