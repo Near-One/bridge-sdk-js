@@ -2,7 +2,7 @@ import { ChainKind } from "@omni-bridge/core"
 import { beforeEach, describe, expect, it } from "vitest"
 import { type AptosBuilder, createAptosBuilder } from "../src/builder.js"
 
-const BRIDGE = "0x05558831a603eca8cd69a42d4251f08de3573039b69f23972265cac76639f1cf"
+const BRIDGE = "0x904a7d620944eec42d5d46cf4fe12463f713c8a705d581c10a010672228f967c"
 const TOKEN = "0x2ebb2ccac5e027a87fa0e2e5f656a3a4238d6a48d93ec9b610d570fc0aa0df12"
 // Canonical APT Fungible Asset metadata object address.
 const APT = "0x000000000000000000000000000000000000000000000000000000000000000a"
