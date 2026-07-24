@@ -22,12 +22,12 @@ import {
   Ed25519PrivateKey,
 } from "@aptos-labs/ts-sdk"
 import { createAptosBuilder } from "@omni-bridge/aptos"
-import { BridgeAPI, ChainKind, createBridge, type Network, omniAddress } from "@omni-bridge/core"
+import { BridgeAPI, ChainKind, createBridge, omniAddress } from "@omni-bridge/core"
 
 // Configuration
-const NETWORK: Network = (process.env.NETWORK as Network) ?? "mainnet"
+const NETWORK = (process.env.NETWORK ?? "mainnet") as "mainnet" | "testnet"
 const RECIPIENT = process.env.RECIPIENT ?? "alice.near"
-const AMOUNT = process.env.AMOUNT ?? "1000000" // 0.01 APT (8 decimals)
+const AMOUNT = process.env.AMOUNT ?? "100000" // 0.001 APT (8 decimals)
 const APT = "0x000000000000000000000000000000000000000000000000000000000000000a"
 
 async function main() {
@@ -56,7 +56,7 @@ async function main() {
   const aptos = new Aptos(
     new AptosConfig({
       network: NETWORK === "mainnet" ? AptosNetwork.MAINNET : AptosNetwork.TESTNET,
-      // clientConfig: { http2: false }, // IN CASE YOU USE - Bun doesn't fully support HTTP/2; disable to avoid stalled requests
+      clientConfig: { http2: false }, // Bun doesn't fully support HTTP/2; disable to avoid stalled requests
     }),
   )
 
@@ -120,26 +120,18 @@ async function main() {
 
   for (let attempt = 1; attempt <= 60; attempt++) {
     try {
-      const statuses = await api.getTransferStatus({ transactionHash: pending.hash })
-      const latestStatus = statuses[statuses.length - 1]
+      const transfers = await api.getTransfer({ transactionHash: pending.hash })
+      const transfer = transfers[0]
 
-      if (latestStatus === "Finalised" || latestStatus === "Settled") {
-        console.log("\n✓ Transfer finalized!")
-
-        const transfers = await api.getTransfer({ transactionHash: pending.hash })
-        const transfer = transfers[0]
-        if (transfer?.initialised) {
-          console.log(`  Origin TX: ${transfer.initialised.transaction_hash}`)
-        }
-        if (transfer?.finalised) {
-          console.log(`  Destination TX: ${transfer.finalised.transaction_hash}`)
-        }
+      if (transfer.finalised?.transaction_hash) {
+        console.log(`  Transfer Finalised!`)
+        console.log(`  Destination TX has on NEAR: ${transfer.finalised.transaction_hash}`)
         return
       }
 
-      console.log(`  Attempt ${attempt}/60: ${latestStatus ?? "pending"}...`)
-    } catch {
-      console.log(`  Attempt ${attempt}/60: waiting...`)
+      console.log(`  Attempt ${attempt}/60: ${transfer.status ?? "pending"}...`)
+    } catch (error) {
+      console.log(`  Failed attempt ${attempt}/60: waiting...`, error)
     }
 
     await new Promise((r) => setTimeout(r, 15000))
