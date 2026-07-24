@@ -89,7 +89,9 @@ describe("Token Utils", () => {
       })
 
       it("should parse mainnet Strk token", () => {
-        expect(parseOriginChain("strk.omdep.near")).toBe(ChainKind.Strk)
+        expect(
+          parseOriginChain("strk-0x65a839eb3847105820d4a2eee84e137f33525e8f.omdep.near"),
+        ).toBe(ChainKind.Strk)
       })
 
       it("should parse mainnet Fogo token", () => {

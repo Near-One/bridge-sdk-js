@@ -91,7 +91,7 @@ const mockAptosTransfer = {
     transaction_hash: "0xaptostx",
     chain: "Aptos",
     timestamp_seconds: 1730000000,
-    details: { type: "aptos", version: 123456, event_index: 0 },
+    details: { type: "aptos", block_height: 123456, event_index: 0 },
   },
   signed: [],
   fee_updates: [],

@@ -8,8 +8,6 @@ Aptos transaction builder for the Omni Bridge SDK. Builds entry-function payload
 npm install @omni-bridge/core @omni-bridge/aptos
 ```
 
-> **Note:** The Aptos bridge contract is not yet deployed, so no bridge address ships in the SDK config. `bridge.validateTransfer()` throws `UNSUPPORTED_CHAIN` for Aptos-source transfers until then, and the full validate-then-build flow below only works once the address ships. Against your own deployment you can already use the builder payload APIs (pass the module address via `bridgeAddress`), the event helpers, and the address utilities.
-
 ## Usage
 
 ```typescript
@@ -18,7 +16,7 @@ import { createAptosBuilder } from "@omni-bridge/aptos"
 import { Account, Aptos, AptosConfig, Ed25519PrivateKey, Network } from "@aptos-labs/ts-sdk"
 
 const bridge = createBridge({ network: "mainnet" })
-const builder = createAptosBuilder({ network: "mainnet", bridgeAddress: "0x..." })
+const builder = createAptosBuilder({ network: "mainnet" })
 const account = Account.fromPrivateKey({ privateKey: new Ed25519PrivateKey("0x...") })
 
 // 1. Validate

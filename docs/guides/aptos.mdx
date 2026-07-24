@@ -5,10 +5,6 @@ description: Bridge tokens from Aptos
 
 This guide covers bridging tokens from Aptos to other chains. The Aptos builder returns plain entry-function payloads compatible with `InputEntryFunctionData` from `@aptos-labs/ts-sdk` — pass them straight to the transaction builder or a wallet adapter.
 
-<Note>
-The Aptos bridge contract is not yet deployed, so no bridge address ships in the SDK config. Until then, `bridge.validateTransfer()` throws `UNSUPPORTED_CHAIN` for Aptos-source transfers, and the full validate-then-build flow below only works once the address ships. Against your own deployment you can already use the builder payload APIs (pass the module address via `bridgeAddress`), the event helpers, and the address utilities.
-</Note>
-
 ## Setup
 
 ```typescript
@@ -16,15 +12,14 @@ import { createBridge } from "@omni-bridge/core"
 import { createAptosBuilder } from "@omni-bridge/aptos"
 
 const bridge = createBridge({ network: "mainnet" })
-const aptosBuilder = createAptosBuilder({
-  network: "mainnet",
-  bridgeAddress: "0x...", // omni_bridge module address (required until deployment)
-})
+const aptosBuilder = createAptosBuilder({ network: "mainnet" })
 ```
+
+The builder uses the bridge address shipped in the SDK config; pass `bridgeAddress` to override it (e.g. for your own deployment).
 
 ## Complete Transfer
 
-Once the bridge address ships in the SDK config, the standard validate-then-build flow applies:
+The standard validate-then-build flow applies:
 
 ```typescript
 import { createBridge } from "@omni-bridge/core"
@@ -32,7 +27,7 @@ import { createAptosBuilder } from "@omni-bridge/aptos"
 import { Account, Aptos, AptosConfig, Ed25519PrivateKey, Network } from "@aptos-labs/ts-sdk"
 
 const bridge = createBridge({ network: "mainnet" })
-const aptosBuilder = createAptosBuilder({ network: "mainnet", bridgeAddress: "0x..." })
+const aptosBuilder = createAptosBuilder({ network: "mainnet" })
 
 const aptos = new Aptos(new AptosConfig({ network: Network.MAINNET }))
 const account = Account.fromPrivateKey({ privateKey: new Ed25519PrivateKey("0x...") })

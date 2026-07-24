@@ -83,6 +83,10 @@ describe("parseInitTransferEvent", () => {
 })
 
 describe("getEventLog", () => {
+  // Address with a leading zero so the short-form (zero-stripped) event type
+  // in the fixture must still match its canonical form.
+  const PADDED_BRIDGE = "0x05558831a603eca8cd69a42d4251f08de3573039b69f23972265cac76639f1cf"
+
   const committedTx = {
     hash: TX_HASH,
     success: true,
@@ -106,7 +110,7 @@ describe("getEventLog", () => {
   it("finds the bridge event and returns canonical metadata", async () => {
     vi.stubGlobal("fetch", mockFetchJson(committedTx))
 
-    const log = await getEventLog(RPC, BRIDGE, TX_HASH, "InitTransfer")
+    const log = await getEventLog(RPC, PADDED_BRIDGE, TX_HASH, "InitTransfer")
 
     expect(log.eventIndex).toBe(1)
     expect(log.sequenceNumber).toBe(5n)

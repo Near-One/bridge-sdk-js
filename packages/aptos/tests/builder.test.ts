@@ -8,11 +8,9 @@ const TOKEN = "0x2ebb2ccac5e027a87fa0e2e5f656a3a4238d6a48d93ec9b610d570fc0aa0df1
 const APT = "0x000000000000000000000000000000000000000000000000000000000000000a"
 
 describe("createAptosBuilder", () => {
-  it("throws when no bridge address is configured for the network", () => {
-    // The Aptos bridge contract is not deployed yet — config has no address.
-    expect(() => createAptosBuilder({ network: "testnet" })).toThrow(
-      "No Aptos bridge address configured for testnet",
-    )
+  it("falls back to the configured bridge address for the network", () => {
+    const builder = createAptosBuilder({ network: "testnet" })
+    expect(builder.bridgeAddress).toBe(BRIDGE)
   })
 
   it("creates builder with custom bridge address", () => {
