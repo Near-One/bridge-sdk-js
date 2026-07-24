@@ -217,4 +217,24 @@ Environment variables:
 - `AMOUNT` - Amount in base units (default: `1000000` = 1 USDC)
 - `NETWORK` - `testnet` or `mainnet` (default: `mainnet`)
 
+## Aptos Examples
+
+### 📤 Aptos to NEAR (`aptos-to-near.ts`)
+
+Bridge APT from Aptos to NEAR:
+
+```bash
+# Set your Aptos private key
+export APTOS_PRIVATE_KEY="ed25519-priv-0x..."
+
+# Run the transfer
+RECIPIENT=alice.near AMOUNT=1000000 bun run examples/aptos-to-near.ts
+```
+
+Environment variables:
+- `APTOS_PRIVATE_KEY` - Aptos wallet private key (required)
+- `RECIPIENT` - NEAR account to receive tokens (default: `alice.near`)
+- `AMOUNT` - APT amount in base units (default: `1000000` = 0.01 APT)
+- `NETWORK` - `testnet` or `mainnet` (default: `mainnet`)
+
 See the main documentation in [`docs/`](../docs/) for detailed guides.

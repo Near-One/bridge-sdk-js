@@ -6,7 +6,7 @@ import {
   parseInitTransferEvent,
 } from "../src/events.js"
 
-const BRIDGE = "0x05558831a603eca8cd69a42d4251f08de3573039b69f23972265cac76639f1cf"
+const BRIDGE = "0x904a7d620944eec42d5d46cf4fe12463f713c8a705d581c10a010672228f967c"
 const RPC = "https://fullnode.testnet.aptoslabs.com/v1"
 const TX_HASH = "0x01cdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
 

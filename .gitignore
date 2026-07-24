@@ -5,3 +5,4 @@ coverage/
 .gitconfig
 .env
 *.tsbuildinfo
+.DS_Store

@@ -14,7 +14,7 @@
  *   RECIPIENT=0x... bun run examples/near-to-eth.ts
  */
 
-import { BridgeAPI, ChainKind, createBridge, type Network } from "@omni-bridge/core"
+import { BridgeAPI, ChainKind, createBridge, type Network, omniAddress } from "@omni-bridge/core"
 import { createNearBuilder, toNearKitTransaction } from "@omni-bridge/near"
 import { Near } from "near-kit"
 
@@ -64,15 +64,22 @@ async function main() {
   const nearBuilder = createNearBuilder({ network: NETWORK })
   const api = new BridgeAPI(NETWORK)
   const near = await createNearInstance()
-
+  const token = omniAddress(ChainKind.Near, WRAPPED_USDC)
+  const sender = omniAddress(ChainKind.Near, NEAR_ACCOUNT)
+  const recipient = omniAddress(ChainKind.Eth, RECIPIENT)
   console.log("SDK initialized")
 
   // ============================================================================
-  // Step 2: Check and handle storage deposit
+  // Step 2: Check and handle storage deposit and fee
   // ============================================================================
   console.log("\n=== Step 2: Check Storage Deposit ===")
 
-  const requiredDeposit = await nearBuilder.getRequiredStorageDeposit(NEAR_ACCOUNT)
+  let requiredDeposit = await nearBuilder.getRequiredStorageDeposit(NEAR_ACCOUNT)
+
+  const feeRequestResult = await api.getFee(sender, recipient, token, AMOUNT)
+
+  if (feeRequestResult.native_token_fee === null) throw new Error("Invalid native token fee in Api")
+  requiredDeposit += feeRequestResult.native_token_fee
 
   if (requiredDeposit > 0n) {
     console.log(`Storage deposit needed: ${requiredDeposit} yoctoNEAR`)
@@ -93,12 +100,12 @@ async function main() {
   console.log("\n=== Step 3: Validate Transfer ===")
 
   const validated = await bridge.validateTransfer({
-    token: `near:${WRAPPED_USDC}`,
+    token,
     amount: BigInt(AMOUNT),
     fee: 0n,
-    nativeFee: 0n,
-    sender: `near:${NEAR_ACCOUNT}`,
-    recipient: `eth:${RECIPIENT}`,
+    nativeFee: feeRequestResult.native_token_fee,
+    sender,
+    recipient,
   })
 
   console.log("Validation passed:")
