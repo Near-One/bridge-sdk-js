@@ -103,7 +103,7 @@ async function main() {
     token,
     amount: BigInt(AMOUNT),
     fee: 0n,
-    nativeFee: 0n,
+    nativeFee: feeRequestResult.native_token_fee,
     sender,
     recipient,
   })
