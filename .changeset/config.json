@@ -10,6 +10,7 @@
       "@omni-bridge/solana",
       "@omni-bridge/btc",
       "@omni-bridge/starknet",
+      "@omni-bridge/aptos",
       "@omni-bridge/hypercore",
       "@omni-bridge/sdk"
     ]

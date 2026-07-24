@@ -20,6 +20,7 @@ const CHAIN_PREFIX_MAP: Record<ChainPrefix, ChainKind> = {
   abs: ChainKind.Abs,
   strk: ChainKind.Strk,
   fogo: ChainKind.Fogo,
+  aptos: ChainKind.Aptos,
 }
 
 // Mapping from ChainKind to prefix
@@ -37,6 +38,7 @@ const CHAIN_KIND_PREFIX_MAP: Record<ChainKind, ChainPrefix> = {
   [ChainKind.Abs]: "abs",
   [ChainKind.Strk]: "strk",
   [ChainKind.Fogo]: "fogo",
+  [ChainKind.Aptos]: "aptos",
 }
 
 // Valid chain prefixes

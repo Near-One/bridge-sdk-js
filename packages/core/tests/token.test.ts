@@ -16,6 +16,7 @@ describe("Token Utils", () => {
       expect(isBridgeToken("abs.omdep.near")).toBe(true)
       expect(isBridgeToken("strk.omdep.near")).toBe(true)
       expect(isBridgeToken("fogo.omdep.near")).toBe(true)
+      expect(isBridgeToken("aptos.omft.near")).toBe(true)
     })
 
     it("should return true for known testnet bridge tokens", () => {
@@ -63,6 +64,10 @@ describe("Token Utils", () => {
         expect(parseOriginChain("sol.omft.near")).toBe(ChainKind.Sol)
       })
 
+      it("should parse mainnet APT token", () => {
+        expect(parseOriginChain("aptos.omft.near")).toBe(ChainKind.Aptos)
+      })
+
       it("should parse mainnet Base token", () => {
         expect(parseOriginChain("base.omdep.near")).toBe(ChainKind.Base)
       })
@@ -84,7 +89,9 @@ describe("Token Utils", () => {
       })
 
       it("should parse mainnet Strk token", () => {
-        expect(parseOriginChain("strk.omdep.near")).toBe(ChainKind.Strk)
+        expect(
+          parseOriginChain("strk-0x65a839eb3847105820d4a2eee84e137f33525e8f.omdep.near"),
+        ).toBe(ChainKind.Strk)
       })
 
       it("should parse mainnet Fogo token", () => {
@@ -130,6 +137,11 @@ describe("Token Utils", () => {
 
       it("should parse Fogo-prefixed wrapped tokens", () => {
         expect(parseOriginChain("fogo-ABC123.omdep.near")).toBe(ChainKind.Fogo)
+      })
+
+      it("should parse Aptos-prefixed wrapped tokens", () => {
+        expect(parseOriginChain("aptos-0xcccc.omdep.near")).toBe(ChainKind.Aptos)
+        expect(parseOriginChain("aptos-0xcccc.omnidep.testnet")).toBe(ChainKind.Aptos)
       })
     })
 

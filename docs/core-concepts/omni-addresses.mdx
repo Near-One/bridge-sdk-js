@@ -25,6 +25,7 @@ The SDK uses a unified address format called OmniAddress. It's simple: a chain p
 | Abstract | `abs:0x1234567890123456789012345678901234567890` |
 | Starknet | `strk:0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7` |
 | Fogo | `fogo:dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe` |
+| Aptos | `aptos:0x05558831a603eca8cd69a42d4251f08de3573039b69f23972265cac76639f1cf` |
 
 ## Chain Prefixes
 
@@ -42,6 +43,7 @@ The SDK uses a unified address format called OmniAddress. It's simple: a chain p
 | `abs` | Abstract | 2741 |
 | `strk` | Starknet | — |
 | `fogo` | Fogo (SVM-compatible) | — |
+| `aptos` | Aptos | — |
 
 ## Tokens Use The Same Format
 
@@ -66,6 +68,7 @@ For native tokens (ETH, SOL, etc.), use the zero address or default representati
 |-------|---------------------|
 | EVM chains | `eth:0x0000000000000000000000000000000000000000` |
 | Solana | `sol:11111111111111111111111111111111` |
+| Aptos | `aptos:0x000000000000000000000000000000000000000000000000000000000000000a` (APT is the Fungible Asset at `0xa`) |
 
 ## Utility Functions
 
@@ -109,6 +112,7 @@ enum ChainKind {
   Strk = 10,
   Abs = 11,
   Fogo = 12,
+  Aptos = 13,
 }
 ```
 

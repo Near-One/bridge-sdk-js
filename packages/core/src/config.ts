@@ -42,6 +42,11 @@ export interface StarknetAddresses {
   bridge: string
 }
 
+export interface AptosAddresses {
+  /** Account address the `omni_bridge` Move package is published under. */
+  bridge: string
+}
+
 export interface ChainAddresses {
   eth: EvmAddresses
   arb: EvmAddresses
@@ -56,6 +61,7 @@ export interface ChainAddresses {
   zcash: ZcashAddresses
   strk: StarknetAddresses
   fogo?: SolanaAddresses
+  aptos?: AptosAddresses
 }
 
 const MAINNET_ADDRESSES: ChainAddresses = {
@@ -99,6 +105,7 @@ const MAINNET_ADDRESSES: ChainAddresses = {
     shimProgram: "EtZMZM22ViKMo4r5y4Anovs3wKQ2owUmDpjygnMMcdEX",
     eventAuthority: "HQS31aApX3DDkuXgSpV9XyDUNtFgQ31pUn5BNWHG2PSp",
   },
+  aptos: { bridge: "0xe4ec15f237e5a8c7daa7a34ece28e2bd2c079360763f181bf65862ec148b914a" },
 }
 
 const TESTNET_ADDRESSES: ChainAddresses = {
@@ -138,6 +145,7 @@ const TESTNET_ADDRESSES: ChainAddresses = {
   strk: {
     bridge: "0x02830785fd87b181c5391819f4a5e6a0b2d76c49d92b7f748a2433495eead162",
   },
+  aptos: { bridge: "0x904a7d620944eec42d5d46cf4fe12463f713c8a705d581c10a010672228f967c" },
 }
 
 const ADDRESSES: Record<Network, ChainAddresses> = {

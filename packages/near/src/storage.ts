@@ -24,6 +24,7 @@ const OmniAddressSchema = b.enum({
   Strk: b.array(b.u8(), 32),
   Abs: b.array(b.u8(), 20),
   Fogo: b.array(b.u8(), 32),
+  Aptos: b.array(b.u8(), 32),
 })
 
 /**
@@ -115,13 +116,13 @@ function parseOmniAddress(token: string) {
   }
   const decodeHex = (addr: string) => Array.from(hex.decode(addr.slice(2)))
   const decodeBase58 = (addr: string) => Array.from(base58.decode(addr))
-  // Starknet addresses are felts and often arrive with leading zero bytes
-  // stripped (e.g. `strk:0x1234`). The borsh schema needs exactly 32 bytes,
-  // so left-pad to 64 hex chars before decoding.
-  const decodeStrk = (addr: string) => {
+  // Starknet felts and Aptos account addresses often arrive with leading
+  // zero bytes stripped (e.g. `strk:0x1234`, `aptos:0xa`). The borsh schema
+  // needs exactly 32 bytes, so left-pad to 64 hex chars before decoding.
+  const decodePadded32 = (addr: string, chainName: string) => {
     const stripped = addr.startsWith("0x") || addr.startsWith("0X") ? addr.slice(2) : addr
     if (stripped.length > 64) {
-      throw new Error(`Starknet address exceeds 32 bytes: ${addr}`)
+      throw new Error(`${chainName} address exceeds 32 bytes: ${addr}`)
     }
     return Array.from(hex.decode(stripped.padStart(64, "0")))
   }
@@ -148,11 +149,13 @@ function parseOmniAddress(token: string) {
     case "zcash":
       return { Zcash: address }
     case "strk":
-      return { Strk: decodeStrk(address) }
+      return { Strk: decodePadded32(address, "Starknet") }
     case "abs":
       return { Abs: decodeHex(address) }
     case "fogo":
       return { Fogo: decodeBase58(address) }
+    case "aptos":
+      return { Aptos: decodePadded32(address, "Aptos") }
     default: {
       const _exhaustive: never = chain
       throw new Error(`Unknown chain: ${_exhaustive as string}`)

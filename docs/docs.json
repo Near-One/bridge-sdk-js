@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Omni Bridge SDK",
-  "description": "TypeScript SDK for cross-chain token transfers via the Omni Bridge protocol. Transfer tokens between Ethereum, NEAR, Solana, Base, Arbitrum, Polygon, BNB Chain, Abstract, Starknet, Fogo, Bitcoin, and Zcash.",
+  "description": "TypeScript SDK for cross-chain token transfers via the Omni Bridge protocol. Transfer tokens between Ethereum, NEAR, Solana, Base, Arbitrum, Polygon, BNB Chain, Abstract, Starknet, Aptos, Fogo, Bitcoin, and Zcash.",
   "colors": {
     "primary": "#6366F1",
     "light": "#818CF8",
@@ -37,6 +37,7 @@
               "guides/near",
               "guides/solana",
               "guides/bitcoin",
+              "guides/aptos",
               "guides/fees",
               "guides/tracking"
             ]
@@ -65,6 +66,7 @@
               "reference/near",
               "reference/solana",
               "reference/btc",
+              "reference/aptos",
               "reference/hypercore"
             ]
           }

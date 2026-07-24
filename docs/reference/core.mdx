@@ -1009,6 +1009,8 @@ type OmniAddress =
   | `hlevm:${string}`
   | `abs:${string}`
   | `strk:${string}`
+  | `fogo:${string}`
+  | `aptos:${string}`
 ```
 
 **Examples:**
@@ -1037,6 +1039,8 @@ enum ChainKind {
   HyperEvm = 9,
   Strk = 10,
   Abs = 11,
+  Fogo = 12,
+  Aptos = 13,
 }
 ```
 
@@ -1047,7 +1051,7 @@ enum ChainKind {
 Chain prefix strings used in OmniAddress format.
 
 ```typescript
-type ChainPrefix = "eth" | "near" | "sol" | "arb" | "base" | "bnb" | "btc" | "zcash" | "pol" | "hlevm" | "abs" | "strk"
+type ChainPrefix = "eth" | "near" | "sol" | "arb" | "base" | "bnb" | "btc" | "zcash" | "pol" | "hlevm" | "abs" | "strk" | "fogo" | "aptos"
 ```
 
 ---
@@ -1067,7 +1071,7 @@ type Network = "mainnet" | "testnet"
 API chain name strings.
 
 ```typescript
-type Chain = "Eth" | "Near" | "Sol" | "Arb" | "Base" | "Bnb" | "Btc" | "Zcash" | "Pol" | "Abs" | "HlEvm" | "Strk"
+type Chain = "Eth" | "Near" | "Sol" | "Arb" | "Base" | "Bnb" | "Btc" | "Zcash" | "Pol" | "Abs" | "HlEvm" | "Strk" | "Fogo" | "Aptos"
 ```
 
 ---
@@ -1429,12 +1433,19 @@ interface ChainAddresses {
   base: EvmAddresses
   bnb: EvmAddresses
   pol: EvmAddresses
+  abs: EvmAddresses
   near: NearAddresses
   sol: SolanaAddresses
   btc: BtcAddresses
   zcash: ZcashAddresses
+  strk: StarknetAddresses
+  fogo?: SolanaAddresses
+  aptos?: AptosAddresses
 }
 ```
+
+`fogo` and `aptos` are optional: they are only present on networks where the
+corresponding bridge contract is deployed.
 
 ---
 
@@ -1507,6 +1518,31 @@ interface ZcashAddresses {
   rpcUrl: string
   zcashConnector: string
   zcashToken: string
+}
+```
+
+---
+
+### StarknetAddresses
+
+Starknet chain configuration.
+
+```typescript
+interface StarknetAddresses {
+  bridge: string
+}
+```
+
+---
+
+### AptosAddresses
+
+Aptos chain configuration.
+
+```typescript
+interface AptosAddresses {
+  /** Account address the `omni_bridge` Move package is published under. */
+  bridge: string
 }
 ```
 

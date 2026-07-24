@@ -120,6 +120,7 @@ function chainKindToApiChain(chain: ChainKind): Chain {
     [ChainKind.Abs]: "Abs",
     [ChainKind.Strk]: "Strk",
     [ChainKind.Fogo]: "Fogo",
+    [ChainKind.Aptos]: "Aptos",
   }
   return mapping[chain]
 }
@@ -158,6 +159,15 @@ function getContractAddress(addresses: ChainAddresses, chain: ChainKind): string
         )
       }
       return addresses.fogo.locker
+    case ChainKind.Aptos:
+      if (!addresses.aptos) {
+        throw new ValidationError(
+          "Aptos bridge is not yet deployed on this network",
+          "UNSUPPORTED_CHAIN",
+          { chain: "Aptos" },
+        )
+      }
+      return addresses.aptos.bridge
     case ChainKind.Btc:
       return addresses.btc.btcConnector
     case ChainKind.Zcash:
@@ -225,6 +235,18 @@ class BridgeImpl implements Bridge {
           address: params.recipient,
         })
       }
+    }
+
+    if (sourceChain === ChainKind.Aptos && !isValidAptosAddress(getAddress(params.sender))) {
+      throw new ValidationError("Invalid Aptos sender address", "INVALID_ADDRESS", {
+        address: params.sender,
+      })
+    }
+
+    if (destChain === ChainKind.Aptos && !isValidAptosAddress(getAddress(params.recipient))) {
+      throw new ValidationError("Invalid Aptos recipient address", "INVALID_ADDRESS", {
+        address: params.recipient,
+      })
     }
 
     if (params.destinationMemo !== undefined) {
@@ -376,6 +398,16 @@ class BridgeImpl implements Bridge {
  */
 function isValidEvmAddress(address: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(address)
+}
+
+/**
+ * Validate Aptos account address format: optional `0x` prefix, 1-64 hex
+ * chars. Short forms are accepted and zero-padded on-chain, matching
+ * `omni_types::H256` parsing
+ */
+function isValidAptosAddress(address: string): boolean {
+  const stripped = address.startsWith("0x") || address.startsWith("0X") ? address.slice(2) : address
+  return /^[a-fA-F0-9]{1,64}$/.test(stripped)
 }
 
 /**
