@@ -1,5 +1,16 @@
 # @omni-bridge/near
 
+## 0.17.0
+
+### Minor Changes
+
+- d190525: Align `ChainKind.HyperEvm` to its contract deployed value `ChainKind.HlEvm`
+
+### Patch Changes
+
+- Updated dependencies [d190525]
+  - @omni-bridge/core@0.17.0
+
 ## 0.16.1
 
 ### Patch Changes
