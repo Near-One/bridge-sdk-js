@@ -8,7 +8,7 @@ import { base58, hex } from "@scure/base"
 import { b } from "@zorsh/zorsh"
 
 // Variant order must match `omni_types::OmniAddress` in the Rust omni-bridge
-// repo — borsh enum discriminants are positional. `HyperEvm` corresponds to
+// repo — borsh enum discriminants are positional. `HlEvm` corresponds to
 // the JSON/API chain name `HlEvm` and the address prefix `hlevm:`.
 const OmniAddressSchema = b.enum({
   Eth: b.array(b.u8(), 20),
@@ -20,7 +20,7 @@ const OmniAddressSchema = b.enum({
   Btc: b.string(),
   Zcash: b.string(),
   Pol: b.array(b.u8(), 20),
-  HyperEvm: b.array(b.u8(), 20),
+  HlEvm: b.array(b.u8(), 20),
   Strk: b.array(b.u8(), 32),
   Abs: b.array(b.u8(), 20),
   Fogo: b.array(b.u8(), 32),
@@ -143,7 +143,7 @@ function parseOmniAddress(token: string) {
     case "pol":
       return { Pol: decodeHex(address) }
     case "hlevm":
-      return { HyperEvm: decodeHex(address) }
+      return { HlEvm: decodeHex(address) }
     case "btc":
       return { Btc: address }
     case "zcash":

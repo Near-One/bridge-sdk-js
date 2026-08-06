@@ -435,7 +435,7 @@ describe("Bridge.validateTransfer", () => {
 
       const result = await bridge.validateTransfer(params)
 
-      expect(result.sourceChain).toBe(ChainKind.HyperEvm)
+      expect(result.sourceChain).toBe(ChainKind.HlEvm)
       expect(result.destChain).toBe(ChainKind.Near)
       expect(result.contractAddress).toBe("0xf353b40fC144d1c6c5BCdda712fa6De833016aF9")
     })
@@ -454,7 +454,7 @@ describe("Bridge.validateTransfer", () => {
       const result = await bridge.validateTransfer(params)
 
       expect(result.sourceChain).toBe(ChainKind.Near)
-      expect(result.destChain).toBe(ChainKind.HyperEvm)
+      expect(result.destChain).toBe(ChainKind.HlEvm)
       expect(result.bridgedToken).toBe("hlevm:0x1234567890123456789012345678901234567890")
     })
   })

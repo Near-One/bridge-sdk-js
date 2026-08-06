@@ -44,7 +44,7 @@ export function buildHyperliquidTransferParams(params: {
     fee: params.fee ?? 0n,
     nativeFee: params.nativeFee ?? 0n,
     sender: params.sender,
-    recipient: omniAddress(ChainKind.HyperEvm, params.hypercoreRecipient),
+    recipient: omniAddress(ChainKind.HlEvm, params.hypercoreRecipient),
     message: HYPERLIQUID_MESSAGE,
   }
 }

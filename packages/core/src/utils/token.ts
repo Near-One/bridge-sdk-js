@@ -22,7 +22,7 @@ const KNOWN_BRIDGE_TOKENS: Record<string, ChainKind> = {
   "strk-0x65a839eb3847105820d4a2eee84e137f33525e8f.omdep.near": ChainKind.Strk,
   "fogo.omdep.near": ChainKind.Fogo,
   "aptos.omft.near": ChainKind.Aptos,
-  "hlevm.omdep.near": ChainKind.HyperEvm,
+  "hlevm.omdep.near": ChainKind.HlEvm,
   // Testnet
   "nbtc.n-bridge.testnet": ChainKind.Btc,
   "nzcash.n-bridge.testnet": ChainKind.Zcash,
@@ -36,7 +36,7 @@ const KNOWN_BRIDGE_TOKENS: Record<string, ChainKind> = {
   "strk-0x65a839eb3847105820d4a2eee84e137f33525e8f.omnidep.testnet": ChainKind.Strk,
   "fogo.omnidep.testnet": ChainKind.Fogo,
   "aptos-0x16cc6a92839c986682d98bc35f958f4883f9d2a8.omnidep.testnet": ChainKind.Aptos,
-  "hlevm.omnidep.testnet": ChainKind.HyperEvm,
+  "hlevm.omnidep.testnet": ChainKind.HlEvm,
 }
 
 /**
@@ -58,7 +58,7 @@ const CHAIN_PREFIXES: Record<string, ChainKind> = {
   "strk-": ChainKind.Strk,
   "fogo-": ChainKind.Fogo,
   "aptos-": ChainKind.Aptos,
-  "hlevm-": ChainKind.HyperEvm,
+  "hlevm-": ChainKind.HlEvm,
 }
 
 /**
