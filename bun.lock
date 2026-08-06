@@ -6,7 +6,7 @@
       "name": "omni-bridge-sdk",
       "devDependencies": {
         "@arethetypeswrong/cli": "^0.18.5",
-        "@biomejs/biome": "^2.5.5",
+        "@biomejs/biome": "^2.5.7",
         "@changesets/cli": "^2.31.1",
         "@types/bun": "^1.3.14",
         "@types/node": "^25.9.5",
@@ -20,7 +20,7 @@
     },
     "packages/aptos": {
       "name": "@omni-bridge/aptos",
-      "version": "0.16.1",
+      "version": "0.17.0",
       "dependencies": {
         "@noble/hashes": "^2.0.1",
         "@omni-bridge/core": "workspace:*",
@@ -32,7 +32,7 @@
     },
     "packages/btc": {
       "name": "@omni-bridge/btc",
-      "version": "0.16.1",
+      "version": "0.17.0",
       "dependencies": {
         "@noble/hashes": "^2.0.1",
         "@omni-bridge/core": "workspace:*",
@@ -46,7 +46,7 @@
     },
     "packages/core": {
       "name": "@omni-bridge/core",
-      "version": "0.16.1",
+      "version": "0.17.0",
       "dependencies": {
         "@scure/base": "^2.0.0",
         "@wormhole-foundation/sdk": "^4.7.3",
@@ -59,12 +59,12 @@
     },
     "packages/evm": {
       "name": "@omni-bridge/evm",
-      "version": "0.16.1",
+      "version": "0.17.0",
       "dependencies": {
         "@ethereumjs/mpt": "^10.1.0",
         "@ethereumjs/rlp": "^10.1.0",
         "@ethereumjs/util": "^10.1.0",
-        "@omni-bridge/core": "^0.16.1",
+        "@omni-bridge/core": "^0.17.0",
         "viem": "^2.43.5",
       },
       "devDependencies": {
@@ -73,7 +73,7 @@
     },
     "packages/hypercore": {
       "name": "@omni-bridge/hypercore",
-      "version": "0.16.1",
+      "version": "0.17.0",
       "dependencies": {
         "@omni-bridge/core": "workspace:*",
         "viem": "^2.43.5",
@@ -84,10 +84,10 @@
     },
     "packages/near": {
       "name": "@omni-bridge/near",
-      "version": "0.16.1",
+      "version": "0.17.0",
       "dependencies": {
         "@noble/hashes": "^2.0.1",
-        "@omni-bridge/core": "^0.16.1",
+        "@omni-bridge/core": "^0.17.0",
         "@scure/base": "^2.0.0",
         "@zorsh/zorsh": "^0.4.0",
         "near-kit": "^0.7.0",
@@ -99,7 +99,7 @@
     },
     "packages/sdk": {
       "name": "@omni-bridge/sdk",
-      "version": "0.16.1",
+      "version": "0.17.0",
       "dependencies": {
         "@omni-bridge/aptos": "workspace:*",
         "@omni-bridge/btc": "workspace:*",
@@ -116,7 +116,7 @@
     },
     "packages/solana": {
       "name": "@omni-bridge/solana",
-      "version": "0.16.1",
+      "version": "0.17.0",
       "dependencies": {
         "@coral-xyz/anchor": "^0.32.1",
         "@noble/hashes": "^2.0.1",
@@ -132,7 +132,7 @@
     },
     "packages/starknet": {
       "name": "@omni-bridge/starknet",
-      "version": "0.16.1",
+      "version": "0.17.0",
       "dependencies": {
         "@omni-bridge/core": "workspace:*",
         "starknet": "^6.23.1",

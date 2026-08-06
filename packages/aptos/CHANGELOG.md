@@ -1,5 +1,12 @@
 # @omni-bridge/aptos
 
+## 0.17.0
+
+### Patch Changes
+
+- Updated dependencies [d190525]
+  - @omni-bridge/core@0.17.0
+
 ## 0.16.1
 
 ### Patch Changes

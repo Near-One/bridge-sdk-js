@@ -1,6 +1,6 @@
 {
   "name": "@omni-bridge/aptos",
-  "version": "0.16.1",
+  "version": "0.17.0",
   "description": "Aptos transaction builder for Omni Bridge",
   "type": "module",
   "main": "dist/index.js",
