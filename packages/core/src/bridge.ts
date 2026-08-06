@@ -116,7 +116,7 @@ function chainKindToApiChain(chain: ChainKind): Chain {
     [ChainKind.Btc]: "Btc",
     [ChainKind.Zcash]: "Zcash",
     [ChainKind.Pol]: "Pol",
-    [ChainKind.HyperEvm]: "HlEvm",
+    [ChainKind.HlEvm]: "HlEvm",
     [ChainKind.Abs]: "Abs",
     [ChainKind.Strk]: "Strk",
     [ChainKind.Fogo]: "Fogo",
@@ -140,7 +140,7 @@ function getContractAddress(addresses: ChainAddresses, chain: ChainKind): string
       return addresses.bnb.bridge
     case ChainKind.Pol:
       return addresses.pol.bridge
-    case ChainKind.HyperEvm:
+    case ChainKind.HlEvm:
       return addresses.hlevm.bridge
     case ChainKind.Abs:
       return addresses.abs.bridge
