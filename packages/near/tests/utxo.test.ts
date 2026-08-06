@@ -376,7 +376,7 @@ describe("NearBuilder UTXO methods", () => {
     })
 
     it("uses mainnet Zcash token address", () => {
-      expect(mainnetBuilder.getUtxoTokenAddress("zcash")).toBe("zec.omft.near")
+      expect(mainnetBuilder.getUtxoTokenAddress("zcash")).toBe("nzec.bridge.near")
     })
   })
 })
