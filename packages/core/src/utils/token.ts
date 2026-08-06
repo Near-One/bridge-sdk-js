@@ -11,7 +11,7 @@ import { ChainKind } from "../types.js"
 const KNOWN_BRIDGE_TOKENS: Record<string, ChainKind> = {
   // Mainnet
   "nbtc.bridge.near": ChainKind.Btc,
-  "zec.omft.near": ChainKind.Zcash,
+  "nzec.bridge.near": ChainKind.Zcash,
   "eth.bridge.near": ChainKind.Eth,
   "sol.omft.near": ChainKind.Sol,
   "base.omdep.near": ChainKind.Base,
