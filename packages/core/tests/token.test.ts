@@ -90,7 +90,7 @@ describe("Token Utils", () => {
 
       it("should parse mainnet Strk token", () => {
         expect(
-          parseOriginChain("strk-0x65a839eb3847105820d4a2eee84e137f33525e8f.omdep.near"),
+          parseOriginChain("starknet.omft.near"),
         ).toBe(ChainKind.Strk)
       })
 
