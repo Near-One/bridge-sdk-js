@@ -1,5 +1,11 @@
 # @omni-bridge/core
 
+## 0.19.0
+
+### Minor Changes
+
+- 37baf09: Changes `nzec.bridge.near` to its PoA version `zec.omft.near`.
+
 ## 0.18.0
 
 ### Minor Changes
