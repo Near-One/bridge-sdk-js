@@ -19,7 +19,13 @@
  *    enough NEAR to cover the storage deposit for deploy_token
  */
 
-import { ChainKind, createBridge, getWormholeVaa, type WormholeNetwork } from "@omni-bridge/core"
+import {
+  ChainKind,
+  createBridge,
+  getWormholeVaa,
+  omniAddress,
+  type WormholeNetwork,
+} from "@omni-bridge/core"
 import { createNearBuilder, ProofKind, toNearKitTransaction } from "@omni-bridge/near"
 import { createSolanaBuilder } from "@omni-bridge/solana"
 import {
@@ -35,11 +41,6 @@ import { Near, type PrivateKey } from "near-kit"
 // Configuration
 const NETWORK = (process.env.NETWORK ?? "mainnet") as "mainnet" | "testnet"
 const TOKEN = process.env.TOKEN
-
-if (!TOKEN) {
-  console.error("Set Token account to deploy in environment variables")
-  process.exit(1)
-}
 
 // ~5 NEAR for storage — matches the deposit used by the EVM→NEAR deploy_token example
 const DEPLOY_TOKEN_DEPOSIT = 5_000_000_000_000_000_000_000_000n
@@ -93,9 +94,13 @@ async function main() {
     defaultSignerId: nearAccountId,
   })
   console.log(`NEAR Signer: ${nearAccountId}`)
-
+  if (!TOKEN) {
+    console.error("Set Token account to deploy in environment variables")
+    process.exit(1)
+  }
+  const solTokenOmniAddress = omniAddress(ChainKind.Sol, TOKEN)
   // Skip deployment if the token is already registered on NEAR
-  const existing = await bridge.getBridgedToken(`sol:${TOKEN}`, ChainKind.Near)
+  const existing = await bridge.getBridgedToken(solTokenOmniAddress, ChainKind.Near)
   if (existing) {
     console.log(`\nToken already deployed on NEAR: ${existing}`)
     return
@@ -146,11 +151,13 @@ async function main() {
     DEPLOY_TOKEN_DEPOSIT,
   )
 
-  const deployResult = await toNearKitTransaction(near, deployTx).send({ waitUntil: "FINAL" })
+  const deployResult = await toNearKitTransaction(near, deployTx).send({
+    waitUntil: "FINAL",
+  })
 
   console.log(`✓ Deploy Token TX: ${deployResult.transaction.hash}`)
 
-  const bridgedToken = await bridge.getBridgedToken(`sol:${TOKEN}`, ChainKind.Near)
+  const bridgedToken = await bridge.getBridgedToken(solTokenOmniAddress, ChainKind.Near)
   console.log(`\n🎉 Token deployed on NEAR: ${bridgedToken}`)
 }
 
