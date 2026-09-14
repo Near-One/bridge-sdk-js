@@ -14,7 +14,7 @@
  *   RECIPIENT=alice.near bun run examples/eth-to-near.ts
  */
 
-import { BridgeAPI, ChainKind, createBridge } from "@omni-bridge/core"
+import { BridgeAPI, ChainKind, createBridge, omniAddress } from "@omni-bridge/core"
 import { createEvmBuilder } from "@omni-bridge/evm"
 import { type Address, createPublicClient, createWalletClient, http, parseUnits } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
@@ -59,8 +59,11 @@ async function main() {
     transport: http(),
   })
 
-  const sender = `eth:${account.address}` as const
+  const token = omniAddress(ChainKind.Eth, USDC_ADDRESS)
+  const sender = omniAddress(ChainKind.Eth, account.address)
+  const recipient = omniAddress(ChainKind.Near, RECIPIENT)
   console.log(`Sender: ${sender}`)
+  console.log(`Recipient: ${recipient}`)
 
   // ============================================================================
   // Step 2: Validate the transfer
@@ -68,14 +71,16 @@ async function main() {
   console.log("\n=== Step 2: Validate Transfer ===")
 
   const amount = parseUnits(AMOUNT, 6) // USDC has 6 decimals
+  const feeRequestResult = await api.getFee(sender, recipient, token, AMOUNT)
+  if (feeRequestResult.native_token_fee === null) throw new Error("Invalid native token fee in Api")
 
   const validated = await bridge.validateTransfer({
-    token: `eth:${USDC_ADDRESS}`,
+    token,
     amount,
     fee: 0n,
-    nativeFee: 0n,
+    nativeFee: feeRequestResult.native_token_fee,
     sender,
-    recipient: `near:${RECIPIENT}`,
+    recipient,
   })
 
   console.log("Validation passed:")
