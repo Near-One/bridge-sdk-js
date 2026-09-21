@@ -17,7 +17,7 @@ describe("ChainKindSchema borsh discriminants", () => {
     ["Btc", 6],
     ["Zcash", 7],
     ["Pol", 8],
-    ["HyperEvm", 9],
+    ["HlEvm", 9],
     ["Strk", 10],
     ["Abs", 11],
     ["Fogo", 12],

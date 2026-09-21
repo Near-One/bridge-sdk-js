@@ -4,7 +4,7 @@ HyperCore (Hyperliquid L1) action builder for [Omni Bridge](https://github.com/n
 
 Builds the EIP-712 `sendToEvmWithData` user-signed action posted to Hyperliquid's `/exchange` endpoint. Use this when **the user is on HyperCore** and wants to bridge a spot balance to HyperEVM or any other supported chain.
 
-> Bridging *to* HyperCore from another chain is a regular bridge transfer with `recipient: "hlevm:0x..."` and a non-empty `message` — see the inbound helper `buildHyperliquidTransferParams` in `@omni-bridge/core`. For outbound from HyperEVM (regular EVM source), use `@omni-bridge/evm` with `chain: ChainKind.HyperEvm`.
+> Bridging *to* HyperCore from another chain is a regular bridge transfer with `recipient: "hlevm:0x..."` and a non-empty `message` — see the inbound helper `buildHyperliquidTransferParams` in `@omni-bridge/core`. For outbound from HyperEVM (regular EVM source), use `@omni-bridge/evm` with `chain: ChainKind.HlEvm`.
 
 ## Installation
 

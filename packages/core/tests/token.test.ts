@@ -6,7 +6,7 @@ describe("Token Utils", () => {
   describe("isBridgeToken", () => {
     it("should return true for known mainnet bridge tokens", () => {
       expect(isBridgeToken("nbtc.bridge.near")).toBe(true)
-      expect(isBridgeToken("nzec.bridge.near")).toBe(true)
+      expect(isBridgeToken("zec.omft.near")).toBe(true)
       expect(isBridgeToken("eth.bridge.near")).toBe(true)
       expect(isBridgeToken("sol.omft.near")).toBe(true)
       expect(isBridgeToken("base.omdep.near")).toBe(true)
@@ -53,7 +53,7 @@ describe("Token Utils", () => {
       })
 
       it("should parse mainnet Zcash token", () => {
-        expect(parseOriginChain("nzec.bridge.near")).toBe(ChainKind.Zcash)
+        expect(parseOriginChain("zec.omft.near")).toBe(ChainKind.Zcash)
       })
 
       it("should parse mainnet ETH token", () => {
@@ -90,7 +90,7 @@ describe("Token Utils", () => {
 
       it("should parse mainnet Strk token", () => {
         expect(
-          parseOriginChain("strk-0x65a839eb3847105820d4a2eee84e137f33525e8f.omdep.near"),
+          parseOriginChain("starknet.omft.near"),
         ).toBe(ChainKind.Strk)
       })
 

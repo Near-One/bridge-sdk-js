@@ -72,7 +72,7 @@ const RPC_URLS: Record<Network, Record<EvmChainKind, string>> = {
     [ChainKind.Bnb]: "https://bsc-rpc.publicnode.com",
     [ChainKind.Pol]: "https://polygon-bor-rpc.publicnode.com",
     [ChainKind.Abs]: "https://api.mainnet.abs.xyz",
-    [ChainKind.HyperEvm]: "https://rpc.hyperliquid.xyz/evm",
+    [ChainKind.HlEvm]: "https://rpc.hyperliquid.xyz/evm",
   },
   testnet: {
     [ChainKind.Eth]: "https://ethereum-sepolia.publicnode.com",
@@ -81,7 +81,7 @@ const RPC_URLS: Record<Network, Record<EvmChainKind, string>> = {
     [ChainKind.Bnb]: "https://bsc-testnet-rpc.publicnode.com",
     [ChainKind.Pol]: "https://polygon-amoy-bor-rpc.publicnode.com",
     [ChainKind.Abs]: "https://api.testnet.abs.xyz",
-    [ChainKind.HyperEvm]: "https://rpc.hyperliquid-testnet.xyz/evm",
+    [ChainKind.HlEvm]: "https://rpc.hyperliquid-testnet.xyz/evm",
   },
 }
 
@@ -100,7 +100,7 @@ function getChainConfig(network: Network, chain: EvmChainKind): Chain {
         return chains.polygon
       case ChainKind.Abs:
         return abstractChain
-      case ChainKind.HyperEvm:
+      case ChainKind.HlEvm:
         return hyperEvmChain
     }
   } else {
@@ -117,7 +117,7 @@ function getChainConfig(network: Network, chain: EvmChainKind): Chain {
         return chains.polygonAmoy
       case ChainKind.Abs:
         return chains.abstractTestnet
-      case ChainKind.HyperEvm:
+      case ChainKind.HlEvm:
         return hyperEvmTestnet
     }
   }

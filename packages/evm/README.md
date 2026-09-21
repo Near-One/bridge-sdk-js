@@ -93,7 +93,7 @@ console.log(ethBuilder.bridgeAddress) // 0xe00c629afaccb0510995a2b95560e446a24c8
 ```typescript
 const builder = createEvmBuilder({
   network: "mainnet" | "testnet",
-  chain: ChainKind.Eth | ChainKind.Arb | ChainKind.Base | ChainKind.Bnb | ChainKind.Pol | ChainKind.Abs | ChainKind.HyperEvm
+  chain: ChainKind.Eth | ChainKind.Arb | ChainKind.Base | ChainKind.Bnb | ChainKind.Pol | ChainKind.Abs | ChainKind.HlEvm
 })
 
 // Properties

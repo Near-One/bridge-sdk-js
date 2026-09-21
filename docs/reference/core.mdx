@@ -823,6 +823,22 @@ Same as `getTransferStatus`.
       `protocol_fee`, `relayer_account_id`.
     </ResponseField>
 
+    <ResponseField name="related_txs" type="RelatedTx[]">
+      Steps of the transfer that have no field of their own. The fields above
+      hold one transaction per step, and a transfer through Hyperliquid has
+      more. Each entry is a `TransactionRef` plus a `kind` saying which step it
+      is. Empty for every other transfer.
+
+      - `hyper_core_init` / `hyper_core_fin` — the HyperCore side of
+        `initialised` / `finalised`. HyperCore has no blocks, so `details` is
+        just `{ type: "hyper_core" }`.
+      - `hyper_evm_init` — HyperEVM starts a transfer with two transactions.
+        `initialised` holds the first one; this is the second.
+
+      New kinds may be added without an SDK release, and pass through as plain
+      strings.
+    </ResponseField>
+
     <ResponseField name="tx_ids" type="string[]">
       Every transaction hash involved in the transfer.
     </ResponseField>
@@ -1036,7 +1052,7 @@ enum ChainKind {
   Btc = 6,
   Zcash = 7,
   Pol = 8,
-  HyperEvm = 9,
+  HlEvm = 9,
   Strk = 10,
   Abs = 11,
   Fogo = 12,

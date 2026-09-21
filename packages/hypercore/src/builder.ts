@@ -134,7 +134,7 @@ class HyperCoreBuilderImpl implements HyperCoreBuilder {
       throw new Error(`fee must be >= 0, got ${fee}`)
     }
     const recipientChain = getChain(params.recipient)
-    if (recipientChain !== ChainKind.HyperEvm && fee >= params.amount) {
+    if (recipientChain !== ChainKind.HlEvm && fee >= params.amount) {
       throw new Error(
         `fee (${fee}) must be strictly less than amount (${params.amount}) for ${ChainKind[recipientChain]} recipients`,
       )
@@ -164,7 +164,7 @@ class HyperCoreBuilderImpl implements HyperCoreBuilder {
 
   private encodeData(params: HyperCoreTransferParams): { hex: Hex; actionTag: number } {
     const recipientChain = getChain(params.recipient)
-    if (recipientChain === ChainKind.HyperEvm) {
+    if (recipientChain === ChainKind.HlEvm) {
       const evmAddr = getAddress(params.recipient) as Address
       return { hex: encodeTransferAction(evmAddr), actionTag: ACTION_TRANSFER }
     }

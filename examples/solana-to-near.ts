@@ -14,7 +14,7 @@
  *   RECIPIENT=alice.near bun run examples/solana-to-near.ts
  */
 
-import { BridgeAPI, ChainKind, createBridge, type Network } from "@omni-bridge/core"
+import { BridgeAPI, ChainKind, createBridge, type Network, omniAddress } from "@omni-bridge/core"
 import { createSolanaBuilder } from "@omni-bridge/solana"
 import { Connection, Keypair, sendAndConfirmTransaction, Transaction } from "@solana/web3.js"
 import bs58 from "bs58"
@@ -59,7 +59,10 @@ async function main() {
   const solana = createSolanaBuilder({ network: NETWORK, connection })
   const api = new BridgeAPI(NETWORK)
 
-  console.log(`Sender: ${payer.toBase58()}`)
+  const token = omniAddress(ChainKind.Sol, USDC_MINT)
+  const sender = omniAddress(ChainKind.Sol, payer.toString())
+  const recipient = omniAddress(ChainKind.Near, RECIPIENT)
+  console.log(`Sender: ${sender}`)
   console.log(`RPC: ${RPC_URLS[NETWORK]}`)
 
   // ============================================================================
@@ -67,13 +70,16 @@ async function main() {
   // ============================================================================
   console.log("\n=== Step 2: Validate Transfer ===")
 
+  const feeRequestResult = await api.getFee(sender, recipient, token, AMOUNT)
+  if (feeRequestResult.native_token_fee === null) throw new Error("Invalid native token fee in Api")
+
   const validated = await bridge.validateTransfer({
-    token: `sol:${USDC_MINT}`,
+    token,
     amount: BigInt(AMOUNT),
     fee: 0n,
-    nativeFee: 0n,
-    sender: `sol:${payer.toBase58()}`,
-    recipient: `near:${RECIPIENT}`,
+    nativeFee: feeRequestResult.native_token_fee,
+    sender,
+    recipient,
   })
 
   console.log("Validation passed:")

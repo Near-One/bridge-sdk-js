@@ -1,5 +1,35 @@
 # @omni-bridge/core
 
+## 0.20.0
+
+### Minor Changes
+
+- a9ac0ed: Add `related_txs` to `Transfer`: steps of the transfer that have no field of their own — the HyperCore side of a transfer through HyperEVM, and HyperEVM's second init transaction. Adds the `hyper_core` transaction details variant and exports `RelatedTx` / `RelatedTxKind`.
+
+## 0.19.0
+
+### Minor Changes
+
+- 37baf09: Changes `nzec.bridge.near` to its PoA version `zec.omft.near`.
+
+## 0.18.0
+
+### Minor Changes
+
+- 2912ffe: Use PoA version of Starknet `starknet.omft.near` as Starknet Base token instead of `strk-0x65a839eb3847105820d4a2eee84e137f33525e8f.omdep.near`
+
+## 0.17.0
+
+### Minor Changes
+
+- d190525: Align `ChainKind.HyperEvm` to its contract deployed value `ChainKind.HlEvm`
+
+## 0.16.1
+
+### Patch Changes
+
+- f90edd4: Adds missing hyperevm hardcode to utility functions
+
 ## 0.16.0
 
 ### Minor Changes

@@ -16,7 +16,7 @@ const CHAIN_PREFIX_MAP: Record<ChainPrefix, ChainKind> = {
   btc: ChainKind.Btc,
   zcash: ChainKind.Zcash,
   pol: ChainKind.Pol,
-  hlevm: ChainKind.HyperEvm,
+  hlevm: ChainKind.HlEvm,
   abs: ChainKind.Abs,
   strk: ChainKind.Strk,
   fogo: ChainKind.Fogo,
@@ -34,7 +34,7 @@ const CHAIN_KIND_PREFIX_MAP: Record<ChainKind, ChainPrefix> = {
   [ChainKind.Btc]: "btc",
   [ChainKind.Zcash]: "zcash",
   [ChainKind.Pol]: "pol",
-  [ChainKind.HyperEvm]: "hlevm",
+  [ChainKind.HlEvm]: "hlevm",
   [ChainKind.Abs]: "abs",
   [ChainKind.Strk]: "strk",
   [ChainKind.Fogo]: "fogo",
@@ -95,7 +95,7 @@ export type EvmChainKind =
   | ChainKind.Bnb
   | ChainKind.Pol
   | ChainKind.Abs
-  | ChainKind.HyperEvm
+  | ChainKind.HlEvm
 
 /**
  * Checks if a chain is an EVM-compatible chain
@@ -108,7 +108,7 @@ export function isEvmChain(chain: ChainKind): chain is EvmChainKind {
     chain === ChainKind.Bnb ||
     chain === ChainKind.Pol ||
     chain === ChainKind.Abs ||
-    chain === ChainKind.HyperEvm
+    chain === ChainKind.HlEvm
   )
 }
 

@@ -1,5 +1,75 @@
 # @omni-bridge/sdk
 
+## 0.20.0
+
+### Patch Changes
+
+- Updated dependencies [a9ac0ed]
+  - @omni-bridge/core@0.20.0
+  - @omni-bridge/aptos@0.20.0
+  - @omni-bridge/btc@0.20.0
+  - @omni-bridge/evm@0.20.0
+  - @omni-bridge/hypercore@0.20.0
+  - @omni-bridge/near@0.20.0
+  - @omni-bridge/solana@0.20.0
+  - @omni-bridge/starknet@0.20.0
+
+## 0.19.0
+
+### Patch Changes
+
+- Updated dependencies [37baf09]
+  - @omni-bridge/core@0.19.0
+  - @omni-bridge/aptos@0.19.0
+  - @omni-bridge/btc@0.19.0
+  - @omni-bridge/evm@0.19.0
+  - @omni-bridge/hypercore@0.19.0
+  - @omni-bridge/near@0.19.0
+  - @omni-bridge/solana@0.19.0
+  - @omni-bridge/starknet@0.19.0
+
+## 0.18.0
+
+### Patch Changes
+
+- Updated dependencies [2912ffe]
+  - @omni-bridge/core@0.18.0
+  - @omni-bridge/aptos@0.18.0
+  - @omni-bridge/btc@0.18.0
+  - @omni-bridge/evm@0.18.0
+  - @omni-bridge/hypercore@0.18.0
+  - @omni-bridge/near@0.18.0
+  - @omni-bridge/solana@0.18.0
+  - @omni-bridge/starknet@0.18.0
+
+## 0.17.0
+
+### Patch Changes
+
+- Updated dependencies [d190525]
+  - @omni-bridge/core@0.17.0
+  - @omni-bridge/evm@0.17.0
+  - @omni-bridge/hypercore@0.17.0
+  - @omni-bridge/near@0.17.0
+  - @omni-bridge/aptos@0.17.0
+  - @omni-bridge/btc@0.17.0
+  - @omni-bridge/solana@0.17.0
+  - @omni-bridge/starknet@0.17.0
+
+## 0.16.1
+
+### Patch Changes
+
+- Updated dependencies [f90edd4]
+  - @omni-bridge/core@0.16.1
+  - @omni-bridge/aptos@0.16.1
+  - @omni-bridge/btc@0.16.1
+  - @omni-bridge/hypercore@0.16.1
+  - @omni-bridge/solana@0.16.1
+  - @omni-bridge/starknet@0.16.1
+  - @omni-bridge/evm@0.16.1
+  - @omni-bridge/near@0.16.1
+
 ## 0.16.0
 
 ### Minor Changes
