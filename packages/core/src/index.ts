@@ -12,6 +12,8 @@ export {
   type Chain,
   type OmniTransferId,
   type PostAction,
+  type RelatedTx,
+  type RelatedTxKind,
   type SafeDeposit,
   type TransactionDetails,
   type TransactionRef,

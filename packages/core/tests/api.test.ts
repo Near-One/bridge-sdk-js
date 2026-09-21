@@ -28,6 +28,7 @@ const mockTransfer = {
   signed: [],
   fee_updates: [],
   utxo_signs: [],
+  related_txs: [],
   tx_ids: ["0x123..."],
 }
 
@@ -59,6 +60,7 @@ const mockStarknetTransfer = {
   signed: [],
   fee_updates: [],
   utxo_signs: [],
+  related_txs: [],
   tx_ids: ["0xstarknettx"],
 }
 
@@ -96,6 +98,7 @@ const mockAptosTransfer = {
   signed: [],
   fee_updates: [],
   utxo_signs: [],
+  related_txs: [],
   tx_ids: ["0xaptostx"],
 }
 
@@ -117,6 +120,41 @@ const normalizedAptosTransfer = {
   verified: null,
   utxo_winning_tx_hash: null,
   utxo_meta: null,
+}
+
+const mockHyperCoreTransfer = {
+  ...mockTransfer,
+  transfer_id: { type: "nonce", chain: "Near", nonce: 321 },
+  origin_chain: "Near",
+  destination_chain: "HlEvm",
+  initialised: {
+    transaction_hash: "neartx",
+    chain: "Near",
+    timestamp_seconds: 1730000000,
+    details: { type: "near", block_height: 100, receipt_id: "receipt" },
+  },
+  related_txs: [
+    {
+      kind: "hyper_evm_init",
+      transaction_hash: "0xhyperevm",
+      chain: "HlEvm",
+      timestamp_seconds: 1730000001,
+      details: { type: "evm", block_number: 200, transaction_index: 1, log_index: 0 },
+    },
+    {
+      kind: "hyper_core_fin",
+      transaction_hash: "0xhypercore",
+      chain: "HlEvm",
+      timestamp_seconds: 1730000002,
+      details: { type: "hyper_core" },
+    },
+  ],
+  tx_ids: ["neartx", "0xhyperevm", "0xhypercore"],
+}
+
+const normalizedHyperCoreTransfer = {
+  ...normalizedTransfer,
+  ...mockHyperCoreTransfer,
 }
 
 const mockFee = {
@@ -302,6 +340,39 @@ describe("BridgeAPI", () => {
 
       const transfers = await api.getTransfer({ originChain: "Strk", originNonce: 456 })
       expect(transfers).toEqual([normalizedStarknetTransfer])
+    })
+
+    it("should parse related HyperCore transactions", async () => {
+      server.use(
+        http.get(`${BASE_URL}/api/v4/transfers/transfer`, () => {
+          return HttpResponse.json({ transfers: [mockHyperCoreTransfer] })
+        }),
+      )
+
+      const transfers = await api.getTransfer({ originChain: "Near", originNonce: 321 })
+      expect(transfers).toEqual([normalizedHyperCoreTransfer])
+      expect(transfers[0]?.related_txs[1]).toMatchObject({
+        kind: "hyper_core_fin",
+        details: { type: "hyper_core" },
+      })
+    })
+
+    it("should pass through unrecognized related tx kinds", async () => {
+      server.use(
+        http.get(`${BASE_URL}/api/v4/transfers/transfer`, () => {
+          return HttpResponse.json({
+            transfers: [
+              {
+                ...mockHyperCoreTransfer,
+                related_txs: [{ ...mockHyperCoreTransfer.related_txs[1], kind: "future_kind" }],
+              },
+            ],
+          })
+        }),
+      )
+
+      const transfers = await api.getTransfer({ originChain: "Near", originNonce: 321 })
+      expect(transfers[0]?.related_txs[0]?.kind).toBe("future_kind")
     })
 
     it("should parse Aptos transaction payloads", async () => {

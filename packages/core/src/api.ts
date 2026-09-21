@@ -120,6 +120,9 @@ const TransactionDetailsSchema = z.discriminatedUnion("type", [
     block_height: z.number().int().min(0),
     event_index: orNull(z.number().int().min(0)),
   }),
+  z.object({
+    type: z.literal("hyper_core"),
+  }),
 ])
 export type TransactionDetails = z.infer<typeof TransactionDetailsSchema>
 
@@ -168,6 +171,27 @@ const UtxoMetaSchema = z.object({
 })
 export type UtxoMeta = z.infer<typeof UtxoMetaSchema>
 
+const KNOWN_RELATED_TX_KINDS = ["hyper_core_init", "hyper_core_fin", "hyper_evm_init"] as const
+
+export type RelatedTxKind = (typeof KNOWN_RELATED_TX_KINDS)[number] | (string & {})
+
+const RelatedTxKindSchema = z
+  .enum(KNOWN_RELATED_TX_KINDS)
+  .or(z.string()) as z.ZodType<RelatedTxKind>
+
+/**
+ * A step of the transfer that has no field of its own. The fields above hold
+ * one transaction per step; these are the extra ones, tagged with `kind`.
+ *
+ * - `hyper_core_init` / `hyper_core_fin` — the HyperCore side of
+ *   `initialised` / `finalised`.
+ * - `hyper_evm_init` — the second of HyperEVM's two init transactions.
+ */
+const RelatedTxSchema = TransactionRefSchema.extend({
+  kind: RelatedTxKindSchema,
+})
+export type RelatedTx = z.infer<typeof RelatedTxSchema>
+
 const TransferSchema = z.object({
   transfer_id: orNull(TransferIdSchema),
   origin_chain: orNull(ChainSchema),
@@ -193,6 +217,7 @@ const TransferSchema = z.object({
   utxo_signs: z.array(UtxoSignSchema),
   utxo_winning_tx_hash: orNull(z.string()),
   utxo_meta: orNull(UtxoMetaSchema),
+  related_txs: z.array(RelatedTxSchema),
   tx_ids: z.array(z.string()),
 })
 export type Transfer = z.infer<typeof TransferSchema>
