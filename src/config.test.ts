@@ -12,13 +12,13 @@ describe("Config", () => {
   it("should set the network to testnet", () => {
     setNetwork("testnet")
     expect(addresses.near.contract).toBe("omni.n-bridge.testnet")
-    expect(addresses.near.rpcUrls).toEqual(["https://rpc.testnet.near.org"])
+    expect(addresses.near.rpcUrls).toEqual(["https://test.rpc.fastnear.com"])
   })
 
   it("should set the network to mainnet", () => {
     setNetwork("mainnet")
     expect(addresses.near.contract).toBe("omni.bridge.near")
-    expect(addresses.near.rpcUrls).toEqual(["https://rpc.near.org"])
+    expect(addresses.near.rpcUrls).toEqual(["https://free.rpc.fastnear.com"])
   })
 
   it("should return the correct addresses for mainnet", () => {
@@ -26,7 +26,7 @@ describe("Config", () => {
     expect(addresses.base).toBe("0xd025b38762B4A4E36F0Cde483b86CB13ea00D989")
     expect(addresses.eth).toBe("0xe00c629afaccb0510995a2b95560e446a24c85b9")
     expect(addresses.near.contract).toBe("omni.bridge.near")
-    expect(addresses.near.rpcUrls).toEqual(["https://rpc.near.org"])
+    expect(addresses.near.rpcUrls).toEqual(["https://free.rpc.fastnear.com"])
     expect(addresses.sol.locker).toBe("dahPEoZGXfyV58JqqH85okdHmpN8U2q8owgPUXSCPxe")
   })
 
@@ -36,7 +36,7 @@ describe("Config", () => {
     expect(addresses.base).toBe("0xa56b860017152cD296ad723E8409Abd6e5D86d4d")
     expect(addresses.eth).toBe("0x68a86e0Ea5B1d39F385c1326e4d493526dFe4401")
     expect(addresses.near.contract).toBe("omni.n-bridge.testnet")
-    expect(addresses.near.rpcUrls).toEqual(["https://rpc.testnet.near.org"])
+    expect(addresses.near.rpcUrls).toEqual(["https://test.rpc.fastnear.com"])
     expect(addresses.sol.locker).toBe("862HdJV59Vp83PbcubUnvuXc4EAXP8CDDs6LTxFpunTe")
   })
 
@@ -67,7 +67,7 @@ describe("Config", () => {
         },
       })
       expect(addresses.near.contract).toBe(customContract)
-      expect(addresses.near.rpcUrls).toEqual(["https://rpc.near.org"])
+      expect(addresses.near.rpcUrls).toEqual(["https://free.rpc.fastnear.com"])
     })
 
     it("should override BTC RPC URL", () => {
@@ -98,7 +98,7 @@ describe("Config", () => {
       expect(addresses.near.rpcUrls).toEqual(["https://custom.rpc"])
 
       resetConfig()
-      expect(addresses.near.rpcUrls).toEqual(["https://rpc.near.org"])
+      expect(addresses.near.rpcUrls).toEqual(["https://free.rpc.fastnear.com"])
     })
 
     it("should merge multiple config calls", () => {
