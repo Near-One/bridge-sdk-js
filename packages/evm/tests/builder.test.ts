@@ -57,6 +57,18 @@ describe("createEvmBuilder", () => {
     expect(builder.chainId).toBe(2741)
     expect(builder.bridgeAddress).toBe("0xd2490A00bDB97C1EDE4fdf207CFE2664AFB9C20D")
   })
+
+  it("creates builder for Avalanche testnet", () => {
+    const builder = createEvmBuilder({ network: "testnet", chain: ChainKind.Avax })
+    expect(builder.chainId).toBe(43113) // Avalanche Fuji
+    expect(builder.bridgeAddress).toBe("0xd025b38762B4A4E36F0Cde483b86CB13ea00D989")
+  })
+
+  it("creates builder for Avalanche mainnet", () => {
+    const builder = createEvmBuilder({ network: "mainnet", chain: ChainKind.Avax })
+    expect(builder.chainId).toBe(43114)
+    expect(builder.bridgeAddress).toBe("0xd025b38762B4A4E36F0Cde483b86CB13ea00D989")
+  })
 })
 
 describe("EvmBuilder.buildTransfer", () => {

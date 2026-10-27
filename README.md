@@ -3,7 +3,7 @@
 ![Status](https://img.shields.io/badge/Status-Beta-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-TypeScript SDK for cross-chain token transfers via the [Omni Bridge](https://github.com/Near-one/omni-bridge) protocol. Transfer tokens between Ethereum, NEAR, Solana, Base, Arbitrum, Polygon, BNB Chain, Abstract, Starknet, Aptos, Fogo, Bitcoin, and Zcash.
+TypeScript SDK for cross-chain token transfers via the [Omni Bridge](https://github.com/Near-one/omni-bridge) protocol. Transfer tokens between Ethereum, NEAR, Solana, Base, Arbitrum, Polygon, BNB Chain, Abstract, Avalanche, Starknet, Aptos, Fogo, Bitcoin, and Zcash.
 
 ## Install
 
@@ -57,6 +57,7 @@ near:alice.near    → NEAR
 sol:ABC123...      → Solana
 fogo:ABC123...     → Fogo
 abs:0x1234...      → Abstract
+avax:0x1234...     → Avalanche
 strk:0x1234...     → Starknet
 aptos:0x1234...    → Aptos
 btc:bc1q...        → Bitcoin
@@ -70,7 +71,7 @@ This makes it unambiguous which chain an address belongs to, which is essential 
 | Package                 | Description                                    |
 | ----------------------- | ---------------------------------------------- |
 | `@omni-bridge/core`     | Validation, types, configuration, API client   |
-| `@omni-bridge/evm`      | Ethereum, Base, Arbitrum, Polygon, BNB Chain, Abstract |
+| `@omni-bridge/evm`      | Ethereum, Base, Arbitrum, Polygon, BNB Chain, Abstract, Avalanche |
 | `@omni-bridge/near`     | NEAR Protocol                                  |
 | `@omni-bridge/solana`   | Solana, Fogo                                   |
 | `@omni-bridge/starknet` | Starknet                                       |

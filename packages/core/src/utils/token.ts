@@ -37,6 +37,7 @@ const KNOWN_BRIDGE_TOKENS: Record<string, ChainKind> = {
   "fogo.omnidep.testnet": ChainKind.Fogo,
   "aptos-0x16cc6a92839c986682d98bc35f958f4883f9d2a8.omnidep.testnet": ChainKind.Aptos,
   "hlevm.omnidep.testnet": ChainKind.HlEvm,
+  "avax.omnidep.testnet": ChainKind.Avax,
 }
 
 /**
@@ -59,6 +60,7 @@ const CHAIN_PREFIXES: Record<string, ChainKind> = {
   "fogo-": ChainKind.Fogo,
   "aptos-": ChainKind.Aptos,
   "hlevm-": ChainKind.HlEvm,
+  "avax-": ChainKind.Avax,
 }
 
 /**

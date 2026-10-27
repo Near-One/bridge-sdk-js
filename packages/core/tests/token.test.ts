@@ -88,6 +88,10 @@ describe("Token Utils", () => {
         expect(parseOriginChain("abs.omdep.near")).toBe(ChainKind.Abs)
       })
 
+      it("should parse testnet Avax token", () => {
+        expect(parseOriginChain("avax.omnidep.testnet")).toBe(ChainKind.Avax)
+      })
+
       it("should parse mainnet Strk token", () => {
         expect(
           parseOriginChain("starknet.omft.near"),
@@ -129,6 +133,7 @@ describe("Token Utils", () => {
 
       it("should parse Abs-prefixed wrapped tokens", () => {
         expect(parseOriginChain("abs-0xaaaa.omdep.near")).toBe(ChainKind.Abs)
+        expect(parseOriginChain("avax-0xaaaa.omdep.near")).toBe(ChainKind.Avax)
       })
 
       it("should parse Strk-prefixed wrapped tokens", () => {

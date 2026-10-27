@@ -121,6 +121,7 @@ function chainKindToApiChain(chain: ChainKind): Chain {
     [ChainKind.Strk]: "Strk",
     [ChainKind.Fogo]: "Fogo",
     [ChainKind.Aptos]: "Aptos",
+    [ChainKind.Avax]: "Avax",
   }
   return mapping[chain]
 }
@@ -144,6 +145,8 @@ function getContractAddress(addresses: ChainAddresses, chain: ChainKind): string
       return addresses.hlevm.bridge
     case ChainKind.Abs:
       return addresses.abs.bridge
+    case ChainKind.Avax:
+      return addresses.avax.bridge
     case ChainKind.Strk:
       return addresses.strk.bridge
     case ChainKind.Near:

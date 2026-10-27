@@ -12,6 +12,7 @@ describe("Omni Address Utils", () => {
       expect(omniAddress(ChainKind.Base, "0xbase789")).toBe("base:0xbase789")
       expect(omniAddress(ChainKind.Bnb, "0xbnb123")).toBe("bnb:0xbnb123")
       expect(omniAddress(ChainKind.Abs, "0xabs456")).toBe("abs:0xabs456")
+      expect(omniAddress(ChainKind.Avax, "0xavax789")).toBe("avax:0xavax789")
       expect(omniAddress(ChainKind.Strk, "0xstrk789")).toBe("strk:0xstrk789")
       expect(omniAddress(ChainKind.Zcash, "t1Rv4exT7bqhZqi2j7xz8bUHDMxwosrjADU")).toBe(
         "zcash:t1Rv4exT7bqhZqi2j7xz8bUHDMxwosrjADU",
@@ -128,6 +129,7 @@ describe("Omni Address Utils", () => {
       expect(isEvmChain(ChainKind.Base)).toBe(true)
       expect(isEvmChain(ChainKind.Bnb)).toBe(true)
       expect(isEvmChain(ChainKind.Abs)).toBe(true)
+      expect(isEvmChain(ChainKind.Avax)).toBe(true)
     })
 
     it("should return false for non-EVM chains", () => {

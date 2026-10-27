@@ -24,6 +24,7 @@ export enum ChainKind {
   Abs = 11,
   Fogo = 12,
   Aptos = 13,
+  Avax = 14,
 }
 
 // Network configuration
@@ -45,6 +46,7 @@ export type OmniAddress =
   | `strk:${string}`
   | `fogo:${string}`
   | `aptos:${string}`
+  | `avax:${string}`
 
 // Common type aliases
 export type U128 = bigint
@@ -171,3 +173,4 @@ export type ChainPrefix =
   | "strk"
   | "fogo"
   | "aptos"
+  | "avax"

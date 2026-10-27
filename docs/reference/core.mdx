@@ -1027,6 +1027,7 @@ type OmniAddress =
   | `strk:${string}`
   | `fogo:${string}`
   | `aptos:${string}`
+  | `avax:${string}`
 ```
 
 **Examples:**
@@ -1057,6 +1058,7 @@ enum ChainKind {
   Abs = 11,
   Fogo = 12,
   Aptos = 13,
+  Avax = 14,
 }
 ```
 
@@ -1450,6 +1452,7 @@ interface ChainAddresses {
   bnb: EvmAddresses
   pol: EvmAddresses
   abs: EvmAddresses
+  avax: EvmAddresses
   near: NearAddresses
   sol: SolanaAddresses
   btc: BtcAddresses
@@ -1586,6 +1589,7 @@ type EvmChainKind =
   | ChainKind.Bnb
   | ChainKind.Pol
   | ChainKind.Abs
+  | ChainKind.Avax
 ```
 
 ---
