@@ -88,6 +88,10 @@ describe("Token Utils", () => {
         expect(parseOriginChain("abs.omdep.near")).toBe(ChainKind.Abs)
       })
 
+      it("should parse mainnet Avax token", () => {
+        expect(parseOriginChain("avax.omdep.near")).toBe(ChainKind.Avax)
+      })
+
       it("should parse testnet Avax token", () => {
         expect(parseOriginChain("avax.omnidep.testnet")).toBe(ChainKind.Avax)
       })
