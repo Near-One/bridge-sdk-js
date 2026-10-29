@@ -190,6 +190,7 @@ NEAR_ACCOUNT=alice.near RECIPIENT=0x... bun run examples/near-to-eth.ts
 For a detailed guide on how to deploy tokens across different chains using the Omni Bridge protocol, refer to the [Token Deployment Guide](https://bridge.near.tools/guides/advanced/token-deployment)
 
 ## More Examples Coming Soon
+
 Environment variables:
 - `NEAR_ACCOUNT` - NEAR account with wrapped tokens (default: `alice.near`)
 - `NEAR_PRIVATE_KEY` - NEAR private key (optional if using near-cli)
