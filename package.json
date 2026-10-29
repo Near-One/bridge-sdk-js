@@ -15,7 +15,7 @@
     "prepublishOnly": "bun run build",
     "lefthook": "lefthook install",
     "check-exports": "bun run --filter '*' check-exports",
-    "ci:version": "changeset version && bun update",
+    "ci:version": "changeset version && bun install",
     "ci:publish": "bun run build && for dir in packages/*; do (cd \"$dir\" && PKG_NAME=$(jq -r .name package.json) && PKG_VERSION=$(jq -r .version package.json) && if npm view \"$PKG_NAME@$PKG_VERSION\" version 2>/dev/null; then echo \"$PKG_NAME@$PKG_VERSION already published, skipping\"; else bun pm pack && npm publish *.tgz --access public && rm *.tgz; fi); done && changeset tag",
     "release": "bun run ci:publish",
     "knip": "knip",
@@ -34,15 +34,15 @@
   "license": "MIT",
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
-    "@biomejs/biome": "^2.5.14",
+    "@biomejs/biome": "^2.6.4",
     "@changesets/cli": "^2.31.1",
-    "@types/bun": "^1.4.2",
-    "@types/node": "^25.9.8",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@types/bun": "^1.4.4",
+    "@types/node": "^25.9.9",
+    "@vitest/coverage-v8": "^4.1.12",
     "knip": "^5.88.1",
-    "lefthook": "^2.1.14",
+    "lefthook": "^2.2.2",
     "msw": "^2.15.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   }
 }

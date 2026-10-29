@@ -867,6 +867,7 @@ class NearBuilderImpl implements NearBuilder {
     const feeMin = BigInt(feeConfig.fee_min)
 
     const percentageFee = (amount * feeRate) / MAX_RATIO
+    // biome-ignore lint/complexity/useMathMinMax: bigint operands, Math.max() would throw
     return percentageFee > feeMin ? percentageFee : feeMin
   }
 
