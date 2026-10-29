@@ -54,6 +54,7 @@ export interface ChainAddresses {
   bnb: EvmAddresses
   pol: EvmAddresses
   abs: EvmAddresses
+  avax: EvmAddresses
   hlevm: EvmAddresses
   near: NearAddresses
   sol: SolanaAddresses
@@ -71,6 +72,7 @@ const MAINNET_ADDRESSES: ChainAddresses = {
   bnb: { bridge: "0x073C8a225c8Cf9d3f9157F5C1a1DbE02407f5720" },
   pol: { bridge: "0xd025b38762B4A4E36F0Cde483b86CB13ea00D989" },
   abs: { bridge: "0xd2490A00bDB97C1EDE4fdf207CFE2664AFB9C20D" },
+  avax: { bridge: "0xd025b38762B4A4E36F0Cde483b86CB13ea00D989" },
   hlevm: { bridge: "0xf353b40fC144d1c6c5BCdda712fa6De833016aF9" },
   near: {
     contract: "omni.bridge.near",
@@ -115,6 +117,7 @@ const TESTNET_ADDRESSES: ChainAddresses = {
   bnb: { bridge: "0x7Fd1E9F9ed48ebb64476ba9E06e5F1a90e31DA74" },
   pol: { bridge: "0xEC81aFc3485a425347Ac03316675e58a680b283A" },
   abs: { bridge: "0x5C79627d2cD753d45B41839d187619f99c7B8D78" },
+  avax: { bridge: "0xd025b38762B4A4E36F0Cde483b86CB13ea00D989" },
   hlevm: { bridge: "0xf353b40fC144d1c6c5BCdda712fa6De833016aF9" },
   near: {
     contract: "omni.n-bridge.testnet",
@@ -166,6 +169,7 @@ export const EVM_CHAIN_IDS: Record<Network, Record<string, number>> = {
     bnb: 56,
     pol: 137,
     abs: 2741,
+    avax: 43114,
     hlevm: 999,
   },
   testnet: {
@@ -175,6 +179,7 @@ export const EVM_CHAIN_IDS: Record<Network, Record<string, number>> = {
     bnb: 97, // BSC Testnet
     pol: 80002, // Polygon Amoy
     abs: 11124, // Abstract Testnet
+    avax: 43113, // Avalanche Fuji
     hlevm: 998, // HyperEVM Testnet
   },
 }

@@ -1,6 +1,6 @@
 ---
 title: EVM Chains
-description: Bridge tokens from Ethereum, Base, Arbitrum, Polygon, BNB Chain, and Abstract
+description: Bridge tokens from Ethereum, Base, Arbitrum, Polygon, BNB Chain, Abstract, and Avalanche
 ---
 
 This guide covers bridging from any EVM chain. The process is identical — you just change the `chain` parameter.
@@ -15,7 +15,7 @@ const bridge = createBridge({ network: "mainnet" })
 
 // Pick your chain
 const evm = createEvmBuilder({ network: "mainnet", chain: ChainKind.Eth })
-// Or: ChainKind.Base, ChainKind.Arb, ChainKind.Pol, ChainKind.Bnb, ChainKind.Abs
+// Or: ChainKind.Base, ChainKind.Arb, ChainKind.Pol, ChainKind.Bnb, ChainKind.Abs, ChainKind.Avax
 ```
 
 ## Complete Transfer
@@ -214,6 +214,7 @@ try {
 | Polygon | `Pol` | `pol:` | 137 | 80002 (Amoy) |
 | BNB Chain | `Bnb` | `bnb:` | 56 | 97 |
 | Abstract | `Abs` | `abs:` | 2741 | 11124 |
+| Avalanche | `Avax` | `avax:` | 43114 | 43113 (Fuji) |
 
 ## Next Steps
 

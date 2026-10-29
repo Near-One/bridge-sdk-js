@@ -21,6 +21,7 @@ const CHAIN_PREFIX_MAP: Record<ChainPrefix, ChainKind> = {
   strk: ChainKind.Strk,
   fogo: ChainKind.Fogo,
   aptos: ChainKind.Aptos,
+  avax: ChainKind.Avax,
 }
 
 // Mapping from ChainKind to prefix
@@ -39,6 +40,7 @@ const CHAIN_KIND_PREFIX_MAP: Record<ChainKind, ChainPrefix> = {
   [ChainKind.Strk]: "strk",
   [ChainKind.Fogo]: "fogo",
   [ChainKind.Aptos]: "aptos",
+  [ChainKind.Avax]: "avax",
 }
 
 // Valid chain prefixes
@@ -96,6 +98,7 @@ export type EvmChainKind =
   | ChainKind.Pol
   | ChainKind.Abs
   | ChainKind.HlEvm
+  | ChainKind.Avax
 
 /**
  * Checks if a chain is an EVM-compatible chain
@@ -108,7 +111,8 @@ export function isEvmChain(chain: ChainKind): chain is EvmChainKind {
     chain === ChainKind.Bnb ||
     chain === ChainKind.Pol ||
     chain === ChainKind.Abs ||
-    chain === ChainKind.HlEvm
+    chain === ChainKind.HlEvm ||
+    chain === ChainKind.Avax
   )
 }
 
