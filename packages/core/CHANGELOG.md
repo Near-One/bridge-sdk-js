@@ -1,5 +1,11 @@
 # @omni-bridge/core
 
+## 0.21.0
+
+### Minor Changes
+
+- 9feb488: Add Avalanche C-Chain (`ChainKind.Avax`, `avax:` prefix) as an EVM chain.
+
 ## 0.20.0
 
 ### Minor Changes
